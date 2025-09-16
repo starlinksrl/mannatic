@@ -2,7 +2,7 @@
 
 import { Header } from '@/components/dashboard/header';
 import { UsersTable } from '@/components/dashboard/users-table';
-import { users } from '@/lib/data';
+import { users as initialUsers } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { User } from '@/lib/types';
 import { useRouter } from 'next/navigation';
@@ -14,15 +14,16 @@ import { PlusCircle } from 'lucide-react';
 export default function UsersPage() {
   const { user } = useUser();
   const router = useRouter();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [userList, setUserList] = useState(users);
+  const [userList, setUserList] = useState(initialUsers);
 
   useEffect(() => {
-    if (user.role !== 'Admin') {
+    if (user && user.role !== 'Admin') {
       router.push('/dashboard');
     }
   }, [user, router]);
   
+  if(!user) return null;
+
   const handleUserAdded = (newUser: User) => {
     setUserList(prevUsers => [...prevUsers, newUser]);
   };

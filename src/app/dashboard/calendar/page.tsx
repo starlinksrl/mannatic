@@ -21,10 +21,12 @@ export default function CalendarPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user.role === 'Client') {
+    if (user && user.role === 'Client') {
       router.push('/dashboard');
     }
   }, [user, router]);
+
+  if (!user) return null;
 
 
   const roleBasedInterventions = interventions.filter(i => {

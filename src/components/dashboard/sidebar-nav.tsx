@@ -27,6 +27,8 @@ export function SidebarNav() {
   const pathname = usePathname();
   const { user } = useUser();
 
+  if (!user) return null;
+
   return (
     <div className="flex h-full flex-col">
       <div className="h-16 flex items-center px-6 border-b">

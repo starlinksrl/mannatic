@@ -18,6 +18,9 @@ import { it } from 'date-fns/locale';
 
 export function NotificationsDropdown() {
   const { user } = useUser();
+  
+  if (!user) return null;
+
   const userNotifications = allNotifications.filter(n => n.userId === user.id || user.role === 'Admin');
   const unreadCount = userNotifications.filter(n => !n.read).length;
 
