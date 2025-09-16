@@ -106,7 +106,12 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        setIsOpen(open);
+        if (!open) {
+            form.reset();
+        }
+    }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
@@ -157,7 +162,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Attrezzatura</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedClientId}>
+                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedClientId}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder={selectedClientId ? "Seleziona un'attrezzatura" : "Seleziona prima un cliente"} />
@@ -264,7 +269,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                         <FormLabel>Assegna a Operatore</FormLabel>
                         <Select 
                             onValueChange={(value) => field.onChange(value === 'null' ? null : value)} 
-                            defaultValue={field.value || 'null'}
+                            value={field.value || 'null'}
                         >
                             <FormControl>
                             <SelectTrigger>

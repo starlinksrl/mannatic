@@ -17,9 +17,11 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getClient, getEquipment, getOperator, addIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, PlusCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { AddInterventionForm } from './add-intervention-form';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { EditInterventionForm } from './edit-intervention-form';
 
 interface InterventionsTableProps {
   interventions: Intervention[];
@@ -41,7 +43,11 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'dueDate', direction: 'ascending' });
 
   const handleInterventionAdded = (newIntervention: Intervention) => {
-    setInterventions(prev => [...prev, newIntervention]);
+    setInterventions(prev => [newIntervention, ...prev]);
+  }
+  
+  const handleInterventionUpdated = (updatedIntervention: Intervention) => {
+    setInterventions(prev => prev.map(i => i.id === updatedIntervention.id ? updatedIntervention : i));
   }
 
   const roleBasedInterventions = useMemo(() => {
@@ -159,6 +165,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     { key: 'priority', label: 'Priorità', visible: true },
     { key: 'dueDate', label: 'Scadenza', visible: true },
     { key: 'operator', label: 'Operatore', visible: currentUser.role !== 'Operator' },
+    { key: 'actions', label: 'Azioni', visible: true },
   ];
 
   return (
@@ -224,10 +231,14 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             <TableRow>
               {tableHeaders.filter(h => h.visible).map(header => (
                  <TableHead key={header.key}>
-                    <Button variant="ghost" onClick={() => requestSort(header.key as any)}>
-                        {header.label}
-                        {getSortIcon(header.key as any)}
-                    </Button>
+                    {header.key === 'actions' ? (
+                        <span className="sr-only">{header.label}</span>
+                    ) : (
+                        <Button variant="ghost" onClick={() => requestSort(header.key as any)}>
+                            {header.label}
+                            {getSortIcon(header.key as any)}
+                        </Button>
+                    )}
                  </TableHead>
               ))}
             </TableRow>
@@ -249,6 +260,26 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                   <TableCell>{getPriorityBadge(intervention.priority)}</TableCell>
                   <TableCell>{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</TableCell>
                   {currentUser.role !== 'Operator' && <TableCell>{operator?.name || 'Non assegnato'}</TableCell>}
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <EditInterventionForm
+                            intervention={intervention}
+                            onInterventionUpdated={handleInterventionUpdated}
+                            clients={clients}
+                            operators={operators}
+                            currentUser={currentUser}
+                        >
+                           <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                             <Pencil className="mr-2" /> Modifica
+                           </DropdownMenuItem>
+                        </EditInterventionForm>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               );
             })}

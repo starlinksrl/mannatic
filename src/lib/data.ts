@@ -1,4 +1,4 @@
-import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority } from './types';
+import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks } from 'date-fns';
 
 export const users: User[] = [
@@ -185,6 +185,16 @@ export function addIntervention(interventionData: {
         createdAt: new Date().toISOString(),
         ...interventionData,
     };
-    interventions = [...interventions, newIntervention];
+    interventions = [newIntervention, ...interventions];
     return newIntervention;
+}
+
+export function updateIntervention(id: string, updatedData: Partial<Intervention>): Intervention | null {
+    const index = interventions.findIndex(i => i.id === id);
+    if (index === -1) {
+        return null;
+    }
+    const updatedIntervention = { ...interventions[index], ...updatedData } as Intervention;
+    interventions[index] = updatedIntervention;
+    return updatedIntervention;
 }
