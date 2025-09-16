@@ -1,20 +1,20 @@
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks } from 'date-fns';
 
-export const users: User[] = [
-  { id: 'user-1', name: 'Mario Rossi', email: 'admin@schedulapro.com', role: 'Admin', avatarUrl: 'https://i.pravatar.cc/150?u=user-1' },
-  { id: 'user-2', name: 'Luca Bianchi', email: 'operator1@schedulapro.com', role: 'Operator', avatarUrl: 'https://i.pravatar.cc/150?u=user-2' },
-  { id: 'user-3', name: 'Marco Verdi', email: 'operator2@schedulapro.com', role: 'Operator', avatarUrl: 'https://i.pravatar.cc/150?u=user-3' },
-  { id: 'user-4', name: 'Global Tech Inc.', email: 'client1@company.com', role: 'Client', avatarUrl: 'https://i.pravatar.cc/150?u=user-4' },
-  { id: 'user-5', name: 'Innovate Solutions', email: 'client2@company.com', role: 'Client', avatarUrl: 'https://i.pravatar.cc/150?u=user-5' },
+export let users: User[] = [
+  { id: 'user-1', name: 'Mario Rossi', email: 'admin@schedulapro.com', role: 'Admin', avatarUrl: 'https://i.pravatar.cc/150?u=user-1', password: 'password123' },
+  { id: 'user-2', name: 'Luca Bianchi', email: 'operator1@schedulapro.com', role: 'Operator', avatarUrl: 'https://i.pravatar.cc/150?u=user-2', password: 'password123' },
+  { id: 'user-3', name: 'Marco Verdi', email: 'operator2@schedulapro.com', role: 'Operator', avatarUrl: 'https://i.pravatar.cc/150?u=user-3', password: 'password123' },
+  { id: 'user-4', name: 'Global Tech Inc.', email: 'client1@company.com', role: 'Client', avatarUrl: 'https://i.pravatar.cc/150?u=user-4', password: 'password123' },
+  { id: 'user-5', name: 'Innovate Solutions', email: 'client2@company.com', role: 'Client', avatarUrl: 'https://i.pravatar.cc/150?u=user-5', password: 'password123' },
 ];
 
-export const clients: Client[] = [
+export let clients: Client[] = [
   { id: 'client-1', name: 'Global Tech Inc.' },
   { id: 'client-2', name: 'Innovate Solutions' },
 ];
 
-export const equipments: Equipment[] = [
+export let equipments: Equipment[] = [
   { id: 'equip-1', name: 'Impianto Clima A', clientId: 'client-1' },
   { id: 'equip-2', name: 'Server Room', clientId: 'client-1' },
   { id: 'equip-3', name: 'Linea Produzione B', clientId: 'client-2' },
@@ -149,7 +149,7 @@ export function getOperator(operatorId: string) {
 export const initialUser = users[0]; // Default to Admin
 
 // Functions to add data
-export function addUser(userData: { name: string; email: string; role: UserRole }): User {
+export function addUser(userData: { name: string; email: string; role: UserRole, password?: string }): User {
   const newUser: User = {
     id: `user-${users.length + 1}`,
     ...userData,
@@ -167,6 +167,28 @@ export function addUser(userData: { name: string; email: string; role: UserRole 
   }
 
   return newUser;
+}
+
+export function updateUser(id: string, updatedData: Partial<User>): User | null {
+    const index = users.findIndex(u => u.id === id);
+    if (index === -1) {
+        return null;
+    }
+    const updatedUser = { ...users[index], ...updatedData };
+    // Do not update password if it's empty
+    if(updatedData.password === '') {
+        delete updatedUser.password;
+    }
+    users[index] = updatedUser;
+
+     // If the user is a client and the name changed, update the client list as well
+    if(updatedUser.role === 'Client' && updatedData.name) {
+        const clientIndex = clients.findIndex(c => c.id === `client-${index}`); // This is a bit brittle
+        if(clientIndex !== -1) {
+            clients[clientIndex].name = updatedUser.name;
+        }
+    }
+    return updatedUser;
 }
 
 export function addIntervention(interventionData: {

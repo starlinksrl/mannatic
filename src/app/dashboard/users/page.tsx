@@ -27,6 +27,10 @@ export default function UsersPage() {
     setUserList(prevUsers => [...prevUsers, newUser]);
   };
 
+  const handleUserUpdated = (updatedUser: User) => {
+    setUserList(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+  }
+
 
   if (user.role !== 'Admin') {
     return null; 
@@ -44,7 +48,7 @@ export default function UsersPage() {
               </Button>
             </AddUserForm>
         </div>
-        <UsersTable users={userList} />
+        <UsersTable users={userList} onUserUpdated={handleUserUpdated} />
       </main>
     </>
   );

@@ -32,6 +32,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
   role: z.enum(['Admin', 'Operator', 'Client'], { required_error: 'Il ruolo è obbligatorio.' }),
+  password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}),
 });
 
 interface AddUserFormProps {
@@ -48,6 +49,7 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
     defaultValues: {
       name: '',
       email: '',
+      password: '',
     },
   });
 
@@ -56,6 +58,7 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
         name: values.name,
         email: values.email,
         role: values.role as UserRole,
+        password: values.password,
     });
     
     onUserAdded(newUser);
@@ -68,7 +71,12 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        setIsOpen(open);
+        if(!open) {
+            form.reset();
+        }
+    }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -97,6 +105,19 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input placeholder="mario.rossi@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="********" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { User } from '@/lib/types';
 import {
   Table,
@@ -13,15 +13,17 @@ import {
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Pencil } from 'lucide-react';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { EditUserForm } from './edit-user-form';
 
 interface UsersTableProps {
   users: User[];
+  onUserUpdated: (user: User) => void;
 }
 
-export function UsersTable({ users }: UsersTableProps) {
+export function UsersTable({ users, onUserUpdated }: UsersTableProps) {
     const getRoleBadge = (role: User['role']) => {
         switch (role) {
             case 'Admin': return <Badge variant="destructive">Admin</Badge>;
@@ -63,7 +65,11 @@ export function UsersTable({ users }: UsersTableProps) {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem>Modifica</DropdownMenuItem>
+                        <EditUserForm user={user} onUserUpdated={onUserUpdated}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Pencil className="mr-2" /> Modifica
+                            </DropdownMenuItem>
+                        </EditUserForm>
                         <DropdownMenuItem className="text-red-600">Elimina</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
