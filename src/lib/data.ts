@@ -1,4 +1,4 @@
-import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification } from './types';
+import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority } from './types';
 import { subDays, addDays, addMonths, addWeeks } from 'date-fns';
 
 export const users: User[] = [
@@ -22,7 +22,7 @@ export const equipments: Equipment[] = [
 
 const now = new Date();
 
-export const interventions: (Intervention | ScheduledMaintenance)[] = [
+export let interventions: (Intervention | ScheduledMaintenance)[] = [
   {
     id: 'int-1',
     title: 'Riparazione perdita condizionatore',
@@ -147,3 +147,44 @@ export function getOperator(operatorId: string) {
 }
 
 export const initialUser = users[0]; // Default to Admin
+
+// Functions to add data
+export function addUser(userData: { name: string; email: string; role: UserRole }): User {
+  const newUser: User = {
+    id: `user-${users.length + 1}`,
+    ...userData,
+    avatarUrl: `https://i.pravatar.cc/150?u=user-${users.length + 1}`,
+  };
+  users.push(newUser);
+  
+  // If the new user is a client, add to clients list as well
+  if(newUser.role === 'Client' && !clients.find(c => c.name === newUser.name)) {
+    const newClient: Client = {
+      id: `client-${clients.length + 1}`,
+      name: newUser.name,
+    };
+    clients.push(newClient);
+  }
+
+  return newUser;
+}
+
+export function addIntervention(interventionData: {
+  title: string;
+  clientId: string;
+  equipmentId: string;
+  description: string;
+  priority: InterventionPriority;
+  dueDate: string;
+  assignedOperatorId: string | null;
+}): Intervention {
+    const newIntervention: Intervention = {
+        id: `int-${interventions.length + 1}`,
+        status: 'Nuovo',
+        sla: '24h', // default sla
+        createdAt: new Date().toISOString(),
+        ...interventionData,
+    };
+    interventions = [...interventions, newIntervention];
+    return newIntervention;
+}

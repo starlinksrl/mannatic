@@ -15,10 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { getClient, getEquipment, getOperator } from '@/lib/data';
+import { getClient, getEquipment, getOperator, addIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, PlusCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { AddInterventionForm } from './add-intervention-form';
 
 interface InterventionsTableProps {
   interventions: Intervention[];
@@ -30,13 +31,18 @@ interface InterventionsTableProps {
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
 const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'In attesa': 3, 'Completato': 4, 'Annullato': 5 };
 
-export function InterventionsTable({ interventions, currentUser, clients, operators }: InterventionsTableProps) {
+export function InterventionsTable({ interventions: initialInterventions, currentUser, clients, operators }: InterventionsTableProps) {
+  const [interventions, setInterventions] = useState(initialInterventions);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [operatorFilter, setOperatorFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'dueDate', direction: 'ascending' });
+
+  const handleInterventionAdded = (newIntervention: Intervention) => {
+    setInterventions(prev => [...prev, newIntervention]);
+  }
 
   const roleBasedInterventions = useMemo(() => {
     if (currentUser.role === 'Admin') return interventions;
@@ -157,43 +163,60 @@ export function InterventionsTable({ interventions, currentUser, clients, operat
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Input
-          placeholder="Cerca per titolo o ID..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="lg:col-span-2"
-        />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutti gli stati</SelectItem>
-            <SelectItem value="Nuovo">Nuovo</SelectItem>
-            <SelectItem value="In corso">In corso</SelectItem>
-            <SelectItem value="In attesa">In attesa</SelectItem>
-            <SelectItem value="Completato">Completato</SelectItem>
-            <SelectItem value="Annullato">Annullato</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-          <SelectTrigger><SelectValue placeholder="Filtra per priorità" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutte le priorità</SelectItem>
-            <SelectItem value="Bassa">Bassa</SelectItem>
-            <SelectItem value="Media">Media</SelectItem>
-            <SelectItem value="Alta">Alta</SelectItem>
-            <SelectItem value="Critica">Critica</SelectItem>
-          </SelectContent>
-        </Select>
-        {currentUser.role === 'Admin' && (
-             <Select value={clientFilter} onValueChange={setClientFilter}>
-             <SelectTrigger><SelectValue placeholder="Filtra per cliente" /></SelectTrigger>
-             <SelectContent>
-               <SelectItem value="all">Tutti i clienti</SelectItem>
-               {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-             </SelectContent>
-           </Select>
-        )}
+        <div className="flex justify-between items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-grow">
+                <Input
+                placeholder="Cerca per titolo o ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="lg:col-span-2"
+                />
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Tutti gli stati</SelectItem>
+                    <SelectItem value="Nuovo">Nuovo</SelectItem>
+                    <SelectItem value="In corso">In corso</SelectItem>
+                    <SelectItem value="In attesa">In attesa</SelectItem>
+                    <SelectItem value="Completato">Completato</SelectItem>
+                    <SelectItem value="Annullato">Annullato</SelectItem>
+                </SelectContent>
+                </Select>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger><SelectValue placeholder="Filtra per priorità" /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Tutte le priorità</SelectItem>
+                    <SelectItem value="Bassa">Bassa</SelectItem>
+                    <SelectItem value="Media">Media</SelectItem>
+                    <SelectItem value="Alta">Alta</SelectItem>
+                    <SelectItem value="Critica">Critica</SelectItem>
+                </SelectContent>
+                </Select>
+                {currentUser.role === 'Admin' && (
+                    <Select value={clientFilter} onValueChange={setClientFilter}>
+                    <SelectTrigger><SelectValue placeholder="Filtra per cliente" /></SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="all">Tutti i clienti</SelectItem>
+                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                )}
+            </div>
+            { (currentUser.role === 'Admin' || currentUser.role === 'Client') &&
+                <div className="ml-4">
+                    <AddInterventionForm
+                        clients={clients}
+                        operators={operators}
+                        onInterventionAdded={handleInterventionAdded}
+                        currentUser={currentUser}
+                    >
+                        <Button>
+                            <PlusCircle className="mr-2" />
+                            Crea Intervento
+                        </Button>
+                    </AddInterventionForm>
+                </div>
+            }
       </div>
       <Card>
         <Table>
