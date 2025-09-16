@@ -2,7 +2,7 @@ import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notificati
 import { subDays, addDays, addMonths, addWeeks } from 'date-fns';
 
 export let users: User[] = [
-  { id: 'user-1', name: 'Mario Rossi', email: 'admin@schedulapro.com', role: 'Admin', avatarUrl: 'https://i.pravatar.cc/150?u=user-1', password: 'password123' },
+  { id: 'user-1', name: 'Mario Rossi', email: 'admin@schedulapro.com', role: 'Admin', avatarUrl: 'https://i.pravatar.cc/150?u=user-1', password: 'newpassword123' },
   { id: 'user-2', name: 'Luca Bianchi', email: 'operator1@schedulapro.com', role: 'Operator', avatarUrl: 'https://i.pravatar.cc/150?u=user-2', password: 'password123' },
   { id: 'user-3', name: 'Marco Verdi', email: 'operator2@schedulapro.com', role: 'Operator', avatarUrl: 'https://i.pravatar.cc/150?u=user-3', password: 'password123' },
   { id: 'user-4', name: 'Global Tech Inc.', email: 'client1@company.com', role: 'Client', avatarUrl: 'https://i.pravatar.cc/150?u=user-4', password: 'password123' },
