@@ -18,6 +18,7 @@ import { it } from 'date-fns/locale';
 import { getClient, getEquipment, getOperator } from '@/lib/data';
 import { Button } from '../ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 
 interface InterventionsTableProps {
   interventions: Intervention[];
