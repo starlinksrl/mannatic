@@ -27,12 +27,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { User, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateUser } from '@/lib/data';
+import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
   role: z.enum(['Admin', 'Operator', 'Client'], { required_error: 'Il ruolo è obbligatorio.' }),
   password: z.string().optional(),
+  avatarUrl: z.string().url({ message: 'Inserisci un URL valido per l\'avatar.' }).optional(),
 });
 
 interface EditUserFormProps {
@@ -52,8 +54,11 @@ export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProp
         email: user.email,
         role: user.role,
         password: '',
+        avatarUrl: user.avatarUrl,
     },
   });
+
+  const avatarUrl = form.watch('avatarUrl');
 
   useEffect(() => {
     form.reset({
@@ -61,6 +66,7 @@ export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProp
         email: user.email,
         role: user.role,
         password: '',
+        avatarUrl: user.avatarUrl
     })
   }, [user, form]);
 
@@ -89,6 +95,23 @@ export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProp
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="avatarUrl"
+              render={({ field }) => (
+                <FormItem className="flex flex-col items-center">
+                   <Avatar className="h-24 w-24 mb-4">
+                        <AvatarImage src={avatarUrl} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  <FormLabel>Avatar URL</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://example.com/avatar.png" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="name"
