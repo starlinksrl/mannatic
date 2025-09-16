@@ -5,7 +5,6 @@ import { User, users } from '@/lib/data';
 
 interface UserContextType {
   user: User | null;
-  setUser: (user: User | null) => void;
   login: (email: string, password?: string) => boolean;
   logout: () => void;
   isLoading: boolean;
@@ -21,6 +20,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   
   // In a real app, you'd check for a token in localStorage
   useEffect(() => {
+    // Try to load user from localStorage
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
     setIsLoading(false);
   }, []);
 
@@ -28,6 +32,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
     if (foundUser) {
       setUser(foundUser);
+      localStorage.setItem('user', JSON.stringify(foundUser));
       return true;
     }
     return false;
@@ -35,17 +40,28 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('user');
   };
   
   const switchUser = (userId: string) => {
     const selectedUser = users.find((u) => u.id === userId);
     if (selectedUser) {
       setUser(selectedUser);
+      localStorage.setItem('user', JSON.stringify(selectedUser));
     }
   }
 
+  const value = { 
+    user, 
+    login, 
+    logout, 
+    isLoading, 
+    switchUser, 
+    availableUsers: users,
+  };
+
   return (
-    <UserContext.Provider value={{ user, setUser, login, logout, isLoading, switchUser, availableUsers: users }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );
