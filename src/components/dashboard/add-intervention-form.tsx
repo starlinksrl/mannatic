@@ -262,14 +262,17 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Assegna a Operatore</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value || ''}>
+                        <Select 
+                            onValueChange={(value) => field.onChange(value === 'null' ? null : value)} 
+                            defaultValue={field.value || 'null'}
+                        >
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Assegna a un operatore (opzionale)" />
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            <SelectItem value="">Non assegnato</SelectItem>
+                            <SelectItem value="null">Non assegnato</SelectItem>
                             {operators.map(operator => (
                                 <SelectItem key={operator.id} value={operator.id}>{operator.name}</SelectItem>
                             ))}
