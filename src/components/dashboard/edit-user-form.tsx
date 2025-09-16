@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -28,13 +28,14 @@ import { User, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateUser } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import { Pencil } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
   role: z.enum(['Admin', 'Operator', 'Client'], { required_error: 'Il ruolo è obbligatorio.' }),
   password: z.string().optional(),
-  avatarUrl: z.string().url({ message: 'Inserisci un URL valido per l\'avatar.' }).optional(),
+  avatarUrl: z.string().optional(),
 });
 
 interface EditUserFormProps {
@@ -46,6 +47,7 @@ interface EditUserFormProps {
 export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,6 +88,21 @@ export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProp
     setIsOpen(false);
   }
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        form.setValue('avatarUrl', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -95,23 +112,26 @@ export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProp
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="avatarUrl"
-              render={({ field }) => (
-                <FormItem className="flex flex-col items-center">
-                   <Avatar className="h-24 w-24 mb-4">
+             <div className="flex justify-center">
+                <div className="relative">
+                    <Avatar className="h-24 w-24 mb-4 cursor-pointer" onClick={handleAvatarClick}>
                         <AvatarImage src={avatarUrl} alt={user.name} />
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                  <FormLabel>Avatar URL</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://example.com/avatar.png" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <Button type="button" variant="outline" size="icon" className="absolute bottom-4 right-0 rounded-full h-8 w-8" onClick={handleAvatarClick}>
+                        <Pencil className="h-4 w-4"/>
+                    </Button>
+                    <FormControl>
+                        <Input 
+                            type="file" 
+                            className="hidden" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange}
+                            accept="image/*"
+                        />
+                    </FormControl>
+                </div>
+            </div>
             <FormField
               control={form.control}
               name="name"
