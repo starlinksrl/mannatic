@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -15,6 +14,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Separator } from '@/components/ui/separator';
 
+const SMTP_STORAGE_KEY = 'smtp_settings';
+
 const formSchema = z.object({
   smtpHost: z.string().min(1, { message: 'Host SMTP obbligatorio.' }),
   smtpPort: z.coerce.number().min(1, { message: 'Porta SMTP obbligatoria.' }),
@@ -28,12 +29,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user && user.role !== 'Admin') {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -45,12 +40,30 @@ export default function SettingsPage() {
     },
   });
 
+  useEffect(() => {
+    if (user && user.role !== 'Admin') {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
+  
+  useEffect(() => {
+    const savedSettings = localStorage.getItem(SMTP_STORAGE_KEY);
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        form.reset(parsedSettings);
+      } catch (error) {
+        console.error("Failed to parse SMTP settings from localStorage", error);
+      }
+    }
+  }, [form]);
+
+
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // In a real app, you would save these settings securely on the server
-    console.log('SMTP Settings saved:', values);
+    localStorage.setItem(SMTP_STORAGE_KEY, JSON.stringify(values));
     toast({
       title: 'Impostazioni salvate',
-      description: 'Le impostazioni del server SMTP sono state salvate con successo.',
+      description: 'Le impostazioni del server SMTP sono state salvate con successo nel browser.',
     });
   }
   
@@ -58,7 +71,7 @@ export default function SettingsPage() {
      // In a real app, you would try to connect to the SMTP server
     toast({
       title: 'Test connessione',
-      description: 'Connessione al server SMTP riuscita!',
+      description: 'Connessione al server SMTP riuscita! (Simulazione)',
     });
   }
 
@@ -74,7 +87,7 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle>Configurazione Server SMTP</CardTitle>
             <CardDescription>
-              Inserisci i dettagli del tuo server SMTP per abilitare l'invio di email, come le notifiche e il reset password.
+              Inserisci i dettagli del tuo server SMTP per abilitare l'invio di email, come le notifiche e il reset password. Le impostazioni verranno salvate localmente nel browser.
             </CardDescription>
           </CardHeader>
           <CardContent>
