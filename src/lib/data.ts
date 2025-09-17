@@ -1,4 +1,5 @@
 
+
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday } from 'date-fns';
 import { db } from './firebase';
@@ -253,18 +254,24 @@ export async function getInterventions(companyId: string): Promise<Intervention[
     if (!companyId) return [];
     await checkAndConvertMaintenance(companyId);
     
-    const q = query(collection(db, 'interventions'), where("companyId", "==", companyId), where("isMaintenance", "!=", true));
+    const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Intervention));
+    const allCompanyInterventions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Intervention | ScheduledMaintenance)));
+    
+    // Filter in code instead of in the query
+    return allCompanyInterventions.filter(i => !('isMaintenance' in i) || i.isMaintenance !== true) as Intervention[];
 }
 
 export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
     if (!companyId) return [];
     await checkAndConvertMaintenance(companyId);
 
-    const q = query(collection(db, 'interventions'), where("companyId", "==", companyId), where("isMaintenance", "==", true));
+    const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduledMaintenance));
+    const allCompanyInterventions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Intervention | ScheduledMaintenance)));
+
+    // Filter in code instead of in the query
+    return allCompanyInterventions.filter(i => 'isMaintenance' in i && i.isMaintenance === true) as ScheduledMaintenance[];
 }
 
 export async function addIntervention(interventionData: Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'>): Promise<Intervention> {
