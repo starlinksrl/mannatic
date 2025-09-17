@@ -15,13 +15,25 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { getClient, getEquipment, getOperator, addIntervention } from '@/lib/data';
+import { getClient, getEquipment, getOperator, addIntervention, deleteIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { AddInterventionForm } from './add-intervention-form';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { EditInterventionForm } from './edit-intervention-form';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 interface InterventionsTableProps {
   interventions: (Intervention | ScheduledMaintenance)[];
@@ -31,9 +43,10 @@ interface InterventionsTableProps {
 }
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
-const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'In attesa': 3, 'Completato': 4, 'Annullato': 5 };
+const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'In attesa': 3, 'Completato': 4, 'Da Fatturare': 5, 'Fatturato': 6, 'Annullato': 7 };
 
 export function InterventionsTable({ interventions: initialInterventions, currentUser, clients, operators }: InterventionsTableProps) {
+  const { toast } = useToast();
   const [interventions, setInterventions] = useState(initialInterventions);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -45,6 +58,9 @@ export function InterventionsTable({ interventions: initialInterventions, curren
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedIntervention, setSelectedIntervention] = useState<Intervention | null>(null);
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [interventionToDelete, setInterventionToDelete] = useState<Intervention | null>(null);
 
   useEffect(() => {
     setInterventions(initialInterventions);
@@ -68,6 +84,36 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const handleInterventionUpdated = (updatedIntervention: Intervention) => {
     setInterventions(prev => prev.map(i => i.id === updatedIntervention.id ? updatedIntervention : i));
   }
+  
+  const handleInterventionDeleted = (deletedInterventionId: string) => {
+    setInterventions(prev => prev.filter(i => i.id !== deletedInterventionId));
+  }
+
+  const handleDeleteClick = (intervention: Intervention) => {
+    setInterventionToDelete(intervention);
+    setIsDeleteDialogOpen(true);
+  }
+
+  const confirmDelete = () => {
+      if (!interventionToDelete) return;
+      const success = deleteIntervention(interventionToDelete.id);
+      if (success) {
+          handleInterventionDeleted(interventionToDelete.id);
+          toast({
+              title: 'Intervento eliminato',
+              description: `L'intervento "${interventionToDelete.title}" è stato eliminato con successo.`,
+          });
+      } else {
+           toast({
+              variant: 'destructive',
+              title: 'Errore',
+              description: "Impossibile eliminare l'intervento.",
+          });
+      }
+      setIsDeleteDialogOpen(false);
+      setInterventionToDelete(null);
+  }
+
 
   const roleBasedInterventions = useMemo(() => {
     if (!currentUser) return [];
@@ -164,6 +210,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
       case 'In corso': return <Badge className="bg-blue-100 text-blue-800">In corso</Badge>;
       case 'In attesa': return <Badge className="bg-yellow-100 text-yellow-800">In attesa</Badge>;
       case 'Completato': return <Badge className="bg-green-100 text-green-800">Completato</Badge>;
+      case 'Da Fatturare': return <Badge className="bg-purple-100 text-purple-800">Da Fatturare</Badge>;
+      case 'Fatturato': return <Badge className="bg-gray-100 text-gray-800">Fatturato</Badge>;
       case 'Annullato': return <Badge variant="destructive">Annullato</Badge>;
       default: return <Badge>{status}</Badge>;
     }
@@ -206,6 +254,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                     <SelectItem value="In corso">In corso</SelectItem>
                     <SelectItem value="In attesa">In attesa</SelectItem>
                     <SelectItem value="Completato">Completato</SelectItem>
+                    <SelectItem value="Da Fatturare">Da Fatturare</SelectItem>
+                    <SelectItem value="Fatturato">Fatturato</SelectItem>
                     <SelectItem value="Annullato">Annullato</SelectItem>
                 </SelectContent>
                 </Select>
@@ -250,7 +300,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             {sortedInterventions.map((intervention) => {
               const client = getClient(intervention.clientId);
               return (
-                 <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(intervention)}>
+                 <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(intervention as Intervention)}>
                     <div className="flex-1 space-y-1">
                         <p className="font-medium">{intervention.title}</p>
                         {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{client?.name}</p>}
@@ -265,9 +315,22 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                         <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => handleEditClick(intervention)}>
+                        <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
+                        {currentUser.role === 'Admin' && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        handleDeleteClick(intervention as Intervention);
+                                    }}>
+                                    <Trash2 className="mr-2" /> Elimina
+                                </DropdownMenuItem>
+                            </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                  </div>
@@ -298,7 +361,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               const client = getClient(intervention.clientId);
               const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
               return (
-                <TableRow key={intervention.id} onClick={() => handleEditClick(intervention)} className="cursor-pointer">
+                <TableRow key={intervention.id} onClick={() => handleEditClick(intervention as Intervention)} className="cursor-pointer">
                     <TableCell className="font-medium">
                         <div className="flex flex-col">
                             <span>{intervention.title}</span>
@@ -316,9 +379,22 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                         <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                         <DropdownMenuItem onSelect={() => handleEditClick(intervention)}>
+                         <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                              <Pencil className="mr-2" /> Modifica
                          </DropdownMenuItem>
+                         {currentUser.role === 'Admin' && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        handleDeleteClick(intervention as Intervention);
+                                    }}>
+                                    <Trash2 className="mr-2" /> Elimina
+                                </DropdownMenuItem>
+                            </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -337,6 +413,20 @@ export function InterventionsTable({ interventions: initialInterventions, curren
         isOpen={isEditModalOpen}
         setIsOpen={setIsEditModalOpen}
       />
+       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Questa azione non può essere annullata. L'intervento <b>{interventionToDelete?.title}</b> verrà eliminato definitivamente.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Elimina</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

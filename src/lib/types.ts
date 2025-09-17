@@ -20,8 +20,13 @@ export interface Equipment {
   clientId: string;
 }
 
-export type InterventionStatus = 'Nuovo' | 'In corso' | 'In attesa' | 'Completato' | 'Annullato' | 'Pianificato';
+export type InterventionStatus = 'Nuovo' | 'In corso' | 'In attesa' | 'Completato' | 'Annullato' | 'Pianificato' | 'Da Fatturare' | 'Fatturato';
 export type InterventionPriority = 'Bassa' | 'Media' | 'Alta' | 'Critica';
+
+export interface InterventionUpdate {
+  date: string;
+  description: string;
+}
 
 export interface Intervention {
   id: string;
@@ -40,6 +45,7 @@ export interface Intervention {
   materialsUsed?: { name: string; quantity: number }[];
   photos?: string[];
   clientSignature?: string;
+  updates?: InterventionUpdate[];
 }
 
 export interface ScheduledMaintenance extends Intervention {

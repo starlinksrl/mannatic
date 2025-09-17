@@ -26,14 +26,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { CalendarIcon, MessageSquarePlus } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, Equipment, InterventionPriority, InterventionStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateIntervention, equipments as allEquipments } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
+import { Separator } from '../ui/separator';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -41,9 +42,10 @@ const formSchema = z.object({
   equipmentId: z.string({ required_error: 'L\'attrezzatura è obbligatoria.' }),
   description: z.string().min(10, { message: 'La descrizione deve contenere almeno 10 caratteri.' }),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
-  status: z.enum(['Nuovo', 'In corso', 'In attesa', 'Completato', 'Annullato'], { required_error: 'Lo stato è obbligatorio.' }),
+  status: z.enum(['Nuovo', 'In corso', 'In attesa', 'Completato', 'Annullato', 'Da Fatturare', 'Fatturato'], { required_error: 'Lo stato è obbligatorio.' }),
   dueDate: z.date({ required_error: 'La data di scadenza è obbligatoria.' }),
   assignedOperatorId: z.string().nullable(),
+  newUpdate: z.string().optional(),
 });
 
 interface EditInterventionFormProps {
@@ -82,6 +84,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
         priority: intervention.priority,
         status: intervention.status,
         assignedOperatorId: intervention.assignedOperatorId || null,
+        newUpdate: '',
       });
     }
   }, [intervention, form]);
@@ -90,12 +93,19 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
 
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    
+    let newUpdates = intervention?.updates || [];
+    if(values.newUpdate && values.newUpdate.trim() !== '') {
+        newUpdates = [{ date: new Date().toISOString(), description: values.newUpdate.trim() }, ...newUpdates];
+    }
+
     const updatedInterventionData = {
         ...intervention,
         ...values,
         priority: values.priority as InterventionPriority,
         status: values.status as InterventionStatus,
-        dueDate: values.dueDate.toISOString()
+        dueDate: values.dueDate.toISOString(),
+        updates: newUpdates,
     };
     
     const updated = updateIntervention(intervention!.id, updatedInterventionData);
@@ -118,7 +128,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0">
+      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>Modifica intervento #{intervention.id}</DialogTitle>
         </DialogHeader>
@@ -215,10 +225,12 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                <SelectItem value="Nuovo">Nuovo</SelectItem>
+                                    <SelectItem value="Nuovo">Nuovo</SelectItem>
                                     <SelectItem value="In corso">In corso</SelectItem>
                                     <SelectItem value="In attesa">In attesa</SelectItem>
                                     <SelectItem value="Completato">Completato</SelectItem>
+                                    <SelectItem value="Da Fatturare">Da Fatturare</SelectItem>
+                                    <SelectItem value="Fatturato">Fatturato</SelectItem>
                                     <SelectItem value="Annullato">Annullato</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -318,13 +330,51 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                             )}
                         />
                     )}
+                    
+                    <Separator />
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-medium">Aggiornamenti Intervento</h4>
+                         <FormField
+                            control={form.control}
+                            name="newUpdate"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Aggiungi nuovo aggiornamento</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="Scrivi un aggiornamento..." {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <div className="space-y-4 max-h-48 overflow-y-auto pr-2">
+                            {intervention.updates && intervention.updates.length > 0 ? (
+                                intervention.updates.map((update, index) => (
+                                    <div key={index} className="flex items-start gap-3 text-sm">
+                                        <MessageSquarePlus className="w-4 h-4 mt-1 text-muted-foreground" />
+                                        <div className="flex-1">
+                                            <p className="text-muted-foreground">
+                                                {formatDistanceToNow(new Date(update.date), { addSuffix: true, locale: it })}
+                                            </p>
+                                            <p>{update.description}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">Nessun aggiornamento.</p>
+                            )}
+                        </div>
+                    </div>
+
 
                 </form>
                 </Form>
             </div>
         </ScrollArea>
 
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t mt-auto">
             <DialogClose asChild>
                 <Button variant="outline">Annulla</Button>
             </DialogClose>

@@ -48,6 +48,10 @@ export default function UsersPage() {
   const handleUserUpdated = (updatedUser: User) => {
     setUserList(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
   }
+  
+  const handleUserDeleted = (deletedUserId: string) => {
+    setUserList(prevUsers => prevUsers.filter(u => u.id !== deletedUserId));
+  }
 
 
   if (user.role !== 'Admin') {
@@ -71,7 +75,7 @@ export default function UsersPage() {
                 <Loader className="h-8 w-8 animate-spin" />
             </div>
         ) : (
-            <UsersTable users={userList} onUserUpdated={handleUserUpdated} />
+            <UsersTable users={userList} onUserUpdated={handleUserUpdated} onUserDeleted={handleUserDeleted} />
         )}
       </main>
     </>

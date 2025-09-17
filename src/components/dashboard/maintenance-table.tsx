@@ -14,13 +14,24 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { getClient, getOperator } from '@/lib/data';
+import { getClient, getOperator, deleteScheduledMaintenance } from '@/lib/data';
 import { Button } from '../ui/button';
-import { MoreHorizontal, PlusCircle, Pencil } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { AddMaintenanceForm } from './add-maintenance-form';
 import { EditMaintenanceForm } from './edit-maintenance-form';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface MaintenanceTableProps {
   maintenanceTasks: ScheduledMaintenance[];
@@ -31,12 +42,21 @@ interface MaintenanceTableProps {
   onMaintenanceUpdated: (maintenance: ScheduledMaintenance) => void;
 }
 
-export function MaintenanceTable({ maintenanceTasks, currentUser, clients, operators, onMaintenanceAdded, onMaintenanceUpdated }: MaintenanceTableProps) {
+export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, currentUser, clients, operators, onMaintenanceAdded, onMaintenanceUpdated }: MaintenanceTableProps) {
+  const { toast } = useToast();
+  const [maintenanceTasks, setMaintenanceTasks] = useState(initialMaintenanceTasks);
   const [searchTerm, setSearchTerm] = useState('');
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedMaintenance, setSelectedMaintenance] = useState<ScheduledMaintenance | null>(null);
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [maintenanceToDelete, setMaintenanceToDelete] = useState<ScheduledMaintenance | null>(null);
+  
+  useEffect(() => {
+    setMaintenanceTasks(initialMaintenanceTasks);
+  }, [initialMaintenanceTasks]);
 
   useEffect(() => {
     const map = new Map<string, string>();
@@ -48,6 +68,36 @@ export function MaintenanceTable({ maintenanceTasks, currentUser, clients, opera
     setSelectedMaintenance(maintenance);
     setIsEditModalOpen(true);
   }
+  
+  const handleMaintenanceDeleted = (deletedId: string) => {
+    setMaintenanceTasks(prev => prev.filter(m => m.id !== deletedId));
+  }
+
+  const handleDeleteClick = (maintenance: ScheduledMaintenance) => {
+    setMaintenanceToDelete(maintenance);
+    setIsDeleteDialogOpen(true);
+  }
+
+  const confirmDelete = () => {
+    if (!maintenanceToDelete) return;
+    const success = deleteScheduledMaintenance(maintenanceToDelete.id);
+    if (success) {
+      handleMaintenanceDeleted(maintenanceToDelete.id);
+      toast({
+        title: 'Manutenzione eliminata',
+        description: `La manutenzione "${maintenanceToDelete.title}" è stata eliminata con successo.`,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Errore',
+        description: "Impossibile eliminare la manutenzione programmata.",
+      });
+    }
+    setIsDeleteDialogOpen(false);
+    setMaintenanceToDelete(null);
+  }
+
 
   const filteredTasks = useMemo(() => {
     let filtered = maintenanceTasks;
@@ -132,6 +182,19 @@ export function MaintenanceTable({ maintenanceTasks, currentUser, clients, opera
                         <DropdownMenuItem onSelect={() => handleEditClick(task)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
+                        {currentUser.role === 'Admin' && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        handleDeleteClick(task);
+                                    }}>
+                                    <Trash2 className="mr-2" /> Elimina
+                                </DropdownMenuItem>
+                            </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                  </div>
@@ -183,6 +246,19 @@ export function MaintenanceTable({ maintenanceTasks, currentUser, clients, opera
                          <DropdownMenuItem onSelect={() => handleEditClick(task)}>
                              <Pencil className="mr-2" /> Modifica
                          </DropdownMenuItem>
+                         {currentUser.role === 'Admin' && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        handleDeleteClick(task);
+                                    }}>
+                                    <Trash2 className="mr-2" /> Elimina
+                                </DropdownMenuItem>
+                            </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -200,6 +276,20 @@ export function MaintenanceTable({ maintenanceTasks, currentUser, clients, opera
         isOpen={isEditModalOpen}
         setIsOpen={setIsEditModalOpen}
       />
+       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Questa azione non può essere annullata. La manutenzione <b>{maintenanceToDelete?.title}</b> verrà eliminata definitivamente.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Elimina</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

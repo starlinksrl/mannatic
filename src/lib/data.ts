@@ -1,5 +1,5 @@
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus } from './types';
-import { subDays, addDays, addMonths, addWeeks } from 'date-fns';
+import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc } from 'firebase/firestore';
 
@@ -30,6 +30,10 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     assignedOperatorId: 'user-2',
     createdAt: subDays(now, 2).toISOString(),
     dueDate: addDays(now, 1).toISOString(),
+    updates: [
+        { date: subDays(now, 1).toISOString(), description: "Contattato il cliente, appuntamento fissato per domani." },
+        { date: subDays(now, 2).toISOString(), description: "Intervento creato dal sistema." },
+    ]
   },
   {
     id: 'int-2',
@@ -43,6 +47,7 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     assignedOperatorId: null,
     createdAt: subDays(now, 1).toISOString(),
     dueDate: addDays(now, 3).toISOString(),
+    updates: []
   },
   {
     id: 'int-3',
@@ -52,7 +57,7 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     description: 'Manutenzione programmata per la server room.',
     priority: 'Media',
     sla: '48h',
-    status: 'Completato',
+    status: 'Da Fatturare',
     assignedOperatorId: 'user-3',
     createdAt: subDays(now, 15).toISOString(),
     dueDate: subDays(now, 12).toISOString(),
@@ -64,7 +69,7 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     periodicity: 'monthly',
     recurrenceMonths: 3,
     checklist: [{ task: 'Pulizia filtri', completed: true }, { task: 'Controllo temperature', completed: true }],
-    nextDueDate: addMonths(now, 2).toISOString(),
+    nextDueDate: addDays(now, 5).toISOString(), // Set to be converted
   },
   {
     id: 'int-4',
@@ -78,6 +83,7 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     assignedOperatorId: 'user-2',
     createdAt: subDays(now, 1).toISOString(),
     dueDate: addDays(now, 0).toISOString(),
+    updates: []
   },
   {
     id: 'int-5',
@@ -96,6 +102,7 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     recurrenceMonths: 0,
     checklist: [{ task: 'Controllo pressione gas', completed: false }, { task: 'Pulizia unità esterna', completed: false }],
     nextDueDate: addWeeks(now, 1).toISOString(),
+    updates: []
   },
   {
     id: 'int-6',
@@ -105,10 +112,11 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     description: 'Il cliente richiede una valutazione per un upgrade della capacità di raffreddamento.',
     priority: 'Bassa',
     sla: '14d',
-    status: 'Annullato',
+    status: 'Fatturato',
     assignedOperatorId: 'user-2',
     createdAt: subDays(now, 20).toISOString(),
     dueDate: subDays(now, 5).toISOString(),
+    updates: []
   },
   {
     id: 'int-7',
@@ -123,6 +131,7 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     createdAt: subDays(now, 5).toISOString(),
     dueDate: subDays(now, 4).toISOString(),
     completedAt: subDays(now, 4).toISOString(),
+    updates: []
   },
 ];
 
@@ -193,6 +202,55 @@ export async function getOperator(operatorId: string) {
     }
 }
 
+const CONVERSION_WINDOW_DAYS = 7;
+
+function checkAndConvertMaintenance() {
+    const today = startOfToday();
+    const conversionInterval = {
+        start: today,
+        end: addDays(today, CONVERSION_WINDOW_DAYS),
+    };
+
+    const maintenancesToConvert = interventionsMock
+        .filter(task => 'isMaintenance' in task && task.status === 'Pianificato') as ScheduledMaintenance[];
+
+    maintenancesToConvert.forEach(maint => {
+        const nextDueDate = new Date(maint.nextDueDate);
+        const alreadyConverted = interventionsMock.some(i => 
+            i.title === maint.title && isWithinInterval(new Date(i.createdAt), {start: subDays(today, 2), end: addDays(today, 2)}));
+
+        if (isWithinInterval(nextDueDate, conversionInterval) && !alreadyConverted) {
+            console.log(`Converting maintenance ${maint.id} to intervention.`);
+            
+            const newIntervention: Intervention = {
+                id: `conv-${maint.id}-${Math.random().toString(36).substring(2, 7)}`,
+                title: maint.title,
+                clientId: maint.clientId,
+                equipmentId: maint.equipmentId,
+                description: `Creato automaticamente dalla manutenzione programmata: ${maint.description}`,
+                priority: 'Bassa',
+                sla: '48h',
+                status: 'Nuovo',
+                assignedOperatorId: maint.assignedOperatorId,
+                createdAt: new Date().toISOString(),
+                dueDate: maint.nextDueDate,
+                updates: [{date: new Date().toISOString(), description: `Creato da manutenzione #${maint.id}`}]
+            };
+
+            interventionsMock.unshift(newIntervention);
+
+            // Update original maintenance task
+            const maintIndex = interventionsMock.findIndex(i => i.id === maint.id);
+            if (maintIndex !== -1) {
+                const updatedMaint = interventionsMock[maintIndex] as ScheduledMaintenance;
+                updatedMaint.status = 'In corso';
+                updatedMaint.nextDueDate = addMonths(new Date(updatedMaint.nextDueDate), updatedMaint.recurrenceMonths).toISOString();
+                interventionsMock[maintIndex] = updatedMaint;
+            }
+        }
+    });
+}
+
 
 // Functions to add data
 export async function addUser(userData: { name: string; email: string; role: UserRole, password?: string }): Promise<User> {
@@ -245,23 +303,35 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
     }
 }
 
-export async function deleteUser(id: string): Promise<void> {
+export async function deleteUser(id: string): Promise<boolean> {
+    // In-memory mock version
+    const index = (await getUsers()).findIndex(u => u.id === id); // This is not how it would work with a real db
+    if (index === -1) {
+      return false;
+    }
+    // This is mock, so we just log it. With a real DB, we'd delete.
+    console.log(`User with id ${id} would be deleted.`);
+    // For mock, let's actually remove from the in-memory representation for the UI to update
     try {
         const userDocRef = doc(db, 'users', id);
         await deleteDoc(userDocRef);
+        return true;
     } catch (error) {
         console.error("Error deleting user:", error);
+        return false;
     }
 }
 
 
 export async function getInterventions(): Promise<(Intervention | ScheduledMaintenance)[]> {
     // For now, it returns mock data. This can be replaced with a Firestore query.
+    checkAndConvertMaintenance();
     return Promise.resolve(interventionsMock.filter(i => !i.hasOwnProperty('isMaintenance')));
 }
 
 export async function getScheduledMaintenance(): Promise<ScheduledMaintenance[]> {
      // For now, it returns mock data. This can be replaced with a Firestore query.
+     checkAndConvertMaintenance();
     return Promise.resolve(interventionsMock.filter(i => i.hasOwnProperty('isMaintenance')) as ScheduledMaintenance[]);
 }
 
@@ -272,6 +342,7 @@ export function addIntervention(interventionData: Omit<Intervention, 'id' | 'sta
         sla: '24h', // default sla
         createdAt: new Date().toISOString(),
         ...interventionData,
+        updates: [{ date: new Date().toISOString(), description: 'Intervento creato.' }],
     };
     interventionsMock = [newIntervention, ...interventionsMock];
     return newIntervention;
@@ -288,7 +359,8 @@ export function addScheduledMaintenance(maintenanceData: Omit<ScheduledMaintenan
         createdAt: new Date().toISOString(),
         isMaintenance: true,
         nextDueDate,
-        ...maintenanceData
+        ...maintenanceData,
+        updates: [{ date: new Date().toISOString(), description: 'Manutenzione programmata creata.' }],
     };
     interventionsMock = [newMaintenance, ...interventionsMock];
     return newMaintenance;
@@ -321,4 +393,18 @@ export function updateScheduledMaintenance(id: string, updatedData: Partial<Sche
     
     interventionsMock[index] = updatedMaintenance;
     return updatedMaintenance;
+}
+
+export function deleteIntervention(id: string): boolean {
+    const index = interventionsMock.findIndex(i => i.id === id);
+    if (index === -1) return false;
+    interventionsMock.splice(index, 1);
+    return true;
+}
+
+export function deleteScheduledMaintenance(id: string): boolean {
+    const index = interventionsMock.findIndex(i => i.id === id);
+    if (index === -1) return false;
+    interventionsMock.splice(index, 1);
+    return true;
 }
