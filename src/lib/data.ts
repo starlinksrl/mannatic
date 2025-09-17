@@ -1,7 +1,7 @@
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks } from 'date-fns';
 import { db } from './firebase';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc } from 'firebase/firestore';
 
 
 export let clients: Client[] = [
@@ -60,7 +60,9 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     timeSpent: 4,
     materialsUsed: [{ name: 'Filtro HEPA', quantity: 2 }],
     clientSignature: 'F. Neri',
+    isMaintenance: true,
     periodicity: 'monthly',
+    recurrenceMonths: 3,
     checklist: [{ task: 'Pulizia filtri', completed: true }, { task: 'Controllo temperature', completed: true }],
     nextDueDate: addMonths(now, 2).toISOString(),
   },
@@ -85,11 +87,13 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     description: 'Manutenzione ordinaria impianto clima.',
     priority: 'Bassa',
     sla: '7d',
-    status: 'Nuovo',
+    status: 'Pianificato',
     assignedOperatorId: 'user-3',
     createdAt: subDays(now, 0).toISOString(),
     dueDate: addWeeks(now, 1).toISOString(),
+    isMaintenance: true,
     periodicity: 'weekly',
+    recurrenceMonths: 0,
     checklist: [{ task: 'Controllo pressione gas', completed: false }, { task: 'Pulizia unità esterna', completed: false }],
     nextDueDate: addWeeks(now, 1).toISOString(),
   },
@@ -130,30 +134,45 @@ export const notifications: Notification[] = [
 ];
 
 export async function getUsers(): Promise<User[]> {
-  const usersCol = collection(db, 'users');
-  const userSnapshot = await getDocs(usersCol);
-  const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-  return userList;
+  try {
+    const usersCol = collection(db, 'users');
+    const userSnapshot = await getDocs(usersCol);
+    const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    return userList;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return [];
+  }
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
-  const q = query(collection(db, "users"), where("email", "==", email.toLowerCase()));
-  const querySnapshot = await getDocs(q);
-  if (querySnapshot.empty) {
+  try {
+    const q = query(collection(db, "users"), where("email", "==", email.toLowerCase()));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      return null;
+    }
+    const userDoc = querySnapshot.docs[0];
+    return { id: userDoc.id, ...userDoc.data() } as User;
+  } catch (error) {
+    console.error("Error fetching user by email:", error);
     return null;
   }
-  const userDoc = querySnapshot.docs[0];
-  return { id: userDoc.id, ...userDoc.data() } as User;
 }
 
 export async function getUserById(id: string): Promise<User | null> {
     if (!id) return null;
-    const userDocRef = doc(db, 'users', id);
-    const userDoc = await getDoc(userDocRef);
-    if (userDoc.exists()) {
-        return { id: userDoc.id, ...userDoc.data() } as User;
+    try {
+        const userDocRef = doc(db, 'users', id);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+            return { id: userDoc.id, ...userDoc.data() } as User;
+        }
+        return null;
+    } catch (error) {
+        console.error("Error fetching user by ID:", error);
+        return null;
     }
-    return null;
 }
 
 export function getClient(clientId: string) {
@@ -165,66 +184,88 @@ export function getEquipment(equipmentId: string) {
 }
 
 export async function getOperator(operatorId: string) {
-  const user = await getUserById(operatorId);
-  return user && user.role === 'Operator' ? user : null;
+    try {
+        const user = await getUserById(operatorId);
+        return user && user.role === 'Operator' ? user : null;
+    } catch (error) {
+        console.error("Error fetching operator:", error);
+        return null;
+    }
 }
 
 
 // Functions to add data
 export async function addUser(userData: { name: string; email: string; role: UserRole, password?: string }): Promise<User> {
-  const docRef = await addDoc(collection(db, 'users'), {
-      ...userData,
-      avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
-  });
-  
-  // If the new user is a client, add to clients list as well
-  if(userData.role === 'Client' && !clients.find(c => c.name === userData.name)) {
-    const newClient: Client = {
-      id: `client-${clients.length + 1}`,
-      name: userData.name,
-    };
-    clients.push(newClient);
-  }
+  try {
+    const docRef = await addDoc(collection(db, 'users'), {
+        ...userData,
+        avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
+    });
+    
+    // If the new user is a client, add to clients list as well
+    if(userData.role === 'Client' && !clients.find(c => c.name === userData.name)) {
+      const newClient: Client = {
+        id: `client-${clients.length + 1}`,
+        name: userData.name,
+      };
+      clients.push(newClient);
+    }
 
-  return { id: docRef.id, ...userData, avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}` } as User;
+    return { id: docRef.id, ...userData, avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}` } as User;
+  } catch (error) {
+      console.error("Error adding user:", error);
+      throw new Error("Failed to add user.");
+  }
 }
 
 export async function updateUser(id: string, updatedData: Partial<User>): Promise<User | null> {
-    const userDocRef = doc(db, 'users', id);
-    
-    // Do not update password if it's empty
-    if(updatedData.password === '') {
-        delete updatedData.password;
-    }
-    
-    await updateDoc(userDocRef, updatedData);
-    
-    const updatedUser = await getUserById(id);
-
-     // If the user is a client and the name changed, update the client list as well
-    if(updatedUser && updatedUser.role === 'Client' && updatedData.name) {
-        const clientIndex = clients.findIndex(c => c.id === `client-${id.split('-')[1]}`); // This is a bit brittle
-        if(clientIndex !== -1) {
-            clients[clientIndex].name = updatedUser.name;
+    try {
+        const userDocRef = doc(db, 'users', id);
+        
+        // Do not update password if it's empty
+        if(updatedData.password === '') {
+            delete updatedData.password;
         }
+        
+        await updateDoc(userDocRef, updatedData);
+        
+        const updatedUser = await getUserById(id);
+
+        // If the user is a client and the name changed, update the client list as well
+        if(updatedUser && updatedUser.role === 'Client' && updatedData.name) {
+            const clientIndex = clients.findIndex(c => c.id === `client-${id.split('-')[1]}`); // This is a bit brittle
+            if(clientIndex !== -1) {
+                clients[clientIndex].name = updatedUser.name;
+            }
+        }
+        return updatedUser;
+    } catch (error) {
+        console.error("Error updating user:", error);
+        return null;
     }
-    return updatedUser;
 }
+
+export async function deleteUser(id: string): Promise<void> {
+    try {
+        const userDocRef = doc(db, 'users', id);
+        await deleteDoc(userDocRef);
+    } catch (error) {
+        console.error("Error deleting user:", error);
+    }
+}
+
 
 export async function getInterventions(): Promise<(Intervention | ScheduledMaintenance)[]> {
     // For now, it returns mock data. This can be replaced with a Firestore query.
-    return Promise.resolve(interventionsMock);
+    return Promise.resolve(interventionsMock.filter(i => !i.hasOwnProperty('isMaintenance')));
 }
 
-export function addIntervention(interventionData: {
-  title: string;
-  clientId: string;
-  equipmentId: string;
-  description: string;
-  priority: InterventionPriority;
-  dueDate: string;
-  assignedOperatorId: string | null;
-}): Intervention {
+export async function getScheduledMaintenance(): Promise<ScheduledMaintenance[]> {
+     // For now, it returns mock data. This can be replaced with a Firestore query.
+    return Promise.resolve(interventionsMock.filter(i => i.hasOwnProperty('isMaintenance')) as ScheduledMaintenance[]);
+}
+
+export function addIntervention(interventionData: Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt'>): Intervention {
     const newIntervention: Intervention = {
         id: `int-${interventionsMock.length + 1}`,
         status: 'Nuovo',
@@ -236,6 +277,24 @@ export function addIntervention(interventionData: {
     return newIntervention;
 }
 
+
+export function addScheduledMaintenance(maintenanceData: Omit<ScheduledMaintenance, 'id' | 'status' | 'sla' | 'createdAt' | 'isMaintenance' | 'nextDueDate'>): ScheduledMaintenance {
+    const nextDueDate = addMonths(new Date(maintenanceData.dueDate), maintenanceData.recurrenceMonths).toISOString();
+    
+    const newMaintenance: ScheduledMaintenance = {
+        id: `maint-${interventionsMock.length + 1}`,
+        status: 'Pianificato',
+        sla: '48h', // default sla
+        createdAt: new Date().toISOString(),
+        isMaintenance: true,
+        nextDueDate,
+        ...maintenanceData
+    };
+    interventionsMock = [newMaintenance, ...interventionsMock];
+    return newMaintenance;
+}
+
+
 export function updateIntervention(id: string, updatedData: Partial<Intervention>): Intervention | null {
     const index = interventionsMock.findIndex(i => i.id === id);
     if (index === -1) {
@@ -244,4 +303,22 @@ export function updateIntervention(id: string, updatedData: Partial<Intervention
     const updatedIntervention = { ...interventionsMock[index], ...updatedData } as Intervention;
     interventionsMock[index] = updatedIntervention;
     return updatedIntervention;
+}
+
+export function updateScheduledMaintenance(id: string, updatedData: Partial<ScheduledMaintenance>): ScheduledMaintenance | null {
+    const index = interventionsMock.findIndex(i => i.id === id);
+    if (index === -1) {
+        return null;
+    }
+
+    const originalMaintenance = interventionsMock[index] as ScheduledMaintenance;
+    const updatedMaintenance = { ...originalMaintenance, ...updatedData };
+
+    // Recalculate next due date if recurrence or due date changes
+    if (updatedData.recurrenceMonths || updatedData.dueDate) {
+         updatedMaintenance.nextDueDate = addMonths(new Date(updatedMaintenance.dueDate), updatedMaintenance.recurrenceMonths).toISOString();
+    }
+    
+    interventionsMock[index] = updatedMaintenance;
+    return updatedMaintenance;
 }

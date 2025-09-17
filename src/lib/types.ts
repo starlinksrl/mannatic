@@ -20,7 +20,7 @@ export interface Equipment {
   clientId: string;
 }
 
-export type InterventionStatus = 'Nuovo' | 'In corso' | 'In attesa' | 'Completato' | 'Annullato';
+export type InterventionStatus = 'Nuovo' | 'In corso' | 'In attesa' | 'Completato' | 'Annullato' | 'Pianificato';
 export type InterventionPriority = 'Bassa' | 'Media' | 'Alta' | 'Critica';
 
 export interface Intervention {
@@ -43,7 +43,9 @@ export interface Intervention {
 }
 
 export interface ScheduledMaintenance extends Intervention {
+  isMaintenance: true;
   periodicity: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  recurrenceMonths: number; // New field for recurrence in months
   checklist: { task: string; completed: boolean }[];
   nextDueDate: string;
 }

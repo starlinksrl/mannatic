@@ -11,8 +11,10 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Separator } from '@/components/ui/separator';
+import { sendTestEmail } from '@/app/actions';
+import { Loader } from 'lucide-react';
 
 const SMTP_STORAGE_KEY = 'smtp_settings';
 
@@ -22,12 +24,14 @@ const formSchema = z.object({
   smtpUser: z.string().min(1, { message: 'Username obbligatorio.' }),
   smtpPass: z.string().min(1, { message: 'Password obbligatoria.' }),
   senderEmail: z.string().email({ message: 'Email mittente non valida.' }),
+  recipientEmail: z.string().email({ message: 'Email destinatario non valida.' }),
 });
 
 export default function SettingsPage() {
   const { user } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const [isTesting, setIsTesting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,6 +41,7 @@ export default function SettingsPage() {
       smtpUser: '',
       smtpPass: '',
       senderEmail: '',
+      recipientEmail: '',
     },
   });
 
@@ -67,12 +72,29 @@ export default function SettingsPage() {
     });
   }
   
-  function onTestConnection() {
-     // In a real app, you would try to connect to the SMTP server
-    toast({
-      title: 'Test connessione',
-      description: 'Connessione al server SMTP riuscita! (Simulazione)',
+  async function onTestConnection() {
+    setIsTesting(true);
+    const values = form.getValues();
+    const result = await sendTestEmail({
+      recipientEmail: values.recipientEmail,
+      maintenanceDetails: 'Controllo trimestrale del sistema di condizionamento.',
+      nextDueDate: new Date().toLocaleDateString('it-IT')
     });
+
+    if (result.success) {
+      toast({
+        title: 'Test connessione riuscito (Simulazione)',
+        description: 'L\'email di notifica per la manutenzione è stata generata correttamente.',
+      });
+      console.log('Email Body (simulated):', result.emailBody);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Test connessione fallito',
+        description: 'Impossibile generare l\'email di notifica.',
+      });
+    }
+    setIsTesting(false);
   }
 
   if (!user || user.role !== 'Admin') {
@@ -85,9 +107,9 @@ export default function SettingsPage() {
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <Card>
           <CardHeader>
-            <CardTitle>Configurazione Server SMTP</CardTitle>
+            <CardTitle>Configurazione Notifiche Email</CardTitle>
             <CardDescription>
-              Inserisci i dettagli del tuo server SMTP per abilitare l'invio di email, come le notifiche e il reset password. Le impostazioni verranno salvate localmente nel browser.
+              Inserisci i dettagli per l'invio delle notifiche. Le impostazioni verranno salvate localmente nel browser a scopo dimostrativo.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -151,12 +173,13 @@ export default function SettingsPage() {
                     />
                 </div>
                  <Separator />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                       control={form.control}
                       name="senderEmail"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email Mittente</FormLabel>
+                          <FormLabel>Email Mittente Notifiche</FormLabel>
                           <FormControl>
                             <Input placeholder="noreply@example.com" {...field} />
                           </FormControl>
@@ -164,8 +187,25 @@ export default function SettingsPage() {
                         </FormItem>
                       )}
                     />
+                     <FormField
+                      control={form.control}
+                      name="recipientEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Destinatario Test</FormLabel>
+                          <FormControl>
+                            <Input placeholder="test@example.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                </div>
                 <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={onTestConnection}>Testa Connessione</Button>
+                    <Button type="button" variant="outline" onClick={onTestConnection} disabled={isTesting}>
+                      {isTesting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                      Testa Notifica
+                    </Button>
                     <Button type="submit">Salva Impostazioni</Button>
                 </div>
               </form>

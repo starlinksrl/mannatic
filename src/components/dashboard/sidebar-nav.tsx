@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   ClipboardList,
+  ShieldCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -17,6 +18,7 @@ import { Logo } from '../icons/logo';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
   { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'] },
+  { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/requests', label: 'Le mie Richieste', icon: ClipboardList, roles: ['Client'] },
   { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin'] },
@@ -42,7 +44,8 @@ export function SidebarNav() {
               href={item.href}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
-                pathname === item.href && 'bg-muted text-primary'
+                pathname.startsWith(item.href) && item.href !== '/dashboard' ? 'bg-muted text-primary' : '',
+                pathname === item.href && item.href === '/dashboard' ? 'bg-muted text-primary' : '',
               )}
             >
               <item.icon className="h-4 w-4" />
