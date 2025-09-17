@@ -18,7 +18,7 @@ import { it } from 'date-fns/locale';
 import { getClient, getEquipment, getOperator, addIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
 import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { AddInterventionForm } from './add-intervention-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { EditInterventionForm } from './edit-intervention-form';
@@ -165,30 +165,30 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     switch (priority) {
       case 'Critica': return <Badge variant="destructive">Critica</Badge>;
       case 'Alta': return <Badge className="bg-orange-500 text-white">Alta</Badge>;
-      case 'Media': return <Badge className="bg-yellow-500 text-white">Media</Badge>;
+      case 'Media': return <Badge className="bg-yellow-500 text-white">Media</Badge>
       case 'Bassa': return <Badge variant="secondary">Bassa</Badge>;
     }
   };
 
   const tableHeaders = [
-    { key: 'title', label: 'Titolo', visible: true },
-    { key: 'client', label: 'Cliente', visible: currentUser.role !== 'Client' },
-    { key: 'status', label: 'Stato', visible: true },
-    { key: 'priority', label: 'Priorità', visible: true },
-    { key: 'dueDate', label: 'Scadenza', visible: true },
-    { key: 'operator', label: 'Operatore', visible: currentUser.role !== 'Operator' },
-    { key: 'actions', label: 'Azioni', visible: true },
+    { key: 'title', label: 'Titolo', visible: true, className: 'w-[40%]' },
+    { key: 'client', label: 'Cliente', visible: currentUser.role !== 'Client', className: 'hidden lg:table-cell' },
+    { key: 'status', label: 'Stato', visible: true, className: '' },
+    { key: 'priority', label: 'Priorità', visible: true, className: 'hidden sm:table-cell' },
+    { key: 'dueDate', label: 'Scadenza', visible: true, className: 'hidden md:table-cell' },
+    { key: 'operator', label: 'Operatore', visible: currentUser.role !== 'Operator', className: 'hidden lg:table-cell' },
+    { key: 'actions', label: 'Azioni', visible: true, className: 'w-12' },
   ];
 
   return (
     <div className="space-y-4">
-        <div className="flex justify-between items-center">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-grow">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-grow">
                 <Input
                 placeholder="Cerca per titolo o ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="lg:col-span-2"
+                className="sm:col-span-2"
                 />
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
@@ -222,14 +222,14 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 )}
             </div>
             { (currentUser.role === 'Admin' || currentUser.role === 'Client') &&
-                <div className="ml-4">
+                <div className="md:ml-4">
                     <AddInterventionForm
                         clients={clients}
                         operators={operators}
                         onInterventionAdded={handleInterventionAdded}
                         currentUser={currentUser}
                     >
-                        <Button>
+                        <Button className="w-full md:w-auto">
                             <PlusCircle className="mr-2" />
                             Crea Intervento
                         </Button>
@@ -237,12 +237,50 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 </div>
             }
       </div>
-      <Card>
+      <Card className="md:hidden">
+        <CardContent className="p-2 space-y-2">
+            {sortedInterventions.map((intervention) => {
+              const client = getClient(intervention.clientId);
+              return (
+                 <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
+                    <div className="flex-1 space-y-1">
+                        <p className="font-medium">{intervention.title}</p>
+                        {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{client?.name}</p>}
+                        <p className="text-sm text-muted-foreground">{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</p>
+                        <div className="flex items-center gap-2 pt-1">
+                            {getPriorityBadge(intervention.priority)}
+                            {getStatusBadge(intervention.status)}
+                        </div>
+                    </div>
+                     <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <EditInterventionForm
+                            intervention={intervention}
+                            onInterventionUpdated={handleInterventionUpdated}
+                            clients={clients}
+                            operators={operators}
+                            currentUser={currentUser}
+                        >
+                           <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                             <Pencil className="mr-2" /> Modifica
+                           </DropdownMenuItem>
+                        </EditInterventionForm>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                 </div>
+              )
+            })}
+        </CardContent>
+      </Card>
+      <Card className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
               {tableHeaders.filter(h => h.visible).map(header => (
-                 <TableHead key={header.key}>
+                 <TableHead key={header.key} className={header.className}>
                     {header.key === 'actions' ? (
                         <span className="sr-only">{header.label}</span>
                     ) : (
@@ -267,11 +305,11 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                             <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
                         </div>
                     </TableCell>
-                  {currentUser.role !== 'Client' && <TableCell>{client?.name}</TableCell>}
+                  {currentUser.role !== 'Client' && <TableCell className="hidden lg:table-cell">{client?.name}</TableCell>}
                   <TableCell>{getStatusBadge(intervention.status)}</TableCell>
-                  <TableCell>{getPriorityBadge(intervention.priority)}</TableCell>
-                  <TableCell>{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</TableCell>
-                  {currentUser.role !== 'Operator' && <TableCell>{operatorName || 'Non assegnato'}</TableCell>}
+                  <TableCell className="hidden sm:table-cell">{getPriorityBadge(intervention.priority)}</TableCell>
+                  <TableCell className="hidden md:table-cell">{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</TableCell>
+                  {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell">{operatorName || 'Non assegnato'}</TableCell>}
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

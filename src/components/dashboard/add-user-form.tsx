@@ -145,7 +145,7 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
                 </FormItem>
               )}
             />
-            <DialogFooter>
+            <DialogFooter className="flex-col-reverse sm:flex-row">
                 <DialogClose asChild>
                     <Button variant="outline">Annulla</Button>
                 </DialogClose>

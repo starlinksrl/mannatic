@@ -193,7 +193,7 @@ export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProp
                 </FormItem>
               )}
             />
-            <DialogFooter>
+            <DialogFooter className="flex-col-reverse sm:flex-row">
                 <DialogClose asChild>
                     <Button variant="outline">Annulla</Button>
                 </DialogClose>

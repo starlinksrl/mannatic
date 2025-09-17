@@ -289,7 +289,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                 />
             )}
 
-            <DialogFooter>
+            <DialogFooter className="flex-col-reverse sm:flex-row">
                 <DialogClose asChild>
                     <Button variant="outline">Annulla</Button>
                 </DialogClose>

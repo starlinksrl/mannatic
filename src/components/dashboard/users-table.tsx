@@ -38,8 +38,8 @@ export function UsersTable({ users, onUserUpdated }: UsersTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Nome</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Ruolo</TableHead>
+            <TableHead className="hidden sm:table-cell">Email</TableHead>
+            <TableHead className="hidden md:table-cell">Ruolo</TableHead>
             <TableHead className="text-right">Azioni</TableHead>
           </TableRow>
         </TableHeader>
@@ -52,11 +52,14 @@ export function UsersTable({ users, onUserUpdated }: UsersTableProps) {
                     <AvatarImage src={user.avatarUrl} alt={user.name} />
                     <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <span className="font-medium">{user.name}</span>
+                  <div className="flex flex-col">
+                     <span className="font-medium">{user.name}</span>
+                     <span className="text-muted-foreground sm:hidden">{user.email}</span>
+                  </div>
                 </div>
               </TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>{getRoleBadge(user.role)}</TableCell>
+              <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
+              <TableCell className="hidden md:table-cell">{getRoleBadge(user.role)}</TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
