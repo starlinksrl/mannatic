@@ -1,13 +1,8 @@
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks } from 'date-fns';
+import { db } from './firebase';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
 
-export let users: User[] = [
-  { id: 'user-1', name: 'Mario Rossi', email: 'admin@schedulapro.com', role: 'Admin', avatarUrl: 'https://i.pravatar.cc/150?u=user-1', password: 'newpassword123' },
-  { id: 'user-2', name: 'Luca Bianchi', email: 'operator1@schedulapro.com', role: 'Operator', avatarUrl: 'https://i.pravatar.cc/150?u=user-2', password: 'password123' },
-  { id: 'user-3', name: 'Marco Verdi', email: 'operator2@schedulapro.com', role: 'Operator', avatarUrl: 'https://i.pravatar.cc/150?u=user-3', password: 'password123' },
-  { id: 'user-4', name: 'Global Tech Inc.', email: 'client1@company.com', role: 'Client', avatarUrl: 'https://i.pravatar.cc/150?u=user-4', password: 'password123' },
-  { id: 'user-5', name: 'Innovate Solutions', email: 'client2@company.com', role: 'Client', avatarUrl: 'https://i.pravatar.cc/150?u=user-5', password: 'password123' },
-];
 
 export let clients: Client[] = [
   { id: 'client-1', name: 'Global Tech Inc.' },
@@ -22,7 +17,7 @@ export let equipments: Equipment[] = [
 
 const now = new Date();
 
-export let interventions: (Intervention | ScheduledMaintenance)[] = [
+let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
   {
     id: 'int-1',
     title: 'Riparazione perdita condizionatore',
@@ -134,6 +129,33 @@ export const notifications: Notification[] = [
     { id: 'notif-4', userId: 'user-2', message: 'Intervento #int-4 in attesa di parti di ricambio.', read: false, createdAt: new Date().toISOString() },
 ];
 
+export async function getUsers(): Promise<User[]> {
+  const usersCol = collection(db, 'users');
+  const userSnapshot = await getDocs(usersCol);
+  const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+  return userList;
+}
+
+export async function getUserByEmail(email: string): Promise<User | null> {
+  const q = query(collection(db, "users"), where("email", "==", email.toLowerCase()));
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) {
+    return null;
+  }
+  const userDoc = querySnapshot.docs[0];
+  return { id: userDoc.id, ...userDoc.data() } as User;
+}
+
+export async function getUserById(id: string): Promise<User | null> {
+    if (!id) return null;
+    const userDocRef = doc(db, 'users', id);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+        return { id: userDoc.id, ...userDoc.data() } as User;
+    }
+    return null;
+}
+
 export function getClient(clientId: string) {
   return clients.find(c => c.id === clientId);
 }
@@ -142,53 +164,56 @@ export function getEquipment(equipmentId: string) {
   return equipments.find(e => e.id === equipmentId);
 }
 
-export function getOperator(operatorId: string) {
-  return users.find(u => u.id === operatorId && u.role === 'Operator');
+export async function getOperator(operatorId: string) {
+  const user = await getUserById(operatorId);
+  return user && user.role === 'Operator' ? user : null;
 }
 
-export const initialUser = users[0]; // Default to Admin
 
 // Functions to add data
-export function addUser(userData: { name: string; email: string; role: UserRole, password?: string }): User {
-  const newUser: User = {
-    id: `user-${users.length + 1}`,
-    ...userData,
-    avatarUrl: `https://i.pravatar.cc/150?u=user-${users.length + 1}`,
-  };
-  users.push(newUser);
+export async function addUser(userData: { name: string; email: string; role: UserRole, password?: string }): Promise<User> {
+  const docRef = await addDoc(collection(db, 'users'), {
+      ...userData,
+      avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
+  });
   
   // If the new user is a client, add to clients list as well
-  if(newUser.role === 'Client' && !clients.find(c => c.name === newUser.name)) {
+  if(userData.role === 'Client' && !clients.find(c => c.name === userData.name)) {
     const newClient: Client = {
       id: `client-${clients.length + 1}`,
-      name: newUser.name,
+      name: userData.name,
     };
     clients.push(newClient);
   }
 
-  return newUser;
+  return { id: docRef.id, ...userData, avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}` } as User;
 }
 
-export function updateUser(id: string, updatedData: Partial<User>): User | null {
-    const index = users.findIndex(u => u.id === id);
-    if (index === -1) {
-        return null;
-    }
-    const updatedUser = { ...users[index], ...updatedData };
+export async function updateUser(id: string, updatedData: Partial<User>): Promise<User | null> {
+    const userDocRef = doc(db, 'users', id);
+    
     // Do not update password if it's empty
     if(updatedData.password === '') {
-        delete updatedUser.password;
+        delete updatedData.password;
     }
-    users[index] = updatedUser;
+    
+    await updateDoc(userDocRef, updatedData);
+    
+    const updatedUser = await getUserById(id);
 
      // If the user is a client and the name changed, update the client list as well
-    if(updatedUser.role === 'Client' && updatedData.name) {
-        const clientIndex = clients.findIndex(c => c.id === `client-${index}`); // This is a bit brittle
+    if(updatedUser && updatedUser.role === 'Client' && updatedData.name) {
+        const clientIndex = clients.findIndex(c => c.id === `client-${id.split('-')[1]}`); // This is a bit brittle
         if(clientIndex !== -1) {
             clients[clientIndex].name = updatedUser.name;
         }
     }
     return updatedUser;
+}
+
+export async function getInterventions(): Promise<(Intervention | ScheduledMaintenance)[]> {
+    // For now, it returns mock data. This can be replaced with a Firestore query.
+    return Promise.resolve(interventionsMock);
 }
 
 export function addIntervention(interventionData: {
@@ -201,22 +226,22 @@ export function addIntervention(interventionData: {
   assignedOperatorId: string | null;
 }): Intervention {
     const newIntervention: Intervention = {
-        id: `int-${interventions.length + 1}`,
+        id: `int-${interventionsMock.length + 1}`,
         status: 'Nuovo',
         sla: '24h', // default sla
         createdAt: new Date().toISOString(),
         ...interventionData,
     };
-    interventions = [newIntervention, ...interventions];
+    interventionsMock = [newIntervention, ...interventionsMock];
     return newIntervention;
 }
 
 export function updateIntervention(id: string, updatedData: Partial<Intervention>): Intervention | null {
-    const index = interventions.findIndex(i => i.id === id);
+    const index = interventionsMock.findIndex(i => i.id === id);
     if (index === -1) {
         return null;
     }
-    const updatedIntervention = { ...interventions[index], ...updatedData } as Intervention;
-    interventions[index] = updatedIntervention;
+    const updatedIntervention = { ...interventionsMock[index], ...updatedData } as Intervention;
+    interventionsMock[index] = updatedIntervention;
     return updatedIntervention;
 }

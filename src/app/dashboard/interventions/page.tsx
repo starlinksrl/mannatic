@@ -1,19 +1,44 @@
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
 import { InterventionsTable } from '@/components/dashboard/interventions-table';
-import { interventions, users, clients } from '@/lib/data';
+import { getInterventions, getUsers, clients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User } from '@/lib/types';
+import { User, Intervention, ScheduledMaintenance } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { Loader } from 'lucide-react';
 
 
 export default function InterventionsPage() {
     const { user } = useUser();
-    const operators = users.filter(u => u.role === 'Operator') as User[];
+    const [operators, setOperators] = useState<User[]>([]);
+    const [interventions, setInterventions] = useState<(Intervention | ScheduledMaintenance)[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    if (!user) {
-        return null;
+    useEffect(() => {
+        async function fetchData() {
+            if (!user) return;
+            setLoading(true);
+            const [allUsers, allInterventions] = await Promise.all([
+                getUsers(),
+                getInterventions()
+            ]);
+            setOperators(allUsers.filter(u => u.role === 'Operator'));
+            setInterventions(allInterventions);
+            setLoading(false);
+        }
+        fetchData();
+    }, [user]);
+
+    if (!user || loading) {
+        return (
+            <>
+                <Header title="Tutti gli Interventi" />
+                <div className="flex items-center justify-center flex-1">
+                    <Loader className="h-8 w-8 animate-spin" />
+                </div>
+            </>
+        )
     }
 
   return (

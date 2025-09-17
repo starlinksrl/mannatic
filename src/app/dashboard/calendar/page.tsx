@@ -1,32 +1,52 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/dashboard/header';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { interventions } from '@/lib/data';
-import { Intervention } from '@/lib/types';
+import { getInterventions, getClient, getOperator } from '@/lib/data';
+import { Intervention, ScheduledMaintenance } from '@/lib/types';
 import { format, isSameDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { getClient, getOperator } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { Loader } from 'lucide-react';
 
 export default function CalendarPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const { user } = useUser();
   const router = useRouter();
+  const [interventions, setInterventions] = useState<(Intervention | ScheduledMaintenance)[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user && user.role === 'Client') {
       router.push('/dashboard');
     }
+    
+    async function fetchInterventions() {
+        setLoading(true);
+        const allInterventions = await getInterventions();
+        setInterventions(allInterventions);
+        setLoading(false);
+    }
+    if (user) {
+        fetchInterventions();
+    }
   }, [user, router]);
 
-  if (!user) return null;
+  if (!user || loading) {
+      return (
+            <>
+                <Header title="Calendario" />
+                <div className="flex items-center justify-center flex-1">
+                    <Loader className="h-8 w-8 animate-spin" />
+                </div>
+            </>
+        )
+  }
 
 
   const roleBasedInterventions = interventions.filter(i => {
@@ -103,7 +123,16 @@ export default function CalendarPage() {
                 <div className="space-y-4">
                     {selectedDayInterventions.map(intervention => {
                          const client = getClient(intervention.clientId);
-                         const operator = intervention.assignedOperatorId ? getOperator(intervention.assignedOperatorId) : null;
+                         const [operatorName, setOperatorName] = useState('Non assegnato');
+
+                         useEffect(() => {
+                            if (intervention.assignedOperatorId) {
+                                getOperator(intervention.assignedOperatorId).then(op => {
+                                    if(op) setOperatorName(op.name);
+                                });
+                            }
+                         }, [intervention.assignedOperatorId])
+
                         return (
                             <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm">
                                 <div className="flex justify-between items-start">
@@ -117,7 +146,7 @@ export default function CalendarPage() {
                                     </div>
                                 </div>
                                 <div className="mt-2 text-sm text-muted-foreground">
-                                    <p>Operatore: {operator?.name || 'Non assegnato'}</p>
+                                    <p>Operatore: {operatorName}</p>
                                 </div>
                             </div>
                         )

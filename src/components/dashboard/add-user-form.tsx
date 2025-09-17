@@ -53,8 +53,8 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const newUser = addUser({
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    const newUser = await addUser({
         name: values.name,
         email: values.email,
         role: values.role as UserRole,

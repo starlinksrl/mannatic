@@ -8,11 +8,14 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, 
 import React, { useState, useEffect } from 'react';
 import { KpiCard } from './kpi-card';
 import { Activity, AlertOctagon, Check, Clock, Users } from 'lucide-react';
-import { interventions } from '@/lib/data';
+import { Intervention, ScheduledMaintenance } from '@/lib/types';
 import { Badge } from '../ui/badge';
 
 interface KpiDashboardProps {
-  kpiData: GenerateKpiDashboardInput & { operatorWorkloadData: { name: string, workload: number }[] };
+  kpiData: GenerateKpiDashboardInput & { 
+      operatorWorkloadData: { name: string, workload: number }[],
+      highPriorityInterventions: (Intervention | ScheduledMaintenance)[],
+    };
 }
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
@@ -113,7 +116,7 @@ export function KpiDashboard({ kpiData }: KpiDashboardProps) {
         </CardHeader>
         <CardContent>
             <div className="space-y-4">
-                {interventions.filter(i => i.priority === 'Alta' || i.priority === 'Critica').slice(0, 3).map(int => (
+                {kpiData.highPriorityInterventions.map(int => (
                     <div key={int.id} className="flex items-center justify-between">
                         <div>
                             <p className="font-medium">{int.title}</p>

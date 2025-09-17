@@ -140,7 +140,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Cliente</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={currentUser.role === 'Client'}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={currentUser.role === 'Client'}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Seleziona un cliente" />

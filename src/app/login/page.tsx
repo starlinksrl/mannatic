@@ -18,8 +18,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = () => {
-    const success = login(email, password);
+  const handleLogin = async () => {
+    const success = await login(email, password);
     if (success) {
       router.push('/dashboard');
       toast({
@@ -73,6 +73,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             />
           </div>
         </CardContent>

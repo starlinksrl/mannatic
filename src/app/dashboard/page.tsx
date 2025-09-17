@@ -1,11 +1,14 @@
 import { Header } from '@/components/dashboard/header';
-import { interventions, users } from '@/lib/data';
+import { getInterventions, getUsers } from '@/lib/data';
 import { Intervention, ScheduledMaintenance } from '@/lib/types';
 import { isAfter } from 'date-fns';
 import { KpiDashboard } from '@/components/dashboard/kpi-dashboard';
 
-function getKpiData() {
+async function getKpiData() {
   const now = new Date();
+  const interventions = await getInterventions();
+  const users = await getUsers();
+
   const openInterventions = interventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa');
   
   const closedInterventions = interventions.filter(i => i.status === 'Completato' || i.status === 'Annullato');
@@ -31,6 +34,8 @@ function getKpiData() {
 
   const operatorWorkloadData = Object.entries(operatorWorkload).map(([name, workload]) => ({ name, workload }));
 
+  const highPriorityInterventions = interventions.filter(i => i.priority === 'Alta' || i.priority === 'Critica').slice(0, 3);
+
   return {
     openInterventions: openInterventions.length,
     closedInterventions: closedInterventions.length,
@@ -38,12 +43,13 @@ function getKpiData() {
     overdueMaintenanceTasks,
     operatorWorkload,
     operatorWorkloadData,
+    highPriorityInterventions,
   };
 }
 
 
 export default async function DashboardPage() {
-  const kpiData = getKpiData();
+  const kpiData = await getKpiData();
 
   return (
     <>

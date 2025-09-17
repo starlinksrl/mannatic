@@ -1,11 +1,11 @@
 'use client';
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { User, users } from '@/lib/data';
+import { User, getUserByEmail, getUserById, getUsers } from '@/lib/data';
 
 interface UserContextType {
   user: User | null;
-  login: (email: string, password?: string) => boolean;
+  login: (email: string, password?: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
   switchUser: (userId: string) => void;
@@ -27,18 +27,31 @@ const universalAdmin: User = {
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   
-  // In a real app, you'd check for a token in localStorage
   useEffect(() => {
-    // Try to load user from localStorage
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      
+      // Fetch all users for the user switcher
+      const allDbUsers = await getUsers();
+      setAvailableUsers([...allDbUsers, universalAdmin]);
+
+      // Try to load user from localStorage
+      const savedUserJson = localStorage.getItem('user');
+      if (savedUserJson) {
+        const savedUser = JSON.parse(savedUserJson);
+        // Ensure user data is up-to-date
+        const freshUser = await getUserById(savedUser.id);
+        setUser(freshUser || (savedUser.id === universalAdmin.id ? universalAdmin : null));
+      }
+      setIsLoading(false);
+    };
+
+    loadInitialData();
   }, []);
 
-  const login = (email: string, password?: string): boolean => {
+  const login = async (email: string, password?: string): Promise<boolean> => {
     // Hardcoded special user
     if (email.toLowerCase() === universalAdmin.email && password === universalAdmin.password) {
       setUser(universalAdmin);
@@ -46,8 +59,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       return true;
     }
 
-    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-    if (foundUser) {
+    const foundUser = await getUserByEmail(email);
+    if (foundUser && foundUser.password === password) {
       setUser(foundUser);
       localStorage.setItem('user', JSON.stringify(foundUser));
       return true;
@@ -60,9 +73,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('user');
   };
   
-  const switchUser = (userId: string) => {
-    const allUsers = [...users, universalAdmin];
-    const selectedUser = allUsers.find((u) => u.id === userId);
+  const switchUser = async (userId: string) => {
+    let selectedUser: User | null = null;
+    if (userId === universalAdmin.id) {
+        selectedUser = universalAdmin;
+    } else {
+        selectedUser = await getUserById(userId);
+    }
+    
     if (selectedUser) {
       setUser(selectedUser);
       localStorage.setItem('user', JSON.stringify(selectedUser));
@@ -75,7 +93,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     logout, 
     isLoading, 
     switchUser, 
-    availableUsers: [...users, universalAdmin],
+    availableUsers,
   };
 
   return (

@@ -72,8 +72,8 @@ export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProp
     })
   }, [user, form]);
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const updatedUser = updateUser(user.id, {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    const updatedUser = await updateUser(user.id, {
         ...values,
         role: values.role as UserRole,
     });

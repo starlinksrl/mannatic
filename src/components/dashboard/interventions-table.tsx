@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Intervention, UserRole, User, Client, Equipment } from '@/lib/types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Intervention, UserRole, User, Client, Equipment, ScheduledMaintenance } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -24,7 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { EditInterventionForm } from './edit-intervention-form';
 
 interface InterventionsTableProps {
-  interventions: Intervention[];
+  interventions: (Intervention | ScheduledMaintenance)[];
   currentUser: User;
   clients: Client[];
   operators: User[];
@@ -41,6 +41,17 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [clientFilter, setClientFilter] = useState('all');
   const [operatorFilter, setOperatorFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'dueDate', direction: 'ascending' });
+  const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    setInterventions(initialInterventions);
+  }, [initialInterventions]);
+
+  useEffect(() => {
+    const map = new Map<string, string>();
+    operators.forEach(op => map.set(op.id, op.name));
+    setOperatorsMap(map);
+  }, [operators]);
 
   const handleInterventionAdded = (newIntervention: Intervention) => {
     setInterventions(prev => [newIntervention, ...prev]);
@@ -106,8 +117,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 bValue = getClient(b.clientId)?.name || '';
                 break;
              case 'operator':
-                aValue = a.assignedOperatorId ? getOperator(a.assignedOperatorId)?.name || '' : '';
-                bValue = b.assignedOperatorId ? getOperator(b.assignedOperatorId)?.name || '' : '';
+                aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
+                bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
                 break;
             default:
                 aValue = a[sortConfig.key as keyof Intervention];
@@ -124,7 +135,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
       });
     }
     return sortableItems;
-  }, [filteredInterventions, sortConfig]);
+  }, [filteredInterventions, sortConfig, operatorsMap]);
 
   const requestSort = (key: keyof Intervention | 'client' | 'operator') => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -247,7 +258,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
           <TableBody>
             {sortedInterventions.map((intervention) => {
               const client = getClient(intervention.clientId);
-              const operator = intervention.assignedOperatorId ? getOperator(intervention.assignedOperatorId) : null;
+              const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
               return (
                 <TableRow key={intervention.id}>
                     <TableCell className="font-medium">
@@ -260,7 +271,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                   <TableCell>{getStatusBadge(intervention.status)}</TableCell>
                   <TableCell>{getPriorityBadge(intervention.priority)}</TableCell>
                   <TableCell>{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</TableCell>
-                  {currentUser.role !== 'Operator' && <TableCell>{operator?.name || 'Non assegnato'}</TableCell>}
+                  {currentUser.role !== 'Operator' && <TableCell>{operatorName || 'Non assegnato'}</TableCell>}
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

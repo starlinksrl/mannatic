@@ -1,27 +1,39 @@
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
 import { UsersTable } from '@/components/dashboard/users-table';
-import { users as initialUsers } from '@/lib/data';
+import { getUsers } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { User } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AddUserForm } from '@/components/dashboard/add-user-form';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader } from 'lucide-react';
 
 const universalAdminId = 'user-sbi';
 
 export default function UsersPage() {
   const { user } = useUser();
   const router = useRouter();
-  const [userList, setUserList] = useState(initialUsers.filter(u => u.id !== universalAdminId));
+  const [userList, setUserList] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (user && user.role !== 'Admin') {
       router.push('/dashboard');
+      return;
+    }
+    
+    async function fetchUsers() {
+      setIsLoading(true);
+      const usersFromDb = await getUsers();
+      setUserList(usersFromDb.filter(u => u.id !== universalAdminId));
+      setIsLoading(false);
+    }
+
+    if (user) {
+        fetchUsers();
     }
   }, [user, router]);
   
@@ -54,7 +66,13 @@ export default function UsersPage() {
               </Button>
             </AddUserForm>
         </div>
-        <UsersTable users={userList} onUserUpdated={handleUserUpdated} />
+        {isLoading ? (
+            <div className="flex items-center justify-center pt-20">
+                <Loader className="h-8 w-8 animate-spin" />
+            </div>
+        ) : (
+            <UsersTable users={userList} onUserUpdated={handleUserUpdated} />
+        )}
       </main>
     </>
   );
