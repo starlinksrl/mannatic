@@ -43,6 +43,9 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'dueDate', direction: 'ascending' });
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedIntervention, setSelectedIntervention] = useState<Intervention | null>(null);
+
   useEffect(() => {
     setInterventions(initialInterventions);
   }, [initialInterventions]);
@@ -52,6 +55,11 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     operators.forEach(op => map.set(op.id, op.name));
     setOperatorsMap(map);
   }, [operators]);
+
+  const handleEditClick = (intervention: Intervention) => {
+    setSelectedIntervention(intervention);
+    setIsEditModalOpen(true);
+  }
 
   const handleInterventionAdded = (newIntervention: Intervention) => {
     setInterventions(prev => [newIntervention, ...prev]);
@@ -242,7 +250,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             {sortedInterventions.map((intervention) => {
               const client = getClient(intervention.clientId);
               return (
-                 <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
+                 <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(intervention)}>
                     <div className="flex-1 space-y-1">
                         <p className="font-medium">{intervention.title}</p>
                         {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{client?.name}</p>}
@@ -252,22 +260,14 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                             {getStatusBadge(intervention.status)}
                         </div>
                     </div>
-                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                     <DropdownMenu onOpenChange={(e) => e.stopPropagation()}>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <EditInterventionForm
-                            intervention={intervention}
-                            onInterventionUpdated={handleInterventionUpdated}
-                            clients={clients}
-                            operators={operators}
-                            currentUser={currentUser}
-                        >
-                           <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                             <Pencil className="mr-2" /> Modifica
-                           </DropdownMenuItem>
-                        </EditInterventionForm>
+                        <DropdownMenuItem onSelect={() => handleEditClick(intervention)}>
+                            <Pencil className="mr-2" /> Modifica
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                  </div>
@@ -298,7 +298,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               const client = getClient(intervention.clientId);
               const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
               return (
-                <TableRow key={intervention.id}>
+                <TableRow key={intervention.id} onClick={() => handleEditClick(intervention)} className="cursor-pointer">
                     <TableCell className="font-medium">
                         <div className="flex flex-col">
                             <span>{intervention.title}</span>
@@ -313,20 +313,12 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <EditInterventionForm
-                            intervention={intervention}
-                            onInterventionUpdated={handleInterventionUpdated}
-                            clients={clients}
-                            operators={operators}
-                            currentUser={currentUser}
-                        >
-                           <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                         <DropdownMenuItem onSelect={() => handleEditClick(intervention)}>
                              <Pencil className="mr-2" /> Modifica
-                           </DropdownMenuItem>
-                        </EditInterventionForm>
+                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -336,6 +328,15 @@ export function InterventionsTable({ interventions: initialInterventions, curren
           </TableBody>
         </Table>
       </Card>
+      <EditInterventionForm
+        intervention={selectedIntervention}
+        onInterventionUpdated={handleInterventionUpdated}
+        clients={clients}
+        operators={operators}
+        currentUser={currentUser}
+        isOpen={isEditModalOpen}
+        setIsOpen={setIsEditModalOpen}
+      />
     </div>
   );
 }

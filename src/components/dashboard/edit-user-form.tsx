@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
@@ -29,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { updateUser } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Pencil } from 'lucide-react';
+import { ScrollArea } from '../ui/scroll-area';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
@@ -39,41 +39,38 @@ const formSchema = z.object({
 });
 
 interface EditUserFormProps {
-  children: React.ReactNode;
-  user: User;
+  user: User | null;
   onUserUpdated: (user: User) => void;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
 }
 
-export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUserFormProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        password: '',
-        avatarUrl: user.avatarUrl,
-    },
   });
-
+  
   const avatarUrl = form.watch('avatarUrl');
 
   useEffect(() => {
-    form.reset({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        password: '',
-        avatarUrl: user.avatarUrl
-    })
+    if (user) {
+        form.reset({
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            password: '',
+            avatarUrl: user.avatarUrl
+        })
+    }
   }, [user, form]);
 
+  if(!user) return null;
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const updatedUser = await updateUser(user.id, {
+    const updatedUser = await updateUser(user!.id, {
         ...values,
         role: values.role as UserRole,
     });
@@ -105,13 +102,14 @@ export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProp
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[425px] grid-rows-[auto_1fr_auto] p-0">
+        <DialogHeader className="p-6 pb-0">
           <DialogTitle>Modifica utente</DialogTitle>
         </DialogHeader>
+        <ScrollArea>
+        <div className="p-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form id="edit-user-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
              <div className="flex justify-center">
                 <div className="relative">
                     <Avatar className="h-24 w-24 mb-4 cursor-pointer" onClick={handleAvatarClick}>
@@ -193,14 +191,16 @@ export function EditUserForm({ children, user, onUserUpdated }: EditUserFormProp
                 </FormItem>
               )}
             />
-            <DialogFooter className="flex-col-reverse sm:flex-row">
-                <DialogClose asChild>
-                    <Button variant="outline">Annulla</Button>
-                </DialogClose>
-                <Button type="submit">Salva modifiche</Button>
-            </DialogFooter>
           </form>
         </Form>
+        </div>
+        </ScrollArea>
+        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0">
+            <DialogClose asChild>
+                <Button variant="outline">Annulla</Button>
+            </DialogClose>
+            <Button type="submit" form="edit-user-form">Salva modifiche</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

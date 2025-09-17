@@ -24,6 +24,14 @@ interface UsersTableProps {
 }
 
 export function UsersTable({ users, onUserUpdated }: UsersTableProps) {
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+    const handleEditClick = (user: User) => {
+        setSelectedUser(user);
+        setIsEditModalOpen(true);
+    };
+
     const getRoleBadge = (role: User['role']) => {
         switch (role) {
             case 'Admin': return <Badge variant="destructive">Admin</Badge>;
@@ -33,6 +41,7 @@ export function UsersTable({ users, onUserUpdated }: UsersTableProps) {
     }
 
   return (
+    <>
     <Card>
       <Table>
         <TableHeader>
@@ -45,7 +54,7 @@ export function UsersTable({ users, onUserUpdated }: UsersTableProps) {
         </TableHeader>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id}>
+            <TableRow key={user.id} onClick={() => handleEditClick(user)} className="cursor-pointer">
               <TableCell>
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
@@ -63,16 +72,14 @@ export function UsersTable({ users, onUserUpdated }: UsersTableProps) {
               <TableCell className="text-right">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
                             <MoreHorizontal />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <EditUserForm user={user} onUserUpdated={onUserUpdated}>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                <Pencil className="mr-2" /> Modifica
-                            </DropdownMenuItem>
-                        </EditUserForm>
+                        <DropdownMenuItem onSelect={() => handleEditClick(user)}>
+                            <Pencil className="mr-2" /> Modifica
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600">Elimina</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -82,5 +89,12 @@ export function UsersTable({ users, onUserUpdated }: UsersTableProps) {
         </TableBody>
       </Table>
     </Card>
+     <EditUserForm
+        user={selectedUser}
+        onUserUpdated={onUserUpdated}
+        isOpen={isEditModalOpen}
+        setIsOpen={setIsEditModalOpen}
+      />
+    </>
   );
 }

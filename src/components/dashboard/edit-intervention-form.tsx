@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
@@ -34,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { Intervention, Client, User, Equipment, InterventionPriority, InterventionStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateIntervention, equipments as allEquipments } from '@/lib/data';
+import { ScrollArea } from '../ui/scroll-area';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -47,28 +47,21 @@ const formSchema = z.object({
 });
 
 interface EditInterventionFormProps {
-  children: React.ReactNode;
-  intervention: Intervention;
+  intervention: Intervention | null;
   onInterventionUpdated: (intervention: Intervention) => void;
   clients: Client[];
   operators: User[];
   currentUser: User;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
 }
 
-export function EditInterventionForm({ children, intervention, onInterventionUpdated, clients, operators, currentUser }: EditInterventionFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function EditInterventionForm({ intervention, onInterventionUpdated, clients, operators, currentUser, isOpen, setIsOpen }: EditInterventionFormProps) {
   const { toast } = useToast();
   const [equipments, setEquipments] = useState<Equipment[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      ...intervention,
-      dueDate: new Date(intervention.dueDate),
-      priority: intervention.priority,
-      status: intervention.status,
-      assignedOperatorId: intervention.assignedOperatorId || null,
-    },
   });
 
   const selectedClientId = form.watch('clientId');
@@ -82,14 +75,18 @@ export function EditInterventionForm({ children, intervention, onInterventionUpd
   }, [selectedClientId, form]);
 
   useEffect(() => {
-    form.reset({
-      ...intervention,
-      dueDate: new Date(intervention.dueDate),
-      priority: intervention.priority,
-      status: intervention.status,
-      assignedOperatorId: intervention.assignedOperatorId || null,
-    });
+    if (intervention) {
+      form.reset({
+        ...intervention,
+        dueDate: new Date(intervention.dueDate),
+        priority: intervention.priority,
+        status: intervention.status,
+        assignedOperatorId: intervention.assignedOperatorId || null,
+      });
+    }
   }, [intervention, form]);
+
+  if (!intervention) return null;
 
 
   function onSubmit(values: z.infer<typeof formSchema>) {
@@ -101,7 +98,7 @@ export function EditInterventionForm({ children, intervention, onInterventionUpd
         dueDate: values.dueDate.toISOString()
     };
     
-    const updated = updateIntervention(intervention.id, updatedInterventionData);
+    const updated = updateIntervention(intervention!.id, updatedInterventionData);
     
     if (updated) {
         onInterventionUpdated(updated);
@@ -121,214 +118,218 @@ export function EditInterventionForm({ children, intervention, onInterventionUpd
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0">
+        <DialogHeader className="p-6 pb-0">
           <DialogTitle>Modifica intervento #{intervention.id}</DialogTitle>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Titolo</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Es. Riparazione perdita..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                control={form.control}
-                name="clientId"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Cliente</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={currentUser.role === 'Client'}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Seleziona un cliente" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        {clients.map(client => (
-                            <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                 <FormField
-                control={form.control}
-                name="equipmentId"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Attrezzatura</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedClientId}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder={selectedClientId ? "Seleziona un'attrezzatura" : "Seleziona prima un cliente"} />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        {equipments.map(equipment => (
-                            <SelectItem key={equipment.id} value={equipment.id}>{equipment.name}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descrizione</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Descrivi il problema in dettaglio..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Stato</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Seleziona uno stato" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                           <SelectItem value="Nuovo">Nuovo</SelectItem>
-                            <SelectItem value="In corso">In corso</SelectItem>
-                            <SelectItem value="In attesa">In attesa</SelectItem>
-                            <SelectItem value="Completato">Completato</SelectItem>
-                            <SelectItem value="Annullato">Annullato</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Priorità</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Seleziona una priorità" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        <SelectItem value="Bassa">Bassa</SelectItem>
-                        <SelectItem value="Media">Media</SelectItem>
-                        <SelectItem value="Alta">Alta</SelectItem>
-                        <SelectItem value="Critica">Critica</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
+        <ScrollArea className="h-full">
+            <div className="p-6">
+                <Form {...form}>
+                <form id="edit-intervention-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
                     control={form.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                        <FormLabel>Data Scadenza</FormLabel>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                            <FormControl>
-                                <Button
-                                variant={"outline"}
-                                className={cn(
-                                    "pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                )}
-                                >
-                                {field.value ? (
-                                    format(field.value, "PPP", { locale: it })
-                                ) : (
-                                    <span>Scegli una data</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                            </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                initialFocus
-                                locale={it}
-                            />
-                            </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                        </FormItem>
-                )}
-                />
-            </div>
-
-            {currentUser.role === 'Admin' && (
-                <FormField
-                    control={form.control}
-                    name="assignedOperatorId"
+                    name="title"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Assegna a Operatore</FormLabel>
-                        <Select 
-                            onValueChange={(value) => field.onChange(value === 'null' ? null : value)} 
-                            value={field.value || 'null'}
-                        >
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Assegna a un operatore (opzionale)" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            <SelectItem value="null">Non assegnato</SelectItem>
-                            {operators.map(operator => (
-                                <SelectItem key={operator.id} value={operator.id}>{operator.name}</SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
+                        <FormLabel>Titolo</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Es. Riparazione perdita..." {...field} />
+                        </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
-                />
-            )}
+                    />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                        control={form.control}
+                        name="clientId"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Cliente</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={currentUser.role === 'Client'}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleziona un cliente" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {clients.map(client => (
+                                    <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={form.control}
+                        name="equipmentId"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Attrezzatura</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedClientId}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder={selectedClientId ? "Seleziona un'attrezzatura" : "Seleziona prima un cliente"} />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {equipments.map(equipment => (
+                                    <SelectItem key={equipment.id} value={equipment.id}>{equipment.name}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </div>
 
-            <DialogFooter className="flex-col-reverse sm:flex-row">
-                <DialogClose asChild>
-                    <Button variant="outline">Annulla</Button>
-                </DialogClose>
-                <Button type="submit">Salva modifiche</Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                    <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Descrizione</FormLabel>
+                        <FormControl>
+                            <Textarea placeholder="Descrivi il problema in dettaglio..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Stato</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleziona uno stato" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                <SelectItem value="Nuovo">Nuovo</SelectItem>
+                                    <SelectItem value="In corso">In corso</SelectItem>
+                                    <SelectItem value="In attesa">In attesa</SelectItem>
+                                    <SelectItem value="Completato">Completato</SelectItem>
+                                    <SelectItem value="Annullato">Annullato</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={form.control}
+                        name="priority"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Priorità</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleziona una priorità" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                <SelectItem value="Bassa">Bassa</SelectItem>
+                                <SelectItem value="Media">Media</SelectItem>
+                                <SelectItem value="Alta">Alta</SelectItem>
+                                <SelectItem value="Critica">Critica</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="dueDate"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                <FormLabel>Data Scadenza</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "pl-3 text-left font-normal",
+                                            !field.value && "text-muted-foreground"
+                                        )}
+                                        >
+                                        {field.value ? (
+                                            format(field.value, "PPP", { locale: it })
+                                        ) : (
+                                            <span>Scegli una data</span>
+                                        )}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={field.value}
+                                        onSelect={field.onChange}
+                                        initialFocus
+                                        locale={it}
+                                    />
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                                </FormItem>
+                        )}
+                        />
+                    </div>
+
+                    {currentUser.role === 'Admin' && (
+                        <FormField
+                            control={form.control}
+                            name="assignedOperatorId"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Assegna a Operatore</FormLabel>
+                                <Select 
+                                    onValueChange={(value) => field.onChange(value === 'null' ? null : value)} 
+                                    value={field.value || 'null'}
+                                >
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Assegna a un operatore (opzionale)" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    <SelectItem value="null">Non assegnato</SelectItem>
+                                    {operators.map(operator => (
+                                        <SelectItem key={operator.id} value={operator.id}>{operator.name}</SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
+
+                </form>
+                </Form>
+            </div>
+        </ScrollArea>
+
+        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0">
+            <DialogClose asChild>
+                <Button variant="outline">Annulla</Button>
+            </DialogClose>
+            <Button type="submit" form="edit-intervention-form">Salva modifiche</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
