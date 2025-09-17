@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -11,36 +12,37 @@ import { Button } from '@/components/ui/button';
 import { AddUserForm } from '@/components/dashboard/add-user-form';
 import { PlusCircle, Loader } from 'lucide-react';
 
-const universalAdminId = 'user-sbi';
+const creatorUserId = 'user-creator';
 
 export default function UsersPage() {
-  const { user } = useUser();
+  const { user, currentCompany } = useUser();
   const router = useRouter();
   const [userList, setUserList] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user && user.role !== 'Admin') {
+    if (user && user.role !== 'Admin' && user.role !== 'Creator') {
       router.push('/dashboard');
       return;
     }
     
     async function fetchUsers() {
+      if (!currentCompany) return;
       setIsLoading(true);
-      const usersFromDb = await getUsers();
-      setUserList(usersFromDb.filter(u => u.id !== universalAdminId));
+      const usersFromDb = await getUsers(currentCompany.id);
+      setUserList(usersFromDb.filter(u => u.id !== creatorUserId));
       setIsLoading(false);
     }
 
     if (user) {
         fetchUsers();
     }
-  }, [user, router]);
+  }, [user, router, currentCompany]);
   
-  if(!user) return null;
+  if(!user || !currentCompany) return null;
 
   const handleUserAdded = (newUser: User) => {
-    if (newUser.id !== universalAdminId) {
+    if (newUser.id !== creatorUserId) {
       setUserList(prevUsers => [...prevUsers, newUser]);
     }
   };
@@ -54,7 +56,7 @@ export default function UsersPage() {
   }
 
 
-  if (user.role !== 'Admin') {
+  if (user.role !== 'Admin' && user.role !== 'Creator') {
     return null; 
   }
 

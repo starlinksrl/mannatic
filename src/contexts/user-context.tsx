@@ -1,7 +1,10 @@
+
 'use client';
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { User, getUserByEmail, getUserById, getUsers } from '@/lib/data';
+import { User, getUserByEmail, getUserById, getAllUsers, getCompanies, Company } from '@/lib/data';
+
+const CREATOR_USER_ID = 'user-creator';
 
 interface UserContextType {
   user: User | null;
@@ -10,40 +13,57 @@ interface UserContextType {
   isLoading: boolean;
   switchUser: (userId: string) => void;
   availableUsers: User[];
+  creator: User | null;
+  companies: Company[];
+  currentCompany: Company | null;
+  switchCompany: (companyId: string) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-const universalAdmin: User = { 
-  id: 'user-sbi', 
-  name: 'Frank SBI', 
-  email: 'franksbi', 
-  role: 'Admin', 
-  avatarUrl: 'https://i.pravatar.cc/150?u=user-sbi', 
-  password: 'acidosbi' 
+const creatorUser: User = { 
+  id: CREATOR_USER_ID, 
+  name: 'Creator', 
+  email: 'creator@schedulapro.com', 
+  role: 'Creator', 
+  avatarUrl: 'https://i.pravatar.cc/150?u=creator', 
+  password: 'creatorpassword',
+  companyId: 'none'
 };
-
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       
-      // Fetch all users for the user switcher
-      const allDbUsers = await getUsers();
-      setAvailableUsers([...allDbUsers, universalAdmin]);
+      const allDbUsers = await getAllUsers();
+      setAvailableUsers([creatorUser, ...allDbUsers]);
+      
+      const allCompanies = await getCompanies();
+      setCompanies(allCompanies);
 
-      // Try to load user from localStorage
       const savedUserJson = localStorage.getItem('user');
+      let savedUser: User | null = null;
       if (savedUserJson) {
-        const savedUser = JSON.parse(savedUserJson);
-        // Ensure user data is up-to-date
-        const freshUser = await getUserById(savedUser.id);
-        setUser(freshUser || (savedUser.id === universalAdmin.id ? universalAdmin : null));
+        savedUser = JSON.parse(savedUserJson);
+        const freshUser = savedUser.id === creatorUser.id ? creatorUser : await getUserById(savedUser.id);
+        setUser(freshUser);
+
+        if (freshUser?.role === 'Creator') {
+           const savedCompanyId = localStorage.getItem('companyId');
+           const company = allCompanies.find(c => c.id === savedCompanyId) || allCompanies[0];
+           setCurrentCompany(company || null);
+        } else if (freshUser) {
+           const company = allCompanies.find(c => c.id === freshUser.companyId);
+           setCurrentCompany(company || null);
+        }
+
       }
       setIsLoading(false);
     };
@@ -52,17 +72,27 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password?: string): Promise<boolean> => {
-    // Hardcoded special user
-    if (email.toLowerCase() === universalAdmin.email && password === universalAdmin.password) {
-      setUser(universalAdmin);
-      localStorage.setItem('user', JSON.stringify(universalAdmin));
-      return true;
+    let foundUser: User | null = null;
+    if (email.toLowerCase() === creatorUser.email && password === creatorUser.password) {
+      foundUser = creatorUser;
+    } else {
+      foundUser = await getUserByEmail(email);
+      if (foundUser?.password !== password) foundUser = null;
     }
-
-    const foundUser = await getUserByEmail(email);
-    if (foundUser && foundUser.password === password) {
+    
+    if (foundUser) {
       setUser(foundUser);
       localStorage.setItem('user', JSON.stringify(foundUser));
+
+      if (foundUser.role === 'Creator') {
+        const company = companies[0];
+        setCurrentCompany(company || null);
+        if (company) localStorage.setItem('companyId', company.id);
+      } else {
+        const company = companies.find(c => c.id === foundUser?.companyId);
+        setCurrentCompany(company || null);
+         if (company) localStorage.setItem('companyId', company.id);
+      }
       return true;
     }
     return false;
@@ -70,13 +100,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    setCurrentCompany(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('companyId');
   };
   
   const switchUser = async (userId: string) => {
     let selectedUser: User | null = null;
-    if (userId === universalAdmin.id) {
-        selectedUser = universalAdmin;
+    if (userId === creatorUser.id) {
+        selectedUser = creatorUser;
     } else {
         selectedUser = await getUserById(userId);
     }
@@ -84,7 +116,25 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (selectedUser) {
       setUser(selectedUser);
       localStorage.setItem('user', JSON.stringify(selectedUser));
+
+      // When switching user, also switch company context
+      if (selectedUser.role === 'Creator') {
+         if(!currentCompany) {
+            const firstCompany = companies[0];
+            if(firstCompany) switchCompany(firstCompany.id)
+         }
+      } else {
+        switchCompany(selectedUser.companyId);
+      }
     }
+  }
+
+  const switchCompany = (companyId: string) => {
+      const company = companies.find(c => c.id === companyId);
+      if (company && user?.role === 'Creator') {
+          setCurrentCompany(company);
+          localStorage.setItem('companyId', company.id);
+      }
   }
 
   const value = { 
@@ -94,6 +144,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     isLoading, 
     switchUser, 
     availableUsers,
+    creator: creatorUser,
+    companies,
+    currentCompany,
+    switchCompany
   };
 
   return (

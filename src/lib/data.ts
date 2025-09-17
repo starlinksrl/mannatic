@@ -1,18 +1,26 @@
-import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus } from './types';
+
+import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc } from 'firebase/firestore';
 
 
+export let companies: Company[] = [
+  { id: 'company-1', name: 'Azienda Demo 1' },
+  { id: 'company-2', name: 'Azienda Demo 2' },
+];
+
 export let clients: Client[] = [
-  { id: 'client-1', name: 'Global Tech Inc.' },
-  { id: 'client-2', name: 'Innovate Solutions' },
+  { id: 'client-1', name: 'Global Tech Inc.', companyId: 'company-1' },
+  { id: 'client-2', name: 'Innovate Solutions', companyId: 'company-1' },
+  { id: 'client-3', name: 'NextGen Innovations', companyId: 'company-2' },
 ];
 
 export let equipments: Equipment[] = [
-  { id: 'equip-1', name: 'Impianto Clima A', clientId: 'client-1' },
-  { id: 'equip-2', name: 'Server Room', clientId: 'client-1' },
-  { id: 'equip-3', name: 'Linea Produzione B', clientId: 'client-2' },
+  { id: 'equip-1', name: 'Impianto Clima A', clientId: 'client-1', companyId: 'company-1' },
+  { id: 'equip-2', name: 'Server Room', clientId: 'client-1', companyId: 'company-1' },
+  { id: 'equip-3', name: 'Linea Produzione B', clientId: 'client-2', companyId: 'company-1' },
+  { id: 'equip-4', name: 'Ufficio A', clientId: 'client-3', companyId: 'company-2' },
 ];
 
 const now = new Date();
@@ -33,7 +41,8 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     updates: [
         { date: subDays(now, 1).toISOString(), description: "Contattato il cliente, appuntamento fissato per domani." },
         { date: subDays(now, 2).toISOString(), description: "Intervento creato dal sistema." },
-    ]
+    ],
+    companyId: 'company-1'
   },
   {
     id: 'int-2',
@@ -47,7 +56,8 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     assignedOperatorId: null,
     createdAt: subDays(now, 1).toISOString(),
     dueDate: addDays(now, 3).toISOString(),
-    updates: []
+    updates: [],
+    companyId: 'company-1'
   },
   {
     id: 'int-3',
@@ -69,7 +79,8 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     periodicity: 'monthly',
     recurrenceMonths: 3,
     checklist: [{ task: 'Pulizia filtri', completed: true }, { task: 'Controllo temperature', completed: true }],
-    nextDueDate: addDays(now, 5).toISOString(), // Set to be converted
+    nextDueDate: addDays(now, 5).toISOString(),
+    companyId: 'company-1'
   },
   {
     id: 'int-4',
@@ -83,7 +94,8 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     assignedOperatorId: 'user-2',
     createdAt: subDays(now, 1).toISOString(),
     dueDate: addDays(now, 0).toISOString(),
-    updates: []
+    updates: [],
+    companyId: 'company-1'
   },
   {
     id: 'int-5',
@@ -102,7 +114,8 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     recurrenceMonths: 0,
     checklist: [{ task: 'Controllo pressione gas', completed: false }, { task: 'Pulizia unità esterna', completed: false }],
     nextDueDate: addWeeks(now, 1).toISOString(),
-    updates: []
+    updates: [],
+    companyId: 'company-1'
   },
   {
     id: 'int-6',
@@ -116,7 +129,8 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     assignedOperatorId: 'user-2',
     createdAt: subDays(now, 20).toISOString(),
     dueDate: subDays(now, 5).toISOString(),
-    updates: []
+    updates: [],
+    companyId: 'company-1'
   },
   {
     id: 'int-7',
@@ -131,19 +145,68 @@ let interventionsMock: (Intervention | ScheduledMaintenance)[] = [
     createdAt: subDays(now, 5).toISOString(),
     dueDate: subDays(now, 4).toISOString(),
     completedAt: subDays(now, 4).toISOString(),
-    updates: []
+    updates: [],
+    companyId: 'company-1'
+  },
+  {
+    id: 'int-8',
+    title: 'Controllo mensile condizionatori',
+    clientId: 'client-3',
+    equipmentId: 'equip-4',
+    description: 'Manutenzione ordinaria',
+    priority: 'Media',
+    sla: '48h',
+    status: 'Pianificato',
+    assignedOperatorId: null,
+    createdAt: subDays(now, 3).toISOString(),
+    dueDate: addDays(now, 10).toISOString(),
+    isMaintenance: true,
+    periodicity: 'monthly',
+    recurrenceMonths: 1,
+    checklist: [],
+    nextDueDate: addDays(now, 10).toISOString(),
+    updates: [],
+    companyId: 'company-2'
   },
 ];
 
 export const notifications: Notification[] = [
-    { id: 'notif-1', userId: 'user-2', message: 'Nuovo intervento assegnato: #int-1 Riparazione perdita', read: false, createdAt: subDays(now, 2).toISOString() },
-    { id: 'notif-2', userId: 'user-3', message: 'Scadenza imminente (T-1): #int-5 Manutenzione settimanale', read: false, createdAt: subDays(now, 1).toISOString() },
-    { id: 'notif-3', userId: 'user-1', message: 'SLA a rischio per intervento #int-4', read: true, createdAt: subDays(now, 1).toISOString() },
-    { id: 'notif-4', userId: 'user-2', message: 'Intervento #int-4 in attesa di parti di ricambio.', read: false, createdAt: new Date().toISOString() },
+    { id: 'notif-1', userId: 'user-2', message: 'Nuovo intervento assegnato: #int-1 Riparazione perdita', read: false, createdAt: subDays(now, 2).toISOString(), companyId: 'company-1' },
+    { id: 'notif-2', userId: 'user-3', message: 'Scadenza imminente (T-1): #int-5 Manutenzione settimanale', read: false, createdAt: subDays(now, 1).toISOString(), companyId: 'company-1' },
+    { id: 'notif-3', userId: 'user-1', message: 'SLA a rischio per intervento #int-4', read: true, createdAt: subDays(now, 1).toISOString(), companyId: 'company-1' },
+    { id: 'notif-4', userId: 'user-2', message: 'Intervento #int-4 in attesa di parti di ricambio.', read: false, createdAt: new Date().toISOString(), companyId: 'company-1' },
 ];
 
-export async function getUsers(): Promise<User[]> {
+export async function getCompanies(): Promise<Company[]> {
+    // In a real app, this would fetch from Firestore
+    return Promise.resolve(companies);
+}
+
+export async function addCompany(companyName: string): Promise<Company> {
+    const newCompany: Company = {
+        id: `company-${companies.length + 1}`,
+        name: companyName,
+    };
+    companies.push(newCompany);
+     // In a real app, this would also create a default Admin user for the company
+    return newCompany;
+}
+
+
+export async function getUsers(companyId: string): Promise<User[]> {
   try {
+    const q = query(collection(db, 'users'), where("companyId", "==", companyId));
+    const userSnapshot = await getDocs(q);
+    const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    return userList;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return [];
+  }
+}
+
+export async function getAllUsers(): Promise<User[]> {
+   try {
     const usersCol = collection(db, 'users');
     const userSnapshot = await getDocs(usersCol);
     const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
@@ -184,9 +247,18 @@ export async function getUserById(id: string): Promise<User | null> {
     }
 }
 
+export function getClients(companyId: string): Client[] {
+  return clients.filter(c => c.id === companyId);
+}
+
 export function getClient(clientId: string) {
   return clients.find(c => c.id === clientId);
 }
+
+export function getEquipments(companyId: string): Equipment[] {
+    return equipments.filter(e => e.companyId === companyId);
+}
+
 
 export function getEquipment(equipmentId: string) {
   return equipments.find(e => e.id === equipmentId);
@@ -204,7 +276,7 @@ export async function getOperator(operatorId: string) {
 
 const CONVERSION_WINDOW_DAYS = 7;
 
-function checkAndConvertMaintenance() {
+function checkAndConvertMaintenance(companyId: string) {
     const today = startOfToday();
     const conversionInterval = {
         start: today,
@@ -212,7 +284,7 @@ function checkAndConvertMaintenance() {
     };
 
     const maintenancesToConvert = interventionsMock
-        .filter(task => 'isMaintenance' in task && task.status === 'Pianificato') as ScheduledMaintenance[];
+        .filter(task => 'isMaintenance' in task && task.status === 'Pianificato' && task.companyId === companyId) as ScheduledMaintenance[];
 
     maintenancesToConvert.forEach(maint => {
         const nextDueDate = new Date(maint.nextDueDate);
@@ -234,7 +306,8 @@ function checkAndConvertMaintenance() {
                 assignedOperatorId: maint.assignedOperatorId,
                 createdAt: new Date().toISOString(),
                 dueDate: maint.nextDueDate,
-                updates: [{date: new Date().toISOString(), description: `Creato da manutenzione #${maint.id}`}]
+                updates: [{date: new Date().toISOString(), description: `Creato da manutenzione #${maint.id}`}],
+                companyId: maint.companyId
             };
 
             interventionsMock.unshift(newIntervention);
@@ -253,7 +326,7 @@ function checkAndConvertMaintenance() {
 
 
 // Functions to add data
-export async function addUser(userData: { name: string; email: string; role: UserRole, password?: string }): Promise<User> {
+export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise<User> {
   try {
     const docRef = await addDoc(collection(db, 'users'), {
         ...userData,
@@ -265,6 +338,7 @@ export async function addUser(userData: { name: string; email: string; role: Use
       const newClient: Client = {
         id: `client-${clients.length + 1}`,
         name: userData.name,
+        companyId: userData.companyId
       };
       clients.push(newClient);
     }
@@ -304,14 +378,11 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
 }
 
 export async function deleteUser(id: string): Promise<boolean> {
-    // In-memory mock version
-    const index = (await getUsers()).findIndex(u => u.id === id); // This is not how it would work with a real db
-    if (index === -1) {
-      return false;
-    }
+    const userToDelete = await getUserById(id);
+    if (!userToDelete) return false;
+
     // This is mock, so we just log it. With a real DB, we'd delete.
     console.log(`User with id ${id} would be deleted.`);
-    // For mock, let's actually remove from the in-memory representation for the UI to update
     try {
         const userDocRef = doc(db, 'users', id);
         await deleteDoc(userDocRef);
@@ -323,16 +394,14 @@ export async function deleteUser(id: string): Promise<boolean> {
 }
 
 
-export async function getInterventions(): Promise<(Intervention | ScheduledMaintenance)[]> {
-    // For now, it returns mock data. This can be replaced with a Firestore query.
-    checkAndConvertMaintenance();
-    return Promise.resolve(interventionsMock.filter(i => !i.hasOwnProperty('isMaintenance')));
+export async function getInterventions(companyId: string): Promise<(Intervention | ScheduledMaintenance)[]> {
+    checkAndConvertMaintenance(companyId);
+    return Promise.resolve(interventionsMock.filter(i => !i.hasOwnProperty('isMaintenance') && i.companyId === companyId));
 }
 
-export async function getScheduledMaintenance(): Promise<ScheduledMaintenance[]> {
-     // For now, it returns mock data. This can be replaced with a Firestore query.
-     checkAndConvertMaintenance();
-    return Promise.resolve(interventionsMock.filter(i => i.hasOwnProperty('isMaintenance')) as ScheduledMaintenance[]);
+export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
+     checkAndConvertMaintenance(companyId);
+    return Promise.resolve(interventionsMock.filter(i => i.hasOwnProperty('isMaintenance') && i.companyId === companyId) as ScheduledMaintenance[]);
 }
 
 export function addIntervention(interventionData: Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt'>): Intervention {

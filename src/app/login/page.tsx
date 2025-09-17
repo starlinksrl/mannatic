@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -36,22 +37,23 @@ export default function LoginPage() {
     }
   };
   
-  const handleAdminLogin = async () => {
-    const success = await login('franksbi', 'acidosbi');
+  const handleCreatorLogin = async () => {
+    const success = await login('creator@schedulapro.com', 'creatorpassword');
     if (success) {
       router.push('/dashboard');
       toast({
-        title: 'Accesso effettuato come Admin',
-        description: 'Bentornato, Frank!',
+        title: 'Accesso effettuato come Creator',
+        description: 'Bentornato!',
       });
     } else {
        toast({
         variant: 'destructive',
-        title: 'Accesso Admin fallito',
-        description: 'Credenziali admin di sviluppo non corrette.',
+        title: 'Accesso Creator fallito',
+        description: 'Credenziali di sviluppo non corrette.',
       });
     }
   }
+
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -105,8 +107,8 @@ export default function LoginPage() {
                 DEV
             </span>
           </div>
-           <Button variant="outline" className="w-full" onClick={handleAdminLogin}>
-            Login as Admin (Dev)
+           <Button variant="outline" className="w-full" onClick={handleCreatorLogin}>
+            Login as Creator (Dev)
           </Button>
         </CardFooter>
       </Card>

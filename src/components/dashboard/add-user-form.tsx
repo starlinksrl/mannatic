@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -27,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { User, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addUser } from '@/lib/data';
+import { useUser } from '@/contexts/user-context';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
@@ -43,6 +45,7 @@ interface AddUserFormProps {
 export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
+  const { currentCompany } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,11 +57,17 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!currentCompany) {
+        toast({ variant: 'destructive', title: 'Errore', description: 'Nessuna azienda selezionata.' });
+        return;
+    }
+
     const newUser = await addUser({
         name: values.name,
         email: values.email,
         role: values.role as UserRole,
         password: values.password,
+        companyId: currentCompany.id,
     });
     
     onUserAdded(newUser);

@@ -1,3 +1,4 @@
+
 'use client';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { useUser } from '@/contexts/user-context';
@@ -10,14 +11,18 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isLoading } = useUser();
+  const { user, isLoading, currentCompany } = useUser();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/login');
     }
-  }, [user, isLoading, router]);
+    // If a non-creator user somehow ends up without a company, redirect.
+    if (!isLoading && user && user.role !== 'Creator' && !currentCompany) {
+        router.push('/login');
+    }
+  }, [user, isLoading, router, currentCompany]);
 
   if (isLoading || !user) {
     return (

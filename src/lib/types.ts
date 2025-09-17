@@ -1,4 +1,10 @@
-export type UserRole = 'Admin' | 'Operator' | 'Client';
+
+export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
+
+export interface Company {
+  id: string;
+  name: string;
+}
 
 export interface User {
   id: string;
@@ -7,17 +13,20 @@ export interface User {
   role: UserRole;
   avatarUrl: string;
   password?: string;
+  companyId: string;
 }
 
 export interface Client {
   id: string;
   name: string;
+  companyId: string;
 }
 
 export interface Equipment {
   id: string;
   name: string;
   clientId: string;
+  companyId: string;
 }
 
 export type InterventionStatus = 'Nuovo' | 'In corso' | 'In attesa' | 'Completato' | 'Annullato' | 'Pianificato' | 'Da Fatturare' | 'Fatturato';
@@ -46,6 +55,7 @@ export interface Intervention {
   photos?: string[];
   clientSignature?: string;
   updates?: InterventionUpdate[];
+  companyId: string;
 }
 
 export interface ScheduledMaintenance extends Intervention {
@@ -62,4 +72,5 @@ export interface Notification {
   message: string;
   read: boolean;
   createdAt: string;
+  companyId: string;
 }
