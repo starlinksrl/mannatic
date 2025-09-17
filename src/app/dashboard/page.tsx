@@ -93,7 +93,7 @@ export default function DashboardPage() {
     </div>
   )
   
-  if (!currentCompany) {
+  if (user?.role === 'Creator' && !currentCompany) {
       return (
          <>
             <Header title="Dashboard" />

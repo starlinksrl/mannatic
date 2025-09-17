@@ -57,8 +57,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
         if (freshUser?.role === 'Creator') {
            const savedCompanyId = localStorage.getItem('companyId');
-           const company = allCompanies.find(c => c.id === savedCompanyId) || allCompanies[0];
-           setCurrentCompany(company || null);
+           if (savedCompanyId) {
+             const company = allCompanies.find(c => c.id === savedCompanyId);
+             setCurrentCompany(company || null);
+           }
         } else if (freshUser) {
            const company = allCompanies.find(c => c.id === freshUser.companyId);
            setCurrentCompany(company || null);
@@ -85,9 +87,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('user', JSON.stringify(foundUser));
 
       if (foundUser.role === 'Creator') {
-        const company = companies[0];
-        setCurrentCompany(company || null);
-        if (company) localStorage.setItem('companyId', company.id);
+        // Don't auto-select a company for the creator on login
+        setCurrentCompany(null);
+        localStorage.removeItem('companyId');
       } else {
         const company = companies.find(c => c.id === foundUser?.companyId);
         setCurrentCompany(company || null);
