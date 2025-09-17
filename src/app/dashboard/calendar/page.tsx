@@ -16,7 +16,7 @@ import { Loader } from 'lucide-react';
 
 export default function CalendarPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const { user } = useUser();
+  const { user, currentCompany } = useUser();
   const router = useRouter();
   const [interventions, setInterventions] = useState<(Intervention | ScheduledMaintenance)[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,15 +27,16 @@ export default function CalendarPage() {
     }
     
     async function fetchInterventions() {
+        if (!currentCompany) return;
         setLoading(true);
-        const allInterventions = await getInterventions();
+        const allInterventions = await getInterventions(currentCompany.id);
         setInterventions(allInterventions);
         setLoading(false);
     }
     if (user) {
         fetchInterventions();
     }
-  }, [user, router]);
+  }, [user, router, currentCompany]);
 
   if (!user || loading) {
       return (

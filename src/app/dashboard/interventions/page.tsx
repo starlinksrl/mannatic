@@ -10,25 +10,25 @@ import { Loader } from 'lucide-react';
 
 
 export default function InterventionsPage() {
-    const { user } = useUser();
+    const { user, currentCompany } = useUser();
     const [operators, setOperators] = useState<User[]>([]);
     const [interventions, setInterventions] = useState<(Intervention | ScheduledMaintenance)[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchData() {
-            if (!user) return;
+            if (!user || !currentCompany) return;
             setLoading(true);
             const [allUsers, allInterventions] = await Promise.all([
-                getUsers(),
-                getInterventions()
+                getUsers(currentCompany.id),
+                getInterventions(currentCompany.id)
             ]);
             setOperators(allUsers.filter(u => u.role === 'Operator'));
             setInterventions(allInterventions);
             setLoading(false);
         }
         fetchData();
-    }, [user]);
+    }, [user, currentCompany]);
 
     if (!user || loading) {
         return (

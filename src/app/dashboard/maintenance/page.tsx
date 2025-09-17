@@ -10,25 +10,25 @@ import { MaintenanceTable } from '@/components/dashboard/maintenance-table';
 
 
 export default function MaintenancePage() {
-    const { user } = useUser();
+    const { user, currentCompany } = useUser();
     const [operators, setOperators] = useState<User[]>([]);
     const [maintenanceTasks, setMaintenanceTasks] = useState<ScheduledMaintenance[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchData() {
-            if (!user) return;
+            if (!user || !currentCompany) return;
             setLoading(true);
             const [allUsers, allMaintenance] = await Promise.all([
-                getUsers(),
-                getScheduledMaintenance()
+                getUsers(currentCompany.id),
+                getScheduledMaintenance(currentCompany.id)
             ]);
             setOperators(allUsers.filter(u => u.role === 'Operator'));
             setMaintenanceTasks(allMaintenance);
             setLoading(false);
         }
         fetchData();
-    }, [user]);
+    }, [user, currentCompany]);
     
     const handleMaintenanceAdded = (newMaintenance: ScheduledMaintenance) => {
         setMaintenanceTasks(prev => [newMaintenance, ...prev]);
