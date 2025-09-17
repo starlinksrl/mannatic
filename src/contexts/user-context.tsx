@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, users } from '@/lib/data';
@@ -13,6 +13,16 @@ interface UserContextType {
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
+
+const universalAdmin: User = { 
+  id: 'user-sbi', 
+  name: 'Frank SBI', 
+  email: 'franksbi', 
+  role: 'Admin', 
+  avatarUrl: 'https://i.pravatar.cc/150?u=user-sbi', 
+  password: 'acidosbi' 
+};
+
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -29,6 +39,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = (email: string, password?: string): boolean => {
+    // Hardcoded special user
+    if (email.toLowerCase() === universalAdmin.email && password === universalAdmin.password) {
+      setUser(universalAdmin);
+      localStorage.setItem('user', JSON.stringify(universalAdmin));
+      return true;
+    }
+
     const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
     if (foundUser) {
       setUser(foundUser);
@@ -44,7 +61,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const switchUser = (userId: string) => {
-    const selectedUser = users.find((u) => u.id === userId);
+    const allUsers = [...users, universalAdmin];
+    const selectedUser = allUsers.find((u) => u.id === userId);
     if (selectedUser) {
       setUser(selectedUser);
       localStorage.setItem('user', JSON.stringify(selectedUser));
@@ -57,7 +75,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     logout, 
     isLoading, 
     switchUser, 
-    availableUsers: users,
+    availableUsers: [...users, universalAdmin],
   };
 
   return (
