@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 type KpiData = GenerateKpiDashboardInput & { 
   operatorWorkloadData: { name: string, workload: number }[],
@@ -19,12 +20,21 @@ type KpiData = GenerateKpiDashboardInput & {
 
 export default function DashboardPage() {
   const { user, currentCompany } = useUser();
+  const router = useRouter();
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (user?.role === 'Creator' && !currentCompany) {
+      router.replace('/dashboard/companies');
+      return;
+    }
+    
     async function getKpiData() {
-      if (!currentCompany) return;
+      if (!currentCompany) {
+          setLoading(false);
+          return;
+      };
 
       setLoading(true);
 
@@ -70,10 +80,10 @@ export default function DashboardPage() {
       setLoading(false);
     }
 
-    if (user && currentCompany) {
+    if (user) {
       getKpiData();
     }
-  }, [user, currentCompany]);
+  }, [user, currentCompany, router]);
 
   const NoCompanySelected = () => (
     <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -82,14 +92,14 @@ export default function DashboardPage() {
         <p className="mt-2 text-muted-foreground">Seleziona un'azienda dal menu in alto a destra per visualizzare la dashboard.</p>
     </div>
   )
-
-  if (user?.role === 'Creator' && !currentCompany) {
-    return (
-        <>
+  
+  if (!currentCompany) {
+      return (
+         <>
             <Header title="Dashboard" />
             <NoCompanySelected />
         </>
-    )
+      )
   }
 
   return (

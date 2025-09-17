@@ -6,8 +6,8 @@ import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, dele
 
 
 export let companies: Company[] = [
-  { id: 'company-1', name: 'Azienda Demo 1' },
-  { id: 'company-2', name: 'Azienda Demo 2' },
+  { id: 'company-1', name: 'Azienda Demo 1', email: 'demo1@example.com', password: 'password', address: 'Via Roma 1', vatNumber: 'IT12345678901', taxCode: 'RSSMRA80A01H501U', phone: '0123456789', uniqueCode: 'ABC1234' },
+  { id: 'company-2', name: 'Azienda Demo 2', email: 'demo2@example.com', password: 'password', address: 'Via Milano 2', vatNumber: 'IT09876543210', taxCode: 'VRDGRD85A01H501F', phone: '9876543210', uniqueCode: 'XYZ5678' },
 ];
 
 export let clients: Client[] = [
@@ -182,10 +182,10 @@ export async function getCompanies(): Promise<Company[]> {
     return Promise.resolve(companies);
 }
 
-export async function addCompany(companyName: string): Promise<Company> {
+export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Company> {
     const newCompany: Company = {
         id: `company-${companies.length + 1}`,
-        name: companyName,
+        ...companyData,
     };
     companies.push(newCompany);
      // In a real app, this would also create a default Admin user for the company
@@ -194,6 +194,7 @@ export async function addCompany(companyName: string): Promise<Company> {
 
 
 export async function getUsers(companyId: string): Promise<User[]> {
+  if(!companyId) return [];
   try {
     const q = query(collection(db, 'users'), where("companyId", "==", companyId));
     const userSnapshot = await getDocs(q);
@@ -248,7 +249,8 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 export function getClients(companyId: string): Client[] {
-  return clients.filter(c => c.id === companyId);
+  if (!companyId) return [];
+  return clients.filter(c => c.companyId === companyId);
 }
 
 export function getClient(clientId: string) {
@@ -256,6 +258,7 @@ export function getClient(clientId: string) {
 }
 
 export function getEquipments(companyId: string): Equipment[] {
+    if (!companyId) return [];
     return equipments.filter(e => e.companyId === companyId);
 }
 
@@ -277,6 +280,7 @@ export async function getOperator(operatorId: string) {
 const CONVERSION_WINDOW_DAYS = 7;
 
 function checkAndConvertMaintenance(companyId: string) {
+    if(!companyId) return;
     const today = startOfToday();
     const conversionInterval = {
         start: today,
@@ -395,12 +399,14 @@ export async function deleteUser(id: string): Promise<boolean> {
 
 
 export async function getInterventions(companyId: string): Promise<(Intervention | ScheduledMaintenance)[]> {
+    if (!companyId) return [];
     checkAndConvertMaintenance(companyId);
     return Promise.resolve(interventionsMock.filter(i => !i.hasOwnProperty('isMaintenance') && i.companyId === companyId));
 }
 
 export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
-     checkAndConvertMaintenance(companyId);
+    if (!companyId) return [];
+    checkAndConvertMaintenance(companyId);
     return Promise.resolve(interventionsMock.filter(i => i.hasOwnProperty('isMaintenance') && i.companyId === companyId) as ScheduledMaintenance[]);
 }
 

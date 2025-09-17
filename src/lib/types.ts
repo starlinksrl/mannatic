@@ -4,11 +4,18 @@ export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 export interface Company {
   id: string;
   name: string;
+  address?: string;
+  vatNumber?: string;
+  taxCode?: string;
+  phone?: string;
+  uniqueCode?: string;
+  email?: string;
+  password?: string;
 }
 
 export interface User {
   id: string;
-  name: string;
+  name:string;
   email: string;
   role: UserRole;
   avatarUrl: string;
