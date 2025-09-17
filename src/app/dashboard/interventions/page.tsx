@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -10,6 +11,10 @@ import { User } from '@/lib/types';
 export default function InterventionsPage() {
     const { user } = useUser();
     const operators = users.filter(u => u.role === 'Operator') as User[];
+
+    if (!user) {
+        return null;
+    }
 
   return (
     <>
