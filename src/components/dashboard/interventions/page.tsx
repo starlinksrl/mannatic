@@ -2,16 +2,47 @@
 
 import { Header } from '@/components/dashboard/header';
 import { InterventionsTable } from '@/components/dashboard/interventions-table';
-import { interventions, users as allUsers, clients } from '@/lib/data';
+import { getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User } from '@/lib/types';
+import { User, Intervention, Client } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { Loader } from 'lucide-react';
 
 
 export default function InterventionsPage() {
-    const { user } = useUser();
-    const operators = allUsers.filter(u => u.role === 'Operator') as User[];
+    const { user, currentCompany } = useUser();
+    const [operators, setOperators] = useState<User[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [interventions, setInterventions] = useState<Intervention[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    if (!user) return null;
+    useEffect(() => {
+        async function fetchData() {
+            if (!user || !currentCompany) return;
+            setLoading(true);
+            const [allUsers, allClients, allInterventions] = await Promise.all([
+                getUsers(currentCompany.id),
+                getClients(currentCompany.id),
+                getInterventions(currentCompany.id)
+            ]);
+            setOperators(allUsers.filter(u => u.role === 'Operator'));
+            setClients(allClients);
+            setInterventions(allInterventions);
+            setLoading(false);
+        }
+        fetchData();
+    }, [user, currentCompany]);
+
+    if (!user || loading) {
+        return (
+            <>
+                <Header title="Tutti gli Interventi" />
+                <div className="flex items-center justify-center flex-1">
+                    <Loader className="h-8 w-8 animate-spin" />
+                </div>
+            </>
+        )
+    }
 
   return (
     <>

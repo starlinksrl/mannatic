@@ -1,9 +1,9 @@
 'use client';
 
 import { Header } from '@/components/dashboard/header';
-import { getScheduledMaintenance, getUsers, clients } from '@/lib/data';
+import { getScheduledMaintenance, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User, ScheduledMaintenance } from '@/lib/types';
+import { User, ScheduledMaintenance, Client } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { MaintenanceTable } from '@/components/dashboard/maintenance-table';
@@ -12,6 +12,7 @@ import { MaintenanceTable } from '@/components/dashboard/maintenance-table';
 export default function MaintenancePage() {
     const { user, currentCompany } = useUser();
     const [operators, setOperators] = useState<User[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
     const [maintenanceTasks, setMaintenanceTasks] = useState<ScheduledMaintenance[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -19,11 +20,13 @@ export default function MaintenancePage() {
         async function fetchData() {
             if (!user || !currentCompany) return;
             setLoading(true);
-            const [allUsers, allMaintenance] = await Promise.all([
+            const [allUsers, allClients, allMaintenance] = await Promise.all([
                 getUsers(currentCompany.id),
+                getClients(currentCompany.id),
                 getScheduledMaintenance(currentCompany.id)
             ]);
             setOperators(allUsers.filter(u => u.role === 'Operator'));
+            setClients(allClients);
             setMaintenanceTasks(allMaintenance);
             setLoading(false);
         }

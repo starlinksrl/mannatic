@@ -32,8 +32,9 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ScheduledMaintenance, Client, User, Equipment, InterventionPriority, InterventionStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateScheduledMaintenance, equipments as allEquipments } from '@/lib/data';
+import { updateScheduledMaintenance, getEquipments } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
+import { useUser } from '@/contexts/user-context';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -59,6 +60,7 @@ interface EditMaintenanceFormProps {
 export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients, operators, isOpen, setIsOpen }: EditMaintenanceFormProps) {
   const { toast } = useToast();
   const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const { currentCompany } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -67,12 +69,16 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
   const selectedClientId = form.watch('clientId');
 
   useEffect(() => {
-    if (selectedClientId) {
-      setEquipments(allEquipments.filter(e => e.clientId === selectedClientId));
-    } else {
-      setEquipments([]);
+    async function fetchEquipments() {
+        if (selectedClientId && currentCompany) {
+            const companyEquipments = await getEquipments(currentCompany.id);
+            setEquipments(companyEquipments.filter(e => e.clientId === selectedClientId));
+        } else {
+            setEquipments([]);
+        }
     }
-  }, [selectedClientId, form]);
+    fetchEquipments();
+  }, [selectedClientId, currentCompany]);
 
   useEffect(() => {
     if (maintenance) {
@@ -90,7 +96,7 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
   if (!maintenance) return null;
 
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     const updatedMaintenanceData = {
         ...maintenance,
         ...values,
@@ -100,7 +106,7 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
         dueDate: values.dueDate.toISOString()
     };
     
-    const updated = updateScheduledMaintenance(maintenance!.id, updatedMaintenanceData);
+    const updated = await updateScheduledMaintenance(maintenance!.id, updatedMaintenanceData);
     
     if (updated) {
         onMaintenanceUpdated(updated);

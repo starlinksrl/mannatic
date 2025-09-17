@@ -33,7 +33,8 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, Equipment, InterventionPriority } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addIntervention, equipments as allEquipments } from '@/lib/data';
+import { addIntervention, getEquipments } from '@/lib/data';
+import { useUser } from '@/contexts/user-context';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -57,6 +58,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const { currentCompany } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,36 +66,37 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       title: '',
       description: '',
       assignedOperatorId: null,
-      clientId: currentUser.role === 'Client' ? clients.find(c => c.name === currentUser.name)?.id : undefined,
+      clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
     },
   });
 
   const selectedClientId = form.watch('clientId');
 
   useEffect(() => {
-    if (selectedClientId) {
-      setEquipments(allEquipments.filter(e => e.clientId === selectedClientId));
+    if (selectedClientId && currentCompany) {
+      const companyEquipments = getEquipments(currentCompany.id);
+      setEquipments(companyEquipments.filter(e => e.clientId === selectedClientId));
       form.setValue('equipmentId', '');
     } else {
       setEquipments([]);
     }
-  }, [selectedClientId, form]);
+  }, [selectedClientId, form, currentCompany]);
   
   useEffect(() => {
     if (currentUser.role === 'Client') {
-        const client = clients.find(c => c.name === currentUser.name);
-        if (client) {
-            form.setValue('clientId', client.id);
-        }
+        form.setValue('clientId', currentUser.id);
     }
   }, [currentUser, clients, form])
 
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const newIntervention = addIntervention({
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!currentCompany) return;
+
+    const newIntervention = await addIntervention({
         ...values,
         priority: values.priority as InterventionPriority,
-        dueDate: values.dueDate.toISOString()
+        dueDate: values.dueDate.toISOString(),
+        companyId: currentCompany.id
     });
     
     onInterventionAdded(newIntervention);

@@ -32,9 +32,10 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, Equipment, InterventionPriority, InterventionStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateIntervention, equipments as allEquipments } from '@/lib/data';
+import { updateIntervention, getEquipments } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
+import { useUser } from '@/contexts/user-context';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -61,6 +62,7 @@ interface EditInterventionFormProps {
 export function EditInterventionForm({ intervention, onInterventionUpdated, clients, operators, currentUser, isOpen, setIsOpen }: EditInterventionFormProps) {
   const { toast } = useToast();
   const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const { currentCompany } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -69,12 +71,16 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
   const selectedClientId = form.watch('clientId');
 
   useEffect(() => {
-    if (selectedClientId) {
-      setEquipments(allEquipments.filter(e => e.clientId === selectedClientId));
-    } else {
-      setEquipments([]);
+    async function fetchEquipments() {
+        if (selectedClientId && currentCompany) {
+            const companyEquipments = await getEquipments(currentCompany.id);
+            setEquipments(companyEquipments.filter(e => e.clientId === selectedClientId));
+        } else {
+            setEquipments([]);
+        }
     }
-  }, [selectedClientId, form]);
+    fetchEquipments();
+  }, [selectedClientId, currentCompany]);
 
   useEffect(() => {
     if (intervention) {
@@ -92,7 +98,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
   if (!intervention) return null;
 
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     
     let newUpdates = intervention?.updates || [];
     if(values.newUpdate && values.newUpdate.trim() !== '') {
@@ -108,7 +114,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
         updates: newUpdates,
     };
     
-    const updated = updateIntervention(intervention!.id, updatedInterventionData);
+    const updated = await updateIntervention(intervention!.id, updatedInterventionData);
     
     if (updated) {
         onInterventionUpdated(updated);

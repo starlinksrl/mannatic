@@ -2,9 +2,9 @@
 
 import { Header } from '@/components/dashboard/header';
 import { InterventionsTable } from '@/components/dashboard/interventions-table';
-import { getInterventions, getUsers, clients } from '@/lib/data';
+import { getInterventions, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User, Intervention, ScheduledMaintenance } from '@/lib/types';
+import { User, Intervention, Client } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 
@@ -12,23 +12,41 @@ import { Loader } from 'lucide-react';
 export default function InterventionsPage() {
     const { user, currentCompany } = useUser();
     const [operators, setOperators] = useState<User[]>([]);
-    const [interventions, setInterventions] = useState<(Intervention | ScheduledMaintenance)[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchData() {
             if (!user || !currentCompany) return;
             setLoading(true);
-            const [allUsers, allInterventions] = await Promise.all([
-                getUsers(currentCompany.id),
-                getInterventions(currentCompany.id)
+
+            // Fetch independently
+            const usersPromise = getUsers(currentCompany.id);
+            const clientsPromise = getClients(currentCompany.id);
+            const interventionsPromise = getInterventions(currentCompany.id);
+
+            const [allUsers, allClients, allInterventions] = await Promise.all([
+                usersPromise,
+                clientsPromise,
+                interventionsPromise
             ]);
+
             setOperators(allUsers.filter(u => u.role === 'Operator'));
+            setClients(allClients);
             setInterventions(allInterventions);
             setLoading(false);
         }
         fetchData();
     }, [user, currentCompany]);
+
+    const handleInterventionAdded = (newIntervention: Intervention) => {
+        setInterventions(prev => [newIntervention, ...prev]);
+    }
+    
+    const handleInterventionUpdated = (updatedIntervention: Intervention) => {
+        setInterventions(prev => prev.map(i => i.id === updatedIntervention.id ? updatedIntervention : i));
+    }
 
     if (!user || loading) {
         return (
@@ -45,7 +63,12 @@ export default function InterventionsPage() {
     <>
       <Header title="Tutti gli Interventi" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-        <InterventionsTable interventions={interventions} currentUser={user} clients={clients} operators={operators} />
+        <InterventionsTable 
+            interventions={interventions} 
+            currentUser={user} 
+            clients={clients} 
+            operators={operators} 
+        />
       </main>
     </>
   );

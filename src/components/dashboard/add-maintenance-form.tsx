@@ -33,8 +33,9 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ScheduledMaintenance, Client, User, Equipment, InterventionPriority } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addScheduledMaintenance, equipments as allEquipments } from '@/lib/data';
+import { addScheduledMaintenance, getEquipments } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
+import { useUser } from '@/contexts/user-context';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -58,6 +59,7 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const { currentCompany } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -73,23 +75,26 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
   const selectedClientId = form.watch('clientId');
 
   useEffect(() => {
-    if (selectedClientId) {
-      setEquipments(allEquipments.filter(e => e.clientId === selectedClientId));
+    if (selectedClientId && currentCompany) {
+      const companyEquipments = getEquipments(currentCompany.id);
+      setEquipments(companyEquipments.filter(e => e.clientId === selectedClientId));
       form.setValue('equipmentId', '');
     } else {
       setEquipments([]);
     }
-  }, [selectedClientId, form]);
+  }, [selectedClientId, form, currentCompany]);
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const newMaintenance = addScheduledMaintenance({
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!currentCompany) return;
+    
+    const newMaintenance = await addScheduledMaintenance({
         ...values,
         priority: values.priority as InterventionPriority,
         dueDate: values.dueDate.toISOString(),
         description: values.description || '',
-        // These are placeholders for the type
         checklist: [],
         periodicity: 'monthly',
+        companyId: currentCompany.id,
     });
     
     onMaintenanceAdded(newMaintenance);

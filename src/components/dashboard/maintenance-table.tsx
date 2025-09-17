@@ -46,6 +46,8 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
   const { toast } = useToast();
   const [maintenanceTasks, setMaintenanceTasks] = useState(initialMaintenanceTasks);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [clientsMap, setClientsMap] = useState<Map<string, string>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -59,10 +61,14 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
   }, [initialMaintenanceTasks]);
 
   useEffect(() => {
-    const map = new Map<string, string>();
-    operators.forEach(op => map.set(op.id, op.name));
-    setOperatorsMap(map);
-  }, [operators]);
+    const opMap = new Map<string, string>();
+    operators.forEach(op => opMap.set(op.id, op.name));
+    setOperatorsMap(opMap);
+
+    const cliMap = new Map<string, string>();
+    clients.forEach(c => cliMap.set(c.id, c.name));
+    setClientsMap(cliMap);
+  }, [operators, clients]);
 
   const handleEditClick = (maintenance: ScheduledMaintenance) => {
     setSelectedMaintenance(maintenance);
@@ -78,9 +84,9 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     setIsDeleteDialogOpen(true);
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!maintenanceToDelete) return;
-    const success = deleteScheduledMaintenance(maintenanceToDelete.id);
+    const success = await deleteScheduledMaintenance(maintenanceToDelete.id);
     if (success) {
       handleMaintenanceDeleted(maintenanceToDelete.id);
       toast({
@@ -162,12 +168,12 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
       <Card className="md:hidden">
         <CardContent className="p-2 space-y-2">
             {filteredTasks.map((task) => {
-              const client = getClient(task.clientId);
+              const clientName = clientsMap.get(task.clientId);
               return (
                  <div key={task.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(task)}>
                     <div className="flex-1 space-y-1">
                         <p className="font-medium">{task.title}</p>
-                        {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{client?.name}</p>}
+                        {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{clientName}</p>}
                         <p className="text-sm text-muted-foreground">Prossima scadenza: {format(new Date(task.nextDueDate), 'dd MMM yyyy', { locale: it })}</p>
                         <div className="flex items-center gap-2 pt-1">
                             {getStatusBadge(task.status)}
@@ -217,7 +223,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
           </TableHeader>
           <TableBody>
             {filteredTasks.map((task) => {
-              const client = getClient(task.clientId);
+              const clientName = clientsMap.get(task.clientId);
               const operatorName = task.assignedOperatorId ? operatorsMap.get(task.assignedOperatorId) : null;
               return (
                 <TableRow key={task.id} onClick={() => handleEditClick(task)} className="cursor-pointer">
@@ -227,7 +233,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                             <span className="text-xs text-muted-foreground">ID: {task.id}</span>
                         </div>
                     </TableCell>
-                    <TableCell>{client?.name}</TableCell>
+                    <TableCell>{clientName}</TableCell>
                     <TableCell>{getStatusBadge(task.status)}</TableCell>
                     <TableCell>{getPeriodicityText(task)}</TableCell>
                     <TableCell>
