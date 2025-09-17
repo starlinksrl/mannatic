@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import Link from 'next/link';
+import { Separator } from '@/components/ui/separator';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -34,6 +35,23 @@ export default function LoginPage() {
       });
     }
   };
+  
+  const handleAdminLogin = async () => {
+    const success = await login('franksbi', 'acidosbi');
+    if (success) {
+      router.push('/dashboard');
+      toast({
+        title: 'Accesso effettuato come Admin',
+        description: 'Bentornato, Frank!',
+      });
+    } else {
+       toast({
+        variant: 'destructive',
+        title: 'Accesso Admin fallito',
+        description: 'Credenziali admin di sviluppo non corrette.',
+      });
+    }
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -77,9 +95,18 @@ export default function LoginPage() {
             />
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex-col gap-4">
           <Button className="w-full" onClick={handleLogin}>
             Accedi
+          </Button>
+          <div className="relative w-full">
+            <Separator />
+            <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-background px-2 text-xs text-muted-foreground">
+                DEV
+            </span>
+          </div>
+           <Button variant="outline" className="w-full" onClick={handleAdminLogin}>
+            Login as Admin (Dev)
           </Button>
         </CardFooter>
       </Card>
