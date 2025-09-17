@@ -18,14 +18,14 @@ import { usePathname } from 'next/navigation';
 import { Logo } from '../icons/logo';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Creator', 'Admin', 'Operator', 'Client'] },
-  { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Creator', 'Admin', 'Operator', 'Client'] },
-  { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Creator', 'Admin', 'Operator'] },
-  { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Creator', 'Admin', 'Operator'] },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
+  { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'] },
+  { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'] },
+  { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/requests', label: 'Le mie Richieste', icon: ClipboardList, roles: ['Client'] },
-  { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Creator', 'Admin'] },
+  { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin'] },
   { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
-  { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Creator', 'Admin'] },
+  { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
 ];
 
 export function SidebarNav() {
