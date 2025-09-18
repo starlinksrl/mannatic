@@ -27,7 +27,7 @@ import { User, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateUser } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { Pencil } from 'lucide-react';
+import { Pencil, Eye, EyeOff } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 
 const formSchema = z.object({
@@ -48,6 +48,7 @@ interface EditUserFormProps {
 export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUserFormProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -101,7 +102,12 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if(!open) {
+        setShowPassword(false);
+      }
+    }}>
       <DialogContent className="sm:max-w-[425px] grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>Modifica utente</DialogTitle>
@@ -162,9 +168,20 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nuova Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="Lascia vuoto per non modificare" {...field} />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input type={showPassword ? 'text' : 'password'} placeholder="Lascia vuoto per non modificare" {...field} />
+                    </FormControl>
+                     <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                      onClick={() => setShowPassword(prev => !prev)}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

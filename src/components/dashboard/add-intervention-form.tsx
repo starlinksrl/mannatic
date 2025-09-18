@@ -41,9 +41,9 @@ import { ScrollArea } from '../ui/scroll-area';
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
-  description: z.string().min(10, { message: 'La descrizione deve contenere almeno 10 caratteri.' }),
+  description: z.string().optional(),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
-  dueDate: z.date({ required_error: 'La data di scadenza è obbligatoria.' }),
+  dueDate: z.date().optional(),
   assignedOperatorId: z.string().nullable(),
 });
 
@@ -67,6 +67,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       title: '',
       description: '',
       assignedOperatorId: null,
+      priority: 'Bassa',
       clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
     },
   });
@@ -87,8 +88,9 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
 
     const newIntervention = await addIntervention({
         ...values,
+        description: values.description || values.title,
         priority: values.priority as InterventionPriority,
-        dueDate: values.dueDate.toISOString(),
+        dueDate: values.dueDate?.toISOString(),
         companyId: currentCompany.id,
         creatorName: currentUser.name
     });
@@ -113,7 +115,13 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     <Dialog open={isOpen} onOpenChange={(open) => {
         setIsOpen(open);
         if (!open) {
-            form.reset();
+            form.reset({
+                 title: '',
+                description: '',
+                assignedOperatorId: null,
+                priority: 'Bassa',
+                clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
+            });
         }
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -217,7 +225,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                         <FormItem>
                         <FormLabel>Descrizione</FormLabel>
                         <FormControl>
-                            <Textarea placeholder="Descrivi il problema in dettaglio..." {...field} />
+                            <Textarea placeholder="Descrivi il problema in dettaglio (se vuoto, verrà usato il titolo)..." {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -231,7 +239,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Priorità</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleziona una priorità" />
@@ -253,7 +261,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                             name="dueDate"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                <FormLabel>Data Scadenza</FormLabel>
+                                <FormLabel>Data Scadenza (Opzionale)</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                     <FormControl>
@@ -278,7 +286,6 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                         mode="single"
                                         selected={field.value}
                                         onSelect={field.onChange}
-                                        disabled={(date) => date < new Date()}
                                         initialFocus
                                         locale={it}
                                     />

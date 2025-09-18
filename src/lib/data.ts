@@ -147,15 +147,16 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
     try {
         const userDocRef = doc(db, 'users', id);
         
-        if(updatedData.password === '') {
-            delete updatedData.password;
+        const dataToUpdate = {...updatedData};
+        if(dataToUpdate.password === '' || dataToUpdate.password === undefined) {
+            delete dataToUpdate.password;
         }
 
-        if (updatedData.email) {
-            updatedData.email = updatedData.email.toLowerCase();
+        if (dataToUpdate.email) {
+            dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
         
-        await updateDoc(userDocRef, updatedData);
+        await updateDoc(userDocRef, dataToUpdate);
         
         return await getUserById(id);
     } catch (error) {
@@ -353,7 +354,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
 
 export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMaintenance, 'id' | 'status' | 'sla' | 'createdAt' | 'isMaintenance' | 'nextDueDate' | 'updates'>): Promise<ScheduledMaintenance> {
-    const nextDueDate = addMonths(new Date(maintenanceData.dueDate), maintenanceData.recurrenceMonths).toISOString();
+    const nextDueDate = addMonths(new Date(maintenanceData.dueDate!), maintenanceData.recurrenceMonths).toISOString();
     
     const newMaintenanceData = {
         ...maintenanceData,
@@ -379,8 +380,8 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         if (dataToUpdate.materialsUsed === undefined) {
             dataToUpdate.materialsUsed = null;
         }
-
-        await updateDoc(docRef, dataToUpdate as Partial<Intervention>);
+        
+        await updateDoc(docRef, dataToUpdate as any);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Intervention : null;
     } catch (error) {
@@ -400,7 +401,7 @@ export async function updateScheduledMaintenance(id: string, updatedData: Partia
          
         // Recalculate next due date if recurrence or due date changes
         if (updatedData.recurrenceMonths || updatedData.dueDate) {
-            combinedData.nextDueDate = addMonths(new Date(combinedData.dueDate), combinedData.recurrenceMonths).toISOString();
+            combinedData.nextDueDate = addMonths(new Date(combinedData.dueDate!), combinedData.recurrenceMonths).toISOString();
         }
 
         await updateDoc(docRef, combinedData);

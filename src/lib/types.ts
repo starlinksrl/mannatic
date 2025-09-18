@@ -50,13 +50,13 @@ export interface Intervention {
   id: string;
   title: string;
   clientId: string;
-  description: string;
+  description?: string;
   priority: InterventionPriority;
   sla: string; // e.g., '4h', '8h', '24h'
   status: InterventionStatus;
   assignedOperatorId: string | null;
   createdAt: string;
-  dueDate: string;
+  dueDate?: string;
   completedAt?: string;
   timeSpent?: number; // in hours
   materialsUsed?: string;

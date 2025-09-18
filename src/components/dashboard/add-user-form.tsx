@@ -29,6 +29,7 @@ import { User, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
+import { Eye, EyeOff } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
@@ -46,6 +47,7 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -84,6 +86,7 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
         setIsOpen(open);
         if(!open) {
             form.reset();
+            setShowPassword(false);
         }
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -125,9 +128,20 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="********" {...field} />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                    </FormControl>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                      onClick={() => setShowPassword(prev => !prev)}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
