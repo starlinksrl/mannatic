@@ -347,7 +347,13 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         sla: '24h',
         createdAt: new Date().toISOString(),
         updates: [{ date: new Date().toISOString(), description: `Creato da ${creatorName}.`, userName: creatorName }],
+        dueDate: restOfData.dueDate || null,
     };
+
+    if (newInterventionData.dueDate === undefined) {
+        delete (newInterventionData as any).dueDate;
+    }
+
     const docRef = await addDoc(collection(db, 'interventions'), newInterventionData);
     return { id: docRef.id, ...newInterventionData };
 }
@@ -364,7 +370,13 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
         isMaintenance: true,
         nextDueDate,
         updates: [{ date: new Date().toISOString(), description: 'Manutenzione programmata creata.', userName: 'Sistema' }],
+        dueDate: maintenanceData.dueDate || null,
     };
+
+    if (newMaintenanceData.dueDate === undefined) {
+        delete (newMaintenanceData as any).dueDate;
+    }
+
     const docRef = await addDoc(collection(db, 'interventions'), newMaintenanceData);
     return { id: docRef.id, ...newMaintenanceData };
 }

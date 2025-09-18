@@ -90,7 +90,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
         ...values,
         description: values.description || values.title,
         priority: values.priority as InterventionPriority,
-        dueDate: values.dueDate?.toISOString(),
+        dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
         companyId: currentCompany.id,
         creatorName: currentUser.name
     });
