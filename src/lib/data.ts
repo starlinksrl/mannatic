@@ -128,14 +128,24 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise<User> {
   try {
-    const newUserPayload = {
+    const newUserPayload: Omit<User, 'id'> = {
       ...userData,
       email: userData.email.toLowerCase(),
       avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
     };
     const docRef = await addDoc(collection(db, 'users'), newUserPayload);
     
-    return { id: docRef.id, ...newUserPayload } as User;
+    // If the user is a client, also add them to the clients collection for simplicity of lookup
+    if(newUserPayload.role === 'Client') {
+        const clientCollectionRef = collection(db, 'clients');
+        await addDoc(clientCollectionRef, {
+            userId: docRef.id,
+            name: newUserPayload.name,
+            companyId: newUserPayload.companyId
+        })
+    }
+    
+    return { id: docRef.id, ...newUserPayload };
   } catch (error) {
       console.error("Error adding user:", error);
       throw new Error("Failed to add user.");
@@ -176,22 +186,21 @@ export async function deleteUser(id: string): Promise<boolean> {
 
 
 // --- CLIENT & EQUIPMENT MANAGEMENT ---
-// These are still mock, should be migrated to Firestore if they become complex entities.
 
 export async function getClients(companyId: string): Promise<Client[]> {
   if (!companyId) return [];
-  // For now, clients are derived from Client Users.
   const users = await getUsers(companyId);
-  const clientUsers = users.filter(u => u.role === 'Client');
-  const clients = clientUsers.map(u => ({ id: u.id, name: u.name, companyId: u.companyId }));
-  return clients;
+  return users
+    .filter(u => u.role === 'Client')
+    .map(u => ({ id: u.id, name: u.name, companyId: u.companyId }));
 }
 
-export async function getClient(clientId: string) {
-    // This is tricky now. We need to find a user with this ID.
-    // This is a placeholder until clients are a full-fledged collection.
+export async function getClient(clientId: string): Promise<Client | null> {
     const user = await getUserById(clientId);
-    return user;
+    if (user && user.role === 'Client') {
+        return { id: user.id, name: user.name, companyId: user.companyId };
+    }
+    return null;
 }
 
 
