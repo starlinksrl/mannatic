@@ -10,11 +10,12 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 
 export function Header({ title }: { title: string }) {
-  const { user, currentCompany, switchUser } = useUser();
+  const { sessionUser, currentCompany, switchCompany } = useUser();
   const router = useRouter();
 
   const handleReturnToCompanies = () => {
-    switchUser('user-creator');
+    // This action implicitly switches the user to creator and clears the company
+    switchCompany(null);
     router.push('/dashboard/companies');
   };
 
@@ -32,7 +33,7 @@ export function Header({ title }: { title: string }) {
         </SheetContent>
       </Sheet>
       <div className="flex items-center gap-4 flex-1">
-        {user?.role === 'Creator' && currentCompany && (
+        {sessionUser?.role === 'Creator' && currentCompany && (
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleReturnToCompanies}>
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Torna alle aziende</span>

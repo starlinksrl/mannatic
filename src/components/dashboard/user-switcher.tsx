@@ -22,7 +22,7 @@ import { LogOut, ChevronsUpDown, User as UserIcon, Users, Building } from 'lucid
 import { useRouter } from 'next/navigation';
 
 export function UserSwitcher() {
-  const { user, switchUser, availableUsers, logout, companies, currentCompany, switchCompany } = useUser();
+  const { user, sessionUser, switchUser, availableUsers, logout, companies, currentCompany, switchCompany } = useUser();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -32,7 +32,10 @@ export function UserSwitcher() {
 
   const handleSwitchUser = (userId: string) => {
     switchUser(userId);
-    // The logic to navigate is now handled within the context
+  }
+  
+  const handleSwitchCompany = (companyId: string) => {
+    switchCompany(companyId);
   }
 
   if (!user) return null;
@@ -40,7 +43,7 @@ export function UserSwitcher() {
   return (
     <div className="flex items-center gap-4">
       {/* Company Switcher or Display */}
-      {user.role === 'Creator' ? (
+      {sessionUser?.role === 'Creator' ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="hidden md:flex gap-2">
@@ -53,7 +56,7 @@ export function UserSwitcher() {
             <DropdownMenuLabel>Cambia Azienda</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {companies.map(company => (
-              <DropdownMenuItem key={company.id} onSelect={() => switchCompany(company.id)}>
+              <DropdownMenuItem key={company.id} onSelect={() => handleSwitchCompany(company.id)}>
                 {company.name}
               </DropdownMenuItem>
             ))}
@@ -69,7 +72,7 @@ export function UserSwitcher() {
       )}
 
       {/* User simulator */}
-       {user.role === 'Creator' ? (
+       {sessionUser?.role === 'Creator' && currentCompany && (
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -90,7 +93,6 @@ export function UserSwitcher() {
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   {availableUsers.map((u) => (
-                    u.companyId === currentCompany?.id || u.id === 'user-creator' ? (
                         <DropdownMenuItem key={u.id} onSelect={() => handleSwitchUser(u.id)}>
                         <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
@@ -103,7 +105,6 @@ export function UserSwitcher() {
                             </div>
                         </div>
                         </DropdownMenuItem>
-                    ) : null
                   ))}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
@@ -114,7 +115,7 @@ export function UserSwitcher() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        ) : null}
+        )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -131,7 +132,7 @@ export function UserSwitcher() {
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {user.role === 'Creator' ? (
+          {sessionUser?.role === 'Creator' && (
               <>
                  <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
@@ -141,47 +142,50 @@ export function UserSwitcher() {
                      <DropdownMenuPortal>
                         <DropdownMenuSubContent>
                              {companies.map(company => (
-                                <DropdownMenuItem key={company.id} onSelect={() => switchCompany(company.id)}>
+                                <DropdownMenuItem key={company.id} onSelect={() => handleSwitchCompany(company.id)}>
                                     {company.name}
                                 </DropdownMenuItem>
                                 ))}
                         </DropdownMenuSubContent>
                     </DropdownMenuPortal>
                 </DropdownMenuSub>
-                 <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                        <Users className="mr-2" />
-                        <span>Cambia Utente</span>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                        {availableUsers.map((u) => (
-                           u.companyId === currentCompany?.id || u.id === 'user-creator' ? (
-                            <DropdownMenuItem key={u.id} onSelect={() => handleSwitchUser(u.id)}>
-                                <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={u.avatarUrl} alt={u.name} />
-                                    <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="font-medium">{u.name}</p>
-                                    <p className="text-xs text-muted-foreground">{u.role}</p>
-                                </div>
-                                </div>
-                            </DropdownMenuItem>
-                           ) : null
-                        ))}
-                    </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                </DropdownMenuSub>
+                {currentCompany && (
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                            <Users className="mr-2" />
+                            <span>Cambia Utente</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                            {availableUsers.map((u) => (
+                                <DropdownMenuItem key={u.id} onSelect={() => handleSwitchUser(u.id)}>
+                                    <div className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={u.avatarUrl} alt={u.name} />
+                                        <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-medium">{u.name}</p>
+                                        <p className="text-xs text-muted-foreground">{u.role}</p>
+                                    </div>
+                                    </div>
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                )}
                 <DropdownMenuSeparator/>
               </>
-          ) : (
+          )}
+
+          {sessionUser?.role !== 'Creator' && (
             <DropdownMenuItem>
                 <UserIcon className="mr-2" />
                 Profilo
             </DropdownMenuItem>
           )}
+
           <DropdownMenuSeparator/>
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2" />
