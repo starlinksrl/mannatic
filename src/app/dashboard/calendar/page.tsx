@@ -14,10 +14,10 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { Loader } from 'lucide-react';
 
-interface InterventionWithDetails extends (Intervention | ScheduledMaintenance) {
+type InterventionWithDetails = (Intervention | ScheduledMaintenance) & {
     clientName: string | undefined;
     operatorName: string;
-}
+};
 
 const InterventionCard = ({ intervention }: { intervention: InterventionWithDetails }) => {
     
@@ -107,6 +107,8 @@ export default function CalendarPage() {
 
     if (interventions.length > 0) {
         getDetails();
+    } else {
+        setDetailedInterventions([]);
     }
   }, [interventions]);
 
