@@ -173,6 +173,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           setCurrentCompany(null);
           localStorage.removeItem('companyId');
           setAvailableUsers([creatorUser]);
+          setUser(creatorUser);
+          localStorage.setItem('user', JSON.stringify(creatorUser));
           return;
       }
       
