@@ -46,11 +46,11 @@ const formSchema = z.object({
   dueDate: z.date({ required_error: 'La data di scadenza è obbligatoria.' }),
   assignedOperatorId: z.string().nullable(),
   newUpdate: z.string().optional(),
-  timeSpent: z.coerce.number().optional(),
+  timeSpent: z.coerce.number().positive({ message: 'Le ore impiegate devono essere un numero positivo.' }).optional(),
   materialsUsed: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.status === 'Completato') {
-        if (!data.timeSpent || data.timeSpent <= 0) {
+        if (!data.timeSpent) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['timeSpent'],
