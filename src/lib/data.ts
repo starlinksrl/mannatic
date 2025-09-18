@@ -107,10 +107,11 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
   try {
     const docRef = await addDoc(collection(db, 'users'), {
         ...userData,
+        email: userData.email.toLowerCase(),
         avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
     });
     
-    return { id: docRef.id, ...userData, avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}` } as User;
+    return { id: docRef.id, ...userData, email: userData.email.toLowerCase(), avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}` } as User;
   } catch (error) {
       console.error("Error adding user:", error);
       throw new Error("Failed to add user.");
@@ -123,6 +124,10 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         
         if(updatedData.password === '') {
             delete updatedData.password;
+        }
+
+        if (updatedData.email) {
+            updatedData.email = updatedData.email.toLowerCase();
         }
         
         await updateDoc(userDocRef, updatedData);
@@ -157,10 +162,10 @@ export async function getClients(companyId: string): Promise<Client[]> {
   return clients;
 }
 
-export function getClient(clientId: string) {
+export async function getClient(clientId: string) {
     // This is tricky now. We need to find a user with this ID.
     // This is a placeholder until clients are a full-fledged collection.
-    const user = getUserById(clientId);
+    const user = await getUserById(clientId);
     return user;
 }
 
@@ -368,22 +373,30 @@ export async function getNotifications(companyId: string): Promise<Notification[
         const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
         
         // If no notifications, create some demo ones.
-        if (notifications.length === 0) {
+        if (notifications.length === 0 && companyId === 'company-1') { // Only for first company to avoid clutter
+            const allUsers = await getUsers(companyId);
+            const admin = allUsers.find(u => u.role === 'Admin');
+            const operator = allUsers.find(u => u.role === 'Operator');
+            const client = allUsers.find(u => u.role === 'Client');
+            
             const batch = writeBatch(db);
-            const demoNotifications = [
-                { userId: 'user-admin-1', message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId },
-                { userId: 'user-operator-1', message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId },
-                { userId: 'user-client-1', message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId },
-            ];
+            const demoNotifications = [];
+            
+            if(admin) demoNotifications.push({ userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId });
+            if(operator) demoNotifications.push({ userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId });
+            if(client) demoNotifications.push({ userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId });
+
             demoNotifications.forEach(notif => {
                 const docRef = doc(collection(db, 'notifications')); // auto-generate ID
                 batch.set(docRef, notif);
             });
             await batch.commit();
-            return demoNotifications as Notification[];
+            
+            const newSnapshot = await getDocs(q);
+            return newSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
         }
 
-        return notifications;
+        return notifications.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
         console.error("Error fetching notifications:", error);
         return [];
