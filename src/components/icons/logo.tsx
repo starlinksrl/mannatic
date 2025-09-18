@@ -24,6 +24,6 @@ export const Logo = ({ className }: { className?: string }) => (
       <path d="m7.8 7.8-2.9-1.7" />
       <circle cx="12" cy="12" r="4" />
     </svg>
-    <span className="font-headline text-lg font-bold text-foreground">SchedulaPro</span>
+    <span className="font-headline text-lg font-bold text-foreground">MannaTic</span>
   </div>
 );

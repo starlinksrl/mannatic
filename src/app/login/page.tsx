@@ -38,7 +38,7 @@ export default function LoginPage() {
   };
   
   const handleCreatorLogin = async () => {
-    const success = await login('creator@schedulapro.com', 'creatorpassword');
+    const success = await login('creator@mannatic.com', 'creatorpassword');
     if (success) {
       router.push('/dashboard');
       toast({
@@ -62,7 +62,7 @@ export default function LoginPage() {
             <div className="flex justify-center mb-4">
               <Logo />
             </div>
-          <CardTitle className="text-2xl">Accedi a SchedulaPro</CardTitle>
+          <CardTitle className="text-2xl">Accedi a MannaTic</CardTitle>
           <CardDescription>Inserisci le tue credenziali per continuare</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -109,7 +109,7 @@ export default function LoginPage() {
           </div>
            <Button variant="outline" className="w-full" onClick={handleCreatorLogin}>
             Login as Creator (Dev)
-          </Button>
+           </Button>
         </CardFooter>
       </Card>
     </div>

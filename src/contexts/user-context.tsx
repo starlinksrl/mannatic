@@ -26,7 +26,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 const creatorUser: User = { 
   id: CREATOR_USER_ID, 
   name: 'Creator', 
-  email: 'creator@schedulapro.com', 
+  email: 'creator@mannatic.com', 
   role: 'Creator', 
   avatarUrl: 'https://i.pravatar.cc/150?u=creator', 
   password: 'creatorpassword',

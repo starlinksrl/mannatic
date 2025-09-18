@@ -138,6 +138,9 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
         });
     }
   }
+  
+  const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -218,8 +221,12 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                                     <SelectItem value="In corso">In corso</SelectItem>
                                     <SelectItem value="In attesa">In attesa</SelectItem>
                                     <SelectItem value="Completato">Completato</SelectItem>
-                                    <SelectItem value="Da Fatturare">Da Fatturare</SelectItem>
-                                    <SelectItem value="Fatturato">Fatturato</SelectItem>
+                                    {canSetInvoiceStatus && (
+                                        <>
+                                            <SelectItem value="Da Fatturare">Da Fatturare</SelectItem>
+                                            <SelectItem value="Fatturato">Fatturato</SelectItem>
+                                        </>
+                                    )}
                                     <SelectItem value="Annullato">Annullato</SelectItem>
                                 </SelectContent>
                             </Select>

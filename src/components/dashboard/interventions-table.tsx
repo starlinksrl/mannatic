@@ -240,6 +240,9 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     { key: 'operator', label: 'Operatore', visible: currentUser.role !== 'Operator', className: 'hidden lg:table-cell' },
     { key: 'actions', label: 'Azioni', visible: true, className: 'w-12' },
   ];
+  
+  const canCreateIntervention = ['Admin', 'Client', 'Operator'].includes(currentUser.role);
+  const canDeleteIntervention = ['Admin', 'Client'].includes(currentUser.role);
 
   return (
     <div className="space-y-4">
@@ -284,7 +287,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 </Select>
                 )}
             </div>
-            { (currentUser.role === 'Admin' || currentUser.role === 'Client') &&
+            { canCreateIntervention &&
                 <div className="md:ml-4">
                     <AddInterventionForm
                         clients={clients}
@@ -323,7 +326,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                         <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
-                        {currentUser.role === 'Admin' && (
+                        {canDeleteIntervention && (
                             <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
@@ -387,7 +390,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                          <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                              <Pencil className="mr-2" /> Modifica
                          </DropdownMenuItem>
-                         {currentUser.role === 'Admin' && (
+                         {canDeleteIntervention && (
                             <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
