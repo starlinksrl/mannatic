@@ -135,16 +135,6 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
     };
     const docRef = await addDoc(collection(db, 'users'), newUserPayload);
     
-    // If the user is a client, also add them to the clients collection for simplicity of lookup
-    if(newUserPayload.role === 'Client') {
-        const clientCollectionRef = collection(db, 'clients');
-        await addDoc(clientCollectionRef, {
-            userId: docRef.id,
-            name: newUserPayload.name,
-            companyId: newUserPayload.companyId
-        })
-    }
-    
     return { id: docRef.id, ...newUserPayload };
   } catch (error) {
       console.error("Error adding user:", error);
@@ -189,10 +179,18 @@ export async function deleteUser(id: string): Promise<boolean> {
 
 export async function getClients(companyId: string): Promise<Client[]> {
   if (!companyId) return [];
-  const users = await getUsers(companyId);
-  return users
-    .filter(u => u.role === 'Client')
-    .map(u => ({ id: u.id, name: u.name, companyId: u.companyId }));
+  try {
+    const q = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Client"));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data().name,
+      companyId: doc.data().companyId,
+    } as Client));
+  } catch (error) {
+    console.error("Error fetching clients:", error);
+    return [];
+  }
 }
 
 export async function getClient(clientId: string): Promise<Client | null> {
