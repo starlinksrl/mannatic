@@ -1,3 +1,5 @@
+'use client';
+
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Menu } from 'lucide-react';
