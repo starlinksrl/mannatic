@@ -126,7 +126,7 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0">
+      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>Modifica Manutenzione #{maintenance.id}</DialogTitle>
         </DialogHeader>
@@ -345,7 +345,7 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
             </div>
         </ScrollArea>
 
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
             <DialogClose asChild>
                 <Button variant="outline">Annulla</Button>
             </DialogClose>
