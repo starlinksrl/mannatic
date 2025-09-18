@@ -43,6 +43,7 @@ export type InterventionPriority = 'Bassa' | 'Media' | 'Alta' | 'Critica';
 export interface InterventionUpdate {
   date: string;
   description: string;
+  userName: string;
 }
 
 export interface Intervention {
@@ -67,18 +68,7 @@ export interface Intervention {
 
 export interface ScheduledMaintenance extends Intervention {
   isMaintenance: true;
-  equipmentId?: string; // Kept for maintenance for now, but removed from standard intervention
-  periodicity: 'daily' | 'weekly' | 'monthly' | 'yearly';
   recurrenceMonths: number; // New field for recurrence in months
   checklist: { task: string; completed: boolean }[];
   nextDueDate: string;
-}
-
-export interface Notification {
-  id: string;
-  userId: string;
-  message: string;
-  read: boolean;
-  createdAt: string;
-  companyId: string;
 }

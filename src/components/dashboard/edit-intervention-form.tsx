@@ -107,7 +107,11 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
     
     let newUpdates = intervention?.updates || [];
     if(values.newUpdate && values.newUpdate.trim() !== '') {
-        newUpdates = [{ date: new Date().toISOString(), description: values.newUpdate.trim() }, ...newUpdates];
+        newUpdates = [{ 
+            date: new Date().toISOString(), 
+            description: values.newUpdate.trim(),
+            userName: currentUser.name
+        }, ...newUpdates];
     }
 
     const updatedInterventionData = {
@@ -384,6 +388,8 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                                         <MessageSquarePlus className="w-4 h-4 mt-1 text-muted-foreground" />
                                         <div className="flex-1">
                                             <p className="text-muted-foreground">
+                                                <span className="font-semibold">{update.userName}</span>
+                                                {' - '}
                                                 {formatDistanceToNow(new Date(update.date), { addSuffix: true, locale: it })}
                                             </p>
                                             <p>{update.description}</p>

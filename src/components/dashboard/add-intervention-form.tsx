@@ -76,13 +76,14 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!currentCompany) return;
+    if (!currentCompany || !currentUser) return;
 
     const newIntervention = await addIntervention({
         ...values,
         priority: values.priority as InterventionPriority,
         dueDate: values.dueDate.toISOString(),
-        companyId: currentCompany.id
+        companyId: currentCompany.id,
+        creatorName: currentUser.name
     });
     
     onInterventionAdded(newIntervention);

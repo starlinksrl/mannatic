@@ -270,7 +270,7 @@ async function checkAndConvertMaintenance(companyId: string) {
                 assignedOperatorId: maint.assignedOperatorId,
                 createdAt: new Date().toISOString(),
                 dueDate: maint.nextDueDate,
-                updates: [{date: new Date().toISOString(), description: `Creato da manutenzione #${maint.id}`}],
+                updates: [{date: new Date().toISOString(), description: `Creato da manutenzione #${maint.id}`, userName: 'Sistema'}],
                 companyId: maint.companyId
             };
             await addDoc(collection(db, 'interventions'), newInterventionData);
@@ -310,13 +310,16 @@ export async function getScheduledMaintenance(companyId: string): Promise<Schedu
     return allCompanyInterventions.filter(i => 'isMaintenance' in i && i.isMaintenance === true) as ScheduledMaintenance[];
 }
 
-export async function addIntervention(interventionData: Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'>): Promise<Intervention> {
+type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string };
+
+export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
+    const { creatorName, ...restOfData } = interventionData;
     const newInterventionData = {
-        ...interventionData,
+        ...restOfData,
         status: 'Nuovo' as InterventionStatus,
         sla: '24h',
         createdAt: new Date().toISOString(),
-        updates: [{ date: new Date().toISOString(), description: 'Intervento creato.' }],
+        updates: [{ date: new Date().toISOString(), description: 'Intervento creato.', userName: creatorName }],
     };
     const docRef = await addDoc(collection(db, 'interventions'), newInterventionData);
     return { id: docRef.id, ...newInterventionData };
@@ -333,7 +336,7 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
         createdAt: new Date().toISOString(),
         isMaintenance: true,
         nextDueDate,
-        updates: [{ date: new Date().toISOString(), description: 'Manutenzione programmata creata.' }],
+        updates: [{ date: new Date().toISOString(), description: 'Manutenzione programmata creata.', userName: 'Sistema' }],
     };
     const docRef = await addDoc(collection(db, 'interventions'), newMaintenanceData);
     return { id: docRef.id, ...newMaintenanceData };
