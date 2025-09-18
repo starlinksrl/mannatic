@@ -30,9 +30,9 @@ import { CalendarIcon, MessageSquarePlus } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Intervention, Client, User, Equipment, InterventionPriority, InterventionStatus } from '@/lib/types';
+import { Intervention, Client, User, InterventionPriority, InterventionStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateIntervention, getEquipments } from '@/lib/data';
+import { updateIntervention } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { useUser } from '@/contexts/user-context';
@@ -40,13 +40,31 @@ import { useUser } from '@/contexts/user-context';
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
-  equipmentId: z.string({ required_error: 'L\'attrezzatura è obbligatoria.' }),
   description: z.string().min(10, { message: 'La descrizione deve contenere almeno 10 caratteri.' }),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   status: z.enum(['Nuovo', 'In corso', 'In attesa', 'Completato', 'Annullato', 'Da Fatturare', 'Fatturato'], { required_error: 'Lo stato è obbligatorio.' }),
   dueDate: z.date({ required_error: 'La data di scadenza è obbligatoria.' }),
   assignedOperatorId: z.string().nullable(),
   newUpdate: z.string().optional(),
+  timeSpent: z.coerce.number().optional(),
+  materialsUsed: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (data.status === 'Da Fatturare') {
+        if (!data.timeSpent || data.timeSpent <= 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['timeSpent'],
+                message: 'Le ore impiegate sono obbligatorie per la fatturazione.',
+            });
+        }
+        if (!data.materialsUsed || data.materialsUsed.trim() === '') {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['materialsUsed'],
+                message: 'I materiali impiegati sono obbligatori per la fatturazione.',
+            });
+        }
+    }
 });
 
 interface EditInterventionFormProps {
@@ -61,26 +79,11 @@ interface EditInterventionFormProps {
 
 export function EditInterventionForm({ intervention, onInterventionUpdated, clients, operators, currentUser, isOpen, setIsOpen }: EditInterventionFormProps) {
   const { toast } = useToast();
-  const [equipments, setEquipments] = useState<Equipment[]>([]);
   const { currentCompany } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   });
-
-  const selectedClientId = form.watch('clientId');
-
-  useEffect(() => {
-    async function fetchEquipments() {
-        if (selectedClientId && currentCompany) {
-            const companyEquipments = await getEquipments(currentCompany.id);
-            setEquipments(companyEquipments.filter(e => e.clientId === selectedClientId));
-        } else {
-            setEquipments([]);
-        }
-    }
-    fetchEquipments();
-  }, [selectedClientId, currentCompany]);
 
   useEffect(() => {
     if (intervention) {
@@ -91,6 +94,8 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
         status: intervention.status,
         assignedOperatorId: intervention.assignedOperatorId || null,
         newUpdate: '',
+        timeSpent: intervention.timeSpent || undefined,
+        materialsUsed: intervention.materialsUsed || '',
       });
     }
   }, [intervention, form]);
@@ -156,8 +161,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                     )}
                     />
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
+                    <FormField
                         control={form.control}
                         name="clientId"
                         render={({ field }) => (
@@ -179,29 +183,6 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                             </FormItem>
                         )}
                         />
-                        <FormField
-                        control={form.control}
-                        name="equipmentId"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Attrezzatura</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedClientId}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={selectedClientId ? "Seleziona un'attrezzatura" : "Seleziona prima un cliente"} />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {equipments.map(equipment => (
-                                    <SelectItem key={equipment.id} value={equipment.id}>{equipment.name}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </div>
 
                     <FormField
                     control={form.control}
@@ -336,6 +317,38 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                             )}
                         />
                     )}
+
+                    <Separator />
+                    
+                    <h4 className="text-sm font-medium">Dettagli Fatturazione</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="timeSpent"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Ore Totali Impiegate</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="Es. 8" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    <FormField
+                        control={form.control}
+                        name="materialsUsed"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Materiali Impiegati</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="Elencare i materiali utilizzati..." {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                     
                     <Separator />
 

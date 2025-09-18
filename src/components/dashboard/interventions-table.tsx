@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Intervention, UserRole, User, Client, Equipment, ScheduledMaintenance } from '@/lib/types';
+import { Intervention, UserRole, User, Client } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { getClient, getEquipment, getOperator, addIntervention, deleteIntervention, getClients } from '@/lib/data';
+import { deleteIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
 import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';

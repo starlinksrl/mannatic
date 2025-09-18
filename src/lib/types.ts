@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 
 export interface Company {
@@ -48,7 +49,6 @@ export interface Intervention {
   id: string;
   title: string;
   clientId: string;
-  equipmentId: string;
   description: string;
   priority: InterventionPriority;
   sla: string; // e.g., '4h', '8h', '24h'
@@ -58,7 +58,7 @@ export interface Intervention {
   dueDate: string;
   completedAt?: string;
   timeSpent?: number; // in hours
-  materialsUsed?: { name: string; quantity: number }[];
+  materialsUsed?: string;
   photos?: string[];
   clientSignature?: string;
   updates?: InterventionUpdate[];
@@ -67,6 +67,7 @@ export interface Intervention {
 
 export interface ScheduledMaintenance extends Intervention {
   isMaintenance: true;
+  equipmentId?: string; // Kept for maintenance for now, but removed from standard intervention
   periodicity: 'daily' | 'weekly' | 'monthly' | 'yearly';
   recurrenceMonths: number; // New field for recurrence in months
   checklist: { task: string; completed: boolean }[];

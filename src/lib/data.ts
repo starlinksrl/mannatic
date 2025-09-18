@@ -263,7 +263,6 @@ async function checkAndConvertMaintenance(companyId: string) {
             const newInterventionData: Omit<Intervention, 'id'> = {
                 title: maint.title,
                 clientId: maint.clientId,
-                equipmentId: maint.equipmentId,
                 description: `Creato automaticamente dalla manutenzione programmata: ${maint.description}`,
                 priority: 'Bassa',
                 sla: '48h',
