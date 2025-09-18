@@ -10,6 +10,7 @@ const CREATOR_USER_ID = 'user-creator';
 
 interface UserContextType {
   user: User | null; // The currently active user (can be the original or a simulated one)
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   sessionUser: User | null; // The user who originally logged in
   login: (email: string, password?: string) => Promise<boolean>;
   logout: () => void;
@@ -68,11 +69,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setUser(freshUser);
 
         // If no session user, the logged in user is the session user
-        if (!sessionUserToLoad) {
+        if (!sessionUserToLoad && freshUser) {
           setSessionUser(freshUser);
-          if (freshUser) {
-            localStorage.setItem('sessionUser', JSON.stringify(freshUser));
-          }
+          localStorage.setItem('sessionUser', JSON.stringify(freshUser));
         }
 
         const activeUserForContext = freshUser || sessionUserToLoad;
@@ -193,6 +192,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const value = { 
     user, 
+    setUser,
     sessionUser,
     login, 
     logout, 
