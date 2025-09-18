@@ -313,13 +313,39 @@ export async function getScheduledMaintenance(companyId: string): Promise<Schedu
 type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string };
 
 export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
-    const { creatorName, ...restOfData } = interventionData;
+    const { creatorName, clientId, companyId, ...restOfData } = interventionData;
+    
+    // Check if clientId is an existing user or a new name
+    const clients = await getClients(companyId);
+    let finalClientId = clients.find(c => c.name === clientId)?.id;
+    let newClientWasCreated = false;
+
+    if (!finalClientId) {
+        console.log(`Client "${clientId}" not found. Creating new client.`);
+        const company = (await getDoc(doc(db, 'companies', companyId))).data();
+        const companyName = company?.name.toLowerCase().replace(/[^a-z0-9]/gi, '');
+        const clientNameNormalized = clientId.toLowerCase().replace(/[^a-z0-9]/gi, '');
+
+        const newClient = await addUser({
+            name: clientId,
+            email: `${clientNameNormalized}@${companyName}.it`,
+            password: '12345678',
+            role: 'Client',
+            companyId: companyId,
+        });
+        finalClientId = newClient.id;
+        newClientWasCreated = true;
+        console.log(`New client created with ID: ${finalClientId}`);
+    }
+
     const newInterventionData = {
         ...restOfData,
+        clientId: finalClientId,
+        companyId: companyId,
         status: 'Nuovo' as InterventionStatus,
         sla: '24h',
         createdAt: new Date().toISOString(),
-        updates: [{ date: new Date().toISOString(), description: 'Intervento creato.', userName: creatorName }],
+        updates: [{ date: new Date().toISOString(), description: `Creato da ${creatorName}.`, userName: creatorName }],
     };
     const docRef = await addDoc(collection(db, 'interventions'), newInterventionData);
     return { id: docRef.id, ...newInterventionData };
@@ -345,7 +371,16 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
 export async function updateIntervention(id: string, updatedData: Partial<Intervention>): Promise<Intervention | null> {
     try {
         const docRef = doc(db, 'interventions', id);
-        await updateDoc(docRef, updatedData);
+        
+        const dataToUpdate = { ...updatedData };
+        if (dataToUpdate.timeSpent === undefined) {
+            dataToUpdate.timeSpent = null;
+        }
+        if (dataToUpdate.materialsUsed === undefined) {
+            dataToUpdate.materialsUsed = null;
+        }
+
+        await updateDoc(docRef, dataToUpdate as Partial<Intervention>);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Intervention : null;
     } catch (error) {
