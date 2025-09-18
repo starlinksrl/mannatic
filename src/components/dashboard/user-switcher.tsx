@@ -39,8 +39,8 @@ export function UserSwitcher() {
 
   return (
     <div className="flex items-center gap-4">
-      {/* Company Switcher */}
-      {user.role === 'Creator' && (
+      {/* Company Switcher or Display */}
+      {user.role === 'Creator' ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="hidden md:flex gap-2">
@@ -59,10 +59,17 @@ export function UserSwitcher() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+      ) : (
+         currentCompany && (
+            <div className="hidden md:flex items-center gap-2">
+                <Building className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium hidden lg:inline">{currentCompany.name}</span>
+            </div>
+         )
       )}
 
       {/* User simulator */}
-       {user.role === 'Creator' && (
+       {user.role === 'Creator' ? (
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -83,18 +90,20 @@ export function UserSwitcher() {
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   {availableUsers.map((u) => (
-                    <DropdownMenuItem key={u.id} onSelect={() => handleSwitchUser(u.id)}>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={u.avatarUrl} alt={u.name} />
-                          <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{u.name}</p>
-                          <p className="text-xs text-muted-foreground">{u.role}</p>
+                    u.companyId === currentCompany?.id || u.id === 'user-creator' ? (
+                        <DropdownMenuItem key={u.id} onSelect={() => handleSwitchUser(u.id)}>
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                            <AvatarImage src={u.avatarUrl} alt={u.name} />
+                            <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                            <p className="font-medium">{u.name}</p>
+                            <p className="text-xs text-muted-foreground">{u.role}</p>
+                            </div>
                         </div>
-                      </div>
-                    </DropdownMenuItem>
+                        </DropdownMenuItem>
+                    ) : null
                   ))}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
@@ -105,7 +114,7 @@ export function UserSwitcher() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        )}
+        ) : null}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -122,7 +131,7 @@ export function UserSwitcher() {
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {user.role === 'Creator' && (
+          {user.role === 'Creator' ? (
               <>
                  <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
@@ -147,29 +156,32 @@ export function UserSwitcher() {
                     <DropdownMenuPortal>
                     <DropdownMenuSubContent>
                         {availableUsers.map((u) => (
-                        <DropdownMenuItem key={u.id} onSelect={() => handleSwitchUser(u.id)}>
-                            <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={u.avatarUrl} alt={u.name} />
-                                <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="font-medium">{u.name}</p>
-                                <p className="text-xs text-muted-foreground">{u.role}</p>
-                            </div>
-                            </div>
-                        </DropdownMenuItem>
+                           u.companyId === currentCompany?.id || u.id === 'user-creator' ? (
+                            <DropdownMenuItem key={u.id} onSelect={() => handleSwitchUser(u.id)}>
+                                <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={u.avatarUrl} alt={u.name} />
+                                    <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-medium">{u.name}</p>
+                                    <p className="text-xs text-muted-foreground">{u.role}</p>
+                                </div>
+                                </div>
+                            </DropdownMenuItem>
+                           ) : null
                         ))}
                     </DropdownMenuSubContent>
                     </DropdownMenuPortal>
                 </DropdownMenuSub>
                 <DropdownMenuSeparator/>
               </>
+          ) : (
+            <DropdownMenuItem>
+                <UserIcon className="mr-2" />
+                Profilo
+            </DropdownMenuItem>
           )}
-          <DropdownMenuItem>
-            <UserIcon className="mr-2" />
-            Profilo
-          </DropdownMenuItem>
           <DropdownMenuSeparator/>
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2" />
