@@ -30,7 +30,16 @@ export async function getCompanies(): Promise<Company[]> {
 
 export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Company> {
     try {
-        const docRef = await addDoc(collection(db, 'companies'), companyData);
+        const docRef = await addDoc(collection(db, 'companies'), {
+            name: companyData.name,
+            address: companyData.address || '',
+            vatNumber: companyData.vatNumber || '',
+            taxCode: companyData.taxCode || '',
+            phone: companyData.phone || '',
+            uniqueCode: companyData.uniqueCode || '',
+            email: companyData.email || '',
+        });
+        
         // Create an admin user for the new company
         await addUser({
             name: `Admin ${companyData.name}`,
@@ -39,12 +48,26 @@ export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Comp
             role: 'Admin',
             companyId: docRef.id
         });
-        return { id: docRef.id, ...companyData };
+        
+        const newCompany: Company = {
+            id: docRef.id,
+            name: companyData.name,
+            address: companyData.address,
+            vatNumber: companyData.vatNumber,
+            taxCode: companyData.taxCode,
+            phone: companyData.phone,
+            uniqueCode: companyData.uniqueCode,
+            email: companyData.email,
+        };
+
+        return newCompany;
+
     } catch (error) {
         console.error("Error adding company:", error);
         throw new Error("Failed to add company.");
     }
 }
+
 
 // --- USER MANAGEMENT ---
 
@@ -105,18 +128,20 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise<User> {
   try {
-    const docRef = await addDoc(collection(db, 'users'), {
-        ...userData,
-        email: userData.email.toLowerCase(),
-        avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
-    });
+    const newUserPayload = {
+      ...userData,
+      email: userData.email.toLowerCase(),
+      avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
+    };
+    const docRef = await addDoc(collection(db, 'users'), newUserPayload);
     
-    return { id: docRef.id, ...userData, email: userData.email.toLowerCase(), avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}` } as User;
+    return { id: docRef.id, ...newUserPayload } as User;
   } catch (error) {
       console.error("Error adding user:", error);
       throw new Error("Failed to add user.");
   }
 }
+
 
 export async function updateUser(id: string, updatedData: Partial<User>): Promise<User | null> {
     try {

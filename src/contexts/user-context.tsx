@@ -86,11 +86,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password?: string): Promise<boolean> => {
+    const normalizedEmail = email.toLowerCase();
     let foundUser: User | null = null;
-    if (email.toLowerCase() === creatorUser.email && password === creatorUser.password) {
+    if (normalizedEmail === creatorUser.email && password === creatorUser.password) {
       foundUser = creatorUser;
     } else {
-      foundUser = await getUserByEmail(email);
+      foundUser = await getUserByEmail(normalizedEmail);
       if (foundUser?.password !== password) foundUser = null;
     }
     
