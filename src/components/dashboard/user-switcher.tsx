@@ -96,6 +96,11 @@ export function UserSwitcher() {
                 </DropdownMenuItem>
               ))}
             </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+             <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2" />
+                Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -163,7 +168,7 @@ export function UserSwitcher() {
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
-          <DropdownMenuSeparator className="md:hidden" />
+          <DropdownMenuSeparator/>
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2" />
             Logout
