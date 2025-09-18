@@ -114,7 +114,7 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
         }
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0">
+      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>Crea nuova manutenzione programmata</DialogTitle>
         </DialogHeader>
@@ -306,7 +306,7 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
                 </Form>
             </div>
         </ScrollArea>
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
             <DialogClose asChild>
                 <Button variant="outline">Annulla</Button>
             </DialogClose>

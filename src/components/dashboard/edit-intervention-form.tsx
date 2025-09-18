@@ -395,7 +395,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
             </div>
         </ScrollArea>
 
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t mt-auto">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
             <DialogClose asChild>
                 <Button variant="outline">Annulla</Button>
             </DialogClose>

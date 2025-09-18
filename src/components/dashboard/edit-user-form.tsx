@@ -102,11 +102,11 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px] grid-rows-[auto_1fr_auto] p-0">
+      <DialogContent className="sm:max-w-[425px] grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>Modifica utente</DialogTitle>
         </DialogHeader>
-        <ScrollArea>
+        <ScrollArea className="h-full">
         <div className="p-6">
         <Form {...form}>
           <form id="edit-user-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -195,7 +195,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
         </Form>
         </div>
         </ScrollArea>
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
             <DialogClose asChild>
                 <Button variant="outline">Annulla</Button>
             </DialogClose>
