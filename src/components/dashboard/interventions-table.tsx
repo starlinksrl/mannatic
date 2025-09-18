@@ -313,7 +313,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                     <div className="flex-1 space-y-1">
                         <p className="font-medium">{intervention.title}</p>
                         {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{clientName}</p>}
-                        <p className="text-sm text-muted-foreground">{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</p>
+                        {intervention.dueDate && <p className="text-sm text-muted-foreground">{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</p>}
                         <div className="flex items-center gap-2 pt-1">
                             {getPriorityBadge(intervention.priority)}
                             {getStatusBadge(intervention.status)}
@@ -380,7 +380,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                   {currentUser.role !== 'Client' && <TableCell className="hidden lg:table-cell">{clientName}</TableCell>}
                   <TableCell>{getStatusBadge(intervention.status)}</TableCell>
                   <TableCell className="hidden sm:table-cell">{getPriorityBadge(intervention.priority)}</TableCell>
-                  <TableCell className="hidden md:table-cell">{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</TableCell>
+                  <TableCell className="hidden md:table-cell">{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it }) : 'N/D'}</TableCell>
                   {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell">{operatorName || 'Non assegnato'}</TableCell>}
                   <TableCell className="text-right">
                     <DropdownMenu>

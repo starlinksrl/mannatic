@@ -49,19 +49,19 @@ const formSchema = z.object({
   timeSpent: z.coerce.number().optional(),
   materialsUsed: z.string().optional(),
 }).superRefine((data, ctx) => {
-    if (data.status === 'Da Fatturare') {
+    if (data.status === 'Completato') {
         if (!data.timeSpent || data.timeSpent <= 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['timeSpent'],
-                message: 'Le ore impiegate sono obbligatorie per la fatturazione.',
+                message: 'Le ore impiegate sono obbligatorie per completare l\'intervento.',
             });
         }
         if (!data.materialsUsed || data.materialsUsed.trim() === '') {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['materialsUsed'],
-                message: 'I materiali impiegati sono obbligatori per la fatturazione.',
+                message: 'I materiali impiegati sono obbligatori per completare l\'intervento.',
             });
         }
     }
@@ -122,7 +122,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
         dueDate: values.dueDate.toISOString(),
         updates: newUpdates,
         timeSpent: values.timeSpent || null,
-        materialsUsed: values.materialsUsed || '',
+        materialsUsed: values.materialsUsed || null,
     };
     
     const updated = await updateIntervention(intervention!.id, updatedInterventionData);
@@ -333,7 +333,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
 
                     <Separator />
                     
-                    <h4 className="text-sm font-medium">Dettagli Fatturazione</h4>
+                    <h4 className="text-sm font-medium">Dettagli Completamento</h4>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                             control={form.control}
@@ -356,7 +356,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                             <FormItem>
                                 <FormLabel>Materiali Impiegati</FormLabel>
                                 <FormControl>
-                                    <Textarea placeholder="Elencare i materiali utilizzati..." {...field} />
+                                    <Textarea placeholder="Elencare i materiali utilizzati..." {...field} value={field.value ?? ''} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
