@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useUser } from '@/contexts/user-context';
@@ -27,6 +28,11 @@ export function UserSwitcher() {
   const handleLogout = () => {
     logout();
     router.push('/login');
+  }
+
+  const handleSwitchUser = (userId: string) => {
+    switchUser(userId);
+    // The logic to navigate is now handled within the context
   }
 
   if (!user) return null;
@@ -76,7 +82,7 @@ export function UserSwitcher() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               {availableUsers.map((u) => (
-                <DropdownMenuItem key={u.id} onSelect={() => switchUser(u.id)}>
+                <DropdownMenuItem key={u.id} onSelect={() => handleSwitchUser(u.id)}>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={u.avatarUrl} alt={u.name} />
@@ -141,7 +147,7 @@ export function UserSwitcher() {
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
                 {availableUsers.map((u) => (
-                  <DropdownMenuItem key={u.id} onSelect={() => switchUser(u.id)}>
+                  <DropdownMenuItem key={u.id} onSelect={() => handleSwitchUser(u.id)}>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={u.avatarUrl} alt={u.name} />

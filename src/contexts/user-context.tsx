@@ -1,8 +1,10 @@
 
+
 'use client';
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { User, getUserByEmail, getUserById, getAllUsers, getCompanies, Company } from '@/lib/data';
+import { useRouter } from 'next/navigation';
+import { User, getUserByEmail, getUserById, getAllUsers, getCompanies, Company, getUsers } from '@/lib/data';
 
 const CREATOR_USER_ID = 'user-creator';
 
@@ -37,13 +39,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
+  const router = useRouter();
   
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
-      
-      const allDbUsers = await getAllUsers();
-      setAvailableUsers([creatorUser, ...allDbUsers]);
       
       const allCompanies = await getCompanies();
       setCompanies(allCompanies);
@@ -59,11 +59,23 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
            const savedCompanyId = localStorage.getItem('companyId');
            if (savedCompanyId) {
              const company = allCompanies.find(c => c.id === savedCompanyId);
-             setCurrentCompany(company || null);
+             if (company) {
+                setCurrentCompany(company);
+                const companyUsers = await getUsers(company.id);
+                setAvailableUsers([creatorUser, ...companyUsers]);
+             } else {
+                setAvailableUsers([creatorUser]);
+             }
+           } else {
+             setAvailableUsers([creatorUser]);
            }
         } else if (freshUser) {
            const company = allCompanies.find(c => c.id === freshUser.companyId);
            setCurrentCompany(company || null);
+           if (company) {
+             const companyUsers = await getUsers(company.id);
+             setAvailableUsers([creatorUser, ...companyUsers]);
+           }
         }
 
       }
@@ -87,13 +99,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('user', JSON.stringify(foundUser));
 
       if (foundUser.role === 'Creator') {
-        // Don't auto-select a company for the creator on login
         setCurrentCompany(null);
         localStorage.removeItem('companyId');
+        setAvailableUsers([creatorUser]);
+        router.push('/dashboard/companies');
       } else {
-        const company = companies.find(c => c.id === foundUser?.companyId);
+        const company = await companies.find(c => c.id === foundUser?.companyId);
         setCurrentCompany(company || null);
-         if (company) localStorage.setItem('companyId', company.id);
+        if (company) {
+          localStorage.setItem('companyId', company.id);
+          const companyUsers = await getUsers(company.id);
+          setAvailableUsers([creatorUser, ...companyUsers]);
+        }
+        router.push('/dashboard');
       }
       return true;
     }
@@ -108,34 +126,36 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const switchUser = async (userId: string) => {
-    let selectedUser: User | null = null;
-    if (userId === creatorUser.id) {
-        selectedUser = creatorUser;
-    } else {
-        selectedUser = await getUserById(userId);
+    if (userId === CREATOR_USER_ID) {
+      setUser(creatorUser);
+      setCurrentCompany(null);
+      localStorage.setItem('user', JSON.stringify(creatorUser));
+      localStorage.removeItem('companyId');
+      setAvailableUsers([creatorUser]);
+      router.push('/dashboard/companies');
+      return;
     }
+    
+    const selectedUser = await getUserById(userId);
     
     if (selectedUser) {
       setUser(selectedUser);
       localStorage.setItem('user', JSON.stringify(selectedUser));
 
-      // When switching user, also switch company context
-      if (selectedUser.role === 'Creator') {
-         if(!currentCompany) {
-            const firstCompany = companies[0];
-            if(firstCompany) switchCompany(firstCompany.id)
-         }
-      } else {
-        switchCompany(selectedUser.companyId);
+      if (selectedUser.companyId !== currentCompany?.id) {
+          await switchCompany(selectedUser.companyId);
       }
     }
   }
 
-  const switchCompany = (companyId: string) => {
+  const switchCompany = async (companyId: string) => {
       const company = companies.find(c => c.id === companyId);
       if (company && user?.role === 'Creator') {
           setCurrentCompany(company);
-          localStorage.setItem('companyId', company.id);
+          localStorage.setItem('companyId', companyId);
+          const companyUsers = await getUsers(companyId);
+          setAvailableUsers([creatorUser, ...companyUsers]);
+          router.push('/dashboard');
       }
   }
 
