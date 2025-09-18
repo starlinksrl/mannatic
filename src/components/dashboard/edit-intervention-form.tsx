@@ -117,6 +117,8 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
         status: values.status as InterventionStatus,
         dueDate: values.dueDate.toISOString(),
         updates: newUpdates,
+        timeSpent: values.timeSpent || null,
+        materialsUsed: values.materialsUsed || '',
     };
     
     const updated = await updateIntervention(intervention!.id, updatedInterventionData);
@@ -329,7 +331,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                                 <FormItem>
                                     <FormLabel>Ore Totali Impiegate</FormLabel>
                                     <FormControl>
-                                        <Input type="number" placeholder="Es. 8" {...field} />
+                                        <Input type="number" placeholder="Es. 8" {...field} value={field.value ?? ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
