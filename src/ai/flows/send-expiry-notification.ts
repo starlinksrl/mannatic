@@ -21,7 +21,7 @@ const SmtpConfigSchema = z.object({
   from: z.string().email().describe('The sender\'s email address.'),
 });
 
-export const SendExpiryNotificationInputSchema = z.object({
+const SendExpiryNotificationInputSchema = z.object({
   recipientEmail: z.string().email().describe('The email address of the recipient (operator).'),
   interventionId: z.string().describe('The ID of the expiring intervention.'),
   interventionTitle: z.string().describe('The title of the expiring intervention.'),
@@ -31,7 +31,7 @@ export const SendExpiryNotificationInputSchema = z.object({
 });
 export type SendExpiryNotificationInput = z.infer<typeof SendExpiryNotificationInputSchema>;
 
-export const SendExpiryNotificationOutputSchema = z.object({
+const SendExpiryNotificationOutputSchema = z.object({
   success: z.boolean().describe('Whether the email was sent successfully.'),
   emailBody: z.string().optional().describe('The generated body of the email.'),
   error: z.string().optional().describe('Error message if sending failed.'),
