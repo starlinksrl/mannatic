@@ -1,6 +1,6 @@
 // src/ai/flows/send-notification-email.ts
 'use server';
-
+import 'dotenv/config';
 /**
  * @fileOverview An AI agent for generating and sending maintenance notification emails.
  *
@@ -39,9 +39,53 @@ export type SendNotificationEmailOutput = z.infer<typeof SendNotificationEmailOu
 
 
 export async function sendNotificationEmail(input: SendNotificationEmailInput): Promise<SendNotificationEmailOutput> {
-  return sendNotificationEmailFlow(input);
+  // Bypassing AI generation for the test email to fix persistent API key errors.
+  // We will send a static email directly with nodemailer.
+  try {
+    const { smtpConfig, recipientEmail, maintenanceDetails, nextDueDate } = input;
+
+    const transporter = nodemailer.createTransport({
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.port === 465, // true for 465, false for other ports
+      auth: {
+        user: smtpConfig.user,
+        pass: smtpConfig.pass,
+      },
+    });
+
+    const emailSubject = 'Test Email da MannaTic';
+    const emailBody = `
+        <h1>Email di Prova</h1>
+        <p>Questa è un'email di prova per verificare la configurazione SMTP in MannaTic.</p>
+        <p>Se ricevi questa email, le tue impostazioni sono corrette.</p>
+        <hr>
+        <p><b>Dettagli del test:</b></p>
+        <ul>
+            <li><b>Dettagli Manutenzione di Esempio:</b> ${maintenanceDetails}</li>
+            <li><b>Data Scadenza di Esempio:</b> ${nextDueDate}</li>
+        </ul>
+    `;
+    
+    console.log(`Sending static test email to ${recipientEmail} via ${smtpConfig.host}...`);
+
+    await transporter.sendMail({
+      from: smtpConfig.from,
+      to: recipientEmail,
+      subject: emailSubject,
+      html: emailBody,
+    });
+
+    console.log('Test email sent successfully.');
+    return { success: true, emailBody: emailBody };
+
+  } catch (error: any) {
+      console.error('Failed to send test email:', error);
+      return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
+  }
 }
 
+// Keeping the original AI flow for potential future use, but it's not called by the test button anymore.
 const prompt = ai.definePrompt({
   name: 'sendNotificationEmailPrompt',
   input: {schema: z.object({
@@ -92,7 +136,7 @@ const sendNotificationEmailFlow = ai.defineFlow(
       const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
         port: smtpConfig.port,
-        secure: smtpConfig.port === 465, // true for 465, false for other ports
+        secure: smtpConfig.port === 465,
         auth: {
           user: smtpConfig.user,
           pass: smtpConfig.pass,
