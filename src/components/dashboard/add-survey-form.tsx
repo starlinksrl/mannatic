@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -37,6 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addSurvey } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { ScrollArea } from '../ui/scroll-area';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -58,6 +59,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
+  const [clientList, setClientList] = useState(clients);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -69,6 +71,10 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
     },
   });
 
+  useEffect(() => {
+    setClientList(clients);
+  }, [clients]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany) return;
 
@@ -79,6 +85,12 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
     });
     
     onSurveyAdded(newSurvey);
+
+    // Check if a new client was created and update the local list
+    const isNewClient = !clients.some(c => c.id === newSurvey.clientId);
+    if (isNewClient) {
+        setClientList(prev => [...prev, {id: newSurvey.clientId, name: values.clientId, companyId: currentCompany.id}]);
+    }
     
     toast({
       title: 'Sopralluogo creato',
@@ -120,21 +132,68 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                         control={form.control}
                         name="clientId"
                         render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Cliente</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleziona un cliente" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {clients.map(client => (
-                                    <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Cliente</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "justify-between",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value
+                                                    ? clientList.find(
+                                                        (client) => client.name === field.value
+                                                    )?.name ?? field.value
+                                                    : "Seleziona o crea un cliente"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Cerca o crea cliente..." />
+                                            <CommandEmpty>
+                                                 <Button variant="ghost" className="w-full justify-start"
+                                                    onClick={() => {
+                                                        const inputValue = (document.querySelector('[cmdk-input]') as HTMLInputElement)?.value;
+                                                        form.setValue("clientId", inputValue)
+                                                        const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
+                                                        popoverTrigger?.click();
+                                                    }}
+                                                  >
+                                                    Crea "{ (document.querySelector('[cmdk-input]') as HTMLInputElement)?.value }"
+                                                  </Button>
+                                            </CommandEmpty>
+                                            <CommandGroup>
+                                                {clientList.map((client) => (
+                                                    <CommandItem
+                                                        value={client.name}
+                                                        key={client.id}
+                                                        onSelect={() => {
+                                                            form.setValue("clientId", client.name)
+                                                            const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
+                                                            popoverTrigger?.click();
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                client.name === field.value ? "opacity-100" : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {client.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
                             </FormItem>
                         )}
                         />
