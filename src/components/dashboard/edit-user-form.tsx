@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -30,11 +31,12 @@ import { updateUser } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Pencil, Eye, EyeOff } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { useUser } from '@/contexts/user-context';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
-  role: z.enum(['Admin', 'Operator', 'Client'], { required_error: 'Il ruolo è obbligatorio.' }),
+  role: z.enum(['Admin', 'Operator', 'Client', 'Creator'], { required_error: 'Il ruolo è obbligatorio.' }),
   password: z.string().optional(),
   avatarUrl: z.string().optional(),
 });
@@ -48,6 +50,7 @@ interface EditUserFormProps {
 
 export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUserFormProps) {
   const { toast } = useToast();
+  const { user: currentUser } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -56,6 +59,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   });
   
   const avatarUrl = form.watch('avatarUrl');
+  
+  const isEditingOwnProfile = currentUser?.id === user?.id;
 
   useEffect(() => {
     if (user) {
@@ -105,6 +110,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const togglePasswordVisibility = () => {
     setShowPassword(prev => !prev);
   }
+  
+  const canEditRole = currentUser?.role === 'Admin' || currentUser?.role === 'Creator';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -115,7 +122,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     }}>
       <DialogContent className="sm:max-w-[425px] grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle>Modifica utente</DialogTitle>
+          <DialogTitle>{isEditingOwnProfile ? 'Modifica il tuo profilo' : 'Modifica utente'}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="h-full">
         <div className="p-6">
@@ -198,7 +205,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ruolo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!canEditRole}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleziona un ruolo" />

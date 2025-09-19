@@ -65,7 +65,6 @@ export function UserSwitcher() {
 
   if (!user) return null;
 
-  const canEditProfile = user.role === 'Admin' || user.role === 'Creator';
 
   return (
     <>
@@ -231,12 +230,10 @@ export function UserSwitcher() {
                 </>
             )}
 
-            {canEditProfile && (
-              <DropdownMenuItem onSelect={() => setIsProfileModalOpen(true)}>
-                  <UserIcon className="mr-2" />
-                  Profilo
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem onSelect={() => setIsProfileModalOpen(true)}>
+                <UserIcon className="mr-2" />
+                Profilo
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator/>
             <DropdownMenuItem onClick={handleLogout}>
@@ -246,14 +243,12 @@ export function UserSwitcher() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-       {canEditProfile && (
-        <EditUserForm 
-            user={user}
-            onUserUpdated={handleProfileUpdated}
-            isOpen={isProfileModalOpen}
-            setIsOpen={setIsProfileModalOpen}
-        />
-       )}
+       <EditUserForm 
+          user={user}
+          onUserUpdated={handleProfileUpdated}
+          isOpen={isProfileModalOpen}
+          setIsOpen={setIsProfileModalOpen}
+      />
     </>
   );
 }
