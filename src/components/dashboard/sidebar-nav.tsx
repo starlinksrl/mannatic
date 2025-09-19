@@ -23,7 +23,7 @@ const navItems = [
   { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/requests', label: 'Le mie Richieste', icon: ClipboardList, roles: ['Client'] },
-  { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin'] },
+  { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin', 'Creator'] },
   { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
   { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
 ];
