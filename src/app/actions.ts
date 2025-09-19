@@ -16,9 +16,9 @@ export async function getKpiDashboardDescription(input: GenerateKpiDashboardInpu
 export async function sendTestEmail(input: SendNotificationEmailInput): Promise<SendNotificationEmailOutput> {
   try {
     const result = await sendNotificationEmail(input);
-    return { success: true, emailBody: result.emailBody };
-  } catch (error) {
+    return result;
+  } catch (error: any) {
     console.error("Error sending test email:", error);
-    return { success: false };
+    return { success: false, error: error.message || "An unknown error occurred." };
   }
 }

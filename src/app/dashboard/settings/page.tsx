@@ -73,25 +73,42 @@ export default function SettingsPage() {
   }
   
   async function onTestConnection() {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        variant: 'destructive',
+        title: 'Campi obbligatori mancanti',
+        description: 'Per favore, compila tutti i campi prima di testare la connessione.',
+      });
+      return;
+    }
+
     setIsTesting(true);
     const values = form.getValues();
+    
     const result = await sendTestEmail({
       recipientEmail: values.recipientEmail,
       maintenanceDetails: 'Controllo trimestrale del sistema di condizionamento.',
-      nextDueDate: new Date().toLocaleDateString('it-IT')
+      nextDueDate: new Date().toLocaleDateString('it-IT'),
+      smtpConfig: {
+        host: values.smtpHost,
+        port: values.smtpPort,
+        user: values.smtpUser,
+        pass: values.smtpPass,
+        from: values.senderEmail,
+      },
     });
 
     if (result.success) {
       toast({
-        title: 'Test connessione riuscito (Simulazione)',
-        description: 'L\'email di notifica per la manutenzione è stata generata correttamente.',
+        title: 'Test connessione riuscito!',
+        description: `Email di prova inviata con successo a ${values.recipientEmail}.`,
       });
-      console.log('Email Body (simulated):', result.emailBody);
     } else {
       toast({
         variant: 'destructive',
         title: 'Test connessione fallito',
-        description: 'Impossibile generare l\'email di notifica.',
+        description: result.error || 'Controlla le impostazioni SMTP e la connessione di rete.',
       });
     }
     setIsTesting(false);
@@ -107,9 +124,9 @@ export default function SettingsPage() {
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <Card>
           <CardHeader>
-            <CardTitle>Configurazione Notifiche Email</CardTitle>
+            <CardTitle>Configurazione Notifiche Email (SMTP)</CardTitle>
             <CardDescription>
-              Inserisci i dettagli per l'invio delle notifiche. Le impostazioni verranno salvate localmente nel browser a scopo dimostrativo.
+              Inserisci i dettagli del tuo provider SMTP per l'invio delle notifiche. Le credenziali vengono salvate localmente nel browser.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -150,9 +167,9 @@ export default function SettingsPage() {
                       name="smtpUser"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Username</FormLabel>
+                          <FormLabel>Username SMTP</FormLabel>
                           <FormControl>
-                            <Input placeholder="Il tuo username SMTP" {...field} />
+                            <Input placeholder="Il tuo username" {...field} autoComplete="username" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -163,9 +180,9 @@ export default function SettingsPage() {
                       name="smtpPass"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Password</FormLabel>
+                          <FormLabel>Password SMTP</FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
+                            <Input type="password" placeholder="••••••••" {...field} autoComplete="current-password"/>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -181,7 +198,7 @@ export default function SettingsPage() {
                         <FormItem>
                           <FormLabel>Email Mittente Notifiche</FormLabel>
                           <FormControl>
-                            <Input placeholder="noreply@example.com" {...field} />
+                            <Input type="email" placeholder="noreply@example.com" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -194,7 +211,7 @@ export default function SettingsPage() {
                         <FormItem>
                           <FormLabel>Email Destinatario Test</FormLabel>
                           <FormControl>
-                            <Input placeholder="test@example.com" {...field} />
+                            <Input type="email" placeholder="test@example.com" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
