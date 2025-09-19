@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Company, addCompany, getCompanies } from '@/lib/data';
-import { Loader, PlusCircle, Building, Mail, Phone, KeyRound } from 'lucide-react';
+import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +26,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 const formSchema = z.object({
     name: z.string().min(1, { message: 'Il nome è obbligatorio' }),
@@ -37,6 +39,36 @@ const formSchema = z.object({
     email: z.string().email({ message: 'Email non valida' }),
     password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri' })
 });
+
+const changelog = [
+    { 
+        version: "0.5",
+        date: "2024-09-19",
+        title: "Notifiche Automatiche e Fix Accessibilità",
+        icon: Rocket,
+        iconClass: "text-green-500",
+        changes: [
+            { type: Wrench, description: "Implementato un sistema di notifica automatica via email per gli interventi in scadenza." },
+            { type: Bug, description: "Risolto un bug di accessibilità nel menu mobile che non aveva un titolo per gli screen reader." },
+            { type: Wrench, description: "Aggiunta la voce 'Le mie Richieste' alla sidebar per gli utenti Clienti." },
+            { type: Bug, description: "Risolto il problema del logout automatico al ridimensionamento della finestra del browser." },
+            { type: Wrench, description: "Permesso a tutti gli utenti di modificare il proprio profilo (password e avatar)." },
+            { type: Bug, description: "Corretti molteplici errori `FAILED_PRECONDITION` legati alla chiave API di Gemini, cambiando l'approccio all'invio delle email di test." },
+        ]
+    },
+    { 
+        version: "0.4",
+        date: "2024-09-18",
+        title: "Configurazione Email e Miglioramenti UI",
+        icon: Wrench,
+        iconClass: "text-blue-500",
+        changes: [
+            { type: Wrench, description: "Centralizzata la gestione delle impostazioni SMTP nel database per ogni azienda, abbandonando il local storage." },
+            { type: Wrench, description: "Migliorata la UI della pagina Impostazioni con un layout più pulito e un avviso di errore persistente per i test di connessione." },
+        ]
+    },
+    // Add previous versions here if needed
+];
 
 
 export default function CompaniesPage() {
@@ -273,6 +305,41 @@ export default function CompaniesPage() {
                                 <p className="text-xs text-muted-foreground">P.IVA: {company.vatNumber}</p>
                             </CardFooter>
                         </Card>
+                    ))}
+                </div>
+
+                <Separator className="my-8" />
+                
+                <div className="space-y-8">
+                     <div className="text-center">
+                        <h2 className="text-3xl font-bold font-headline">Changelog MannaTic</h2>
+                        <p className="text-muted-foreground">Tutte le modifiche e le novità implementate.</p>
+                    </div>
+                    {changelog.map((entry) => (
+                    <Card key={entry.version}>
+                        <CardHeader className="flex-row items-start gap-4 space-y-0">
+                            <div className="flex items-center gap-4">
+                                <entry.icon className={`h-8 w-8 ${entry.iconClass}`} />
+                                <div className="space-y-1.5">
+                                    <CardTitle className="flex items-center gap-3">
+                                        {entry.title}
+                                        <Badge variant="outline">v{entry.version}</Badge>
+                                    </CardTitle>
+                                    <CardDescription>Rilasciato il {entry.date}</CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <ul className="space-y-3 pl-5 list-none">
+                                {entry.changes.map((change, index) => (
+                                    <li key={index} className="flex items-start gap-3">
+                                        <change.type className={`mt-1 h-4 w-4 shrink-0 ${change.type === Bug ? 'text-destructive' : 'text-muted-foreground'}`} />
+                                        <span>{change.description}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                    </Card>
                     ))}
                 </div>
             </main>
