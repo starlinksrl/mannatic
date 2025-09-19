@@ -3,6 +3,7 @@ import 'dotenv/config';
 
 import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOutput } from '@/ai/flows/generate-kpi-dashboard';
 import { sendNotificationEmail, SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
+import { sendExpiryNotification, SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
 import { updateCompany } from '@/lib/data';
 import { Company } from '@/lib/types';
 
@@ -33,5 +34,15 @@ export async function saveSmtpSettings(companyId: string, settings: Partial<Comp
     } catch (error: any) {
         console.error("Error saving SMTP settings:", error);
         return null;
+    }
+}
+
+export async function triggerExpiryNotification(input: SendExpiryNotificationInput): Promise<SendExpiryNotificationOutput> {
+    try {
+        const result = await sendExpiryNotification(input);
+        return result;
+    } catch (error: any) {
+        console.error("Error sending expiry notification email:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
     }
 }

@@ -1,9 +1,10 @@
 
 
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company } from './types';
-import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday } from 'date-fns';
+import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId } from 'firebase/firestore';
+import { triggerExpiryNotification } from '@/app/actions';
 
 
 // --- MOCK DATA (to be phased out or used for seeding) ---
@@ -289,10 +290,94 @@ async function checkAndConvertMaintenance(companyId: string) {
     }
 }
 
+async function checkAndNotifyExpiringInterventions(companyId: string) {
+    if (!companyId) return;
+    
+    // Get company for SMTP settings
+    const companyDoc = await getDoc(doc(db, 'companies', companyId));
+    if (!companyDoc.exists()) return;
+    const company = companyDoc.data() as Company;
+
+    if (!company.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPass || !company.senderEmail) {
+        console.log(`Skipping expiry notifications for company ${companyId}: SMTP not configured.`);
+        return;
+    }
+
+    const now = new Date();
+    const expiryThreshold = addDays(now, 1); // 24 hours from now
+
+    // Get all open interventions for the company
+    const qInterventions = query(collection(db, 'interventions'),
+        where("companyId", "==", companyId),
+        where("status", "in", ["Nuovo", "In corso", "In attesa"])
+    );
+    const interventionsSnapshot = await getDocs(qInterventions);
+    const openInterventions = interventionsSnapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as Intervention))
+        .filter(i => i.dueDate && !i.isMaintenance); // Ensure it's not a maintenance task template
+
+    for (const intervention of openInterventions) {
+        if (!intervention.dueDate) continue;
+        const dueDate = new Date(intervention.dueDate);
+
+        // Check if due date is within the threshold and has not passed yet
+        if (isAfter(dueDate, now) && isAfter(expiryThreshold, dueDate)) {
+            // Check if a notification was sent recently for this intervention
+            const qNotifs = query(collection(db, 'notifications'),
+                where("companyId", "==", companyId),
+                where("relatedInterventionId", "==", intervention.id),
+                where("type", "==", "expiry")
+            );
+            const notifSnapshot = await getDocs(qNotifs);
+
+            if (notifSnapshot.empty) {
+                // No recent notification found, so send one.
+                if (intervention.assignedOperatorId) {
+                    const operator = await getOperator(intervention.assignedOperatorId);
+                    const client = await getClient(intervention.clientId);
+
+                    if (operator && operator.email && client) {
+                        console.log(`Sending expiry notification for intervention #${intervention.id} to ${operator.email}`);
+                        
+                        // Send email
+                        triggerExpiryNotification({
+                            recipientEmail: operator.email,
+                            interventionId: intervention.id,
+                            interventionTitle: intervention.title,
+                            clientName: client.name,
+                            dueDate: dueDate.toLocaleDateString('it-IT'),
+                            smtpConfig: {
+                                host: company.smtpHost,
+                                port: company.smtpPort,
+                                user: company.smtpUser,
+                                pass: company.smtpPass,
+                                from: company.senderEmail,
+                            }
+                        });
+
+                        // Create in-app notification
+                        const notificationMessage = `L'intervento #${intervention.id} (${intervention.title}) scade a breve.`;
+                        addDoc(collection(db, 'notifications'), {
+                            userId: operator.id,
+                            companyId: companyId,
+                            message: notificationMessage,
+                            read: false,
+                            createdAt: new Date().toISOString(),
+                            relatedInterventionId: intervention.id,
+                            type: 'expiry'
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 export async function getInterventions(companyId: string): Promise<Intervention[]> {
     if (!companyId) return [];
     await checkAndConvertMaintenance(companyId);
+    await checkAndNotifyExpiringInterventions(companyId);
     
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
@@ -305,6 +390,7 @@ export async function getInterventions(companyId: string): Promise<Intervention[
 export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
     if (!companyId) return [];
     await checkAndConvertMaintenance(companyId);
+    await checkAndNotifyExpiringInterventions(companyId);
 
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
@@ -467,9 +553,9 @@ export async function getNotifications(companyId: string): Promise<Notification[
             const batch = writeBatch(db);
             const demoNotifications = [];
             
-            if(admin) demoNotifications.push({ userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId });
-            if(operator) demoNotifications.push({ userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId });
-            if(client) demoNotifications.push({ userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId });
+            if(admin) demoNotifications.push({ userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId, type: 'alert', relatedInterventionId: 'int-1' });
+            if(operator) demoNotifications.push({ userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId, type: 'assignment', relatedInterventionId: 'int-2' });
+            if(client) demoNotifications.push({ userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId, type: 'status_change', relatedInterventionId: 'int-3' });
 
             demoNotifications.forEach(notif => {
                 const docRef = doc(collection(db, 'notifications')); // auto-generate ID

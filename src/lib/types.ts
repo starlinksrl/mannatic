@@ -70,6 +70,7 @@ export interface Intervention {
   clientSignature?: string;
   updates?: InterventionUpdate[];
   companyId: string;
+  isMaintenance?: boolean;
 }
 
 export interface ScheduledMaintenance extends Intervention {
@@ -77,4 +78,17 @@ export interface ScheduledMaintenance extends Intervention {
   recurrenceMonths: number; // New field for recurrence in months
   checklist: { task: string; completed: boolean }[];
   nextDueDate: string;
+}
+
+export type NotificationType = 'assignment' | 'status_change' | 'expiry' | 'alert' | 'generic';
+
+export interface Notification {
+  id: string;
+  userId: string;
+  companyId: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+  relatedInterventionId?: string;
+  type: NotificationType;
 }
