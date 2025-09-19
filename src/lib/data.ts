@@ -30,7 +30,7 @@ export async function getCompanies(): Promise<Company[]> {
 
 export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Company> {
     try {
-        const docRef = await addDoc(collection(db, 'companies'), {
+        const companyPayload: Omit<Company, 'id' | 'password'> = {
             name: companyData.name,
             address: companyData.address || '',
             vatNumber: companyData.vatNumber || '',
@@ -38,7 +38,9 @@ export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Comp
             phone: companyData.phone || '',
             uniqueCode: companyData.uniqueCode || '',
             email: companyData.email || '',
-        });
+        };
+
+        const docRef = await addDoc(collection(db, 'companies'), companyPayload);
         
         // Create an admin user for the new company
         await addUser({
@@ -49,22 +51,23 @@ export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Comp
             companyId: docRef.id
         });
         
-        const newCompany: Company = {
-            id: docRef.id,
-            name: companyData.name,
-            address: companyData.address,
-            vatNumber: companyData.vatNumber,
-            taxCode: companyData.taxCode,
-            phone: companyData.phone,
-            uniqueCode: companyData.uniqueCode,
-            email: companyData.email,
-        };
-
-        return newCompany;
+        return { id: docRef.id, ...companyPayload };
 
     } catch (error) {
         console.error("Error adding company:", error);
         throw new Error("Failed to add company.");
+    }
+}
+
+export async function updateCompany(id: string, updatedData: Partial<Company>): Promise<Company | null> {
+    try {
+        const docRef = doc(db, 'companies', id);
+        await updateDoc(docRef, updatedData);
+        const updatedDoc = await getDoc(docRef);
+        return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Company : null;
+    } catch (error) {
+        console.error("Error updating company:", error);
+        return null;
     }
 }
 

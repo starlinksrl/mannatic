@@ -20,6 +20,7 @@ interface UserContextType {
   creator: User | null;
   companies: Company[];
   currentCompany: Company | null;
+  setCurrentCompany: React.Dispatch<React.SetStateAction<Company | null>>;
   switchCompany: (companyId: string | null) => void;
 }
 
@@ -202,6 +203,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     creator: creatorUser,
     companies,
     currentCompany,
+    setCurrentCompany,
     switchCompany
   };
 

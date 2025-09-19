@@ -2,6 +2,8 @@
 
 import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOutput } from '@/ai/flows/generate-kpi-dashboard';
 import { sendNotificationEmail, SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
+import { updateCompany } from '@/lib/data';
+import { Company } from '@/lib/types';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
   try {
@@ -21,4 +23,14 @@ export async function sendTestEmail(input: SendNotificationEmailInput): Promise<
     console.error("Error sending test email:", error);
     return { success: false, error: error.message || "An unknown error occurred." };
   }
+}
+
+export async function saveSmtpSettings(companyId: string, settings: Partial<Company>): Promise<Company | null> {
+    try {
+        const result = await updateCompany(companyId, settings);
+        return result;
+    } catch (error: any) {
+        console.error("Error saving SMTP settings:", error);
+        return null;
+    }
 }

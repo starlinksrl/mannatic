@@ -11,7 +11,13 @@ export interface Company {
   phone?: string;
   uniqueCode?: string;
   email?: string;
-  password?: string;
+  password?: string; // Only used for creation
+  // SMTP settings
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
+  senderEmail?: string;
 }
 
 export interface User {

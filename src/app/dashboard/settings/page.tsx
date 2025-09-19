@@ -13,10 +13,9 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { sendTestEmail } from '@/app/actions';
+import { sendTestEmail, saveSmtpSettings } from '@/app/actions';
 import { Loader } from 'lucide-react';
-
-const SMTP_STORAGE_KEY = 'smtp_settings';
+import { Company } from '@/lib/types';
 
 const formSchema = z.object({
   smtpHost: z.string().min(1, { message: 'Host SMTP obbligatorio.' }),
@@ -28,10 +27,12 @@ const formSchema = z.object({
 });
 
 export default function SettingsPage() {
-  const { user } = useUser();
+  const { user, currentCompany, setCurrentCompany } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isTesting, setIsTesting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [testRecipient, setTestRecipient] = useState('');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,24 +53,48 @@ export default function SettingsPage() {
   }, [user, router]);
   
   useEffect(() => {
-    const savedSettings = localStorage.getItem(SMTP_STORAGE_KEY);
-    if (savedSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedSettings);
-        form.reset(parsedSettings);
-      } catch (error) {
-        console.error("Failed to parse SMTP settings from localStorage", error);
-      }
+    if (currentCompany) {
+      form.reset({
+        smtpHost: currentCompany.smtpHost || '',
+        smtpPort: currentCompany.smtpPort || 587,
+        smtpUser: currentCompany.smtpUser || '',
+        smtpPass: currentCompany.smtpPass || '',
+        senderEmail: currentCompany.senderEmail || '',
+        recipientEmail: testRecipient || ''
+      });
     }
-  }, [form]);
+  }, [currentCompany, form, testRecipient]);
 
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    localStorage.setItem(SMTP_STORAGE_KEY, JSON.stringify(values));
-    toast({
-      title: 'Impostazioni salvate',
-      description: 'Le impostazioni del server SMTP sono state salvate con successo nel browser.',
-    });
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!currentCompany) return;
+    setIsSaving(true);
+    
+    const settingsToSave: Partial<Company> = {
+      smtpHost: values.smtpHost,
+      smtpPort: values.smtpPort,
+      smtpUser: values.smtpUser,
+      smtpPass: values.smtpPass,
+      senderEmail: values.senderEmail,
+    };
+
+    const updatedCompany = await saveSmtpSettings(currentCompany.id, settingsToSave);
+
+    if (updatedCompany) {
+        setCurrentCompany(updatedCompany);
+        setTestRecipient(values.recipientEmail); // Keep test email in state
+        toast({
+          title: 'Impostazioni salvate',
+          description: 'Le impostazioni del server SMTP sono state salvate nel database.',
+        });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Errore',
+            description: 'Impossibile salvare le impostazioni SMTP.',
+        });
+    }
+    setIsSaving(false);
   }
   
   async function onTestConnection() {
@@ -126,7 +151,7 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle>Configurazione Notifiche Email (SMTP)</CardTitle>
             <CardDescription>
-              Inserisci i dettagli del tuo provider SMTP per l'invio delle notifiche. Le credenziali vengono salvate localmente nel browser.
+              Inserisci i dettagli del tuo provider SMTP per l'invio delle notifiche. Le credenziali vengono salvate in modo sicuro nel database.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -182,7 +207,7 @@ export default function SettingsPage() {
                         <FormItem>
                           <FormLabel>Password SMTP</FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} autoComplete="current-password"/>
+                            <Input type="password" placeholder="••••••••" {...field} autoComplete="new-password"/>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -219,11 +244,14 @@ export default function SettingsPage() {
                     />
                 </div>
                 <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={onTestConnection} disabled={isTesting}>
+                    <Button type="button" variant="outline" onClick={onTestConnection} disabled={isTesting || isSaving}>
                       {isTesting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                       Testa Notifica
                     </Button>
-                    <Button type="submit">Salva Impostazioni</Button>
+                    <Button type="submit" disabled={isSaving || isTesting}>
+                        {isSaving && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                        Salva Impostazioni
+                    </Button>
                 </div>
               </form>
             </Form>
