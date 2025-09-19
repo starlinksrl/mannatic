@@ -170,9 +170,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 <FormItem>
                   <FormLabel>Nuova Password</FormLabel>
                   <div className="relative">
-                    <FormControl>
-                      <Input type={showPassword ? 'text' : 'password'} placeholder="Lascia vuoto per non modificare" {...field} />
-                    </FormControl>
+                    <Input type={showPassword ? 'text' : 'password'} placeholder="Lascia vuoto per non modificare" {...field} />
                      <Button 
                       type="button" 
                       variant="ghost" 
