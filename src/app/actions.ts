@@ -1,4 +1,5 @@
 'use server';
+import 'dotenv/config';
 
 import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOutput } from '@/ai/flows/generate-kpi-dashboard';
 import { sendNotificationEmail, SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
