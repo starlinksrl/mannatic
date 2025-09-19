@@ -1,6 +1,7 @@
 
 
-import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company } from './types';
+
+import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId } from 'firebase/firestore';
@@ -14,6 +15,44 @@ let equipmentsMock: Equipment[] = [
   { id: 'equip-2', name: 'Server Room', clientId: 'client-1', companyId: 'company-1' },
   { id: 'equip-3', name: 'Linea Produzione B', clientId: 'client-2', companyId: 'company-1' },
   { id: 'equip-4', name: 'Ufficio A', clientId: 'client-3', companyId: 'company-2' },
+];
+
+let surveysMock: Survey[] = [
+    {
+        id: 'survey-1',
+        title: 'Sopralluogo per nuovo impianto',
+        clientId: 'client-1',
+        address: 'Via Roma 1, Milano',
+        date: addDays(new Date(), 2).toISOString(),
+        assignedOperatorId: 'user-op-1',
+        notes: 'Verificare quadro elettrico e predisposizione canali.',
+        status: 'Pianificato',
+        createdAt: new Date().toISOString(),
+        companyId: 'company-1'
+    },
+    {
+        id: 'survey-2',
+        title: 'Verifica preliminare ufficio',
+        clientId: 'client-2',
+        address: 'Corso Buenos Aires 54, Milano',
+        date: addDays(new Date(), 5).toISOString(),
+        assignedOperatorId: 'user-op-2',
+        status: 'Pianificato',
+        createdAt: subDays(new Date(), 1).toISOString(),
+        companyId: 'company-1'
+    },
+     {
+        id: 'survey-3',
+        title: 'Analisi fattibilità nuovo sistema',
+        clientId: 'client-2',
+        address: 'Piazza Duomo 1, Milano',
+        date: subDays(new Date(), 10).toISOString(),
+        assignedOperatorId: 'user-op-1',
+        notes: 'Cliente ha firmato il verbale. In attesa di preventivo.',
+        status: 'Eseguito',
+        createdAt: subDays(new Date(), 15).toISOString(),
+        companyId: 'company-1'
+    },
 ];
 
 // --- COMPANY MANAGEMENT ---
@@ -533,6 +572,57 @@ export async function deleteScheduledMaintenance(id: string): Promise<boolean> {
         return false;
     }
 }
+
+// --- SURVEYS MANAGEMENT (Mocked) ---
+
+export async function getSurveys(companyId: string): Promise<Survey[]> {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            resolve(surveysMock.filter(s => s.companyId === companyId));
+        }, 500);
+    });
+}
+
+export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'createdAt'>): Promise<Survey> {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            const newSurvey: Survey = {
+                id: `survey-${Date.now()}`,
+                status: 'Pianificato',
+                createdAt: new Date().toISOString(),
+                ...surveyData,
+            };
+            surveysMock = [newSurvey, ...surveysMock];
+            resolve(newSurvey);
+        }, 300);
+    });
+}
+
+export async function updateSurvey(id: string, updatedData: Partial<Survey>): Promise<Survey | null> {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            let surveyToUpdate = surveysMock.find(s => s.id === id);
+            if (surveyToUpdate) {
+                const updatedSurvey = { ...surveyToUpdate, ...updatedData };
+                surveysMock = surveysMock.map(s => s.id === id ? updatedSurvey : s);
+                resolve(updatedSurvey);
+            } else {
+                resolve(null);
+            }
+        }, 300);
+    });
+}
+
+export async function deleteSurvey(id: string): Promise<boolean> {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            const initialLength = surveysMock.length;
+            surveysMock = surveysMock.filter(s => s.id !== id);
+            resolve(surveysMock.length < initialLength);
+        }, 300);
+    });
+}
+
 
 // --- NOTIFICATIONS ---
 

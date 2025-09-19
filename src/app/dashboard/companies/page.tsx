@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Company, addCompany, getCompanies } from '@/lib/data';
-import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck } from 'lucide-react';
+import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +41,18 @@ const formSchema = z.object({
 });
 
 const changelog = [
+     { 
+        version: "0.6",
+        date: "2024-09-20",
+        title: "Gestione Sopralluoghi",
+        icon: ClipboardCheck,
+        iconClass: "text-purple-500",
+        changes: [
+            { type: Wrench, description: "Aggiunta una nuova sezione 'Sopralluoghi' per la gestione delle ispezioni in loco." },
+            { type: Wrench, description: "Implementata tabella con ricerca, filtri e ordinamento per i sopralluoghi." },
+            { type: Wrench, description: "Create funzionalità complete di Aggiunta, Modifica e Cancellazione per i sopralluoghi." },
+        ]
+    },
     { 
         version: "0.5",
         date: "2024-09-19",

@@ -1,5 +1,6 @@
 
 
+
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 
 export interface Company {
@@ -79,6 +80,22 @@ export interface ScheduledMaintenance extends Intervention {
   checklist: { task: string; completed: boolean }[];
   nextDueDate: string;
 }
+
+export type SurveyStatus = 'Pianificato' | 'Eseguito' | 'Annullato';
+
+export interface Survey {
+  id: string;
+  title: string;
+  clientId: string;
+  address: string;
+  date: string;
+  assignedOperatorId: string | null;
+  notes?: string;
+  status: SurveyStatus;
+  createdAt: string;
+  companyId: string;
+}
+
 
 export type NotificationType = 'assignment' | 'status_change' | 'expiry' | 'alert' | 'generic';
 
