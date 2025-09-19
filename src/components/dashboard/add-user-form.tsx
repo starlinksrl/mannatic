@@ -129,7 +129,9 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <div className="relative">
-                    <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                    <FormControl>
+                      <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                    </FormControl>
                     <Button 
                       type="button" 
                       variant="ghost" 
