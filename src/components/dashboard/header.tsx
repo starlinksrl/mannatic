@@ -1,6 +1,6 @@
 'use client';
 
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Menu } from 'lucide-react';
 import { SidebarNav } from './sidebar-nav';
@@ -29,6 +29,9 @@ export function Header({ title }: { title: string }) {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Menu di Navigazione</SheetTitle>
+          </SheetHeader>
           <SidebarNav />
         </SheetContent>
       </Sheet>
