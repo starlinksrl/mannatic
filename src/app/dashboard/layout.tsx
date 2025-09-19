@@ -15,12 +15,18 @@ export default function DashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
+    if (isLoading) {
+      return; // Wait for the initial loading to complete
     }
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
     // If a non-creator user somehow ends up without a company, redirect.
-    if (!isLoading && user && user.role !== 'Creator' && !currentCompany) {
-        router.push('/login');
+    if (user.role !== 'Creator' && !currentCompany) {
+      router.push('/login');
     }
   }, [user, isLoading, router, currentCompany]);
 
