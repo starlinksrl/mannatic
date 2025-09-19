@@ -9,6 +9,9 @@
  * - SendNotificationEmailOutput - The return type for the sendNotificationEmail function.
  */
 
+import { config } from 'dotenv';
+config();
+
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import nodemailer from 'nodemailer';
