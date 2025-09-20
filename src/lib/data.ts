@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -602,12 +595,6 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         const docRef = doc(db, 'interventions', id);
         
         const dataToUpdate = { ...updatedData };
-        if (dataToUpdate.timeSpent === undefined) {
-            dataToUpdate.timeSpent = null;
-        }
-        if (dataToUpdate.materialsUsed === undefined) {
-            dataToUpdate.materialsUsed = null;
-        }
         
         await updateDoc(docRef, dataToUpdate as any);
         const updatedDoc = await getDoc(docRef);
