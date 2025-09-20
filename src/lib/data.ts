@@ -2,6 +2,7 @@
 
 
 
+
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -502,20 +503,24 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     
     // Check if clientId is an existing user or a new name
     const clients = await getClients(companyId);
-    let finalClientId = clients.find(c => c.name === clientId)?.id;
+    let finalClientId = clients.find(c => c.name.toLowerCase() === clientId.toLowerCase())?.id;
     let clientName = clientId;
     let newClientWasCreated = false;
 
     if (!finalClientId) {
         console.log(`Client "${clientId}" not found. Creating new client.`);
-        const company = (await getDoc(doc(db, 'companies', companyId))).data();
-        const companyName = company?.name.toLowerCase().replace(/[^a-z0-9]/gi, '');
+        const companyDoc = await getDoc(doc(db, 'companies', companyId));
+        if (!companyDoc.exists()) {
+            throw new Error(`Company with id ${companyId} not found`);
+        }
+        const company = companyDoc.data() as Company;
+        const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.toLowerCase().replace(/[^a-z0-9]/gi, '');
 
         const newClient = await addUser({
             name: clientId,
-            email: `${clientNameNormalized}@${companyName}.it`,
-            password: '12345678',
+            email: `${clientNameNormalized}@${companyName}.com`,
+            password: 'password123',
             role: 'Client',
             companyId: companyId,
         });
