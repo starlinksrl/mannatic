@@ -46,13 +46,7 @@ const SendNewInterventionNotificationOutputSchema = z.object({
 export type SendNewInterventionNotificationOutput = z.infer<typeof SendNewInterventionNotificationOutputSchema>;
 
 
-const sendNewInterventionNotificationFlow = ai.defineFlow(
-  {
-    name: 'sendNewInterventionNotificationFlow',
-    inputSchema: SendNewInterventionNotificationInputSchema,
-    outputSchema: SendNewInterventionNotificationOutputSchema,
-  },
-  async (input) => {
+export async function sendNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionNotificationOutput> {
     try {
       const { smtpConfig, ...promptInput } = input;
       
@@ -130,9 +124,4 @@ const sendNewInterventionNotificationFlow = ai.defineFlow(
         console.error('Failed to send new intervention email:', error);
         return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
     }
-  }
-);
-
-export async function sendNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionNotificationOutput> {
-    return sendNewInterventionNotificationFlow(input);
 }
