@@ -123,7 +123,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
         updates: newUpdates,
         timeSpent: values.timeSpent || null,
         materialsUsed: values.materialsUsed || null,
-        completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt,
+        completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt || null,
     };
     
     const updated = await updateIntervention(intervention!.id, updatedInterventionData);
@@ -419,3 +419,5 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
     </Dialog>
   );
 }
+
+    
