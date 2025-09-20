@@ -80,12 +80,19 @@ const sendNewInterventionNotificationFlow = ai.defineFlow(
     try {
       const { smtpConfig, ...promptInput } = input;
       
-      console.log(`Generating new intervention email for admin...`);
-      const { output } = await prompt(promptInput);
-
-      if (!output || !output.emailBody || !output.emailSubject) {
-          throw new Error('Failed to generate email content for new intervention notification.');
-      }
+      const emailSubject = `Nuovo Intervento Creato: #${promptInput.interventionId}`;
+      const emailBody = `
+        <h1>Nuovo Intervento Creato</h1>
+        <p>Un nuovo intervento è stato creato nel sistema MannaTic.</p>
+        <p>Dettagli:</p>
+        <ul>
+            <li><b>ID Intervento:</b> ${promptInput.interventionId}</li>
+            <li><b>Titolo:</b> ${promptInput.interventionTitle}</li>
+            <li><b>Cliente:</b> ${promptInput.clientName}</li>
+            <li><b>Creato da:</b> ${promptInput.creatorName}</li>
+        </ul>
+        <p>Puoi visualizzare i dettagli accedendo alla dashboard.</p>
+      `;
       
       const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
@@ -102,12 +109,12 @@ const sendNewInterventionNotificationFlow = ai.defineFlow(
       await transporter.sendMail({
         from: smtpConfig.from,
         to: input.recipientEmail,
-        subject: output.emailSubject,
-        html: output.emailBody,
+        subject: emailSubject,
+        html: emailBody,
       });
 
       console.log('New intervention email sent successfully.');
-      return { success: true, emailBody: output.emailBody };
+      return { success: true, emailBody: emailBody };
 
     } catch (error: any) {
         console.error('Failed to send new intervention email:', error);
