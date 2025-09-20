@@ -4,6 +4,7 @@
 
 
 
+
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -445,7 +446,7 @@ export async function getScheduledMaintenance(companyId: string): Promise<Schedu
 type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string };
 
 async function notifyAdminOnNewIntervention(intervention: Intervention, clientName: string, creatorName: string) {
-    const { companyId, id, title } = intervention;
+    const { companyId, id, title, description, priority, dueDate, assignedOperatorId } = intervention;
 
     // 1. Get Company and check SMTP settings
     const companyDoc = await getDoc(doc(db, 'companies', companyId));
@@ -462,10 +463,19 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
     const adminsSnapshot = await getDocs(qAdmins);
     const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
 
-
     if (admins.length === 0) return;
 
-    // 3. Trigger notification for each admin
+    // 3. Get operator name if exists
+    let operatorName: string | undefined;
+    if (assignedOperatorId) {
+        const operator = await getOperator(assignedOperatorId);
+        if (operator) {
+            operatorName = operator.name;
+        }
+    }
+
+
+    // 4. Trigger notification for each admin
     for (const admin of admins) {
         if (admin.email) {
             console.log(`Sending new intervention notification for #${id} to admin ${admin.email}`);
@@ -473,8 +483,12 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
                 recipientEmail: admin.email,
                 interventionId: id,
                 interventionTitle: title,
+                interventionDescription: description,
+                interventionPriority: priority,
+                interventionDueDate: dueDate,
                 clientName: clientName,
                 creatorName: creatorName,
+                assignedOperatorName: operatorName,
                 smtpConfig: {
                     host: company.smtpHost,
                     port: company.smtpPort,
@@ -517,7 +531,8 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         }
         const company = companyDoc.data() as Company;
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
-        const clientNameNormalized = clientId.toLowerCase().replace(/[^a-z0-9]/gi, '');
+        const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
+
 
         const newClient = await addUser({
             name: clientId,
@@ -715,13 +730,13 @@ export async function getNotifications(companyId: string): Promise<Notification[
             
             const batch = writeBatch(db);
             
-            if(admin) {
+            if(admin?.id) {
               batch.set(doc(collection(db, 'notifications')), { userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId, type: 'alert', relatedInterventionId: 'int-1' });
             }
-            if(operator) {
+            if(operator?.id) {
               batch.set(doc(collection(db, 'notifications')), { userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId, type: 'assignment', relatedInterventionId: 'int-2' });
             }
-            if(client) {
+            if(client?.id) {
               batch.set(doc(collection(db, 'notifications')), { userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId, type: 'status_change', relatedInterventionId: 'int-3' });
             }
 

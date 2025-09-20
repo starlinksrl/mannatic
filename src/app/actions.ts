@@ -1,12 +1,14 @@
+
 'use server';
 import 'dotenv/config';
 
 import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOutput } from '@/ai/flows/generate-kpi-dashboard';
 import { sendNotificationEmail, SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
 import { sendExpiryNotification, SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
-import { sendNewInterventionNotification, SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
+import { sendNewInterventionNotification, SendNewInterventionNotificationInput } from '@/ai/flows/send-new-intervention-notification';
 import { updateCompany } from '@/lib/data';
 import { Company } from '@/lib/types';
+import type { SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
   try {
