@@ -1,11 +1,12 @@
 
 
 
+
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId } from 'firebase/firestore';
-import { triggerExpiryNotification } from '@/app/actions';
+import { triggerExpiryNotification, triggerNewInterventionNotification } from '@/app/actions';
 
 
 // --- MOCK DATA (to be phased out or used for seeding) ---
@@ -441,12 +442,68 @@ export async function getScheduledMaintenance(companyId: string): Promise<Schedu
 
 type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string };
 
+async function notifyAdminOnNewIntervention(intervention: Intervention, clientName: string, creatorName: string) {
+    const { companyId, id, title } = intervention;
+
+    // 1. Get Company and check SMTP settings
+    const companyDoc = await getDoc(doc(db, 'companies', companyId));
+    if (!companyDoc.exists()) return;
+    const company = companyDoc.data() as Company;
+
+    if (!company.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPass || !company.senderEmail) {
+        console.log(`Skipping new intervention notification for company ${companyId}: SMTP not configured.`);
+        return;
+    }
+
+    // 2. Find Admins
+    const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
+    const adminsSnapshot = await getDocs(qAdmins);
+    const admins = adminsSnapshot.docs.map(d => d.data() as User);
+
+    if (admins.length === 0) return;
+
+    // 3. Trigger notification for each admin
+    for (const admin of admins) {
+        if (admin.email) {
+            console.log(`Sending new intervention notification for #${id} to admin ${admin.email}`);
+            triggerNewInterventionNotification({
+                recipientEmail: admin.email,
+                interventionId: id,
+                interventionTitle: title,
+                clientName: clientName,
+                creatorName: creatorName,
+                smtpConfig: {
+                    host: company.smtpHost,
+                    port: company.smtpPort,
+                    user: company.smtpUser,
+                    pass: company.smtpPass,
+                    from: company.senderEmail,
+                }
+            });
+
+             // Create in-app notification for admin
+            const notificationMessage = `Nuovo intervento #${id} (${title}) creato da ${creatorName} per il cliente ${clientName}.`;
+            addDoc(collection(db, 'notifications'), {
+                userId: admin.id,
+                companyId: companyId,
+                message: notificationMessage,
+                read: false,
+                createdAt: new Date().toISOString(),
+                relatedInterventionId: id,
+                type: 'assignment'
+            });
+        }
+    }
+}
+
+
 export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
     const { creatorName, clientId, companyId, ...restOfData } = interventionData;
     
     // Check if clientId is an existing user or a new name
     const clients = await getClients(companyId);
     let finalClientId = clients.find(c => c.name === clientId)?.id;
+    let clientName = clientId;
     let newClientWasCreated = false;
 
     if (!finalClientId) {
@@ -463,11 +520,15 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             companyId: companyId,
         });
         finalClientId = newClient.id;
+        clientName = newClient.name;
         newClientWasCreated = true;
         console.log(`New client created with ID: ${finalClientId}`);
+    } else {
+        const client = await getClient(finalClientId);
+        if (client) clientName = client.name;
     }
 
-    const newInterventionData = {
+    const newInterventionData: Omit<Intervention, 'id'> = {
         ...restOfData,
         clientId: finalClientId,
         companyId: companyId,
@@ -483,7 +544,12 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     }
 
     const docRef = await addDoc(collection(db, 'interventions'), newInterventionData);
-    return { id: docRef.id, ...newInterventionData };
+    const finalIntervention = { id: docRef.id, ...newInterventionData };
+
+    // Trigger admin notification
+    await notifyAdminOnNewIntervention(finalIntervention, clientName, creatorName);
+    
+    return finalIntervention;
 }
 
 

@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOutput } from '@/ai/flows/generate-kpi-dashboard';
 import { sendNotificationEmail, SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
 import { sendExpiryNotification, SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
+import { sendNewInterventionNotification, SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import { updateCompany } from '@/lib/data';
 import { Company } from '@/lib/types';
 
@@ -43,6 +44,16 @@ export async function triggerExpiryNotification(input: SendExpiryNotificationInp
         return result;
     } catch (error: any) {
         console.error("Error sending expiry notification email:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function triggerNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionNotificationOutput> {
+    try {
+        const result = await sendNewInterventionNotification(input);
+        return result;
+    } catch (error: any) {
+        console.error("Error sending new intervention notification email:", error);
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }
