@@ -3,6 +3,7 @@
 
 
 
+
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -459,7 +460,8 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
     // 2. Find Admins
     const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
     const adminsSnapshot = await getDocs(qAdmins);
-    const admins = adminsSnapshot.docs.map(d => d.data() as User);
+    const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
+
 
     if (admins.length === 0) return;
 
@@ -712,16 +714,17 @@ export async function getNotifications(companyId: string): Promise<Notification[
             const client = allUsers.find(u => u.role === 'Client');
             
             const batch = writeBatch(db);
-            const demoNotifications = [];
             
-            if(admin) demoNotifications.push({ userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId, type: 'alert', relatedInterventionId: 'int-1' });
-            if(operator) demoNotifications.push({ userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId, type: 'assignment', relatedInterventionId: 'int-2' });
-            if(client) demoNotifications.push({ userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId, type: 'status_change', relatedInterventionId: 'int-3' });
+            if(admin) {
+              batch.set(doc(collection(db, 'notifications')), { userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId, type: 'alert', relatedInterventionId: 'int-1' });
+            }
+            if(operator) {
+              batch.set(doc(collection(db, 'notifications')), { userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId, type: 'assignment', relatedInterventionId: 'int-2' });
+            }
+            if(client) {
+              batch.set(doc(collection(db, 'notifications')), { userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId, type: 'status_change', relatedInterventionId: 'int-3' });
+            }
 
-            demoNotifications.forEach(notif => {
-                const docRef = doc(collection(db, 'notifications')); // auto-generate ID
-                batch.set(docRef, notif);
-            });
             await batch.commit();
             
             const newSnapshot = await getDocs(q);
