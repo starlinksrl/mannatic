@@ -1,3 +1,4 @@
+
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -357,44 +358,44 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
         if (!intervention.dueDate) continue;
         const dueDate = new Date(intervention.dueDate);
 
-        if (isAfter(dueDate, now) && isAfter(expiryThreshold, dueDate)) {
-            const hasRecentNotification = allNotifications.some(n => 
-                n.relatedInterventionId === intervention.id && n.type === 'expiry'
-            );
+         const hasRecentNotification = allNotifications.some(n => 
+            n.relatedInterventionId === intervention.id && 
+            n.type === 'expiry' &&
+            differenceInHours(now, new Date(n.createdAt)) < 24
+        );
 
-            if (!hasRecentNotification) {
-                if (intervention.assignedOperatorId) {
-                    const operator = await getOperator(intervention.assignedOperatorId);
-                    const client = await getClient(intervention.clientId);
+        if (isAfter(dueDate, now) && isAfter(expiryThreshold, dueDate) && !hasRecentNotification) {
+             if (intervention.assignedOperatorId) {
+                const operator = await getOperator(intervention.assignedOperatorId);
+                const client = await getClient(intervention.clientId);
 
-                    if (operator && operator.email && client) {
-                        console.log(`Sending expiry notification for intervention #${intervention.id} to ${operator.email}`);
-                        
-                        triggerExpiryNotification({
-                            recipientEmail: operator.email,
-                            interventionId: intervention.id,
-                            interventionTitle: intervention.title,
-                            clientName: client.name,
-                            dueDate: dueDate.toLocaleDateString('it-IT'),
-                            smtpConfig: {
-                                host: company.smtpHost,
-                                port: company.smtpPort,
-                                user: company.smtpUser,
-                                pass: company.smtpPass,
-                                from: company.senderEmail,
-                            }
-                        });
+                if (operator && operator.email && client) {
+                    console.log(`Sending expiry notification for intervention #${intervention.id} to ${operator.email}`);
+                    
+                    triggerExpiryNotification({
+                        recipientEmail: operator.email,
+                        interventionId: intervention.id,
+                        interventionTitle: intervention.title,
+                        clientName: client.name,
+                        dueDate: dueDate.toLocaleDateString('it-IT'),
+                        smtpConfig: {
+                            host: company.smtpHost,
+                            port: company.smtpPort,
+                            user: company.smtpUser,
+                            pass: company.smtpPass,
+                            from: company.senderEmail,
+                        }
+                    });
 
-                        addDoc(collection(db, 'notifications'), {
-                            userId: operator.id,
-                            companyId: companyId,
-                            message: `L'intervento #${intervention.id} (${intervention.title}) scade a breve.`,
-                            read: false,
-                            createdAt: new Date().toISOString(),
-                            relatedInterventionId: intervention.id,
-                            type: 'expiry'
-                        });
-                    }
+                    addDoc(collection(db, 'notifications'), {
+                        userId: operator.id,
+                        companyId: companyId,
+                        message: `L'intervento #${intervention.id} (${intervention.title}) scade a breve.`,
+                        read: false,
+                        createdAt: new Date().toISOString(),
+                        relatedInterventionId: intervention.id,
+                        type: 'expiry'
+                    });
                 }
             }
         }
@@ -476,7 +477,8 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
     for (const admin of admins) {
         if (admin.email) {
             console.log(`Sending new intervention notification for #${id} to admin ${admin.email}`);
-            triggerNewInterventionNotification({
+            
+            const notificationInput = {
                 recipientEmail: admin.email,
                 interventionId: id,
                 interventionTitle: title,
@@ -493,7 +495,9 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
                     pass: company.smtpPass,
                     from: company.senderEmail,
                 }
-            });
+            };
+            
+            triggerNewInterventionNotification(notificationInput);
 
              // Create in-app notification for admin
             const notificationMessage = `Nuovo intervento #${id} (${title}) creato da ${creatorName} per il cliente ${clientName}.`;
@@ -601,6 +605,8 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         const dataToUpdate = { ...updatedData };
         if (dataToUpdate.completedAt === undefined) {
             delete (dataToUpdate as any).completedAt;
+        } else if (dataToUpdate.completedAt === null) {
+            dataToUpdate.completedAt = null;
         }
         
         await updateDoc(docRef, dataToUpdate as any);
@@ -724,15 +730,15 @@ export async function getNotifications(companyId: string): Promise<Notification[
             
             const batch = writeBatch(db);
             
-            if(admin?.id) {
+            if(admin && admin.id) {
               const adminNotifRef = doc(collection(db, 'notifications'));
               batch.set(adminNotifRef, { userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId, type: 'alert', relatedInterventionId: 'int-1' });
             }
-            if(operator?.id) {
+            if(operator && operator.id) {
               const opNotifRef = doc(collection(db, 'notifications'));
               batch.set(opNotifRef, { userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId, type: 'assignment', relatedInterventionId: 'int-2' });
             }
-            if(client?.id) {
+            if(client && client.id) {
               const clientNotifRef = doc(collection(db, 'notifications'));
               batch.set(clientNotifRef, { userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId, type: 'status_change', relatedInterventionId: 'int-3' });
             }
