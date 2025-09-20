@@ -112,10 +112,14 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
             });
             setSuggestions(result.suggestions);
             setIsSuggesting(false);
+            if (result.suggestions.length > 0) {
+              setIsTitlePopoverOpen(true);
+            }
         }
         fetchSuggestions();
     } else {
         setSuggestions([]);
+        setIsTitlePopoverOpen(false);
     }
   }, [debouncedTitleQuery, existingTitles]);
 
@@ -193,10 +197,8 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                                 onChange={(e) => {
                                                     field.onChange(e);
                                                     setTitleQuery(e.target.value);
-                                                    if(e.target.value.length > 2) {
-                                                        setIsTitlePopoverOpen(true);
-                                                    }
                                                 }}
+                                                autoComplete="off"
                                             />
                                             {isSuggesting && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
                                         </div>
@@ -204,7 +206,6 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                                      <Command shouldFilter={false}>
-                                        <CommandInput value={titleQuery} onValueChange={setTitleQuery} placeholder="Cerca titolo..." disabled={isSuggesting}/>
                                         <CommandList>
                                             {suggestions.length === 0 && !isSuggesting && debouncedTitleQuery.length > 2 && (
                                                 <CommandEmpty>Nessun suggerimento trovato.</CommandEmpty>
