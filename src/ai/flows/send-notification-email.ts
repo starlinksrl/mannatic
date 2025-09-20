@@ -56,15 +56,17 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
 
     const emailSubject = 'Test Email da MannaTic';
     const emailBody = `
-        <h1>Email di Prova</h1>
-        <p>Questa è un'email di prova per verificare la configurazione SMTP in MannaTic.</p>
-        <p>Se ricevi questa email, le tue impostazioni sono corrette.</p>
-        <hr>
-        <p><b>Dettagli del test:</b></p>
-        <ul>
-            <li><b>Dettagli Manutenzione di Esempio:</b> ${maintenanceDetails}</li>
-            <li><b>Data Scadenza di Esempio:</b> ${nextDueDate}</li>
-        </ul>
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h1 style="color: #333;">Email di Prova per Configurazione SMTP</h1>
+            <p>Questa è un'email di prova generata automaticamente da MannaTic per verificare la tua configurazione SMTP.</p>
+            <p><b>Se stai leggendo questa email, le tue impostazioni sono corrette e il sistema è in grado di inviare notifiche.</b></p>
+            <hr>
+            <p style="font-size: 0.9em; color: #555;">I dati sottostanti sono solo a scopo di esempio e non corrispondono a dati reali:</p>
+            <ul>
+                <li><b>Dettagli Manutenzione di Esempio:</b> ${maintenanceDetails}</li>
+                <li><b>Data Scadenza di Esempio:</b> ${nextDueDate}</li>
+            </ul>
+        </div>
     `;
     
     console.log(`Sending static test email to ${recipientEmail} via ${smtpConfig.host}...`);
