@@ -37,9 +37,6 @@ import { addIntervention, getInterventionTitles } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ScrollArea } from '../ui/scroll-area';
-import { getInterventionTitleSuggestions } from '@/app/actions';
-import { useDebounce } from 'use-debounce';
-
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -65,9 +62,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   const [clientList, setClientList] = useState(clients);
   
   const [titleQuery, setTitleQuery] = useState('');
-  const [debouncedTitleQuery] = useDebounce(titleQuery, 300);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isSuggesting, setIsSuggesting] = useState(false);
   const [isTitlePopoverOpen, setIsTitlePopoverOpen] = useState(false);
   const [existingTitles, setExistingTitles] = useState<string[]>([]);
 
@@ -103,25 +98,17 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   }, [currentCompany, isOpen]);
   
   useEffect(() => {
-    if (debouncedTitleQuery.length > 2) {
-        async function fetchSuggestions() {
-            setIsSuggesting(true);
-            const result = await getInterventionTitleSuggestions({
-                userInput: debouncedTitleQuery,
-                existingTitles: existingTitles,
-            });
-            setSuggestions(result.suggestions);
-            setIsSuggesting(false);
-            if (result.suggestions.length > 0) {
-              setIsTitlePopoverOpen(true);
-            }
-        }
-        fetchSuggestions();
+    if (titleQuery.length > 2 && existingTitles.length >= 3) {
+      const filteredSuggestions = existingTitles.filter(t => 
+        t.toLowerCase().includes(titleQuery.toLowerCase())
+      );
+      setSuggestions(filteredSuggestions);
+      setIsTitlePopoverOpen(filteredSuggestions.length > 0);
     } else {
-        setSuggestions([]);
-        setIsTitlePopoverOpen(false);
+      setSuggestions([]);
+      setIsTitlePopoverOpen(false);
     }
-  }, [debouncedTitleQuery, existingTitles]);
+  }, [titleQuery, existingTitles]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -200,14 +187,13 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                                 }}
                                                 autoComplete="off"
                                             />
-                                            {isSuggesting && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
                                         </div>
                                     </FormControl>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                                      <Command shouldFilter={false}>
                                         <CommandList>
-                                            {suggestions.length === 0 && !isSuggesting && debouncedTitleQuery.length > 2 && (
+                                            {suggestions.length === 0 && (
                                                 <CommandEmpty>Nessun suggerimento trovato.</CommandEmpty>
                                             )}
                                             {suggestions.map((suggestion) => (

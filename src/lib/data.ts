@@ -329,7 +329,6 @@ async function checkAndConvertMaintenance(companyId: string) {
 async function checkAndNotifyExpiringInterventions(companyId: string) {
     if (!companyId) return;
     
-    // Get company for SMTP settings
     const companyDoc = await getDoc(doc(db, 'companies', companyId));
     if (!companyDoc.exists()) return;
     const company = companyDoc.data() as Company;
@@ -340,9 +339,8 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
     }
 
     const now = new Date();
-    const expiryThreshold = addDays(now, 1); // 24 hours from now
+    const expiryThreshold = addDays(now, 1);
 
-    // Get all open interventions for the company
     const qInterventions = query(collection(db, 'interventions'),
         where("companyId", "==", companyId),
         where("status", "in", ["Nuovo", "In corso", "In attesa"])
@@ -350,24 +348,21 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
     const interventionsSnapshot = await getDocs(qInterventions);
     const openInterventions = interventionsSnapshot.docs
         .map(d => ({ id: d.id, ...d.data() } as Intervention))
-        .filter(i => i.dueDate && !i.isMaintenance); // Ensure it's not a maintenance task template
+        .filter(i => i.dueDate && !i.isMaintenance);
+
+    const allNotificationsSnapshot = await getDocs(query(collection(db, 'notifications'), where("companyId", "==", companyId)));
+    const allNotifications = allNotificationsSnapshot.docs.map(doc => doc.data());
 
     for (const intervention of openInterventions) {
         if (!intervention.dueDate) continue;
         const dueDate = new Date(intervention.dueDate);
 
-        // Check if due date is within the threshold and has not passed yet
         if (isAfter(dueDate, now) && isAfter(expiryThreshold, dueDate)) {
-            // Check if a notification was sent recently for this intervention
-            const qNotifs = query(collection(db, 'notifications'),
-                where("companyId", "==", companyId),
-                where("relatedInterventionId", "==", intervention.id),
-                where("type", "==", "expiry")
+            const hasRecentNotification = allNotifications.some(n => 
+                n.relatedInterventionId === intervention.id && n.type === 'expiry'
             );
-            const notifSnapshot = await getDocs(qNotifs);
 
-            if (notifSnapshot.empty) {
-                // No recent notification found, so send one.
+            if (!hasRecentNotification) {
                 if (intervention.assignedOperatorId) {
                     const operator = await getOperator(intervention.assignedOperatorId);
                     const client = await getClient(intervention.clientId);
@@ -375,7 +370,6 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
                     if (operator && operator.email && client) {
                         console.log(`Sending expiry notification for intervention #${intervention.id} to ${operator.email}`);
                         
-                        // Send email
                         triggerExpiryNotification({
                             recipientEmail: operator.email,
                             interventionId: intervention.id,
@@ -391,12 +385,10 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
                             }
                         });
 
-                        // Create in-app notification
-                        const notificationMessage = `L'intervento #${intervention.id} (${intervention.title}) scade a breve.`;
                         addDoc(collection(db, 'notifications'), {
                             userId: operator.id,
                             companyId: companyId,
-                            message: notificationMessage,
+                            message: `L'intervento #${intervention.id} (${intervention.title}) scade a breve.`,
                             read: false,
                             createdAt: new Date().toISOString(),
                             relatedInterventionId: intervention.id,
@@ -408,6 +400,7 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
         }
     }
 }
+
 
 
 export async function getInterventions(companyId: string): Promise<Intervention[]> {
@@ -426,7 +419,7 @@ export async function getInterventions(companyId: string): Promise<Intervention[
 export async function getInterventionTitles(companyId: string): Promise<string[]> {
     if (!companyId) return [];
     
-    const q = query(collection(db, 'interventions'), where("companyId", "==", companyId), where("isMaintenance", "!=", true));
+    const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
     const titles = snapshot.docs.map(doc => doc.data().title as string);
     
@@ -607,7 +600,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         
         const dataToUpdate = { ...updatedData };
         if (dataToUpdate.completedAt === undefined) {
-            delete dataToUpdate.completedAt;
+            delete (dataToUpdate as any).completedAt;
         }
         
         await updateDoc(docRef, dataToUpdate as any);
@@ -720,10 +713,10 @@ export async function getNotifications(companyId: string): Promise<Notification[
     try {
         const q = query(collection(db, 'notifications'), where("companyId", "==", companyId));
         const snapshot = await getDocs(q);
-        const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+        let notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
         
         // If no notifications, create some demo ones.
-        if (notifications.length === 0 && companyId === 'company-1') { // Only for first company to avoid clutter
+        if (notifications.length === 0 && companyId === 'company-1') { 
             const allUsers = await getUsers(companyId);
             const admin = allUsers.find(u => u.role === 'Admin');
             const operator = allUsers.find(u => u.role === 'Operator');
@@ -731,20 +724,23 @@ export async function getNotifications(companyId: string): Promise<Notification[
             
             const batch = writeBatch(db);
             
-            if(admin && admin.id) {
-              batch.set(doc(collection(db, 'notifications')), { userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId, type: 'alert', relatedInterventionId: 'int-1' });
+            if(admin?.id) {
+              const adminNotifRef = doc(collection(db, 'notifications'));
+              batch.set(adminNotifRef, { userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId, type: 'alert', relatedInterventionId: 'int-1' });
             }
-            if(operator && operator.id) {
-              batch.set(doc(collection(db, 'notifications')), { userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId, type: 'assignment', relatedInterventionId: 'int-2' });
+            if(operator?.id) {
+              const opNotifRef = doc(collection(db, 'notifications'));
+              batch.set(opNotifRef, { userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId, type: 'assignment', relatedInterventionId: 'int-2' });
             }
-            if(client && client.id) {
-              batch.set(doc(collection(db, 'notifications')), { userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId, type: 'status_change', relatedInterventionId: 'int-3' });
+            if(client?.id) {
+              const clientNotifRef = doc(collection(db, 'notifications'));
+              batch.set(clientNotifRef, { userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId, type: 'status_change', relatedInterventionId: 'int-3' });
             }
 
             await batch.commit();
             
             const newSnapshot = await getDocs(q);
-            return newSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+            notifications = newSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
         }
 
         return notifications.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
