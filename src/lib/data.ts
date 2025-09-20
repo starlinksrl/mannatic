@@ -423,6 +423,17 @@ export async function getInterventions(companyId: string): Promise<Intervention[
     return allCompanyInterventions.filter(i => !('isMaintenance' in i) || i.isMaintenance !== true) as Intervention[];
 }
 
+export async function getInterventionTitles(companyId: string): Promise<string[]> {
+    if (!companyId) return [];
+    
+    const q = query(collection(db, 'interventions'), where("companyId", "==", companyId), where("isMaintenance", "!=", true));
+    const snapshot = await getDocs(q);
+    const titles = snapshot.docs.map(doc => doc.data().title as string);
+    
+    // Return unique titles
+    return [...new Set(titles)];
+}
+
 export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
     if (!companyId) return [];
     await checkAndConvertMaintenance(companyId);
@@ -595,6 +606,9 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         const docRef = doc(db, 'interventions', id);
         
         const dataToUpdate = { ...updatedData };
+        if (dataToUpdate.completedAt === undefined) {
+            delete dataToUpdate.completedAt;
+        }
         
         await updateDoc(docRef, dataToUpdate as any);
         const updatedDoc = await getDoc(docRef);
@@ -717,13 +731,13 @@ export async function getNotifications(companyId: string): Promise<Notification[
             
             const batch = writeBatch(db);
             
-            if(admin?.id) {
+            if(admin && admin.id) {
               batch.set(doc(collection(db, 'notifications')), { userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId, type: 'alert', relatedInterventionId: 'int-1' });
             }
-            if(operator?.id) {
+            if(operator && operator.id) {
               batch.set(doc(collection(db, 'notifications')), { userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId, type: 'assignment', relatedInterventionId: 'int-2' });
             }
-            if(client?.id) {
+            if(client && client.id) {
               batch.set(doc(collection(db, 'notifications')), { userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId, type: 'status_change', relatedInterventionId: 'int-3' });
             }
 

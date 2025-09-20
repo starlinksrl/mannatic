@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,16 +27,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, InterventionPriority } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addIntervention } from '@/lib/data';
+import { addIntervention, getInterventionTitles } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ScrollArea } from '../ui/scroll-area';
+import { getInterventionTitleSuggestions } from '@/app/actions';
+import { useDebounce } from 'use-debounce';
+
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -60,6 +63,13 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
+  
+  const [titleQuery, setTitleQuery] = useState('');
+  const [debouncedTitleQuery] = useDebounce(titleQuery, 300);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isTitlePopoverOpen, setIsTitlePopoverOpen] = useState(false);
+  const [existingTitles, setExistingTitles] = useState<string[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -82,6 +92,33 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     setClientList(clients);
   }, [clients])
 
+  useEffect(() => {
+    async function fetchTitles() {
+        if(currentCompany && isOpen) {
+            const titles = await getInterventionTitles(currentCompany.id);
+            setExistingTitles(titles);
+        }
+    }
+    fetchTitles();
+  }, [currentCompany, isOpen]);
+  
+  useEffect(() => {
+    if (debouncedTitleQuery.length > 2) {
+        async function fetchSuggestions() {
+            setIsSuggesting(true);
+            const result = await getInterventionTitleSuggestions({
+                userInput: debouncedTitleQuery,
+                existingTitles: existingTitles,
+            });
+            setSuggestions(result.suggestions);
+            setIsSuggesting(false);
+        }
+        fetchSuggestions();
+    } else {
+        setSuggestions([]);
+    }
+  }, [debouncedTitleQuery, existingTitles]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany || !currentUser) return;
@@ -97,7 +134,6 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     
     onInterventionAdded(newIntervention);
     
-    // Check if a new client was created and update the local list
     const isNewClient = !clients.some(c => c.id === newIntervention.clientId);
     if (isNewClient) {
         setClientList(prev => [...prev, {id: newIntervention.clientId, name: values.clientId, companyId: currentCompany.id}]);
@@ -109,7 +145,14 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     });
     setIsOpen(false);
     form.reset();
+    setTitleQuery('');
   }
+
+  const handleTitleSelect = useCallback((value: string) => {
+    form.setValue('title', value);
+    setTitleQuery(value);
+    setIsTitlePopoverOpen(false);
+  }, [form]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -122,6 +165,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                 priority: 'Bassa',
                 clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
             });
+            setTitleQuery('');
         }
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -137,12 +181,48 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                     control={form.control}
                     name="title"
                     render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Titolo</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Es. Riparazione perdita..." {...field} />
-                        </FormControl>
-                        <FormMessage />
+                         <FormItem>
+                            <FormLabel>Titolo</FormLabel>
+                             <Popover open={isTitlePopoverOpen} onOpenChange={setIsTitlePopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Input 
+                                                placeholder="Es. Riparazione perdita..." 
+                                                {...field}
+                                                onChange={(e) => {
+                                                    field.onChange(e);
+                                                    setTitleQuery(e.target.value);
+                                                    if(e.target.value.length > 2) {
+                                                        setIsTitlePopoverOpen(true);
+                                                    }
+                                                }}
+                                            />
+                                            {isSuggesting && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
+                                        </div>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                     <Command shouldFilter={false}>
+                                        <CommandInput value={titleQuery} onValueChange={setTitleQuery} placeholder="Cerca titolo..." disabled={isSuggesting}/>
+                                        <CommandList>
+                                            {suggestions.length === 0 && !isSuggesting && debouncedTitleQuery.length > 2 && (
+                                                <CommandEmpty>Nessun suggerimento trovato.</CommandEmpty>
+                                            )}
+                                            {suggestions.map((suggestion) => (
+                                                <CommandItem
+                                                    key={suggestion}
+                                                    value={suggestion}
+                                                    onSelect={handleTitleSelect}
+                                                >
+                                                    {suggestion}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
                         </FormItem>
                     )}
                     />

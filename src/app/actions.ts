@@ -6,6 +6,7 @@ import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOu
 import { sendNotificationEmail, SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
 import { sendExpiryNotification, SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification, SendNewInterventionNotificationInput } from '@/ai/flows/send-new-intervention-notification';
+import { suggestInterventionTitle, SuggestInterventionTitleInput, SuggestInterventionTitleOutput } from '@/ai/flows/suggest-intervention-title';
 import { updateCompany } from '@/lib/data';
 import { Company } from '@/lib/types';
 import type { SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
@@ -57,5 +58,16 @@ export async function triggerNewInterventionNotification(input: SendNewIntervent
     } catch (error: any) {
         console.error("Error sending new intervention notification email:", error);
         return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+
+export async function getInterventionTitleSuggestions(input: SuggestInterventionTitleInput): Promise<SuggestInterventionTitleOutput> {
+    try {
+        const result = await suggestInterventionTitle(input);
+        return result;
+    } catch (error) {
+        console.error("Error getting intervention title suggestions:", error);
+        return { suggestions: [] };
     }
 }
