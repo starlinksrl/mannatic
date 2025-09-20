@@ -46,37 +46,6 @@ const SendNewInterventionNotificationOutputSchema = z.object({
 export type SendNewInterventionNotificationOutput = z.infer<typeof SendNewInterventionNotificationOutputSchema>;
 
 
-const prompt = ai.definePrompt({
-  name: 'sendNewInterventionNotificationPrompt',
-  input: {schema: z.object({
-      interventionId: SendNewInterventionNotificationInputSchema.shape.interventionId,
-      interventionTitle: SendNewInterventionNotificationInputSchema.shape.interventionTitle,
-      clientName: SendNewInterventionNotificationInputSchema.shape.clientName,
-      creatorName: SendNewInterventionNotificationInputSchema.shape.creatorName,
-  })},
-  output: {schema: z.object({ emailSubject: z.string(), emailBody: z.string() }) },
-  prompt: `You are an AI assistant tasked with generating professional email notifications for newly created maintenance interventions.
-
-Generate the subject and body of an email to be sent to a company administrator.
-
-The email should inform the admin that a new intervention has been created.
-
-Intervention ID: {{{interventionId}}}
-Title: {{{interventionTitle}}}
-Client: {{{clientName}}}
-Created by: {{{creatorName}}}
-
-The email should:
-1. Have a clear and informative subject line like "Nuovo Intervento Creato: #{{{interventionId}}}".
-2. Clearly state the new intervention details (ID, title, client, creator).
-3. Be written in Italian.
-4. Have a professional and informative tone.
-5. End with a polite closing.
-
-Output a JSON object with "emailSubject" and "emailBody" fields. Do not include "To:" in the body.
-`,
-});
-
 const sendNewInterventionNotificationFlow = ai.defineFlow(
   {
     name: 'sendNewInterventionNotificationFlow',
@@ -88,6 +57,10 @@ const sendNewInterventionNotificationFlow = ai.defineFlow(
       const { smtpConfig, ...promptInput } = input;
       
       const emailSubject = `Nuovo Intervento Creato: #${promptInput.interventionId}`;
+      const formattedDueDate = promptInput.interventionDueDate 
+        ? format(new Date(promptInput.interventionDueDate), 'dd/MM/yyyy', { locale: it }) 
+        : 'Non specificata';
+
       const emailBody = `
         <div style="font-family: Arial, sans-serif; line-height: 1.6;">
             <h1 style="color: #333;">Nuovo Intervento Creato</h1>
@@ -120,7 +93,7 @@ const sendNewInterventionNotificationFlow = ai.defineFlow(
                 </tr>
                  <tr>
                     <td style="padding: 8px; border: 1px solid #ddd; background-color: #f2f2f2;"><b>Scadenza:</b></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">${promptInput.interventionDueDate ? format(new Date(promptInput.interventionDueDate), 'dd/MM/yyyy', { locale: it }) : 'Non specificata'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${formattedDueDate}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px; border: 1px solid #ddd; background-color: #f2f2f2;"><b>Operatore:</b></td>
