@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Company, addCompany, getCompanies } from '@/lib/data';
-import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck } from 'lucide-react';
+import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +41,21 @@ const formSchema = z.object({
 });
 
 const changelog = [
+     { 
+        version: "0.7",
+        date: "2024-09-21",
+        title: "Miglioramenti UX e Affidabilità Notifiche",
+        icon: Rocket,
+        iconClass: "text-green-500",
+        changes: [
+            { type: LayoutDashboard, description: "Aggiunto pulsante 'Crea Intervento' direttamente nella dashboard per un accesso più rapido." },
+            { type: MailCheck, description: "Risolto definitivamente il problema delle notifiche email per i nuovi interventi, adottando un sistema di invio diretto più robusto." },
+            { type: Wrench, description: "Chiarito il contenuto dell'email di test per evitare confusione con le notifiche reali." },
+            { type: ShieldCheck, description: "Resi obbligatori i campi 'Ore Impiegate' e 'Materiali Usati' alla chiusura di un intervento." },
+            { type: Wrench, description: "Semplificato e reso più affidabile il sistema di suggerimento per i titoli degli interventi." },
+            { type: Bug, description: "Corretto un errore critico che impediva il salvataggio degli interventi a causa di un valore non valido nel campo `completedAt`." },
+        ]
+    },
      { 
         version: "0.6",
         date: "2024-09-20",
@@ -358,3 +373,5 @@ export default function CompaniesPage() {
         </>
     );
 }
+
+    
