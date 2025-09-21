@@ -2,8 +2,8 @@
 'use client';
 
 import { Header } from '@/components/dashboard/header';
-import { getInterventions, getUsers } from '@/lib/data';
-import { Intervention, ScheduledMaintenance } from '@/lib/types';
+import { getInterventions, getUsers, getClients } from '@/lib/data';
+import { Intervention, ScheduledMaintenance, Client, User } from '@/lib/types';
 import { isAfter } from 'date-fns';
 import { KpiDashboard } from '@/components/dashboard/kpi-dashboard';
 import { useUser } from '@/contexts/user-context';
@@ -23,6 +23,64 @@ export default function DashboardPage() {
   const router = useRouter();
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [operators, setOperators] = useState<User[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+
+  const fetchKpiData = async () => {
+    if (!currentCompany) {
+        setLoading(false);
+        return;
+    };
+
+    setLoading(true);
+
+    const now = new Date();
+    const [interventions, users, allClients] = await Promise.all([
+      getInterventions(currentCompany.id),
+      getUsers(currentCompany.id),
+      getClients(currentCompany.id),
+    ]);
+
+    setClients(allClients);
+    setOperators(users.filter(u => u.role === 'Operator'));
+
+    const openInterventions = interventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa');
+    const closedInterventions = interventions.filter(i => i.status === 'Completato' || i.status === 'Annullato');
+    
+    const totalClosedOrInProgress = interventions.filter(i => i.status === 'Completato' || i.status === 'In corso');
+    const onTime = totalClosedOrInProgress.filter(i => {
+      if(i.completedAt) {
+        return !isAfter(new Date(i.completedAt), new Date(i.dueDate));
+      }
+      return !isAfter(now, new Date(i.dueDate));
+    });
+    const slaAdherencePercentage = totalClosedOrInProgress.length > 0 ? Math.round((onTime.length / totalClosedOrInProgress.length) * 100) : 100;
+
+    const overdueMaintenanceTasks = interventions.filter(i => {
+      const isMaintenance = 'periodicity' in i;
+      return isMaintenance && (i.status === 'Nuovo' || i.status === 'In corso') && isAfter(now, new Date(i.dueDate));
+    }).length;
+    
+    const operatorWorkload: Record<string, number> = {};
+    users.filter(u => u.role === 'Operator').forEach(op => {
+      operatorWorkload[op.name] = openInterventions.filter(i => i.assignedOperatorId === op.id).length;
+    });
+
+    const operatorWorkloadData = Object.entries(operatorWorkload).map(([name, workload]) => ({ name, workload }));
+
+    const highPriorityInterventions = interventions.filter(i => i.priority === 'Alta' || i.priority === 'Critica').slice(0, 3);
+
+    setKpiData({
+      openInterventions: openInterventions.length,
+      closedInterventions: closedInterventions.length,
+      slaAdherencePercentage,
+      overdueMaintenanceTasks,
+      operatorWorkload,
+      operatorWorkloadData,
+      highPriorityInterventions,
+    });
+    setLoading(false);
+  }
 
   useEffect(() => {
     if (user?.role === 'Creator' && !currentCompany) {
@@ -30,58 +88,8 @@ export default function DashboardPage() {
       return;
     }
     
-    async function getKpiData() {
-      if (!currentCompany) {
-          setLoading(false);
-          return;
-      };
-
-      setLoading(true);
-
-      const now = new Date();
-      const interventions = await getInterventions(currentCompany.id);
-      const users = await getUsers(currentCompany.id);
-
-      const openInterventions = interventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa');
-      const closedInterventions = interventions.filter(i => i.status === 'Completato' || i.status === 'Annullato');
-      
-      const totalClosedOrInProgress = interventions.filter(i => i.status === 'Completato' || i.status === 'In corso');
-      const onTime = totalClosedOrInProgress.filter(i => {
-        if(i.completedAt) {
-          return !isAfter(new Date(i.completedAt), new Date(i.dueDate));
-        }
-        return !isAfter(now, new Date(i.dueDate));
-      });
-      const slaAdherencePercentage = totalClosedOrInProgress.length > 0 ? Math.round((onTime.length / totalClosedOrInProgress.length) * 100) : 100;
-
-      const overdueMaintenanceTasks = interventions.filter(i => {
-        const isMaintenance = 'periodicity' in i;
-        return isMaintenance && (i.status === 'Nuovo' || i.status === 'In corso') && isAfter(now, new Date(i.dueDate));
-      }).length;
-      
-      const operatorWorkload: Record<string, number> = {};
-      users.filter(u => u.role === 'Operator').forEach(op => {
-        operatorWorkload[op.name] = openInterventions.filter(i => i.assignedOperatorId === op.id).length;
-      });
-
-      const operatorWorkloadData = Object.entries(operatorWorkload).map(([name, workload]) => ({ name, workload }));
-
-      const highPriorityInterventions = interventions.filter(i => i.priority === 'Alta' || i.priority === 'Critica').slice(0, 3);
-
-      setKpiData({
-        openInterventions: openInterventions.length,
-        closedInterventions: closedInterventions.length,
-        slaAdherencePercentage,
-        overdueMaintenanceTasks,
-        operatorWorkload,
-        operatorWorkloadData,
-        highPriorityInterventions,
-      });
-      setLoading(false);
-    }
-
     if (user) {
-      getKpiData();
+      fetchKpiData();
     }
   }, [user, currentCompany, router]);
 
@@ -96,7 +104,7 @@ export default function DashboardPage() {
   if (user?.role === 'Creator' && !currentCompany) {
       return (
          <>
-            <Header title="Dashboard" />
+            <Header title="Dashboard" onInterventionAdded={fetchKpiData} clients={clients} operators={operators} />
             <NoCompanySelected />
         </>
       )
@@ -104,9 +112,9 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Header title="Dashboard" />
+      <Header title="Dashboard" onInterventionAdded={fetchKpiData} clients={clients} operators={operators} />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-        {loading || !kpiData ? (
+        {loading || !kpiData || !user ? (
           <div className="flex items-center justify-center flex-1 h-full">
             <Loader className="h-8 w-8 animate-spin" />
           </div>

@@ -1,16 +1,27 @@
+
 'use client';
 
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Menu } from 'lucide-react';
+import { ArrowLeft, Menu, PlusCircle } from 'lucide-react';
 import { SidebarNav } from './sidebar-nav';
 import { UserSwitcher } from './user-switcher';
 import { NotificationsDropdown } from './notifications-dropdown';
 import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
+import { AddInterventionForm } from './add-intervention-form';
+import { Intervention, Client, User } from '@/lib/types';
 
-export function Header({ title }: { title: string }) {
-  const { sessionUser, currentCompany, switchCompany } = useUser();
+interface HeaderProps {
+  title: string;
+  onInterventionAdded?: (intervention: Intervention) => void;
+  clients?: Client[];
+  operators?: User[];
+}
+
+
+export function Header({ title, onInterventionAdded, clients, operators }: HeaderProps) {
+  const { user, sessionUser, currentCompany, switchCompany } = useUser();
   const router = useRouter();
 
   const handleReturnToCompanies = () => {
@@ -18,6 +29,8 @@ export function Header({ title }: { title: string }) {
     switchCompany(null);
     router.push('/dashboard/companies');
   };
+
+  const canCreateIntervention = user && ['Admin', 'Client', 'Operator'].includes(user.role);
 
   return (
     <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 sticky top-0 z-30">
@@ -45,6 +58,19 @@ export function Header({ title }: { title: string }) {
         <h1 className="font-headline text-xl font-semibold">{title}</h1>
       </div>
       <div className="flex items-center gap-4">
+        {canCreateIntervention && onInterventionAdded && clients && operators && user && (
+            <AddInterventionForm
+                clients={clients}
+                operators={operators}
+                onInterventionAdded={onInterventionAdded}
+                currentUser={user}
+            >
+                <Button className="hidden sm:flex">
+                    <PlusCircle className="mr-2" />
+                    Crea Intervento
+                </Button>
+            </AddInterventionForm>
+        )}
         <UserSwitcher />
         <NotificationsDropdown />
       </div>
