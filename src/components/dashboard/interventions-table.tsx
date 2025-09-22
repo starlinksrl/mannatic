@@ -17,7 +17,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { AddInterventionForm } from './add-intervention-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
@@ -55,7 +55,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [operatorFilter, setOperatorFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'dueDate', direction: 'ascending' });
   
-  const [clientsMap, setClientsMap] = useState<Map<string, string>>(new Map());
+  const [clientsMap, setClientsMap] = useState<Map<string, Client>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -73,8 +73,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     operators.forEach(op => opMap.set(op.id, op.name));
     setOperatorsMap(opMap);
 
-    const cliMap = new Map<string, string>();
-    clients.forEach(c => cliMap.set(c.id, c.name));
+    const cliMap = new Map<string, Client>();
+    clients.forEach(c => cliMap.set(c.id, c));
     setClientsMap(cliMap);
   }, [operators, clients]);
 
@@ -173,8 +173,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 bValue = statusOrder[b.status];
                 break;
             case 'client':
-                aValue = clientsMap.get(a.clientId) || '';
-                bValue = clientsMap.get(b.clientId) || '';
+                aValue = clientsMap.get(a.clientId)?.name || '';
+                bValue = clientsMap.get(b.clientId)?.name || '';
                 break;
              case 'operator':
                 aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
@@ -307,12 +307,12 @@ export function InterventionsTable({ interventions: initialInterventions, curren
       <Card className="md:hidden">
         <CardContent className="p-2 space-y-2">
             {sortedInterventions.map((intervention) => {
-              const clientName = clientsMap.get(intervention.clientId);
+              const client = clientsMap.get(intervention.clientId);
               return (
                  <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(intervention as Intervention)}>
                     <div className="flex-1 space-y-1">
                         <p className="font-medium">{intervention.title}</p>
-                        {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{clientName}</p>}
+                        {currentUser.role !== 'Client' && client && <p className="text-sm text-muted-foreground">{client.name}</p>}
                         {intervention.dueDate && <p className="text-sm text-muted-foreground">{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</p>}
                         <div className="flex items-center gap-2 pt-1">
                             {getPriorityBadge(intervention.priority)}
@@ -367,7 +367,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
           </TableHeader>
           <TableBody>
             {sortedInterventions.map((intervention) => {
-              const clientName = clientsMap.get(intervention.clientId);
+              const client = clientsMap.get(intervention.clientId);
               const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
               return (
                 <TableRow key={intervention.id} onClick={() => handleEditClick(intervention as Intervention)} className="cursor-pointer">
@@ -377,7 +377,27 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                             <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
                         </div>
                     </TableCell>
-                  {currentUser.role !== 'Client' && <TableCell className="hidden lg:table-cell">{clientName}</TableCell>}
+                  {currentUser.role !== 'Client' && 
+                    <TableCell className="hidden lg:table-cell">
+                        {client ? (
+                            <div>
+                                <span>{client.name}</span>
+                                {client.address && (
+                                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline">
+                                        <MapPin className="h-3 w-3" /> {client.address}
+                                    </a>
+                                )}
+                                {client.phone && (
+                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline">
+                                        <Phone className="h-3 w-3" /> {client.phone}
+                                    </a>
+                                )}
+                            </div>
+                        ) : (
+                            <span>-</span>
+                        )}
+                    </TableCell>
+                   }
                   <TableCell>{getStatusBadge(intervention.status)}</TableCell>
                   <TableCell className="hidden sm:table-cell">{getPriorityBadge(intervention.priority)}</TableCell>
                   <TableCell className="hidden md:table-cell">{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it }) : 'N/D'}</TableCell>

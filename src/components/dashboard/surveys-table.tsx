@@ -18,7 +18,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteSurvey } from '@/lib/data';
 import { Button } from '../ui/button';
-import { MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Pencil, Trash2, MapPin, Phone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -50,7 +50,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   
-  const [clientsMap, setClientsMap] = useState<Map<string, string>>(new Map());
+  const [clientsMap, setClientsMap] = useState<Map<string, Client>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -68,8 +68,8 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
     operators.forEach(op => opMap.set(op.id, op.name));
     setOperatorsMap(opMap);
 
-    const cliMap = new Map<string, string>();
-    clients.forEach(c => cliMap.set(c.id, c.name));
+    const cliMap = new Map<string, Client>();
+    clients.forEach(c => cliMap.set(c.id, c));
     setClientsMap(cliMap);
   }, [operators, clients]);
 
@@ -114,7 +114,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
       filtered = filtered.filter(s =>
         s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (clientsMap.get(s.clientId) || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (clientsMap.get(s.clientId)?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (statusFilter !== 'all') {
@@ -171,12 +171,12 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
       <Card className="md:hidden">
         <CardContent className="p-2 space-y-2">
             {filteredSurveys.map((survey) => {
-              const clientName = clientsMap.get(survey.clientId);
+              const client = clientsMap.get(survey.clientId);
               return (
                  <div key={survey.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(survey)}>
                     <div className="flex-1 space-y-1">
                         <p className="font-medium">{survey.title}</p>
-                        <p className="text-sm text-muted-foreground">{clientName}</p>
+                        <p className="text-sm text-muted-foreground">{client?.name}</p>
                         <p className="text-sm text-muted-foreground">{survey.address}</p>
                         <p className="text-sm text-muted-foreground">Data: {format(new Date(survey.date), 'dd MMM yyyy', { locale: it })}</p>
                         <div className="flex items-center gap-2 pt-1">
@@ -226,13 +226,30 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
           </TableHeader>
           <TableBody>
             {filteredSurveys.map((survey) => {
-              const clientName = clientsMap.get(survey.clientId);
+              const client = clientsMap.get(survey.clientId);
               const operatorName = survey.assignedOperatorId ? operatorsMap.get(survey.assignedOperatorId) : null;
               return (
                 <TableRow key={survey.id} onClick={() => handleEditClick(survey)} className="cursor-pointer">
                     <TableCell className="font-medium">{survey.title}</TableCell>
-                    <TableCell>{clientName}</TableCell>
-                    <TableCell>{survey.address}</TableCell>
+                    <TableCell>
+                        {client ? (
+                            <div>
+                                <span>{client.name}</span>
+                                {client.phone && (
+                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline">
+                                        <Phone className="h-3 w-3" /> {client.phone}
+                                    </a>
+                                )}
+                            </div>
+                        ) : (
+                            <span>-</span>
+                        )}
+                    </TableCell>
+                    <TableCell>
+                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(survey.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
+                            <MapPin className="h-4 w-4 shrink-0" /> <span>{survey.address}</span>
+                        </a>
+                    </TableCell>
                     <TableCell>{format(new Date(survey.date), 'dd MMM yyyy', { locale: it })}</TableCell>
                     <TableCell>{operatorName || 'Non assegnato'}</TableCell>
                     <TableCell>{getStatusBadge(survey.status)}</TableCell>
