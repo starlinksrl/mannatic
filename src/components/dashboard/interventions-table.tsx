@@ -460,4 +460,3 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     </div>
   );
 }
-
