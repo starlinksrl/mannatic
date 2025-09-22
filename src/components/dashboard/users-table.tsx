@@ -124,7 +124,7 @@ export function UsersTable({ users, onUserUpdated, onUserDeleted }: UsersTablePr
                         <DropdownMenuItem onSelect={() => handleEditClick(user)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
-                        {currentUser?.role === 'Admin' && (
+                        {currentUser?.role === 'Admin' && user.id !== currentUser.id && (
                             <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 

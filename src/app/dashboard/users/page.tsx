@@ -30,7 +30,8 @@ export default function UsersPage() {
       if (!currentCompany) return;
       setIsLoading(true);
       const usersFromDb = await getUsers(currentCompany.id);
-      setUserList(usersFromDb.filter(u => u.id !== creatorUserId));
+      // Filter out clients and the creator user
+      setUserList(usersFromDb.filter(u => u.id !== creatorUserId && u.role !== 'Client'));
       setIsLoading(false);
     }
 
@@ -42,7 +43,7 @@ export default function UsersPage() {
   if(!user || !currentCompany) return null;
 
   const handleUserAdded = (newUser: User) => {
-    if (newUser.id !== creatorUserId) {
+    if (newUser.id !== creatorUserId && newUser.role !== 'Client') {
       setUserList(prevUsers => [...prevUsers, newUser]);
     }
   };
@@ -65,7 +66,7 @@ export default function UsersPage() {
       <Header title="Utenti" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
         <div className="flex justify-end mb-4">
-            <AddUserForm onUserAdded={handleUserAdded}>
+            <AddUserForm onUserAdded={handleUserAdded} defaultRole="Operator">
               <Button>
                 <PlusCircle className="mr-2" />
                 Crea Utente

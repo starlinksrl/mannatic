@@ -43,9 +43,11 @@ const formSchema = z.object({
 interface AddUserFormProps {
   children: React.ReactNode;
   onUserAdded: (user: User) => void;
+  defaultRole?: 'Admin' | 'Operator' | 'Client';
+  isClientForm?: boolean;
 }
 
-export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
+export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm = false }: AddUserFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
@@ -58,7 +60,8 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
       email: '',
       password: '',
       address: '',
-      phone: ''
+      phone: '',
+      role: defaultRole
     },
   });
 
@@ -80,25 +83,34 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
     
     onUserAdded(newUser);
     toast({
-      title: 'Utente creato',
-      description: `L'utente ${values.name} è stato aggiunto con successo.`,
+      title: `${isClientForm ? 'Cliente' : 'Utente'} creato`,
+      description: `${isClientForm ? 'Il cliente' : 'L\'utente'} ${values.name} è stato aggiunto con successo.`,
     });
     setIsOpen(false);
     form.reset();
   }
+  
+  const title = isClientForm ? 'Crea nuovo cliente' : 'Crea nuovo utente';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
         setIsOpen(open);
         if(!open) {
-            form.reset();
+            form.reset({
+              name: '',
+              email: '',
+              password: '',
+              address: '',
+              phone: '',
+              role: defaultRole
+            });
             setShowPassword(false);
         }
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Crea nuovo utente</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -153,28 +165,31 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Ruolo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona un ruolo" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Operator">Operator</SelectItem>
-                      <SelectItem value="Client">Client</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+             {isClientForm ? (
+                <input type="hidden" {...form.register("role")} value="Client" />
+            ) : (
+                <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Ruolo</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Seleziona un ruolo" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        <SelectItem value="Admin">Admin</SelectItem>
+                        <SelectItem value="Operator">Operator</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            )}
             <FormField
               control={form.control}
               name="phone"
@@ -205,7 +220,7 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
                 <DialogClose asChild>
                     <Button variant="outline">Annulla</Button>
                 </DialogClose>
-                <Button type="submit">Crea utente</Button>
+                <Button type="submit">Crea {isClientForm ? 'cliente' : 'utente'}</Button>
             </DialogFooter>
           </form>
         </Form>
