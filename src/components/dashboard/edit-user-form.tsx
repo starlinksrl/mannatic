@@ -39,6 +39,8 @@ const formSchema = z.object({
   role: z.enum(['Admin', 'Operator', 'Client', 'Creator'], { required_error: 'Il ruolo è obbligatorio.' }),
   password: z.string().optional(),
   avatarUrl: z.string().optional(),
+  address: z.string().optional(),
+  phone: z.string().optional(),
 });
 
 interface EditUserFormProps {
@@ -69,7 +71,9 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             email: user.email,
             role: user.role,
             password: '',
-            avatarUrl: user.avatarUrl
+            avatarUrl: user.avatarUrl,
+            address: user.address,
+            phone: user.phone
         })
     }
   }, [user, form]);
@@ -217,6 +221,32 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                       <SelectItem value="Client">Client</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefono</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Numero di telefono" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Indirizzo</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Via, Città, CAP" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

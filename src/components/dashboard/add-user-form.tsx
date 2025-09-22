@@ -36,6 +36,8 @@ const formSchema = z.object({
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
   role: z.enum(['Admin', 'Operator', 'Client'], { required_error: 'Il ruolo è obbligatorio.' }),
   password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}),
+  address: z.string().optional(),
+  phone: z.string().optional(),
 });
 
 interface AddUserFormProps {
@@ -55,6 +57,8 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
       name: '',
       email: '',
       password: '',
+      address: '',
+      phone: ''
     },
   });
 
@@ -70,6 +74,8 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
         role: values.role as UserRole,
         password: values.password,
         companyId: currentCompany.id,
+        address: values.address,
+        phone: values.phone
     });
     
     onUserAdded(newUser);
@@ -165,6 +171,32 @@ export function AddUserForm({ children, onUserAdded }: AddUserFormProps) {
                       <SelectItem value="Client">Client</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefono</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Numero di telefono" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Indirizzo</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Via, Città, CAP" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

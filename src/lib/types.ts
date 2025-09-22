@@ -1,6 +1,7 @@
 
 
 
+
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 
 export interface Company {
@@ -29,12 +30,16 @@ export interface User {
   avatarUrl: string;
   password?: string;
   companyId: string;
+  address?: string;
+  phone?: string;
 }
 
 export interface Client {
   id: string;
   name: string;
   companyId: string;
+  address?: string;
+  phone?: string;
 }
 
 export interface Equipment {

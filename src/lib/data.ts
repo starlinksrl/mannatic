@@ -1,4 +1,5 @@
 
+
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -173,6 +174,8 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
       ...userData,
       email: userData.email.toLowerCase(),
       avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
+      address: userData.address || '',
+      phone: userData.phone || ''
     };
     const docRef = await addDoc(collection(db, 'users'), newUserPayload);
     
@@ -224,11 +227,16 @@ export async function getClients(companyId: string): Promise<Client[]> {
   try {
     const q = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Client"));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data().name,
-      companyId: doc.data().companyId,
-    } as Client));
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            name: data.name,
+            companyId: data.companyId,
+            address: data.address || '',
+            phone: data.phone || ''
+        } as Client
+    });
   } catch (error) {
     console.error("Error fetching clients:", error);
     return [];
@@ -238,7 +246,13 @@ export async function getClients(companyId: string): Promise<Client[]> {
 export async function getClient(clientId: string): Promise<Client | null> {
     const user = await getUserById(clientId);
     if (user && user.role === 'Client') {
-        return { id: user.id, name: user.name, companyId: user.companyId };
+        return { 
+            id: user.id, 
+            name: user.name, 
+            companyId: user.companyId,
+            address: user.address,
+            phone: user.phone
+        };
     }
     return null;
 }
@@ -541,6 +555,8 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             password: 'password123',
             role: 'Client',
             companyId: companyId,
+            address: 'Indirizzo da definire',
+            phone: 'Telefono da definire',
         });
         finalClientId = newClient.id;
         clientName = newClient.name;
