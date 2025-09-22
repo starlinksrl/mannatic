@@ -72,8 +72,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             role: user.role,
             password: '',
             avatarUrl: user.avatarUrl,
-            address: user.address,
-            phone: user.phone
+            address: user.address || '',
+            phone: user.phone || ''
         })
     }
   }, [user, form]);
