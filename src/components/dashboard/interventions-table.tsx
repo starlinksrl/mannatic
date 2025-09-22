@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -123,7 +124,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
 
   const roleBasedInterventions = useMemo(() => {
     if (!currentUser) return [];
-    if (currentUser.role === 'Admin' || currentUser.role === 'Operator') {
+    if (currentUser.role === 'Admin' || currentUser.role === 'Creator' || currentUser.role === 'Operator') {
       return interventions;
     }
     if (currentUser.role === 'Client') {
@@ -377,18 +378,18 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                             <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
                         </div>
                     </TableCell>
-                  {currentUser.role !== 'Client' && 
+                  {(currentUser.role !== 'Client') && 
                     <TableCell className="hidden lg:table-cell">
                         {client ? (
-                            <div>
+                            <div className="text-xs">
                                 <span>{client.name}</span>
                                 {client.address && (
-                                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline">
+                                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:underline">
                                         <MapPin className="h-3 w-3" /> {client.address}
                                     </a>
                                 )}
                                 {client.phone && (
-                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline">
+                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:underline">
                                         <Phone className="h-3 w-3" /> {client.phone}
                                     </a>
                                 )}
@@ -459,3 +460,4 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     </div>
   );
 }
+

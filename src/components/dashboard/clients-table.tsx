@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { MoreHorizontal, Pencil, Trash2, Mail, Phone } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { EditUserForm } from './edit-user-form';
@@ -99,7 +100,7 @@ export function ClientsTable({ clients, onClientUpdated, onClientDeleted }: Clie
                 </div>
               </TableCell>
               <TableCell className="hidden sm:table-cell">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 text-xs">
                     {client.email && (
                         <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
                             <Mail className="h-4 w-4 text-muted-foreground" />
@@ -114,10 +115,13 @@ export function ClientsTable({ clients, onClientUpdated, onClientDeleted }: Clie
                     )}
                 </div>
               </TableCell>
-              <TableCell className="hidden md:table-cell">
-                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address || '')}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:underline">
-                    {client.address}
-                </a>
+              <TableCell className="hidden md:table-cell text-xs">
+                 {client.address && (
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span>{client.address}</span>
+                    </a>
+                 )}
               </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
@@ -174,3 +178,4 @@ export function ClientsTable({ clients, onClientUpdated, onClientDeleted }: Clie
     </>
   );
 }
+
