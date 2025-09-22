@@ -234,9 +234,11 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   };
 
   const tableHeaders = [
-    { key: 'title', label: 'Titolo', visible: true, className: 'w-[40%]' },
-    { key: 'client', label: 'Cliente', visible: currentUser.role !== 'Client', className: 'hidden lg:table-cell' },
-    { key: 'status', label: 'Stato', visible: true, className: '' },
+    { key: 'title', label: 'Titolo', visible: true, className: 'w-[30%]' },
+    { key: 'client', label: 'Cliente', visible: currentUser.role !== 'Client' },
+    { key: 'contact', label: 'Contatti Cliente', visible: currentUser.role === 'Admin', className: 'hidden md:table-cell' },
+    { key: 'address', label: 'Indirizzo', visible: currentUser.role === 'Admin', className: 'hidden lg:table-cell' },
+    { key: 'status', label: 'Stato', visible: true },
     { key: 'priority', label: 'Priorità', visible: true, className: 'hidden sm:table-cell' },
     { key: 'dueDate', label: 'Scadenza', visible: true, className: 'hidden md:table-cell' },
     { key: 'operator', label: 'Operatore', visible: currentUser.role !== 'Operator', className: 'hidden lg:table-cell' },
@@ -376,27 +378,43 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                         <div className="flex flex-col">
                             <span>{intervention.title}</span>
                             <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
-                             {currentUser.role === 'Admin' && client && (
-                                <div className="text-xs mt-1 space-y-0.5">
-                                    {client.address && (
-                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:underline">
-                                            <MapPin className="h-3 w-3" /> {client.address}
-                                        </a>
-                                    )}
-                                    {client.phone && (
-                                        <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:underline">
-                                            <Phone className="h-3 w-3" /> {client.phone}
-                                        </a>
-                                    )}
-                                </div>
-                            )}
                         </div>
                     </TableCell>
                   {(currentUser.role !== 'Client') && 
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell>
                         {client ? client.name : '-'}
                     </TableCell>
                    }
+                   {currentUser.role === 'Admin' && (
+                    <TableCell className="hidden md:table-cell">
+                      {client && (
+                         <div className="flex flex-col gap-1 text-xs">
+                            {client.email && (
+                                <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                    <Mail className="h-4 w-4 text-muted-foreground" />
+                                    <span>{client.email}</span>
+                                </a>
+                            )}
+                            {client.phone && (
+                                <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                    <Phone className="h-4 w-4 text-muted-foreground" />
+                                    <span>{client.phone}</span>
+                                </a>
+                            )}
+                        </div>
+                      )}
+                    </TableCell>
+                   )}
+                   {currentUser.role === 'Admin' && (
+                    <TableCell className="hidden lg:table-cell">
+                      {client && client.address && (
+                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs hover:underline">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span>{client.address}</span>
+                        </a>
+                      )}
+                    </TableCell>
+                   )}
                   <TableCell>{getStatusBadge(intervention.status)}</TableCell>
                   <TableCell className="hidden sm:table-cell">{getPriorityBadge(intervention.priority)}</TableCell>
                   <TableCell className="hidden md:table-cell">{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it }) : 'N/D'}</TableCell>
