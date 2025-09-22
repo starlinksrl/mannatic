@@ -376,27 +376,25 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                         <div className="flex flex-col">
                             <span>{intervention.title}</span>
                             <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
+                             {currentUser.role === 'Admin' && client && (
+                                <div className="text-xs mt-1 space-y-0.5">
+                                    {client.address && (
+                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:underline">
+                                            <MapPin className="h-3 w-3" /> {client.address}
+                                        </a>
+                                    )}
+                                    {client.phone && (
+                                        <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:underline">
+                                            <Phone className="h-3 w-3" /> {client.phone}
+                                        </a>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </TableCell>
                   {(currentUser.role !== 'Client') && 
                     <TableCell className="hidden lg:table-cell">
-                        {client ? (
-                            <div className="text-xs">
-                                <span>{client.name}</span>
-                                {client.address && (
-                                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:underline">
-                                        <MapPin className="h-3 w-3" /> {client.address}
-                                    </a>
-                                )}
-                                {client.phone && (
-                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:underline">
-                                        <Phone className="h-3 w-3" /> {client.phone}
-                                    </a>
-                                )}
-                            </div>
-                        ) : (
-                            <span>-</span>
-                        )}
+                        {client ? client.name : '-'}
                     </TableCell>
                    }
                   <TableCell>{getStatusBadge(intervention.status)}</TableCell>
