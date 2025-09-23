@@ -26,10 +26,13 @@ type Data = {
 
 const JsonCell = ({ data }: { data: any }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  if (data === null || data === undefined) {
+    return <pre className="text-xs text-muted-foreground">null</pre>;
+  }
+
   const jsonString = JSON.stringify(data, null, 2);
   const isExpandable = jsonString.length > 50;
-  
-  if (!data) return <pre className="text-xs text-muted-foreground">null</pre>;
 
   return (
     <div className="text-xs" onClick={() => isExpandable && setIsExpanded(!isExpanded)}>
