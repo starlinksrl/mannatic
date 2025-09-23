@@ -26,16 +26,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, InterventionPriority, InterventionStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateIntervention } from '@/lib/data';
+import { updateIntervention, getUserById } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { useUser } from '@/contexts/user-context';
+import { EditUserForm } from './edit-user-form';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -70,6 +71,7 @@ const formSchema = z.object({
 interface EditInterventionFormProps {
   intervention: Intervention | null;
   onInterventionUpdated: (intervention: Intervention) => void;
+  onClientUpdated: (user: User) => void;
   clients: Client[];
   operators: User[];
   currentUser: User;
@@ -77,9 +79,10 @@ interface EditInterventionFormProps {
   setIsOpen: (open: boolean) => void;
 }
 
-export function EditInterventionForm({ intervention, onInterventionUpdated, clients, operators, currentUser, isOpen, setIsOpen }: EditInterventionFormProps) {
+export function EditInterventionForm({ intervention, onInterventionUpdated, onClientUpdated, clients, operators, currentUser, isOpen, setIsOpen }: EditInterventionFormProps) {
   const { toast } = useToast();
-  const { currentCompany } = useUser();
+  const [isClientEditOpen, setIsClientEditOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<User | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -100,6 +103,18 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
     }
   }, [intervention, form]);
 
+  const handleOpenClientEdit = async () => {
+    const clientId = form.getValues('clientId');
+    if (!clientId) return;
+    const clientUser = await getUserById(clientId);
+    if (clientUser) {
+        setSelectedClient(clientUser);
+        setIsClientEditOpen(true);
+    } else {
+        toast({variant: 'destructive', title: 'Errore', description: 'Impossibile trovare i dati del cliente.'});
+    }
+  };
+  
   if (!intervention) return null;
 
 
@@ -148,6 +163,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
 
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
@@ -177,18 +193,25 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Cliente</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={currentUser.role === 'Client'}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleziona un cliente" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {clients.map(client => (
-                                    <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="flex items-center gap-2">
+                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={currentUser.role === 'Client'}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleziona un cliente" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {clients.map(client => (
+                                        <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
+                                     <Button type="button" variant="outline" size="icon" onClick={handleOpenClientEdit}>
+                                        <Pencil className="h-4 w-4" />
+                                     </Button>
+                                )}
+                            </div>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -417,7 +440,13 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, clie
         </DialogFooter>
       </DialogContent>
     </Dialog>
+     <EditUserForm
+        user={selectedClient}
+        onUserUpdated={onClientUpdated}
+        isOpen={isClientEditOpen}
+        setIsOpen={setIsClientEditOpen}
+    />
+    </>
   );
 }
-
     

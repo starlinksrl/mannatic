@@ -47,6 +47,10 @@ export default function InterventionsPage() {
     const handleInterventionUpdated = (updatedIntervention: Intervention) => {
         setInterventions(prev => prev.map(i => i.id === updatedIntervention.id ? updatedIntervention : i));
     }
+    
+    const handleClientUpdated = (updatedClient: Client) => {
+        setClients(prevClients => prevClients.map(c => c.id === updatedClient.id ? updatedClient : c));
+    }
 
     if (!user || loading) {
         return (
@@ -67,7 +71,8 @@ export default function InterventionsPage() {
             interventions={interventions} 
             currentUser={user} 
             clients={clients} 
-            operators={operators} 
+            operators={operators}
+            onClientUpdated={handleClientUpdated}
         />
       </main>
     </>

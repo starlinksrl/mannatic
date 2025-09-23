@@ -41,14 +41,16 @@ interface InterventionsTableProps {
   currentUser: User;
   clients: Client[];
   operators: User[];
+  onClientUpdated: (client: Client) => void;
 }
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
 const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'In attesa': 3, 'Completato': 4, 'Da Fatturare': 5, 'Fatturato': 6, 'Annullato': 7 };
 
-export function InterventionsTable({ interventions: initialInterventions, currentUser, clients, operators }: InterventionsTableProps) {
+export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onClientUpdated }: InterventionsTableProps) {
   const { toast } = useToast();
   const [interventions, setInterventions] = useState(initialInterventions);
+  const [clients, setClients] = useState(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -68,6 +70,10 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   useEffect(() => {
     setInterventions(initialInterventions);
   }, [initialInterventions]);
+
+  useEffect(() => {
+    setClients(initialClients);
+  }, [initialClients]);
 
   useEffect(() => {
     const opMap = new Map<string, string>();
@@ -92,6 +98,18 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     setInterventions(prev => prev.map(i => i.id === updatedIntervention.id ? updatedIntervention : i));
   }
   
+  const handleClientUpdatedInternal = (updatedClient: User) => {
+    const client: Client = {
+      id: updatedClient.id,
+      name: updatedClient.name,
+      companyId: updatedClient.companyId,
+      address: updatedClient.address,
+      phone: updatedClient.phone,
+    };
+    setClients(prevClients => prevClients.map(c => c.id === client.id ? client : c));
+    onClientUpdated(client);
+  }
+
   const handleInterventionDeleted = (deletedInterventionId: string) => {
     setInterventions(prev => prev.filter(i => i.id !== deletedInterventionId));
   }
@@ -469,6 +487,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
       <EditInterventionForm
         intervention={selectedIntervention}
         onInterventionUpdated={handleInterventionUpdated}
+        onClientUpdated={handleClientUpdatedInternal}
         clients={clients}
         operators={operators}
         currentUser={currentUser}
