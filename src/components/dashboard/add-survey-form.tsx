@@ -69,6 +69,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
       address: '',
       notes: '',
       assignedOperatorId: null,
+      time: '',
     },
   });
 

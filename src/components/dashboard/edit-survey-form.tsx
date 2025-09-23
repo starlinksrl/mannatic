@@ -62,6 +62,9 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      time: '',
+    },
   });
   
   useEffect(() => {
