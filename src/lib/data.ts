@@ -435,7 +435,7 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
 
 export async function getInterventions(companyId: string): Promise<Intervention[]> {
     if (!companyId) return [];
-    await checkAndConvertMaintenance(companyId);
+    // await checkAndConvertMaintenance(companyId);
     await checkAndNotifyExpiringInterventions(companyId);
     
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
@@ -459,7 +459,7 @@ export async function getInterventionTitles(companyId: string): Promise<string[]
 
 export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
     if (!companyId) return [];
-    await checkAndConvertMaintenance(companyId);
+    // await checkAndConvertMaintenance(companyId);
     await checkAndNotifyExpiringInterventions(companyId);
 
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
