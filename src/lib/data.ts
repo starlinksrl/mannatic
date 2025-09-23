@@ -202,7 +202,11 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         
         await updateDoc(userDocRef, dataToUpdate);
         
-        return await getUserById(id);
+        const updatedDoc = await getDoc(userDocRef);
+        if (updatedDoc.exists()) {
+            return { id: updatedDoc.id, ...updatedDoc.data() } as User;
+        }
+        return null;
     } catch (error) {
         console.error("Error updating user:", error);
         return null;
@@ -309,14 +313,15 @@ async function checkAndConvertMaintenance(companyId: string) {
             where("createdAt", ">", subDays(today, 2).toISOString())
         );
         const recentInterventionsSnapshot = await getDocs(qRecentInterventions);
-        const recentInterventions = recentInterventionsSnapshot.docs.map(doc => doc.data());
+        const recentInterventions = recentInterventionsSnapshot.docs.map(doc => doc.data() as Intervention);
 
         // 3. Process in-memory
         for (const maint of maintenancesToConvert) {
             const nextDueDate = new Date(maint.nextDueDate);
-
-            const alreadyConverted = recentInterventions.some(int => 
-                int.title === maint.title && (!int.isMaintenance || int.isMaintenance === false)
+            
+            // Check if an intervention with the same title was created recently and is NOT a maintenance task
+             const alreadyConverted = recentInterventions.some(int => 
+                int.title === maint.title && !int.isMaintenance
             );
 
             if (isWithinInterval(nextDueDate, conversionInterval) && !alreadyConverted) {
@@ -780,5 +785,4 @@ export async function getNotifications(companyId: string): Promise<Notification[
         console.error("Error fetching notifications:", error);
         return [];
     }
-
-    
+}
