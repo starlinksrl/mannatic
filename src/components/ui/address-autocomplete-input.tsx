@@ -15,7 +15,7 @@ const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualiz
 
 export function AddressAutocompleteInput({ name, placeholder }: AddressAutocompleteInputProps) {
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     libraries,
   });
 
