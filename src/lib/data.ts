@@ -284,62 +284,72 @@ const CONVERSION_WINDOW_DAYS = 7;
 
 async function checkAndConvertMaintenance(companyId: string) {
     if (!companyId) return;
-    const today = startOfToday();
-    const conversionInterval = {
-        start: today,
-        end: addDays(today, CONVERSION_WINDOW_DAYS),
-    };
 
-    const qMaint = query(collection(db, 'interventions'), 
-      where("companyId", "==", companyId),
-      where("isMaintenance", "==", true),
-      where("status", "==", "Pianificato")
-    );
+    try {
+        const today = startOfToday();
+        const conversionInterval = {
+            start: today,
+            end: addDays(today, CONVERSION_WINDOW_DAYS),
+        };
 
-    const maintSnapshot = await getDocs(qMaint);
-    const maintenancesToConvert = maintSnapshot.docs.map(d => ({id: d.id, ...d.data()} as ScheduledMaintenance));
-
-    for (const maint of maintenancesToConvert) {
-        const nextDueDate = new Date(maint.nextDueDate);
-        
-        // Check if an intervention for this due date was already created recently
-         const qExisting = query(collection(db, 'interventions'), 
+        // 1. Fetch all planned maintenance for the company
+        const qMaint = query(collection(db, 'interventions'),
             where("companyId", "==", companyId),
-            where("isMaintenance", "in", [false, null]),
-            where("title", "==", maint.title),
+            where("isMaintenance", "==", true),
+            where("status", "==", "Pianificato")
+        );
+        const maintSnapshot = await getDocs(qMaint);
+        const maintenancesToConvert = maintSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as ScheduledMaintenance));
+
+        if (maintenancesToConvert.length === 0) return;
+
+        // 2. Fetch recent interventions to check for duplicates
+        const qRecentInterventions = query(collection(db, 'interventions'),
+            where("companyId", "==", companyId),
             where("createdAt", ">", subDays(today, 2).toISOString())
-         );
-         const existingSnapshot = await getDocs(qExisting);
-         const alreadyConverted = !existingSnapshot.empty;
+        );
+        const recentInterventionsSnapshot = await getDocs(qRecentInterventions);
+        const recentInterventions = recentInterventionsSnapshot.docs.map(doc => doc.data());
 
+        // 3. Process in-memory
+        for (const maint of maintenancesToConvert) {
+            const nextDueDate = new Date(maint.nextDueDate);
 
-        if (isWithinInterval(nextDueDate, conversionInterval) && !alreadyConverted) {
-            console.log(`Converting maintenance ${maint.id} to intervention.`);
-            
-            const newInterventionData: Omit<Intervention, 'id'> = {
-                title: maint.title,
-                clientId: maint.clientId,
-                description: `Creato automaticamente dalla manutenzione programmata: ${maint.description}`,
-                priority: 'Bassa',
-                sla: '48h',
-                status: 'Nuovo',
-                assignedOperatorId: maint.assignedOperatorId,
-                createdAt: new Date().toISOString(),
-                dueDate: maint.nextDueDate,
-                updates: [{date: new Date().toISOString(), description: `Creato da manutenzione #${maint.id}`, userName: 'Sistema'}],
-                companyId: maint.companyId
-            };
-            await addDoc(collection(db, 'interventions'), newInterventionData);
+            const alreadyConverted = recentInterventions.some(int => 
+                int.title === maint.title && (!int.isMaintenance || int.isMaintenance === false)
+            );
 
-            // Update original maintenance task
-            const maintDocRef = doc(db, 'interventions', maint.id);
-            await updateDoc(maintDocRef, {
-                status: 'In corso',
-                nextDueDate: addMonths(new Date(maint.nextDueDate), maint.recurrenceMonths).toISOString()
-            });
+            if (isWithinInterval(nextDueDate, conversionInterval) && !alreadyConverted) {
+                console.log(`Converting maintenance ${maint.id} to intervention.`);
+                
+                const newInterventionData: Omit<Intervention, 'id'> = {
+                    title: maint.title,
+                    clientId: maint.clientId,
+                    description: `Creato automaticamente dalla manutenzione programmata: ${maint.description}`,
+                    priority: 'Bassa',
+                    sla: '48h',
+                    status: 'Nuovo',
+                    assignedOperatorId: maint.assignedOperatorId,
+                    createdAt: new Date().toISOString(),
+                    dueDate: maint.nextDueDate,
+                    updates: [{ date: new Date().toISOString(), description: `Creato da manutenzione #${maint.id}`, userName: 'Sistema' }],
+                    companyId: maint.companyId
+                };
+                await addDoc(collection(db, 'interventions'), newInterventionData);
+
+                // Update original maintenance task
+                const maintDocRef = doc(db, 'interventions', maint.id);
+                await updateDoc(maintDocRef, {
+                    status: 'In corso',
+                    nextDueDate: addMonths(new Date(maint.nextDueDate), maint.recurrenceMonths).toISOString()
+                });
+            }
         }
+    } catch (error) {
+        console.error("Error in checkAndConvertMaintenance:", error);
     }
 }
+
 
 async function checkAndNotifyExpiringInterventions(companyId: string) {
     if (!companyId) return;
@@ -770,4 +780,5 @@ export async function getNotifications(companyId: string): Promise<Notification[
         console.error("Error fetching notifications:", error);
         return [];
     }
-}
+
+    
