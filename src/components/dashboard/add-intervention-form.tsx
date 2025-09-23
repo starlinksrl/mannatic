@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -78,6 +79,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       assignedOperatorId: null,
       priority: 'Bassa',
       clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
+      dueTime: '',
     },
   });
   
@@ -168,6 +170,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                 assignedOperatorId: null,
                 priority: 'Bassa',
                 clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
+                dueTime: '',
             });
             setTitleQuery('');
         }
@@ -434,3 +437,5 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     </Dialog>
   );
 }
+
+    

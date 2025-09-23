@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -88,6 +89,9 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      dueTime: '',
+    }
   });
 
   useEffect(() => {
@@ -474,4 +478,5 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
     
