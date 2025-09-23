@@ -20,7 +20,7 @@ export function AddressAutocompleteInput({ name, placeholder }: AddressAutocompl
   });
 
   const { control, setValue } = useFormContext();
-  const { field } = useController({ name, control });
+  const { field } = useController({ name, control, defaultValue: '' });
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
@@ -31,7 +31,10 @@ export function AddressAutocompleteInput({ name, placeholder }: AddressAutocompl
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      setValue(name, place.formatted_address || '', { shouldValidate: true, shouldDirty: true });
+      const formattedAddress = place.formatted_address || '';
+      setValue(name, formattedAddress, { shouldValidate: true, shouldDirty: true });
+      // Manually trigger onChange to update the controlled component's internal state
+      field.onChange(formattedAddress);
     }
   };
 
@@ -43,7 +46,9 @@ export function AddressAutocompleteInput({ name, placeholder }: AddressAutocompl
       <Input
         {...field}
         placeholder={placeholder}
-        value={field.value || ''}
+        onChange={(e) => {
+            field.onChange(e.target.value);
+        }}
       />
     </Autocomplete>
   );
