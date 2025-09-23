@@ -305,8 +305,8 @@ async function checkAndConvertMaintenance(companyId: string) {
         // Check if an intervention for this due date was already created recently
          const qExisting = query(collection(db, 'interventions'), 
             where("companyId", "==", companyId),
+            where("isMaintenance", "in", [false, null]),
             where("title", "==", maint.title),
-            where("isMaintenance", "not-in", [true]), // This is more efficient than !=
             where("createdAt", ">", subDays(today, 2).toISOString())
          );
          const existingSnapshot = await getDocs(qExisting);
