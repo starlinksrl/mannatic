@@ -350,7 +350,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                              )}
                           </div>
                         )}
-                        {intervention.dueDate && <p className="text-sm text-muted-foreground">{format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it })}</p>}
+                        {intervention.dueDate && <p className="text-sm text-muted-foreground">{format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                         <div className="flex items-center gap-2 pt-1">
                             {getPriorityBadge(intervention.priority)}
                             {getStatusBadge(intervention.status)}
@@ -451,7 +451,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                    )}
                   <TableCell>{getStatusBadge(intervention.status)}</TableCell>
                   <TableCell className="hidden sm:table-cell">{getPriorityBadge(intervention.priority)}</TableCell>
-                  <TableCell className="hidden md:table-cell">{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd MMM yyyy', { locale: it }) : 'N/D'}</TableCell>
+                  <TableCell className="hidden md:table-cell">{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
                   {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell">{operatorName || 'Non assegnato'}</TableCell>}
                   <TableCell className="text-right">
                     <DropdownMenu>

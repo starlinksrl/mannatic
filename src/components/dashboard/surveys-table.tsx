@@ -178,7 +178,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                         <p className="font-medium">{survey.title}</p>
                         <p className="text-sm text-muted-foreground">{client?.name}</p>
                         <p className="text-sm text-muted-foreground">{survey.address}</p>
-                        <p className="text-sm text-muted-foreground">Data: {format(new Date(survey.date), 'dd MMM yyyy', { locale: it })}</p>
+                        <p className="text-sm text-muted-foreground">Data: {format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it })}</p>
                         <div className="flex items-center gap-2 pt-1">
                             {getStatusBadge(survey.status)}
                         </div>
@@ -250,7 +250,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                             <MapPin className="h-4 w-4 shrink-0" /> <span>{survey.address}</span>
                         </a>
                     </TableCell>
-                    <TableCell>{format(new Date(survey.date), 'dd MMM yyyy', { locale: it })}</TableCell>
+                    <TableCell>{format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>
                     <TableCell>{operatorName || 'Non assegnato'}</TableCell>
                     <TableCell>{getStatusBadge(survey.status)}</TableCell>
                     <TableCell className="text-right">

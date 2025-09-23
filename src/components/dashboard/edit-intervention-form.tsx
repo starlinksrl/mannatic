@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, MessageSquarePlus, Pencil } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, InterventionPriority, InterventionStatus } from '@/lib/types';
@@ -45,6 +45,7 @@ const formSchema = z.object({
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   status: z.enum(['Nuovo', 'In corso', 'In attesa', 'Completato', 'Annullato', 'Da Fatturare', 'Fatturato'], { required_error: 'Lo stato è obbligatorio.' }),
   dueDate: z.date({ required_error: 'La data di scadenza è obbligatoria.' }),
+  dueTime: z.string({ required_error: "L'ora è obbligatoria." }),
   assignedOperatorId: z.string().nullable(),
   newUpdate: z.string().optional(),
   timeSpent: z.coerce.number().positive({ message: 'Le ore impiegate devono essere un numero positivo.' }).optional(),
@@ -68,6 +69,7 @@ const formSchema = z.object({
     }
 });
 
+
 interface EditInterventionFormProps {
   intervention: Intervention | null;
   onInterventionUpdated: (intervention: Intervention) => void;
@@ -90,9 +92,11 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
 
   useEffect(() => {
     if (intervention) {
+      const dueDate = new Date(intervention.dueDate as string);
       form.reset({
         ...intervention,
-        dueDate: new Date(intervention.dueDate),
+        dueDate: dueDate,
+        dueTime: format(dueDate, 'HH:mm'),
         priority: intervention.priority,
         status: intervention.status,
         assignedOperatorId: intervention.assignedOperatorId || null,
@@ -128,13 +132,19 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             userName: currentUser.name
         }, ...newUpdates];
     }
+    
+    const [hours, minutes] = values.dueTime.split(':').map(Number);
+    let date = values.dueDate;
+    date = setHours(date, hours);
+    date = setMinutes(date, minutes);
+    const finalDueDate = date.toISOString();
 
     const updatedInterventionData = {
         ...intervention,
         ...values,
         priority: values.priority as InterventionPriority,
         status: values.status as InterventionStatus,
-        dueDate: values.dueDate.toISOString(),
+        dueDate: finalDueDate,
         updates: newUpdates,
         timeSpent: values.timeSpent || null,
         materialsUsed: values.materialsUsed || null,
@@ -285,45 +295,60 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                             </FormItem>
                         )}
                         />
-                        <FormField
-                            control={form.control}
-                            name="dueDate"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                <FormLabel>Data Scadenza</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                        )}
-                                        >
-                                        {field.value ? (
-                                            format(field.value, "PPP", { locale: it })
-                                        ) : (
-                                            <span>Scegli una data</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        initialFocus
-                                        locale={it}
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                                </FormItem>
-                        )}
-                        />
+                         <div className="grid grid-cols-2 gap-2">
+                            <FormField
+                                control={form.control}
+                                name="dueDate"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Data Scadenza</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                            >
+                                            {field.value ? (
+                                                format(field.value, "PPP", { locale: it })
+                                            ) : (
+                                                <span>Scegli data</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            initialFocus
+                                            locale={it}
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                    </FormItem>
+                            )}
+                            />
+                             <FormField
+                                control={form.control}
+                                name="dueTime"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Ora</FormLabel>
+                                        <FormControl>
+                                            <Input type="time" {...field} />
+                                        </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                     </div>
 
                     {currentUser.role === 'Admin' && (

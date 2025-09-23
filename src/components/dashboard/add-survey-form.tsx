@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Survey, Client, User } from '@/lib/types';
@@ -44,6 +44,7 @@ const formSchema = z.object({
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
   address: z.string().min(5, { message: 'L\'indirizzo deve contenere almeno 5 caratteri.' }),
   date: z.date({ required_error: 'La data è obbligatoria' }),
+  time: z.string({ required_error: "L'ora è obbligatoria." }),
   assignedOperatorId: z.string().nullable(),
   notes: z.string().optional(),
 });
@@ -77,10 +78,16 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany) return;
+    
+    const [hours, minutes] = values.time.split(':').map(Number);
+    let date = values.date;
+    date = setHours(date, hours);
+    date = setMinutes(date, minutes);
+    const finalDate = date.toISOString();
 
     const newSurvey = await addSurvey({
         ...values,
-        date: values.date.toISOString(),
+        date: finalDate,
         companyId: currentCompany.id,
     });
     
@@ -212,46 +219,61 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                     )}
                     />
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <FormField
-                            control={form.control}
-                            name="date"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                <FormLabel>Data Sopralluogo</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                        )}
-                                        >
-                                        {field.value ? (
-                                            format(field.value, "PPP", { locale: it })
-                                        ) : (
-                                            <span>Scegli una data</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        initialFocus
-                                        locale={it}
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                                </FormItem>
-                        )}
-                        />
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-2">
+                             <FormField
+                                control={form.control}
+                                name="date"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Data</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                            >
+                                            {field.value ? (
+                                                format(field.value, "PPP", { locale: it })
+                                            ) : (
+                                                <span>Scegli una data</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            initialFocus
+                                            locale={it}
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                    </FormItem>
+                            )}
+                            />
+                             <FormField
+                                control={form.control}
+                                name="time"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Ora</FormLabel>
+                                        <FormControl>
+                                            <Input type="time" {...field} />
+                                        </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
 
                         <FormField
                             control={form.control}

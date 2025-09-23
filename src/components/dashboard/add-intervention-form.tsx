@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, InterventionPriority } from '@/lib/types';
@@ -44,7 +44,11 @@ const formSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   dueDate: z.date().optional(),
+  dueTime: z.string().optional(),
   assignedOperatorId: z.string().nullable(),
+}).refine(data => (data.dueDate && data.dueTime) || !data.dueDate, {
+    message: "L'ora è obbligatoria se la data è specificata.",
+    path: ["dueTime"],
 });
 
 interface AddInterventionFormProps {
@@ -113,12 +117,21 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany || !currentUser) return;
+    
+    let finalDueDate: string | undefined = undefined;
+    if (values.dueDate && values.dueTime) {
+      const [hours, minutes] = values.dueTime.split(':').map(Number);
+      let date = values.dueDate;
+      date = setHours(date, hours);
+      date = setMinutes(date, minutes);
+      finalDueDate = date.toISOString();
+    }
 
     const newIntervention = await addIntervention({
         ...values,
         description: values.description || values.title,
         priority: values.priority as InterventionPriority,
-        dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
+        dueDate: finalDueDate,
         companyId: currentCompany.id,
         creatorName: currentUser.name
     });
@@ -300,68 +313,83 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                     />
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                        control={form.control}
-                        name="priority"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Priorità</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleziona una priorità" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                <SelectItem value="Bassa">Bassa</SelectItem>
-                                <SelectItem value="Media">Media</SelectItem>
-                                <SelectItem value="Alta">Alta</SelectItem>
-                                <SelectItem value="Critica">Critica</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
+                         <FormField
                             control={form.control}
-                            name="dueDate"
+                            name="priority"
                             render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                <FormLabel>Data Scadenza (Opzionale)</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
+                                <FormItem>
+                                <FormLabel>Priorità</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
-                                        <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                        )}
-                                        >
-                                        {field.value ? (
-                                            format(field.value, "PPP", { locale: it })
-                                        ) : (
-                                            <span>Scegli una data</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleziona una priorità" />
+                                    </SelectTrigger>
                                     </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        initialFocus
-                                        locale={it}
-                                    />
-                                    </PopoverContent>
-                                </Popover>
+                                    <SelectContent>
+                                    <SelectItem value="Bassa">Bassa</SelectItem>
+                                    <SelectItem value="Media">Media</SelectItem>
+                                    <SelectItem value="Alta">Alta</SelectItem>
+                                    <SelectItem value="Critica">Critica</SelectItem>
+                                    </SelectContent>
+                                </Select>
                                 <FormMessage />
                                 </FormItem>
-                        )}
+                            )}
                         />
+                        <div className="grid grid-cols-2 gap-2">
+                             <FormField
+                                control={form.control}
+                                name="dueDate"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Scadenza (Opz.)</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                            >
+                                            {field.value ? (
+                                                format(field.value, "PPP", { locale: it })
+                                            ) : (
+                                                <span>Scegli data</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            initialFocus
+                                            locale={it}
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                    </FormItem>
+                            )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="dueTime"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Ora</FormLabel>
+                                        <FormControl>
+                                            <Input type="time" {...field} />
+                                        </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                     </div>
 
                     {currentUser.role === 'Admin' && (

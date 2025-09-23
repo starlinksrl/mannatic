@@ -54,6 +54,7 @@ const InterventionCard = ({ intervention }: { intervention: InterventionWithDeta
                 </div>
             </div>
             <div className="mt-2 text-sm text-muted-foreground">
+                 {intervention.dueDate && <p>Orario: {format(new Date(intervention.dueDate), 'HH:mm')}</p>}
                 <p>Operatore: {intervention.operatorName}</p>
             </div>
         </div>
@@ -77,7 +78,7 @@ export default function CalendarPage() {
         if (!currentCompany) return;
         setLoading(true);
         const allInterventions = await getInterventions(currentCompany.id);
-        setInterventions(allInterventions);
+        setInterventions(allInterventions.filter(i => i.dueDate));
         setLoading(false);
     }
     if (user) {
@@ -130,9 +131,9 @@ export default function CalendarPage() {
     return false;
   });
 
-  const selectedDayInterventions = roleBasedInterventions.filter(i => 
-    date && isSameDay(new Date(i.dueDate), date)
-  );
+  const selectedDayInterventions = roleBasedInterventions
+    .filter(i => date && i.dueDate && isSameDay(new Date(i.dueDate), date))
+    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
 
   if (user.role === 'Client') {
     return null; 
@@ -151,7 +152,7 @@ export default function CalendarPage() {
                 className="w-full"
                 locale={it}
                 modifiers={{
-                  hasIntervention: interventions.map(i => new Date(i.dueDate))
+                  hasIntervention: interventions.map(i => new Date(i.dueDate as string))
                 }}
                 modifiersStyles={{
                   hasIntervention: {
