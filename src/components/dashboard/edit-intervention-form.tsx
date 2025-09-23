@@ -96,11 +96,11 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
 
   useEffect(() => {
     if (intervention) {
-      const dueDate = new Date(intervention.dueDate as string);
+      const dueDate = intervention.dueDate ? new Date(intervention.dueDate) : new Date();
       form.reset({
         ...intervention,
         dueDate: dueDate,
-        dueTime: format(dueDate, 'HH:mm'),
+        dueTime: intervention.dueDate ? format(dueDate, 'HH:mm') : '',
         priority: intervention.priority,
         status: intervention.status,
         assignedOperatorId: intervention.assignedOperatorId || null,
@@ -312,16 +312,16 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                             <Button
                                             variant={"outline"}
                                             className={cn(
-                                                "pl-3 text-left font-normal",
+                                                "w-full justify-start text-left font-normal",
                                                 !field.value && "text-muted-foreground"
                                             )}
                                             >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
                                             {field.value ? (
                                                 format(field.value, "PPP", { locale: it })
                                             ) : (
                                                 <span>Scegli data</span>
                                             )}
-                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                             </Button>
                                         </FormControl>
                                         </PopoverTrigger>
@@ -478,5 +478,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
+    
 
     
