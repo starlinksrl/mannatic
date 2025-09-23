@@ -104,7 +104,7 @@ export default function DashboardPage() {
   if (user?.role === 'Creator' && !currentCompany) {
       return (
          <>
-            <Header title="Dashboard" onInterventionAdded={fetchKpiData} clients={clients} operators={operators} />
+            <Header title="Dashboard" />
             <NoCompanySelected />
         </>
       )
