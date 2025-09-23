@@ -169,7 +169,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                         <FormItem>
                         <FormLabel>Indirizzo</FormLabel>
                         <FormControl>
-                             <AddressAutocompleteInput name="address" placeholder="Via, numero civico, città" />
+                             <AddressAutocompleteInput name={field.name} placeholder="Via, numero civico, città" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

@@ -246,7 +246,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 <FormItem>
                   <FormLabel>Indirizzo</FormLabel>
                   <FormControl>
-                    <AddressAutocompleteInput name="address" placeholder="Via, Città, CAP" />
+                    <AddressAutocompleteInput name={field.name} placeholder="Via, Città, CAP" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

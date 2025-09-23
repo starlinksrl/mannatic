@@ -220,7 +220,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                         <FormItem>
                         <FormLabel>Indirizzo</FormLabel>
                         <FormControl>
-                            <AddressAutocompleteInput name="address" placeholder="Via, numero civico, città" />
+                            <AddressAutocompleteInput name={field.name} placeholder="Via, numero civico, città" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
