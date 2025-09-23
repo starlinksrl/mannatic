@@ -332,7 +332,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               return (
                  <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(intervention as Intervention)}>
                     <div className="flex-1 space-y-2 pr-4 break-words">
-                        <p className="font-medium">{intervention.title}</p>
+                        <p className="font-medium break-words">{intervention.title}</p>
                         {currentUser.role !== 'Client' && client && (
                           <div className="space-y-1 text-sm text-muted-foreground">
                             <p>{client.name}</p>
@@ -350,7 +350,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                              )}
                           </div>
                         )}
-                        {intervention.dueDate && <p className="text-sm text-muted-foreground">{format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
+                        {intervention.dueDate && <p className="text-sm text-muted-foreground break-words">{format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                         <div className="flex items-center gap-2 pt-1">
                             {getPriorityBadge(intervention.priority)}
                             {getStatusBadge(intervention.status)}
@@ -408,14 +408,14 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
               return (
                 <TableRow key={intervention.id} onClick={() => handleEditClick(intervention as Intervention)} className="cursor-pointer">
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium whitespace-normal break-words">
                         <div className="flex flex-col">
                             <span>{intervention.title}</span>
                             <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
                         </div>
                     </TableCell>
                   {(currentUser.role !== 'Client') && 
-                    <TableCell>
+                    <TableCell className="whitespace-normal break-words">
                         {client ? client.name : '-'}
                     </TableCell>
                    }
