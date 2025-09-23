@@ -306,7 +306,7 @@ async function checkAndConvertMaintenance(companyId: string) {
          const qExisting = query(collection(db, 'interventions'), 
             where("companyId", "==", companyId),
             where("title", "==", maint.title),
-            where("isMaintenance", "!=", true), // ensure it's a converted one
+            where("isMaintenance", "not-in", [true]), // This is more efficient than !=
             where("createdAt", ">", subDays(today, 2).toISOString())
          );
          const existingSnapshot = await getDocs(qExisting);
