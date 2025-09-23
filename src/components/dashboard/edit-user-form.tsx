@@ -32,6 +32,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Pencil, Eye, EyeOff } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
+import { AddressAutocompleteInput } from '../ui/address-autocomplete-input';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
@@ -245,7 +246,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 <FormItem>
                   <FormLabel>Indirizzo</FormLabel>
                   <FormControl>
-                    <Input placeholder="Via, Città, CAP" {...field} />
+                    <AddressAutocompleteInput name="address" placeholder="Via, Città, CAP" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

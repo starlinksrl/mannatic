@@ -38,6 +38,7 @@ import { addSurvey } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { ScrollArea } from '../ui/scroll-area';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
+import { AddressAutocompleteInput } from '../ui/address-autocomplete-input';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -111,7 +112,13 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open) form.reset();
+        if (!open) form.reset({
+          title: '',
+          address: '',
+          notes: '',
+          assignedOperatorId: null,
+          time: '',
+        });
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
@@ -213,7 +220,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                         <FormItem>
                         <FormLabel>Indirizzo</FormLabel>
                         <FormControl>
-                            <Input placeholder="Via, numero civico, città" {...field} />
+                            <AddressAutocompleteInput name="address" placeholder="Via, numero civico, città" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

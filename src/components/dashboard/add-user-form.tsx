@@ -30,6 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff } from 'lucide-react';
+import { AddressAutocompleteInput } from '../ui/address-autocomplete-input';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
@@ -210,7 +211,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 <FormItem>
                   <FormLabel>Indirizzo</FormLabel>
                   <FormControl>
-                    <Input placeholder="Via, Città, CAP" {...field} />
+                    <AddressAutocompleteInput name="address" placeholder="Via, Città, CAP" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

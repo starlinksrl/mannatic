@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { updateSurvey } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { useEffect } from 'react';
+import { AddressAutocompleteInput } from '../ui/address-autocomplete-input';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -168,7 +169,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                         <FormItem>
                         <FormLabel>Indirizzo</FormLabel>
                         <FormControl>
-                            <Input {...field} />
+                             <AddressAutocompleteInput name="address" placeholder="Via, numero civico, città" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

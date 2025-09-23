@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 import dotenv from 'dotenv';
 
@@ -10,6 +11,9 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  env: {
+    NEXT_PUBLIC_FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
   },
   images: {
     remotePatterns: [
