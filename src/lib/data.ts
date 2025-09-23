@@ -363,7 +363,6 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
 
 export async function getInterventions(companyId: string): Promise<Intervention[]> {
     if (!companyId) return [];
-    await checkAndNotifyExpiringInterventions(companyId);
     
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
@@ -386,7 +385,6 @@ export async function getInterventionTitles(companyId: string): Promise<string[]
 
 export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
     if (!companyId) return [];
-    await checkAndNotifyExpiringInterventions(companyId);
 
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
@@ -508,8 +506,13 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         if (client) clientName = client.name;
     }
 
+    const dataForDb: any = { ...restOfData };
+    if (dataForDb.dueTime === undefined) {
+      delete dataForDb.dueTime;
+    }
+
     const newInterventionData: Omit<Intervention, 'id'> = {
-        ...restOfData,
+        ...dataForDb,
         clientId: finalClientId,
         companyId: companyId,
         status: 'Nuovo' as InterventionStatus,
