@@ -28,6 +28,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { AddressAutocompleteInput } from '@/components/ui/address-autocomplete-input';
 
 const formSchema = z.object({
     name: z.string().min(1, { message: 'Il nome è obbligatorio' }),
@@ -219,7 +220,7 @@ export default function CompaniesPage() {
                                                 <FormItem>
                                                 <FormLabel>Indirizzo</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Via, Città, CAP" {...field} />
+                                                    <AddressAutocompleteInput name={field.name} placeholder="Via, Città, CAP" />
                                                 </FormControl>
                                                 <FormMessage />
                                                 </FormItem>
