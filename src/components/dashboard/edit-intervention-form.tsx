@@ -245,7 +245,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                     )}
                     />
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                         control={form.control}
                         name="status"
@@ -299,7 +299,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                             </FormItem>
                         )}
                         />
-                         <div className="grid grid-cols-2 gap-2">
+                         <div className="grid grid-cols-2 gap-2 md:col-span-2">
                             <FormField
                                 control={form.control}
                                 name="dueDate"
@@ -478,7 +478,5 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
-
-    
 
     
