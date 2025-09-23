@@ -52,7 +52,7 @@ const changelog = [
             { type: Contact, description: "Aggiunti campi 'Telefono' e 'Indirizzo' ai dati dei clienti e utenti." },
             { type: Phone, description: "Resi cliccabili i numeri di telefono e gli indirizzi negli elenchi interventi, sopralluoghi e clienti." },
             { type: Bug, description: "Corretta la visualizzazione dei dati di contatto nelle viste mobile degli elenchi." },
-            { type: Bug, description: "Risolto un errore di 'uncontrolled input' nei moduli di modifica utente." },
+            { type: Bug, description: "Risolto un errore di 'uncontrolled input' nei moduli di modifica utente." }
         ]
     },
      { 
@@ -67,7 +67,7 @@ const changelog = [
             { type: Wrench, description: "Chiarito il contenuto dell'email di test per evitare confusione con le notifiche reali." },
             { type: ShieldCheck, description: "Resi obbligatori i campi 'Ore Impiegate' e 'Materiali Usati' alla chiusura di un intervento." },
             { type: Wrench, description: "Semplificato e reso più affidabile il sistema di suggerimento per i titoli degli interventi." },
-            { type: Bug, description: "Corretto un errore critico che impediva il salvataggio degli interventi a causa di un valore non valido nel campo `completedAt`." },
+            { type: Bug, description: "Corretto un errore critico che impediva il salvataggio degli interventi a causa di un valore non valido nel campo `completedAt`." }
         ]
     },
      { 
@@ -79,7 +79,7 @@ const changelog = [
         changes: [
             { type: Wrench, description: "Aggiunta una nuova sezione 'Sopralluoghi' per la gestione delle ispezioni in loco." },
             { type: Wrench, description: "Implementata tabella con ricerca, filtri e ordinamento per i sopralluoghi." },
-            { type: Wrench, description: "Create funzionalità complete di Aggiunta, Modifica e Cancellazione per i sopralluoghi." },
+            { type: Wrench, description: "Create funzionalità complete di Aggiunta, Modifica e Cancellazione per i sopralluoghi." }
         ]
     },
     { 
@@ -94,7 +94,7 @@ const changelog = [
             { type: Wrench, description: "Aggiunta la voce 'Le mie Richieste' alla sidebar per gli utenti Clienti." },
             { type: Bug, description: "Risolto il problema del logout automatico al ridimensionamento della finestra del browser." },
             { type: Wrench, description: "Permesso a tutti gli utenti di modificare il proprio profilo (password e avatar)." },
-            { type: Bug, description: "Corretti molteplici errori `FAILED_PRECONDITION` legati alla chiave API di Gemini, cambiando l'approccio all'invio delle email di test." },
+            { type: Bug, description: "Corretti molteplici errori `FAILED_PRECONDITION` legati alla chiave API di Gemini, cambiando l'approccio all'invio delle email di test." }
         ]
     },
     { 
@@ -105,7 +105,7 @@ const changelog = [
         iconClass: "text-blue-500",
         changes: [
             { type: Wrench, description: "Centralizzata la gestione delle impostazioni SMTP nel database per ogni azienda, abbandonando il local storage." },
-            { type: Wrench, description: "Migliorata la UI della pagina Impostazioni con un layout più pulito e un avviso di errore persistente per i test di connessione." },
+            { type: Wrench, description: "Migliorata la UI della pagina Impostazioni con un layout più pulito e un avviso di errore persistente per i test di connessione." }
         ]
     },
     // Add previous versions here if needed
@@ -151,18 +151,18 @@ export default function CompaniesPage() {
         }
     }, [user, router]);
 
-    const onSubmit = async (values: z.infer<typeof formSchema>>) => {
+    const onSubmit = async (values: z.infer<typeof formSchema>) => {
         const newCompany = await addCompany(values);
         setCompanies(prev => [...prev, newCompany]);
         toast({ title: 'Azienda creata', description: `L'azienda "${values.name}" è stata creata.` });
         form.reset();
         setIsDialogOpen(false);
-    }
+    };
     
     const handleCompanyClick = (companyId: string) => {
         switchCompany(companyId);
         router.push('/dashboard');
-    }
+    };
 
     if (isLoading || !user) {
         return (
@@ -387,6 +387,8 @@ export default function CompaniesPage() {
         </>
     );
 }
+
+    
 
     
 
