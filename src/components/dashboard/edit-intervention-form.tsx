@@ -312,13 +312,13 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                             <Button
                                             variant={"outline"}
                                             className={cn(
-                                                "w-full justify-start text-left font-normal",
+                                                "w-full justify-start text-left font-normal pl-3",
                                                 !field.value && "text-muted-foreground"
                                             )}
                                             >
                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                             {field.value ? (
-                                                format(field.value, "PPP", { locale: it })
+                                                format(field.value, "dd/MM/yy", { locale: it })
                                             ) : (
                                                 <span>Scegli data</span>
                                             )}

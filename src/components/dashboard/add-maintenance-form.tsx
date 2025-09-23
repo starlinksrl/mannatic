@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -238,7 +239,7 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
                                         )}
                                         >
                                         {field.value ? (
-                                            format(field.value, "PPP", { locale: it })
+                                            format(field.value, "dd/MM/yy", { locale: it })
                                         ) : (
                                             <span>Scegli una data</span>
                                         )}

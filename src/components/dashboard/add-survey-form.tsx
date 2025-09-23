@@ -238,7 +238,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                                             )}
                                             >
                                             {field.value ? (
-                                                format(field.value, "PPP", { locale: it })
+                                                format(field.value, "dd/MM/yy", { locale: it })
                                             ) : (
                                                 <span>Scegli una data</span>
                                             )}

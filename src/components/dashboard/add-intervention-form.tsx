@@ -120,13 +120,15 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany || !currentUser) return;
     
-    let finalDueDate: string | undefined = undefined;
+    let finalDueDate: string | null = null;
     if (values.dueDate && values.dueTime) {
       const [hours, minutes] = values.dueTime.split(':').map(Number);
       let date = values.dueDate;
       date = setHours(date, hours);
       date = setMinutes(date, minutes);
       finalDueDate = date.toISOString();
+    } else if (values.dueDate) {
+      finalDueDate = values.dueDate.toISOString();
     }
 
     const newIntervention = await addIntervention({
@@ -357,7 +359,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                             )}
                                             >
                                             {field.value ? (
-                                                format(field.value, "PPP", { locale: it })
+                                                format(field.value, "dd/MM/yy", { locale: it })
                                             ) : (
                                                 <span>Scegli data</span>
                                             )}

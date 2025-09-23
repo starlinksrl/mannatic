@@ -191,7 +191,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                                             )}
                                             >
                                             {field.value ? (
-                                                format(field.value, "PPP", { locale: it })
+                                                format(field.value, "dd/MM/yy", { locale: it })
                                             ) : (
                                                 <span>Scegli una data</span>
                                             )}
