@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser } from '@/contexts/user-context';
@@ -13,6 +14,7 @@ import {
   Building,
   ClipboardCheck,
   Contact,
+  Database,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -28,6 +30,7 @@ const navItems = [
   { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin', 'Creator'] },
   { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin', 'Creator'] },
   { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
+  { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'] },
   { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
 ];
 

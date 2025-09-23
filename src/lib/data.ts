@@ -1,5 +1,6 @@
 
 
+
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -372,6 +373,16 @@ export async function getInterventions(companyId: string): Promise<Intervention[
     return allCompanyInterventions.filter(i => !('isMaintenance' in i) || i.isMaintenance !== true) as Intervention[];
 }
 
+export async function getAllInterventions(): Promise<(Intervention | ScheduledMaintenance)[]> {
+    try {
+        const snapshot = await getDocs(collection(db, 'interventions'));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Intervention | ScheduledMaintenance)));
+    } catch (error) {
+        console.error("Error fetching all interventions:", error);
+        return [];
+    }
+}
+
 export async function getInterventionTitles(companyId: string): Promise<string[]> {
     if (!companyId) return [];
     
@@ -627,6 +638,14 @@ export async function getSurveys(companyId: string): Promise<Survey[]> {
     });
 }
 
+export async function getAllSurveys(): Promise<Survey[]> {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            resolve(surveysMock);
+        }, 500);
+    });
+}
+
 export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'createdAt'>): Promise<Survey> {
     return new Promise(resolve => {
         setTimeout(() => {
@@ -708,6 +727,16 @@ export async function getNotifications(companyId: string): Promise<Notification[
         return notifications.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
         console.error("Error fetching notifications:", error);
+        return [];
+    }
+}
+
+export async function getAllNotifications(): Promise<Notification[]> {
+    try {
+        const snapshot = await getDocs(collection(db, 'notifications'));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+    } catch (error) {
+        console.error("Error fetching all notifications:", error);
         return [];
     }
 }
