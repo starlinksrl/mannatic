@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Company, addCompany, getCompanies } from '@/lib/data';
-import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard } from 'lucide-react';
+import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +41,20 @@ const formSchema = z.object({
 });
 
 const changelog = [
+     { 
+        version: "0.8",
+        date: "2024-09-22",
+        title: "Riorganizzazione Utenti e Dettagli Contatto",
+        icon: UsersIcon,
+        iconClass: "text-blue-500",
+        changes: [
+            { type: UsersIcon, description: "Separata la gestione dei Clienti da quella degli Utenti interni per maggiore chiarezza." },
+            { type: Contact, description: "Aggiunti campi 'Telefono' e 'Indirizzo' ai dati dei clienti e utenti." },
+            { type: Phone, description: "Resi cliccabili i numeri di telefono e gli indirizzi negli elenchi interventi, sopralluoghi e clienti." },
+            { type: Bug, description: "Corretta la visualizzazione dei dati di contatto nelle viste mobile degli elenchi." },
+            { type: Bug, description: "Risolto un errore di 'uncontrolled input' nei moduli di modifica utente." },
+        ]
+    },
      { 
         version: "0.7",
         date: "2024-09-21",
@@ -137,7 +151,7 @@ export default function CompaniesPage() {
         }
     }, [user, router]);
 
-    const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const onSubmit = async (values: z.infer<typeof formSchema>>) => {
         const newCompany = await addCompany(values);
         setCompanies(prev => [...prev, newCompany]);
         toast({ title: 'Azienda creata', description: `L'azienda "${values.name}" è stata creata.` });
@@ -373,5 +387,7 @@ export default function CompaniesPage() {
         </>
     );
 }
+
+    
 
     
