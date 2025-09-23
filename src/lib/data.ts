@@ -284,78 +284,6 @@ export async function getOperator(operatorId: string) {
 
 // --- INTERVENTION & MAINTENANCE MANAGEMENT ---
 
-const CONVERSION_WINDOW_DAYS = 7;
-
-async function checkAndConvertMaintenance(companyId: string) {
-    if (!companyId) return;
-
-    try {
-        const today = startOfToday();
-        const conversionInterval = {
-            start: today,
-            end: addDays(today, CONVERSION_WINDOW_DAYS),
-        };
-
-        // 1. Fetch all planned maintenance for the company
-        const qMaint = query(collection(db, 'interventions'),
-            where("companyId", "==", companyId),
-            where("isMaintenance", "==", true),
-            where("status", "==", "Pianificato")
-        );
-        const maintSnapshot = await getDocs(qMaint);
-        const maintenancesToConvert = maintSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as ScheduledMaintenance));
-
-        if (maintenancesToConvert.length === 0) return;
-
-        // 2. Fetch recent interventions to check for duplicates
-        const qRecentInterventions = query(collection(db, 'interventions'),
-            where("companyId", "==", companyId),
-            where("createdAt", ">", subDays(today, 2).toISOString())
-        );
-        const recentInterventionsSnapshot = await getDocs(qRecentInterventions);
-        const recentInterventions = recentInterventionsSnapshot.docs.map(doc => doc.data() as Intervention);
-
-        // 3. Process in-memory
-        for (const maint of maintenancesToConvert) {
-            const nextDueDate = new Date(maint.nextDueDate);
-            
-            // Check if an intervention with the same title was created recently and is NOT a maintenance task
-             const alreadyConverted = recentInterventions.some(int => 
-                int.title === maint.title && !int.isMaintenance
-            );
-
-            if (isWithinInterval(nextDueDate, conversionInterval) && !alreadyConverted) {
-                console.log(`Converting maintenance ${maint.id} to intervention.`);
-                
-                const newInterventionData: Omit<Intervention, 'id'> = {
-                    title: maint.title,
-                    clientId: maint.clientId,
-                    description: `Creato automaticamente dalla manutenzione programmata: ${maint.description}`,
-                    priority: 'Bassa',
-                    sla: '48h',
-                    status: 'Nuovo',
-                    assignedOperatorId: maint.assignedOperatorId,
-                    createdAt: new Date().toISOString(),
-                    dueDate: maint.nextDueDate,
-                    updates: [{ date: new Date().toISOString(), description: `Creato da manutenzione #${maint.id}`, userName: 'Sistema' }],
-                    companyId: maint.companyId
-                };
-                await addDoc(collection(db, 'interventions'), newInterventionData);
-
-                // Update original maintenance task
-                const maintDocRef = doc(db, 'interventions', maint.id);
-                await updateDoc(maintDocRef, {
-                    status: 'In corso',
-                    nextDueDate: addMonths(new Date(maint.nextDueDate), maint.recurrenceMonths).toISOString()
-                });
-            }
-        }
-    } catch (error) {
-        console.error("Error in checkAndConvertMaintenance:", error);
-    }
-}
-
-
 async function checkAndNotifyExpiringInterventions(companyId: string) {
     if (!companyId) return;
     
@@ -435,7 +363,6 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
 
 export async function getInterventions(companyId: string): Promise<Intervention[]> {
     if (!companyId) return [];
-    // await checkAndConvertMaintenance(companyId);
     await checkAndNotifyExpiringInterventions(companyId);
     
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
@@ -459,7 +386,6 @@ export async function getInterventionTitles(companyId: string): Promise<string[]
 
 export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
     if (!companyId) return [];
-    // await checkAndConvertMaintenance(companyId);
     await checkAndNotifyExpiringInterventions(companyId);
 
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
@@ -592,10 +518,6 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         updates: [{ date: new Date().toISOString(), description: `Creato da ${creatorName}.`, userName: creatorName }],
         dueDate: restOfData.dueDate || null,
     };
-
-    if (newInterventionData.dueDate === undefined) {
-        delete (newInterventionData as any).dueDate;
-    }
 
     const docRef = await addDoc(collection(db, 'interventions'), newInterventionData);
     const finalIntervention = { id: docRef.id, ...newInterventionData };
