@@ -331,7 +331,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               const client = clientsMap.get(intervention.clientId);
               return (
                  <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(intervention as Intervention)}>
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-2 break-words">
                         <p className="font-medium">{intervention.title}</p>
                         {currentUser.role !== 'Client' && client && (
                           <div className="space-y-1">
