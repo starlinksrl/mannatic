@@ -27,7 +27,7 @@ import { User } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export function UserSwitcher() {
-  const { user, sessionUser, switchUser, availableUsers, logout, companies, currentCompany, switchCompany, setUser } = useUser();
+  const { user, sessionUser, switchUser, availableUsers, logout, companies, currentCompany, switchCompany } = useUser();
   const router = useRouter();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const { toast } = useToast();
@@ -48,18 +48,11 @@ export function UserSwitcher() {
   }
 
   const handleProfileUpdated = (updatedUser: User) => {
-    // If the currently active user is the one being updated, update it in context
-    if(user?.id === updatedUser.id) {
-        setUser(updatedUser);
-    }
-     // Also update the session user if that's the one being edited
-    if (sessionUser?.id === updatedUser.id) {
-        // Not setting it in context, as context has a separate setter.
-        // We can just rely on the fact that `user` object is updated.
-    }
+    // The user context will refresh itself on the next load,
+    // so we just need to notify the user.
     toast({
         title: 'Profilo aggiornato',
-        description: 'I tuoi dati sono stati aggiornati con successo.'
+        description: 'I tuoi dati sono stati aggiornati con successo. Le modifiche saranno visibili a breve.'
     });
   }
 
@@ -252,3 +245,5 @@ export function UserSwitcher() {
     </>
   );
 }
+
+    
