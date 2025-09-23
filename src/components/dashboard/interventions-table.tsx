@@ -331,19 +331,19 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               const client = clientsMap.get(intervention.clientId);
               return (
                  <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(intervention as Intervention)}>
-                    <div className="flex-1 space-y-2 break-words">
+                    <div className="flex-1 space-y-2 pr-4 break-words">
                         <p className="font-medium">{intervention.title}</p>
                         {currentUser.role !== 'Client' && client && (
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">{client.name}</p>
+                          <div className="space-y-1 text-sm text-muted-foreground">
+                            <p>{client.name}</p>
                             {client.phone && (
-                                <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs text-muted-foreground hover:underline">
+                                <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
                                     <Phone className="h-3 w-3" />
                                     <span>{client.phone}</span>
                                 </a>
                             )}
                              {client.address && (
-                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs text-muted-foreground hover:underline">
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
                                     <MapPin className="h-3 w-3" />
                                     <span>{client.address}</span>
                                 </a>
