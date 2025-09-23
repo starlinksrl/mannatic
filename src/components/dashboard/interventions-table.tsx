@@ -336,18 +336,20 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                         {currentUser.role !== 'Client' && client && (
                           <div className="space-y-1 text-sm text-muted-foreground">
                             <p>{client.name}</p>
-                            {client.phone && (
-                                <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                    <Phone className="h-3 w-3" />
-                                    <span>{client.phone}</span>
-                                </a>
-                            )}
-                             {client.address && (
-                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                    <MapPin className="h-3 w-3" />
-                                    <span>{client.address}</span>
-                                </a>
-                             )}
+                             <div className="flex flex-col gap-1 text-xs">
+                                {client.phone && (
+                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        <span>{client.phone}</span>
+                                    </a>
+                                )}
+                                 {client.address && (
+                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                                        <span>{client.address}</span>
+                                    </a>
+                                 )}
+                             </div>
                           </div>
                         )}
                         {intervention.dueDate && <p className="text-sm text-muted-foreground break-words">{format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
@@ -385,7 +387,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
         </CardContent>
       </Card>
       <Card className="hidden md:block">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow>
               {tableHeaders.filter(h => h.visible).map(header => (
@@ -408,15 +410,15 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
               return (
                 <TableRow key={intervention.id} onClick={() => handleEditClick(intervention as Intervention)} className="cursor-pointer">
-                    <TableCell className="font-medium whitespace-normal break-words">
-                        <div className="flex flex-col">
-                            <span>{intervention.title}</span>
+                    <TableCell className="font-medium">
+                        <div className="flex flex-col break-words">
+                            <span className="break-words">{intervention.title}</span>
                             <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
                         </div>
                     </TableCell>
                   {(currentUser.role !== 'Client') && 
-                    <TableCell className="whitespace-normal break-words">
-                        {client ? client.name : '-'}
+                    <TableCell>
+                        <span className="break-words">{client ? client.name : '-'}</span>
                     </TableCell>
                    }
                    {currentUser.role === 'Admin' && (
