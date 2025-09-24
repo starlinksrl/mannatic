@@ -4,7 +4,7 @@
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Company, addCompany, getCompanies } from '@/lib/data';
 import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -19,7 +19,6 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,7 +27,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { AddressAutocompleteInput } from '@/components/ui/address-autocomplete-input';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+
+const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
 const formSchema = z.object({
     name: z.string().min(1, { message: 'Il nome è obbligatorio' }),
@@ -113,13 +114,15 @@ const changelog = [
 ];
 
 
-export default function CompaniesPage() {
-    const { user, switchCompany } = useUser();
-    const router = useRouter();
+function AddCompanyDialogContent({ onCompanyAdded }: { onCompanyAdded: (company: Company) => void }) {
     const { toast } = useToast();
-    const [companies, setCompanies] = useState<Company[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+    const { isLoaded, loadError } = useLoadScript({
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+        libraries,
+    });
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -134,6 +137,184 @@ export default function CompaniesPage() {
             password: ''
         },
     });
+
+    const onSubmit = async (values: z.infer<typeof formSchema>) => {
+        const newCompany = await addCompany(values);
+        onCompanyAdded(newCompany);
+        toast({ title: 'Azienda creata', description: `L'azienda "${values.name}" è stata creata.` });
+        form.reset();
+        setIsDialogOpen(false);
+    };
+
+    const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
+        autocompleteRef.current = autocomplete;
+    };
+
+    const onPlaceChanged = () => {
+        if (autocompleteRef.current) {
+            const place = autocompleteRef.current.getPlace();
+            const formattedAddress = place.formatted_address || '';
+            form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
+        }
+    };
+
+    return (
+         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+                <Button>
+                    <PlusCircle className="mr-2" />
+                    Crea Azienda
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0">
+                    <DialogHeader className="p-6 pb-0">
+                    <DialogTitle>Crea una nuova azienda</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="h-full">
+                    <div className="p-6">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} id="add-company-form" className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Nome Azienda</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Nome della nuova azienda" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="address"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Indirizzo</FormLabel>
+                                    <FormControl>
+                                        {isLoaded && !loadError ? (
+                                            <Autocomplete
+                                                onLoad={onAutocompleteLoad}
+                                                onPlaceChanged={onPlaceChanged}
+                                                fields={['formatted_address']}
+                                            >
+                                                <Input {...field} placeholder="Via, Città, CAP" />
+                                            </Autocomplete>
+                                        ) : (
+                                            <Input {...field} placeholder="Via, Città, CAP" disabled={!isLoaded}/>
+                                        )}
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                    control={form.control}
+                                    name="vatNumber"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Partita IVA</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="IT..." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                    <FormField
+                                    control={form.control}
+                                    name="taxCode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Codice Fiscale</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Codice fiscale..." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="phone"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Telefono</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Numero di telefono" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="uniqueCode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Codice Univoco</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Codice SDI" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="email"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Email (per login admin)</FormLabel>
+                                        <FormControl>
+                                            <Input type="email" placeholder="admin@azienda.com" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                    <FormField
+                                    control={form.control}
+                                    name="password"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Password (per login admin)</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </form>
+                    </Form>
+                    </div>
+                </ScrollArea>
+                <DialogFooter className="p-6 pt-0">
+                    <DialogClose asChild>
+                        <Button variant="outline">Annulla</Button>
+                    </DialogClose>
+                    <Button type="submit" form="add-company-form">Crea</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+export default function CompaniesPage() {
+    const { user, switchCompany } = useUser();
+    const router = useRouter();
+    const [companies, setCompanies] = useState<Company[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    
 
     useEffect(() => {
         if(user && user.role !== 'Creator') {
@@ -152,13 +333,9 @@ export default function CompaniesPage() {
         }
     }, [user, router]);
 
-    const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        const newCompany = await addCompany(values);
+    const handleCompanyAdded = (newCompany: Company) => {
         setCompanies(prev => [...prev, newCompany]);
-        toast({ title: 'Azienda creata', description: `L'azienda "${values.name}" è stata creata.` });
-        form.reset();
-        setIsDialogOpen(false);
-    };
+    }
     
     const handleCompanyClick = (companyId: string) => {
         switchCompany(companyId);
@@ -185,143 +362,7 @@ export default function CompaniesPage() {
             <Header title="Gestione Aziende" />
             <main className="flex-1 p-4 md:p-6 lg:p-8">
                 <div className="flex justify-end mb-4">
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button>
-                                <PlusCircle className="mr-2" />
-                                Crea Azienda
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0">
-                             <DialogHeader className="p-6 pb-0">
-                                <DialogTitle>Crea una nuova azienda</DialogTitle>
-                            </DialogHeader>
-                            <ScrollArea className="h-full">
-                                <div className="p-6">
-                                <Form {...form}>
-                                    <form onSubmit={form.handleSubmit(onSubmit)} id="add-company-form" className="space-y-4">
-                                       <FormField
-                                            control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Nome Azienda</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Nome della nuova azienda" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="address"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Indirizzo</FormLabel>
-                                                <FormControl>
-                                                    <AddressAutocompleteInput name={field.name} placeholder="Via, Città, CAP" />
-                                                </FormControl>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             <FormField
-                                                control={form.control}
-                                                name="vatNumber"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                    <FormLabel>Partita IVA</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="IT..." {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                             <FormField
-                                                control={form.control}
-                                                name="taxCode"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                    <FormLabel>Codice Fiscale</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Codice fiscale..." {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="phone"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                    <FormLabel>Telefono</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Numero di telefono" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="uniqueCode"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                    <FormLabel>Codice Univoco</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Codice SDI" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="email"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                    <FormLabel>Email (per login admin)</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="email" placeholder="admin@azienda.com" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                             <FormField
-                                                control={form.control}
-                                                name="password"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                    <FormLabel>Password (per login admin)</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="password" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </form>
-                                </Form>
-                                </div>
-                            </ScrollArea>
-                            <DialogFooter className="p-6 pt-0">
-                                <DialogClose asChild>
-                                    <Button variant="outline">Annulla</Button>
-                                </DialogClose>
-                                <Button type="submit" form="add-company-form">Crea</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    <AddCompanyDialogContent onCompanyAdded={handleCompanyAdded} />
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {companies.map(company => (
@@ -388,9 +429,3 @@ export default function CompaniesPage() {
         </>
     );
 }
-
-    
-
-    
-
-    

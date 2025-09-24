@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -30,7 +30,9 @@ import { useToast } from '@/hooks/use-toast';
 import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff } from 'lucide-react';
-import { AddressAutocompleteInput } from '../ui/address-autocomplete-input';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+
+const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
@@ -53,6 +55,12 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [showPassword, setShowPassword] = useState(false);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    libraries,
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -92,6 +100,19 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   }
   
   const title = isClientForm ? 'Crea nuovo cliente' : 'Crea nuovo utente';
+
+  const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      const formattedAddress = place.formatted_address || '';
+      form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
+    }
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -210,8 +231,25 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Indirizzo</FormLabel>
-                  <FormControl>
-                    <AddressAutocompleteInput name={field.name} placeholder="Via, Città, CAP" />
+                   <FormControl>
+                    {isLoaded && !loadError ? (
+                      <Autocomplete
+                        onLoad={onAutocompleteLoad}
+                        onPlaceChanged={onPlaceChanged}
+                        fields={['formatted_address']}
+                      >
+                        <Input
+                          {...field}
+                          placeholder="Via, Città, CAP"
+                        />
+                      </Autocomplete>
+                    ) : (
+                      <Input
+                        {...field}
+                        placeholder="Via, Città, CAP"
+                        disabled={!isLoaded}
+                      />
+                    )}
                   </FormControl>
                   <FormMessage />
                 </FormItem>

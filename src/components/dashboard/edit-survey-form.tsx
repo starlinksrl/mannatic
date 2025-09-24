@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -35,8 +35,9 @@ import { Survey, Client, User, SurveyStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateSurvey } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
-import { useEffect } from 'react';
-import { AddressAutocompleteInput } from '../ui/address-autocomplete-input';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+
+const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -60,6 +61,12 @@ interface EditSurveyFormProps {
 
 export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, isOpen, setIsOpen }: EditSurveyFormProps) {
   const { toast } = useToast();
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    libraries,
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -115,6 +122,19 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
     }
   }
 
+  const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      const formattedAddress = place.formatted_address || '';
+      form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
+    }
+  };
+
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
@@ -169,7 +189,24 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                         <FormItem>
                         <FormLabel>Indirizzo</FormLabel>
                         <FormControl>
-                             <AddressAutocompleteInput name={field.name} placeholder="Via, numero civico, città" />
+                           {isLoaded && !loadError ? (
+                            <Autocomplete
+                              onLoad={onAutocompleteLoad}
+                              onPlaceChanged={onPlaceChanged}
+                              fields={['formatted_address']}
+                            >
+                              <Input
+                                {...field}
+                                placeholder="Via, numero civico, città"
+                              />
+                            </Autocomplete>
+                          ) : (
+                            <Input
+                              {...field}
+                              placeholder="Via, numero civico, città"
+                              disabled={!isLoaded}
+                            />
+                          )}
                         </FormControl>
                         <FormMessage />
                         </FormItem>

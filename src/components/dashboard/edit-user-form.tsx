@@ -32,7 +32,9 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Pencil, Eye, EyeOff } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
-import { AddressAutocompleteInput } from '../ui/address-autocomplete-input';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+
+const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
@@ -56,6 +58,12 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const { user: currentUser } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    libraries,
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -117,6 +125,19 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   }
   
   const canEditRole = currentUser?.role === 'Admin' || currentUser?.role === 'Creator';
+
+  const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      const formattedAddress = place.formatted_address || '';
+      form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
+    }
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -210,7 +231,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ruolo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!canEditRole}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={!canEditRole}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleziona un ruolo" />
@@ -246,7 +267,24 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 <FormItem>
                   <FormLabel>Indirizzo</FormLabel>
                   <FormControl>
-                    <AddressAutocompleteInput name={field.name} placeholder="Via, Città, CAP" />
+                    {isLoaded && !loadError ? (
+                      <Autocomplete
+                        onLoad={onAutocompleteLoad}
+                        onPlaceChanged={onPlaceChanged}
+                        fields={['formatted_address']}
+                      >
+                        <Input
+                          {...field}
+                          placeholder="Via, Città, CAP"
+                        />
+                      </Autocomplete>
+                    ) : (
+                      <Input
+                        {...field}
+                        placeholder="Via, Città, CAP"
+                        disabled={!isLoaded}
+                      />
+                    )}
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -266,5 +304,3 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
-
-    

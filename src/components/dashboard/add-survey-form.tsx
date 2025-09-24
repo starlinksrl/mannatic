@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -38,7 +38,9 @@ import { addSurvey } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { ScrollArea } from '../ui/scroll-area';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
-import { AddressAutocompleteInput } from '../ui/address-autocomplete-input';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+
+const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -62,6 +64,13 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    libraries,
+  });
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -108,6 +117,19 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
     setIsOpen(false);
     form.reset();
   }
+
+  const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      const formattedAddress = place.formatted_address || '';
+      form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
+    }
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -220,7 +242,24 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                         <FormItem>
                         <FormLabel>Indirizzo</FormLabel>
                         <FormControl>
-                            <AddressAutocompleteInput name={field.name} placeholder="Via, numero civico, città" />
+                          {isLoaded && !loadError ? (
+                            <Autocomplete
+                              onLoad={onAutocompleteLoad}
+                              onPlaceChanged={onPlaceChanged}
+                              fields={['formatted_address']}
+                            >
+                              <Input
+                                {...field}
+                                placeholder="Via, numero civico, città"
+                              />
+                            </Autocomplete>
+                          ) : (
+                            <Input
+                              {...field}
+                              placeholder="Via, numero civico, città"
+                              disabled={!isLoaded}
+                            />
+                          )}
                         </FormControl>
                         <FormMessage />
                         </FormItem>
