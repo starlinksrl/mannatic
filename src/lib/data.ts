@@ -1,6 +1,7 @@
 
 
 
+
 import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -586,20 +587,32 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
 }
 
 export async function updateScheduledMaintenance(id: string, updatedData: Partial<ScheduledMaintenance>): Promise<ScheduledMaintenance | null> {
-     try {
+    try {
         const docRef = doc(db, 'interventions', id);
         
         const originalDoc = await getDoc(docRef);
+        if (!originalDoc.exists()) {
+            throw new Error(`Maintenance task with id ${id} not found.`);
+        }
         const originalMaintenance = originalDoc.data() as ScheduledMaintenance;
-
+        
         const combinedData = { ...originalMaintenance, ...updatedData };
-         
-        // Recalculate next due date if recurrence or due date changes
-        if (updatedData.recurrenceMonths || updatedData.dueDate) {
+
+        const isBeingCompleted = updatedData.status === 'Completato' && originalMaintenance.status !== 'Completato';
+
+        if (isBeingCompleted) {
+            // Update the 'last execution' date to now
+            combinedData.dueDate = new Date().toISOString();
+            // Recalculate next due date from now
+            combinedData.nextDueDate = addMonths(new Date(), combinedData.recurrenceMonths).toISOString();
+            // Reset status to 'Pianificato' for the next cycle
+            combinedData.status = 'Pianificato';
+        } else if (updatedData.recurrenceMonths || updatedData.dueDate) {
+            // Recalculate if recurrence or due date is manually changed for other reasons
             combinedData.nextDueDate = addMonths(new Date(combinedData.dueDate!), combinedData.recurrenceMonths).toISOString();
         }
 
-        await updateDoc(docRef, combinedData);
+        await updateDoc(docRef, combinedData as any);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as ScheduledMaintenance : null;
     } catch (error) {
