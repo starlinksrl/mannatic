@@ -98,13 +98,15 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    const isBeingCompleted = values.status === 'Completato' && maintenance?.status !== 'Completato';
+    
     const updatedMaintenanceData = {
         ...maintenance,
         ...values,
         description: values.description || '',
         priority: values.priority as InterventionPriority,
         status: values.status as ScheduledMaintenanceStatus,
-        dueDate: values.dueDate.toISOString()
+        dueDate: isBeingCompleted ? new Date().toISOString() : values.dueDate.toISOString()
     };
     
     const updated = await updateScheduledMaintenance(maintenance!.id, updatedMaintenanceData);
@@ -356,5 +358,3 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
     </Dialog>
   );
 }
-
-    
