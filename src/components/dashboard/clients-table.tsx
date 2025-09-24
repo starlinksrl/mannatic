@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -77,7 +77,66 @@ export function ClientsTable({ clients, onClientUpdated, onClientDeleted }: Clie
 
   return (
     <>
-    <Card>
+    <Card className="md:hidden">
+        <CardContent className="p-2 space-y-2">
+          {clients.map((client) => (
+            <div key={client.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(client)}>
+                <div className="flex items-start gap-4 flex-1">
+                    <Avatar className="h-10 w-10 border">
+                        <AvatarImage src={client.avatarUrl} alt={client.name} />
+                        <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-2 pr-4 break-words">
+                        <p className="font-medium break-words">{client.name}</p>
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                            {client.email && (
+                                <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                    <Mail className="h-4 w-4" /> <span>{client.email}</span>
+                                </a>
+                            )}
+                            {client.phone && (
+                                <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                    <Phone className="h-4 w-4" /> <span>{client.phone}</span>
+                                </a>
+                            )}
+                            {client.address && (
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-start gap-2 hover:underline">
+                                    <MapPin className="h-4 w-4 mt-0.5 shrink-0" /> <span>{client.address}</span>
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => handleEditClick(client)}>
+                            <Pencil className="mr-2" /> Modifica
+                        </DropdownMenuItem>
+                        {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        handleDeleteClick(client);
+                                    }}>
+                                    <Trash2 className="mr-2" /> Elimina
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    <Card className="hidden md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -179,3 +238,4 @@ export function ClientsTable({ clients, onClientUpdated, onClientDeleted }: Clie
   );
 }
 
+    

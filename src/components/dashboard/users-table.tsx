@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -10,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
@@ -86,7 +87,51 @@ export function UsersTable({ users, onUserUpdated, onUserDeleted }: UsersTablePr
 
   return (
     <>
-    <Card>
+    <Card className="md:hidden">
+      <CardContent className="p-2 space-y-2">
+        {users.map((user) => (
+            <div key={user.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(user)}>
+                <div className="flex items-center gap-4 flex-1">
+                    <Avatar className="h-10 w-10 border">
+                        <AvatarImage src={user.avatarUrl} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-1">
+                        <p className="font-medium">{user.name}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        {getRoleBadge(user.role)}
+                    </div>
+                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => handleEditClick(user)}>
+                            <Pencil className="mr-2" /> Modifica
+                        </DropdownMenuItem>
+                        {currentUser?.role === 'Admin' && user.id !== currentUser.id && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        handleDeleteClick(user);
+                                    }}>
+                                    <Trash2 className="mr-2" /> Elimina
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+          ))}
+      </CardContent>
+    </Card>
+    <Card className="hidden md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -168,3 +213,5 @@ export function UsersTable({ users, onUserUpdated, onUserDeleted }: UsersTablePr
     </>
   );
 }
+
+    
