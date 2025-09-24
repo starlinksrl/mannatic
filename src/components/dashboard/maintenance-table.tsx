@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -12,7 +13,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { format, formatDistanceToNow } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { format, formatDistanceToNow, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getClient, getOperator, deleteScheduledMaintenance } from '@/lib/data';
 import { Button } from '../ui/button';
@@ -46,6 +48,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
   const { toast } = useToast();
   const [maintenanceTasks, setMaintenanceTasks] = useState(initialMaintenanceTasks);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   
   const [clientsMap, setClientsMap] = useState<Map<string, string>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
@@ -104,10 +107,19 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     setMaintenanceToDelete(null);
   }
 
+  const isTaskOverdue = (task: ScheduledMaintenance) => {
+      return isBefore(new Date(task.nextDueDate), new Date()) && task.status !== 'Completato' && task.status !== 'Annullato';
+  }
 
   const filteredTasks = useMemo(() => {
     let filtered = maintenanceTasks;
 
+    if (statusFilter === 'Scaduto') {
+        filtered = filtered.filter(isTaskOverdue);
+    } else if (statusFilter !== 'all') {
+        filtered = filtered.filter(task => task.status === statusFilter);
+    }
+    
     if (searchTerm) {
       filtered = filtered.filter(i =>
         i.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,14 +128,18 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     }
     
     return filtered;
-  }, [maintenanceTasks, searchTerm]);
+  }, [maintenanceTasks, searchTerm, statusFilter]);
   
-  const getStatusBadge = (status: ScheduledMaintenance['status']) => {
-    switch (status) {
+  const getStatusBadge = (task: ScheduledMaintenance) => {
+    if (isTaskOverdue(task)) {
+        return <Badge variant="destructive">Scaduto</Badge>;
+    }
+    switch (task.status) {
       case 'Pianificato': return <Badge className="bg-purple-100 text-purple-800">Pianificato</Badge>;
       case 'Completato': return <Badge className="bg-green-100 text-green-800">Completato</Badge>;
       case 'In corso': return <Badge className="bg-blue-100 text-blue-800">In corso</Badge>;
-      default: return <Badge>{status}</Badge>;
+      case 'Annullato': return <Badge variant="outline" className="bg-gray-100 text-gray-800">Annullato</Badge>;
+      default: return <Badge>{task.status}</Badge>;
     }
   };
 
@@ -144,12 +160,25 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
   return (
     <div className="space-y-4">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <Input
-                placeholder="Cerca per titolo o ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+                 <Input
+                    placeholder="Cerca per titolo o ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="sm:col-span-2"
+                />
+                 <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Tutti gli stati</SelectItem>
+                        <SelectItem value="Scaduto">Scaduto</SelectItem>
+                        <SelectItem value="Pianificato">Pianificato</SelectItem>
+                        <SelectItem value="In corso">In corso</SelectItem>
+                        <SelectItem value="Completato">Completato</SelectItem>
+                        <SelectItem value="Annullato">Annullato</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
             {currentUser.role === 'Admin' &&
                 <div className="md:ml-4">
                     <AddMaintenanceForm
@@ -176,7 +205,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                         {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{clientName}</p>}
                         <p className="text-sm text-muted-foreground">Prossima scadenza: {format(new Date(task.nextDueDate), 'dd MMM yyyy', { locale: it })}</p>
                         <div className="flex items-center gap-2 pt-1">
-                            {getStatusBadge(task.status)}
+                            {getStatusBadge(task)}
                             <Badge variant="outline">{getPeriodicityText(task)}</Badge>
                         </div>
                     </div>
@@ -234,7 +263,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                         </div>
                     </TableCell>
                     <TableCell>{clientName}</TableCell>
-                    <TableCell>{getStatusBadge(task.status)}</TableCell>
+                    <TableCell>{getStatusBadge(task)}</TableCell>
                     <TableCell>{getPeriodicityText(task)}</TableCell>
                     <TableCell>
                         {format(new Date(task.nextDueDate), 'dd MMM yyyy', { locale: it })}
@@ -299,3 +328,5 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     </div>
   );
 }
+
+    

@@ -31,7 +31,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ScheduledMaintenance, Client, User, Equipment, InterventionPriority, InterventionStatus } from '@/lib/types';
+import { ScheduledMaintenance, Client, User, Equipment, InterventionPriority, ScheduledMaintenanceStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateScheduledMaintenance, getEquipments } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
@@ -88,7 +88,7 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
         description: maintenance.description || '',
         dueDate: new Date(maintenance.dueDate),
         priority: maintenance.priority,
-        status: maintenance.status as any, //TODO: fix type
+        status: maintenance.status,
         assignedOperatorId: maintenance.assignedOperatorId || null,
       });
     }
@@ -103,7 +103,7 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
         ...values,
         description: values.description || '',
         priority: values.priority as InterventionPriority,
-        status: values.status as InterventionStatus,
+        status: values.status as ScheduledMaintenanceStatus,
         dueDate: values.dueDate.toISOString()
     };
     
@@ -356,3 +356,5 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
     </Dialog>
   );
 }
+
+    

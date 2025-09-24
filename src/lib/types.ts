@@ -2,6 +2,7 @@
 
 
 
+
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 
 export interface Company {
@@ -79,8 +80,11 @@ export interface Intervention {
   isMaintenance?: boolean;
 }
 
+export type ScheduledMaintenanceStatus = 'Pianificato' | 'In corso' | 'Completato' | 'Annullato';
+
 export interface ScheduledMaintenance extends Intervention {
   isMaintenance: true;
+  status: ScheduledMaintenanceStatus;
   recurrenceMonths: number; // New field for recurrence in months
   checklist: { task: string; completed: boolean }[];
   nextDueDate: string;
@@ -114,3 +118,5 @@ export interface Notification {
   relatedInterventionId?: string;
   type: NotificationType;
 }
+
+    
