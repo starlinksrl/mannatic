@@ -325,7 +325,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 </div>
             }
       </div>
-      <Card className="md:hidden">
+      <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
             {sortedInterventions.map((intervention) => {
               const client = clientsMap.get(intervention.clientId);
@@ -386,7 +386,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             })}
         </CardContent>
       </Card>
-      <Card className="hidden md:block">
+      <Card className="hidden lg:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
