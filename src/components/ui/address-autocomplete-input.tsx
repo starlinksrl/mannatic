@@ -1,10 +1,10 @@
 
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { Input } from './input';
-import { useController, useFormContext } from 'react-hook-form';
+import { useFormContext, useController } from 'react-hook-form';
 
 interface AddressAutocompleteInputProps {
   name: string;
@@ -32,7 +32,6 @@ export function AddressAutocompleteInput({ name, placeholder }: AddressAutocompl
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
       const formattedAddress = place.formatted_address || '';
-      // Use setValue to update the form state correctly
       setValue(name, formattedAddress, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -45,6 +44,7 @@ export function AddressAutocompleteInput({ name, placeholder }: AddressAutocompl
       <Input
         {...field}
         placeholder={placeholder}
+        onChange={(e) => field.onChange(e.target.value)} // Ensure typing in the input updates the form state
         value={field.value || ''}
       />
     </Autocomplete>
