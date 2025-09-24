@@ -18,7 +18,7 @@ import { format, formatDistanceToNow, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getClient, getOperator, deleteScheduledMaintenance } from '@/lib/data';
 import { Button } from '../ui/button';
-import { MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { AddMaintenanceForm } from './add-maintenance-form';
@@ -44,11 +44,14 @@ interface MaintenanceTableProps {
   onMaintenanceUpdated: (maintenance: ScheduledMaintenance) => void;
 }
 
+const statusOrder: Record<string, number> = { 'Pianificato': 1, 'In corso': 2, 'Completato': 3, 'Annullato': 4 };
+
 export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, currentUser, clients, operators, onMaintenanceAdded, onMaintenanceUpdated }: MaintenanceTableProps) {
   const { toast } = useToast();
   const [maintenanceTasks, setMaintenanceTasks] = useState(initialMaintenanceTasks);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduledMaintenance | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'nextDueDate', direction: 'ascending' });
   
   const [clientsMap, setClientsMap] = useState<Map<string, string>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
@@ -129,6 +132,59 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     
     return filtered;
   }, [maintenanceTasks, searchTerm, statusFilter]);
+
+  const sortedTasks = useMemo(() => {
+    let sortableItems = [...filteredTasks];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch(sortConfig.key) {
+            case 'status':
+                const aIsOverdue = isTaskOverdue(a);
+                const bIsOverdue = isTaskOverdue(b);
+                if (aIsOverdue && !bIsOverdue) return -1;
+                if (!aIsOverdue && bIsOverdue) return 1;
+                aValue = statusOrder[a.status];
+                bValue = statusOrder[b.status];
+                break;
+            case 'client':
+                aValue = clientsMap.get(a.clientId) || '';
+                bValue = clientsMap.get(b.clientId) || '';
+                break;
+             case 'operator':
+                aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
+                bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
+                break;
+            default:
+                aValue = a[sortConfig.key as keyof ScheduledMaintenance];
+                bValue = b[sortConfig.key as keyof ScheduledMaintenance];
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredTasks, sortConfig, clientsMap, operatorsMap]);
+  
+  const requestSort = (key: keyof ScheduledMaintenance | 'client' | 'operator') => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key: keyof ScheduledMaintenance | 'client' | 'operator') => {
+    if (!sortConfig || sortConfig.key !== key) return null;
+    return sortConfig.direction === 'ascending' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />;
+  }
   
   const getStatusBadge = (task: ScheduledMaintenance) => {
     if (isTaskOverdue(task)) {
@@ -196,7 +252,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
       </div>
       <Card className="md:hidden">
         <CardContent className="p-2 space-y-2">
-            {filteredTasks.map((task) => {
+            {sortedTasks.map((task) => {
               const clientName = clientsMap.get(task.clientId);
               return (
                  <div key={task.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(task)}>
@@ -241,17 +297,29 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
         <Table>
           <TableHeader>
             <TableRow>
-                <TableHead>Titolo</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Stato</TableHead>
-                <TableHead>Periodicità</TableHead>
-                <TableHead>Prossima Scadenza</TableHead>
-                <TableHead>Operatore</TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort('title')}>Titolo {getSortIcon('title')}</Button>
+                </TableHead>
+                <TableHead>
+                     <Button variant="ghost" onClick={() => requestSort('client')}>Cliente {getSortIcon('client')}</Button>
+                </TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort('status')}>Stato {getSortIcon('status')}</Button>
+                </TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort('recurrenceMonths')}>Periodicità {getSortIcon('recurrenceMonths')}</Button>
+                </TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort('nextDueDate')}>Prossima Scadenza {getSortIcon('nextDueDate')}</Button>
+                </TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort('operator')}>Operatore {getSortIcon('operator')}</Button>
+                </TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredTasks.map((task) => {
+            {sortedTasks.map((task) => {
               const clientName = clientsMap.get(task.clientId);
               const operatorName = task.assignedOperatorId ? operatorsMap.get(task.assignedOperatorId) : null;
               return (
@@ -328,5 +396,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     </div>
   );
 }
+
+    
 
     
