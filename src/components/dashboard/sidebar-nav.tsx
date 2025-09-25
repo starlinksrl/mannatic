@@ -15,6 +15,7 @@ import {
   ClipboardCheck,
   Contact,
   Database,
+  Info,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -31,6 +32,7 @@ const navItems = [
   { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin', 'Creator'] },
   { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
   { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'] },
+  { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'] },
   { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
 ];
 
