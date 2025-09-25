@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Company, addCompany, getCompanies, deleteCompanyAndSubcollections, updateCompany } from '@/lib/data';
-import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact, MoreHorizontal, Pencil, Trash2, Shield, Eye } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +27,21 @@ import {
 } from "@/components/ui/alert-dialog"
 
 const changelog = [
+     {
+        version: "0.10",
+        date: "2024-09-24",
+        title: "Privacy, UX e Gestione Avanzata",
+        icon: Shield,
+        iconClass: "text-purple-500",
+        changes: [
+            { type: Eye, description: "La dashboard del cliente ora mostra solo ed esclusivamente i dati relativi ai propri interventi, garantendo la privacy." },
+            { type: Building, description: "Implementata la gestione completa delle aziende, con possibilità di modifica e cancellazione sicura." },
+            { type: Wrench, description: "Gli ID di interventi, sopralluoghi e manutenzioni sono ora più corti (8 caratteri) e facili da leggere." },
+            { type: MailCheck, description: "Le notifiche vengono ora contrassegnate automaticamente come lette all'apertura del menu, migliorando l'usabilità." },
+            { type: Bug, description: "Risolto un errore critico nella creazione di un ticket dal pannello cliente che causava l'associazione di un nome errato." },
+            { type: Bug, description: "Corretti vari bug minori e migliorata la stabilità generale." },
+        ]
+    },
      {
         version: "0.9",
         date: "2024-09-23",
@@ -333,3 +348,5 @@ export default function CompaniesPage() {
         </>
     );
 }
+
+    
