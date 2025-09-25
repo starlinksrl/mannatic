@@ -56,7 +56,6 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const { currentCompany } = useUser();
   const [showPassword, setShowPassword] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -74,6 +73,8 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       role: defaultRole
     },
   });
+  
+  const addressValue = form.watch('address');
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany) {
@@ -109,7 +110,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      const formattedAddress = place.formatted_address || (inputRef.current ? inputRef.current.value : '');
+      const formattedAddress = place.formatted_address || '';
       form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -239,9 +240,9 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                         onPlaceChanged={onPlaceChanged}
                         fields={['formatted_address']}
                       >
-                        <Input
-                          {...field}
-                          ref={inputRef}
+                         <Input
+                          value={addressValue}
+                          onChange={(e) => form.setValue('address', e.target.value)}
                           placeholder="Via, Città, CAP"
                         />
                       </Autocomplete>

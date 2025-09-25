@@ -59,7 +59,6 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPassword, setShowPassword] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -71,6 +70,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   });
   
   const avatarUrl = form.watch('avatarUrl');
+  const addressValue = form.watch('address');
   
   const isEditingOwnProfile = currentUser?.id === user?.id;
 
@@ -134,7 +134,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      const formattedAddress = place.formatted_address || (inputRef.current ? inputRef.current.value : '');
+      const formattedAddress = place.formatted_address || '';
       form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -274,9 +274,9 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                         onPlaceChanged={onPlaceChanged}
                         fields={['formatted_address']}
                       >
-                        <Input
-                          {...field}
-                          ref={inputRef}
+                         <Input
+                          value={addressValue}
+                          onChange={(e) => form.setValue('address', e.target.value)}
                           placeholder="Via, Città, CAP"
                         />
                       </Autocomplete>

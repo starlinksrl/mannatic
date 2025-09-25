@@ -54,7 +54,6 @@ interface CompanyFormProps {
 
 export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFormProps) {
     const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-    const inputRef = useRef<HTMLInputElement | null>(null);
     const isEditing = !!company;
     
     const { isLoaded, loadError } = useLoadScript({
@@ -75,6 +74,8 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
             password: ''
         },
     });
+    
+    const addressValue = form.watch('address');
 
     useEffect(() => {
         if (company) {
@@ -108,7 +109,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
     const onPlaceChanged = () => {
         if (autocompleteRef.current) {
             const place = autocompleteRef.current.getPlace();
-            const formattedAddress = place.formatted_address || (inputRef.current ? inputRef.current.value : '');
+            const formattedAddress = place.formatted_address || '';
             form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
         }
     };
@@ -149,7 +150,11 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                                                 onPlaceChanged={onPlaceChanged}
                                                 fields={['formatted_address']}
                                             >
-                                                <Input {...field} ref={inputRef} placeholder="Via, Città, CAP" />
+                                                <Input
+                                                    value={addressValue}
+                                                    onChange={(e) => form.setValue('address', e.target.value)}
+                                                    placeholder="Via, Città, CAP"
+                                                />
                                             </Autocomplete>
                                         ) : (
                                             <Input {...field} placeholder="Via, Città, CAP" disabled={!isLoaded}/>
