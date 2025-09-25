@@ -46,6 +46,18 @@ let surveysMock: Survey[] = [
     },
 ];
 
+// --- GENERIC DOCUMENT MANAGEMENT ---
+export async function updateDocument(collectionName: string, docId: string, data: Partial<any>): Promise<void> {
+    try {
+        const docRef = doc(db, collectionName, docId);
+        await updateDoc(docRef, data);
+    } catch (error) {
+        console.error(`Error updating document in ${collectionName}:`, error);
+        throw new Error(`Failed to update document in ${collectionName}.`);
+    }
+}
+
+
 // --- COMPANY MANAGEMENT ---
 
 export async function getCompanies(): Promise<Company[]> {
@@ -752,3 +764,4 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
