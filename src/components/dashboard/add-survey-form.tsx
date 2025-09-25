@@ -88,7 +88,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
   }, [clients]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!currentCompany) return;
+    if (!currentCompany || !values.date || !values.time) return;
     
     const [hours, minutes] = values.time.split(':').map(Number);
     let date = values.date;

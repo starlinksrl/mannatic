@@ -91,6 +91,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
   if (!survey) return null;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!values.date || !values.time) return;
     
     const [hours, minutes] = values.time.split(':').map(Number);
     let date = values.date;
