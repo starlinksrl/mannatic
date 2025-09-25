@@ -44,6 +44,7 @@ function CompanyProfileForm({ company, onSave }: { company: Company, onSave: (da
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
       googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -87,7 +88,7 @@ function CompanyProfileForm({ company, onSave }: { company: Company, onSave: (da
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      const formattedAddress = place.formatted_address || '';
+      const formattedAddress = place.formatted_address || (inputRef.current ? inputRef.current.value : '');
       form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -150,7 +151,7 @@ function CompanyProfileForm({ company, onSave }: { company: Company, onSave: (da
                         onPlaceChanged={onPlaceChanged}
                         fields={['formatted_address']}
                       >
-                        <Input {...field} />
+                        <Input {...field} ref={inputRef} />
                       </Autocomplete>
                     ) : (
                       <Input {...field} disabled={!isLoaded}/>

@@ -65,6 +65,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -120,12 +121,15 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
 
   const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
     autocompleteRef.current = autocomplete;
+    if (inputRef.current) {
+        autocomplete.bindTo("bounds", new google.maps.Map(inputRef.current.ownerDocument.createElement('div')).getBounds() as google.maps.LatLngBounds);
+    }
   };
 
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      const formattedAddress = place.formatted_address || '';
+      const formattedAddress = place.formatted_address || (inputRef.current ? inputRef.current.value : '');
       form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -250,6 +254,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                             >
                               <Input
                                 {...field}
+                                ref={inputRef}
                                 placeholder="Via, numero civico, città"
                               />
                             </Autocomplete>

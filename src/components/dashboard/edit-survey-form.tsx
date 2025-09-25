@@ -62,6 +62,7 @@ interface EditSurveyFormProps {
 export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, isOpen, setIsOpen }: EditSurveyFormProps) {
   const { toast } = useToast();
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -130,7 +131,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      const formattedAddress = place.formatted_address || '';
+      const formattedAddress = place.formatted_address || (inputRef.current ? inputRef.current.value : '');
       form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -198,6 +199,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                             >
                               <Input
                                 {...field}
+                                ref={inputRef}
                                 placeholder="Via, numero civico, città"
                               />
                             </Autocomplete>

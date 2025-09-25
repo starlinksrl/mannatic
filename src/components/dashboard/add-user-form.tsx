@@ -56,6 +56,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const { currentCompany } = useUser();
   const [showPassword, setShowPassword] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -108,7 +109,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      const formattedAddress = place.formatted_address || '';
+      const formattedAddress = place.formatted_address || (inputRef.current ? inputRef.current.value : '');
       form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -240,6 +241,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                       >
                         <Input
                           {...field}
+                          ref={inputRef}
                           placeholder="Via, Città, CAP"
                         />
                       </Autocomplete>
