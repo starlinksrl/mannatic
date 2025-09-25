@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Building, Users, UserCog, User, Wrench, ShieldCheck, ClipboardCheck, Bot, Palette, Server, HardDrive, ExternalLink } from 'lucide-react';
+import { Building, Users, UserCog, User, Wrench, ShieldCheck, ClipboardCheck, Bot, Palette, Server, HardDrive, ExternalLink, Database } from 'lucide-react';
 
 const features = [
     {
