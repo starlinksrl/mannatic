@@ -4,43 +4,27 @@
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
-import { Company, addCompany, getCompanies } from '@/lib/data';
-import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Company, addCompany, getCompanies, deleteCompanyAndSubcollections, updateCompany } from '@/lib/data';
+import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useLoadScript, Autocomplete } from '@react-google-maps/api';
-
-const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
-
-const formSchema = z.object({
-    name: z.string().min(1, { message: 'Il nome è obbligatorio' }),
-    address: z.string().optional(),
-    vatNumber: z.string().optional(),
-    taxCode: z.string().optional(),
-    phone: z.string().optional(),
-    uniqueCode: z.string().optional(),
-    email: z.string().email({ message: 'Email non valida' }),
-    password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri' })
-});
+import { CompanyForm } from '@/components/dashboard/company-form';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const changelog = [
      {
@@ -131,206 +115,18 @@ const changelog = [
 ];
 
 
-function AddCompanyDialogContent({ onCompanyAdded }: { onCompanyAdded: (company: Company) => void }) {
-    const { toast } = useToast();
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-
-    const { isLoaded, loadError } = useLoadScript({
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-        libraries,
-    });
-
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            name: '',
-            address: '',
-            vatNumber: '',
-            taxCode: '',
-            phone: '',
-            uniqueCode: '',
-            email: '',
-            password: ''
-        },
-    });
-
-    const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        const newCompany = await addCompany(values);
-        onCompanyAdded(newCompany);
-        toast({ title: 'Azienda creata', description: `L'azienda "${values.name}" è stata creata.` });
-        form.reset();
-        setIsDialogOpen(false);
-    };
-
-    const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
-        autocompleteRef.current = autocomplete;
-    };
-
-    const onPlaceChanged = () => {
-        if (autocompleteRef.current) {
-            const place = autocompleteRef.current.getPlace();
-            const formattedAddress = place.formatted_address || '';
-            form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
-        }
-    };
-
-    return (
-         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-                <Button>
-                    <PlusCircle className="mr-2" />
-                    Crea Azienda
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0">
-                    <DialogHeader className="p-6 pb-0">
-                    <DialogTitle>Crea una nuova azienda</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="h-full">
-                    <div className="p-6">
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} id="add-company-form" className="space-y-4">
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Nome Azienda</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Nome della nuova azienda" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="address"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Indirizzo</FormLabel>
-                                    <FormControl>
-                                        {isLoaded && !loadError ? (
-                                            <Autocomplete
-                                                onLoad={onAutocompleteLoad}
-                                                onPlaceChanged={onPlaceChanged}
-                                                fields={['formatted_address']}
-                                            >
-                                                <Input {...field} placeholder="Via, Città, CAP" />
-                                            </Autocomplete>
-                                        ) : (
-                                            <Input {...field} placeholder="Via, Città, CAP" disabled={!isLoaded}/>
-                                        )}
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField
-                                    control={form.control}
-                                    name="vatNumber"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Partita IVA</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="IT..." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                    <FormField
-                                    control={form.control}
-                                    name="taxCode"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Codice Fiscale</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Codice fiscale..." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="phone"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Telefono</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Numero di telefono" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="uniqueCode"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Codice Univoco</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Codice SDI" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Email (per login admin)</FormLabel>
-                                        <FormControl>
-                                            <Input type="email" placeholder="admin@azienda.com" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                    <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Password (per login admin)</FormLabel>
-                                        <FormControl>
-                                            <Input type="password" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                        </form>
-                    </Form>
-                    </div>
-                </ScrollArea>
-                <DialogFooter className="p-6 pt-0">
-                    <DialogClose asChild>
-                        <Button variant="outline">Annulla</Button>
-                    </DialogClose>
-                    <Button type="submit" form="add-company-form">Crea</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    )
-}
-
 export default function CompaniesPage() {
     const { user, switchCompany } = useUser();
     const router = useRouter();
     const [companies, setCompanies] = useState<Company[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const { toast } = useToast();
+    
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
     
 
     useEffect(() => {
@@ -350,12 +146,60 @@ export default function CompaniesPage() {
         }
     }, [user, router]);
 
-    const handleCompanyAdded = (newCompany: Company) => {
-        setCompanies(prev => [...prev, newCompany]);
-    }
+    const handleCreateClick = () => {
+        setSelectedCompany(null);
+        setIsFormOpen(true);
+    };
+
+    const handleEditClick = (company: Company) => {
+        setSelectedCompany(company);
+        setIsFormOpen(true);
+    };
+
+    const handleDeleteClick = (company: Company) => {
+        setCompanyToDelete(company);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleFormSubmit = async (values: Partial<Company>) => {
+        try {
+            if (selectedCompany) {
+                // Update
+                const updated = await updateCompany(selectedCompany.id, values);
+                if (updated) {
+                    setCompanies(prev => prev.map(c => c.id === updated.id ? updated : c));
+                    toast({ title: 'Azienda aggiornata', description: `L'azienda "${values.name}" è stata aggiornata.` });
+                }
+            } else {
+                // Create
+                const newCompany = await addCompany(values as Omit<Company, 'id'>);
+                setCompanies(prev => [...prev, newCompany]);
+                toast({ title: 'Azienda creata', description: `L'azienda "${values.name}" è stata creata.` });
+            }
+            setIsFormOpen(false);
+            setSelectedCompany(null);
+            return true;
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Errore', description: "Si è verificato un errore." });
+            return false;
+        }
+    };
     
-    const handleCompanyClick = (companyId: string) => {
-        switchCompany(companyId);
+    const confirmDelete = async () => {
+        if (!companyToDelete) return;
+        try {
+            await deleteCompanyAndSubcollections(companyToDelete.id);
+            setCompanies(prev => prev.filter(c => c.id !== companyToDelete.id));
+            toast({ title: 'Azienda eliminata', description: `L'azienda "${companyToDelete.name}" e tutti i suoi dati sono stati eliminati.` });
+        } catch (error) {
+             toast({ variant: 'destructive', title: 'Errore', description: 'Impossibile eliminare l\'azienda.' });
+        }
+        setIsDeleteDialogOpen(false);
+        setCompanyToDelete(null);
+    };
+    
+    const handleCompanyClick = (company: Company) => {
+        switchCompany(company.id);
         router.push('/dashboard');
     };
 
@@ -379,19 +223,42 @@ export default function CompaniesPage() {
             <Header title="Gestione Aziende" />
             <main className="flex-1 p-4 md:p-6 lg:p-8">
                 <div className="flex justify-end mb-4">
-                    <AddCompanyDialogContent onCompanyAdded={handleCompanyAdded} />
+                     <Button onClick={handleCreateClick}>
+                        <PlusCircle className="mr-2" />
+                        Crea Azienda
+                    </Button>
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {companies.map(company => (
-                        <Card key={company.id} className="flex flex-col cursor-pointer hover:bg-muted/50" onClick={() => handleCompanyClick(company.id)}>
-                            <CardHeader className="flex-row items-start gap-4 space-y-0">
-                                <div className="space-y-1">
+                        <Card key={company.id} className="flex flex-col">
+                            <CardHeader className="flex-row items-start gap-4 space-y-0 pb-2">
+                                <div className="space-y-1 flex-1 cursor-pointer" onClick={() => handleCompanyClick(company)}>
                                     <CardTitle>{company.name}</CardTitle>
                                     <CardDescription>{company.address}</CardDescription>
                                 </div>
-                                <Building className="h-8 w-8 text-muted-foreground ml-auto" />
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2">
+                                            <MoreHorizontal />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onSelect={() => handleEditClick(company)}>
+                                            <Pencil className="mr-2" /> Modifica
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                            onSelect={(e) => {
+                                                e.preventDefault();
+                                                handleDeleteClick(company);
+                                            }}>
+                                            <Trash2 className="mr-2" /> Elimina
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </CardHeader>
-                            <CardContent className="space-y-2 text-sm text-muted-foreground mt-auto">
+                            <CardContent className="space-y-2 text-sm text-muted-foreground mt-auto cursor-pointer" onClick={() => handleCompanyClick(company)}>
                                 <div className="flex items-center gap-2">
                                     <Mail className="h-4 w-4"/>
                                     <span>{company.email}</span>
@@ -401,7 +268,7 @@ export default function CompaniesPage() {
                                     <span>{company.phone}</span>
                                 </div>
                             </CardContent>
-                             <CardFooter>
+                             <CardFooter className="cursor-pointer" onClick={() => handleCompanyClick(company)}>
                                 <p className="text-xs text-muted-foreground">P.IVA: {company.vatNumber}</p>
                             </CardFooter>
                         </Card>
@@ -443,9 +310,26 @@ export default function CompaniesPage() {
                     ))}
                 </div>
             </main>
+            <CompanyForm
+                isOpen={isFormOpen}
+                setIsOpen={setIsFormOpen}
+                onSubmit={handleFormSubmit}
+                company={selectedCompany}
+            />
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Sei assolutamente sicuro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Questa azione non può essere annullata. L'azienda <b>{companyToDelete?.name}</b> e tutti i dati associati (utenti, clienti, interventi, etc.) verranno eliminati definitivamente.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Elimina</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
-
-
-    

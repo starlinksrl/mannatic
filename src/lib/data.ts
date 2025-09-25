@@ -1,7 +1,7 @@
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual } from 'firebase/firestore';
 import { triggerExpiryNotification, triggerNewInterventionNotification } from '@/app/actions';
 import { generateShortId } from './utils';
 
@@ -105,13 +105,34 @@ export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Comp
 export async function updateCompany(id: string, updatedData: Partial<Company>): Promise<Company | null> {
     try {
         const docRef = doc(db, 'companies', id);
-        await updateDoc(docRef, updatedData);
+        // We shouldn't be updating the password this way
+        const { password, ...dataToSave } = updatedData;
+        await updateDoc(docRef, dataToSave);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Company : null;
     } catch (error) {
         console.error("Error updating company:", error);
         return null;
     }
+}
+
+export async function deleteCompanyAndSubcollections(companyId: string): Promise<void> {
+    const collectionsToDelete = ['users', 'interventions', 'notifications'];
+    const batch = writeBatch(db);
+
+    for (const coll of collectionsToDelete) {
+        const q = query(collection(db, coll), where("companyId", "==", companyId));
+        const snapshot = await getDocs(q);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+    }
+
+    // Finally, delete the company itself
+    const companyRef = doc(db, 'companies', companyId);
+    batch.delete(companyRef);
+
+    await batch.commit();
 }
 
 
@@ -764,4 +785,3 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
-
