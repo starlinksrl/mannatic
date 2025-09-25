@@ -496,14 +496,16 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
 export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
     const { creatorName, clientId, companyId, ...restOfData } = interventionData;
     
-    // Check if clientId is an existing user or a new name
-    const clients = await getClients(companyId);
-    let finalClientId = clients.find(c => c.name.toLowerCase() === clientId.toLowerCase())?.id;
-    let clientName = clientId;
+    // Check if clientId is an existing user ID or a new name string
+    const existingUser = await getUserById(clientId);
+    let finalClientId = existingUser ? existingUser.id : null;
+    
+    let clientName: string;
     let newClientWasCreated = false;
 
     if (!finalClientId) {
-        console.log(`Client "${clientId}" not found. Creating new client.`);
+        console.log(`Client "${clientId}" not found by ID. Assuming it's a new client name.`);
+        clientName = clientId;
         const companyDoc = await getDoc(doc(db, 'companies', companyId));
         if (!companyDoc.exists()) {
             throw new Error(`Company with id ${companyId} not found`);
@@ -523,12 +525,11 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             phone: 'Telefono da definire',
         });
         finalClientId = newClient.id;
-        clientName = newClient.name;
         newClientWasCreated = true;
         console.log(`New client created with ID: ${finalClientId}`);
     } else {
         const client = await getClient(finalClientId);
-        if (client) clientName = client.name;
+        clientName = client ? client.name : 'Cliente Sconosciuto';
     }
 
     const dataForDb: any = { ...restOfData };
@@ -785,3 +786,6 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
+
+    

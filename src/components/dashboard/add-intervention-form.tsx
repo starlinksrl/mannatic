@@ -130,9 +130,14 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     } else if (values.dueDate) {
       finalDueDate = values.dueDate.toISOString();
     }
+    
+    // For client users, clientId is their own ID. For others, it could be a name to be resolved.
+    const clientIdentifier = currentUser.role === 'Client' ? currentUser.id : values.clientId;
+
 
     const newIntervention = await addIntervention({
         ...values,
+        clientId: clientIdentifier,
         description: values.description || values.title,
         priority: values.priority as InterventionPriority,
         dueDate: finalDueDate,
@@ -252,7 +257,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                             >
                                                 {field.value
                                                     ? clientList.find(
-                                                        (client) => client.name === field.value
+                                                        (client) => client.id === field.value
                                                     )?.name ?? field.value
                                                     : "Seleziona o crea un cliente"}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -280,7 +285,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                                         value={client.name}
                                                         key={client.id}
                                                         onSelect={() => {
-                                                            form.setValue("clientId", client.name)
+                                                            form.setValue("clientId", client.id)
                                                             const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
                                                             popoverTrigger?.click();
                                                         }}
@@ -288,7 +293,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                                         <Check
                                                             className={cn(
                                                                 "mr-2 h-4 w-4",
-                                                                client.name === field.value ? "opacity-100" : "opacity-0"
+                                                                client.id === field.value ? "opacity-100" : "opacity-0"
                                                             )}
                                                         />
                                                         {client.name}
@@ -439,5 +444,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     </Dialog>
   );
 }
+
+    
 
     
