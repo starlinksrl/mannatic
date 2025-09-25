@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [clients, setClients] = useState<Client[]>([]);
 
   const fetchKpiData = async () => {
-    if (!currentCompany) {
+    if (!currentCompany || !user) {
         setLoading(false);
         return;
     };
@@ -35,7 +35,7 @@ export default function DashboardPage() {
     setLoading(true);
 
     const now = new Date();
-    const [interventions, users, allClients] = await Promise.all([
+    const [allInterventions, users, allClients] = await Promise.all([
       getInterventions(currentCompany.id),
       getUsers(currentCompany.id),
       getClients(currentCompany.id),
@@ -43,6 +43,11 @@ export default function DashboardPage() {
 
     setClients(allClients);
     setOperators(users.filter(u => u.role === 'Operator'));
+    
+    const interventions = user.role === 'Client'
+      ? allInterventions.filter(i => i.clientId === user.id)
+      : allInterventions;
+
 
     const openInterventions = interventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa');
     const closedInterventions = interventions.filter(i => i.status === 'Completato' || i.status === 'Annullato');
@@ -119,7 +124,7 @@ export default function DashboardPage() {
             <Loader className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <KpiDashboard kpiData={kpiData} />
+          <KpiDashboard kpiData={kpiData} currentUser={user} />
         )}
       </main>
     </>

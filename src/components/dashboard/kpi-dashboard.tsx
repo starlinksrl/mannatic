@@ -1,3 +1,4 @@
+
 'use client';
 
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
@@ -8,7 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, 
 import React, { useState, useEffect } from 'react';
 import { KpiCard } from './kpi-card';
 import { Activity, AlertOctagon, Check, Clock, Users } from 'lucide-react';
-import { Intervention, ScheduledMaintenance } from '@/lib/types';
+import { Intervention, ScheduledMaintenance, User } from '@/lib/types';
 import { Badge } from '../ui/badge';
 
 interface KpiDashboardProps {
@@ -16,15 +17,24 @@ interface KpiDashboardProps {
       operatorWorkloadData: { name: string, workload: number }[],
       highPriorityInterventions: (Intervention | ScheduledMaintenance)[],
     };
+  currentUser: User;
 }
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
-export function KpiDashboard({ kpiData }: KpiDashboardProps) {
+export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
   const [description, setDescription] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const isClient = currentUser.role === 'Client';
+
 
   useEffect(() => {
+    if (isClient) {
+      setIsLoading(false);
+      setDescription(`Stato attuale dei tuoi interventi. Interventi aperti: ${kpiData.openInterventions}.`);
+      return;
+    }
+    
     const fetchDescription = async () => {
       setIsLoading(true);
       const result = await getKpiDashboardDescription(kpiData);
@@ -32,7 +42,7 @@ export function KpiDashboard({ kpiData }: KpiDashboardProps) {
       setIsLoading(false);
     };
     fetchDescription();
-  }, [kpiData]);
+  }, [kpiData, isClient]);
 
   const interventionStatusData = [
     { name: 'Aperti', value: kpiData.openInterventions },
@@ -54,12 +64,14 @@ export function KpiDashboard({ kpiData }: KpiDashboardProps) {
           icon={<Check className="h-4 w-4 text-muted-foreground" />}
           description="Percentuale interventi nei tempi"
         />
-        <KpiCard
-          title="Manutenzioni Scadute"
-          value={kpiData.overdueMaintenanceTasks}
-          icon={<AlertOctagon className="h-4 w-4 text-muted-foreground" />}
-          description="Attività di manutenzione in ritardo"
-        />
+         {!isClient && (
+            <KpiCard
+                title="Manutenzioni Scadute"
+                value={kpiData.overdueMaintenanceTasks}
+                icon={<AlertOctagon className="h-4 w-4 text-muted-foreground" />}
+                description="Attività di manutenzione in ritardo"
+                />
+         )}
         <KpiCard
           title="Interventi Chiusi (30d)"
           value={kpiData.closedInterventions}
@@ -68,11 +80,11 @@ export function KpiDashboard({ kpiData }: KpiDashboardProps) {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className={`grid gap-6 ${isClient ? 'grid-cols-1' : 'lg:grid-cols-2'}`}>
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline">Analisi AI della Dashboard</CardTitle>
-            <CardDescription>Riepilogo intelligente e suggerimenti basati sui dati attuali.</CardDescription>
+            <CardTitle className="font-headline">{isClient ? 'Riepilogo Interventi' : 'Analisi AI della Dashboard'}</CardTitle>
+            <CardDescription>{isClient ? 'Panoramica dello stato dei tuoi interventi.' : 'Riepilogo intelligente e suggerimenti basati sui dati attuali.'}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -87,47 +99,51 @@ export function KpiDashboard({ kpiData }: KpiDashboardProps) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Carico Operatori</CardTitle>
-            <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={kpiData.operatorWorkloadData}>
-                <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    borderColor: 'hsl(var(--border))',
-                  }}
-                />
-                <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {!isClient && (
+            <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">Carico Operatori</CardTitle>
+                <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={kpiData.operatorWorkloadData}>
+                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip
+                    contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        borderColor: 'hsl(var(--border))',
+                    }}
+                    />
+                    <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+            </Card>
+        )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Interventi ad alta priorità</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <div className="space-y-4">
-                {kpiData.highPriorityInterventions.map(int => (
-                    <div key={int.id} className="flex items-center justify-between">
-                        <div>
-                            <p className="font-medium">{int.title}</p>
-                            <p className="text-sm text-muted-foreground">ID: {int.id}</p>
+      {!isClient && (
+        <Card>
+            <CardHeader>
+            <CardTitle className="font-headline">Interventi ad alta priorità</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                    {kpiData.highPriorityInterventions.map(int => (
+                        <div key={int.id} className="flex items-center justify-between">
+                            <div>
+                                <p className="font-medium">{int.title}</p>
+                                <p className="text-sm text-muted-foreground">ID: {int.id}</p>
+                            </div>
+                            <Badge variant={int.priority === 'Critica' ? 'destructive' : 'secondary'} className="text-accent-foreground">{int.priority}</Badge>
                         </div>
-                        <Badge variant={int.priority === 'Critica' ? 'destructive' : 'secondary'} className="text-accent-foreground">{int.priority}</Badge>
-                    </div>
-                ))}
-            </div>
-        </CardContent>
-      </Card>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
