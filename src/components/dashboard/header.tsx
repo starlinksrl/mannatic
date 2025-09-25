@@ -3,7 +3,7 @@
 
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Menu, PlusCircle } from 'lucide-react';
+import { ArrowLeft, Building, Menu, PlusCircle } from 'lucide-react';
 import { SidebarNav } from './sidebar-nav';
 import { UserSwitcher } from './user-switcher';
 import { NotificationsDropdown } from './notifications-dropdown';
@@ -11,6 +11,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { AddInterventionForm } from './add-intervention-form';
 import { Intervention, Client, User } from '@/lib/types';
+import Image from 'next/image';
 
 interface HeaderProps {
   title: string;
@@ -54,6 +55,16 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Torna alle aziende</span>
           </Button>
+        )}
+         {currentCompany && !sessionUser?.role && (
+          <div className="flex items-center gap-2">
+            {currentCompany.logoUrl ? (
+                <Image src={currentCompany.logoUrl} alt={currentCompany.name} width={28} height={28} className="rounded-md object-contain" />
+            ) : (
+                <Building className="h-5 w-5 text-muted-foreground" />
+            )}
+             <span className="font-medium hidden lg:inline">{currentCompany.name}</span>
+          </div>
         )}
         <h1 className="font-headline text-xl font-semibold">{title}</h1>
       </div>

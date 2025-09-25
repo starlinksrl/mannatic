@@ -1,13 +1,10 @@
 
-
-
-
-
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 
 export interface Company {
   id: string;
   name: string;
+  logoUrl?: string;
   address?: string;
   vatNumber?: string;
   taxCode?: string;

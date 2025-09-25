@@ -20,6 +20,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '../icons/logo';
+import Image from 'next/image';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
@@ -38,14 +39,21 @@ const navItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const { user } = useUser();
+  const { user, currentCompany } = useUser();
 
   if (!user) return null;
 
   return (
     <div className="flex h-full flex-col">
       <div className="h-16 flex items-center px-6 border-b">
-        <Logo />
+        {currentCompany?.logoUrl ? (
+          <div className="flex items-center gap-2">
+            <Image src={currentCompany.logoUrl} alt={currentCompany.name} width={32} height={32} className="rounded-md object-contain" />
+            <span className="font-headline text-lg font-bold text-foreground">{currentCompany.name}</span>
+          </div>
+        ) : (
+          <Logo />
+        )}
       </div>
       <nav className="flex-1 space-y-2 p-4">
         {navItems.map((item) =>
