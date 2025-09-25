@@ -1,14 +1,9 @@
-
-
-
-
-
-
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc } from 'firebase/firestore';
 import { triggerExpiryNotification, triggerNewInterventionNotification } from '@/app/actions';
+import { generateShortId } from './utils';
 
 
 // --- MOCK DATA (to be phased out or used for seeding) ---
@@ -167,16 +162,17 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise<User> {
   try {
+    const newId = generateShortId();
     const newUserPayload: Omit<User, 'id'> = {
       ...userData,
       email: userData.email.toLowerCase(),
-      avatarUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
+      avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
       address: userData.address || '',
       phone: userData.phone || ''
     };
-    const docRef = await addDoc(collection(db, 'users'), newUserPayload);
+    await setDoc(doc(db, 'users', newId), newUserPayload);
     
-    return { id: docRef.id, ...newUserPayload };
+    return { id: newId, ...newUserPayload };
   } catch (error) {
       console.error("Error adding user:", error);
       throw new Error("Failed to add user.");
@@ -506,9 +502,11 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     if (dataForDb.dueTime === undefined) {
       delete dataForDb.dueTime;
     }
-
+    
+    const newId = generateShortId();
     const newInterventionData: Omit<Intervention, 'id'> = {
         ...dataForDb,
+        id: newId,
         clientId: finalClientId,
         companyId: companyId,
         status: 'Nuovo' as InterventionStatus,
@@ -518,8 +516,8 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         dueDate: restOfData.dueDate || null,
     };
 
-    const docRef = await addDoc(collection(db, 'interventions'), newInterventionData);
-    const finalIntervention = { id: docRef.id, ...newInterventionData };
+    await setDoc(doc(db, 'interventions', newId), newInterventionData);
+    const finalIntervention = { ...newInterventionData };
 
     // Trigger admin notification
     await notifyAdminOnNewIntervention(finalIntervention, clientName, creatorName);
@@ -531,8 +529,10 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMaintenance, 'id' | 'status' | 'sla' | 'createdAt' | 'isMaintenance' | 'nextDueDate' | 'updates'>): Promise<ScheduledMaintenance> {
     const nextDueDate = addMonths(new Date(maintenanceData.dueDate!), maintenanceData.recurrenceMonths).toISOString();
     
+    const newId = generateShortId();
     const newMaintenanceData = {
         ...maintenanceData,
+        id: newId,
         status: 'Pianificato' as InterventionStatus,
         sla: '48h',
         createdAt: new Date().toISOString(),
@@ -546,8 +546,8 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
         delete (newMaintenanceData as any).dueDate;
     }
 
-    const docRef = await addDoc(collection(db, 'interventions'), newMaintenanceData);
-    return { id: docRef.id, ...newMaintenanceData };
+    await setDoc(doc(db, 'interventions', newId), newMaintenanceData);
+    return newMaintenanceData;
 }
 
 export async function updateIntervention(id: string, updatedData: Partial<Intervention>): Promise<Intervention | null> {
@@ -585,8 +585,6 @@ export async function updateScheduledMaintenance(id: string, updatedData: Partia
         const isBeingCompleted = updatedData.status === 'Completato' && originalMaintenance.status !== 'Completato';
 
         if (isBeingCompleted) {
-            // Update the 'last execution' date to now
-            combinedData.dueDate = new Date().toISOString();
             // Recalculate next due date from now
             combinedData.nextDueDate = addMonths(new Date(), combinedData.recurrenceMonths).toISOString();
             // Reset status to 'Pianificato' for the next cycle
@@ -647,7 +645,7 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
     return new Promise(resolve => {
         setTimeout(() => {
             const newSurvey: Survey = {
-                id: `survey-${Date.now()}`,
+                id: generateShortId(),
                 status: 'Pianificato',
                 createdAt: new Date().toISOString(),
                 ...surveyData,
