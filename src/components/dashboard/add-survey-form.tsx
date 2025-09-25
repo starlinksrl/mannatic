@@ -47,7 +47,7 @@ const formSchema = z.object({
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
   address: z.string().min(5, { message: 'L\'indirizzo deve contenere almeno 5 caratteri.' }),
   date: z.date({ required_error: 'La data è obbligatoria' }),
-  time: z.string({ required_error: "L'ora è obbligatoria." }),
+  time: z.string().min(1, { message: "L'ora è obbligatoria." }),
   assignedOperatorId: z.string().nullable(),
   notes: z.string().optional(),
 });
@@ -377,3 +377,5 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
     </Dialog>
   );
 }
+
+    
