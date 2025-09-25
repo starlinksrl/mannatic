@@ -2,7 +2,8 @@
 
 
 
-import { User, Client, Equipment, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
+
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId } from 'firebase/firestore';
@@ -10,13 +11,6 @@ import { triggerExpiryNotification, triggerNewInterventionNotification } from '@
 
 
 // --- MOCK DATA (to be phased out or used for seeding) ---
-
-let equipmentsMock: Equipment[] = [
-  { id: 'equip-1', name: 'Impianto Clima A', clientId: 'client-1', companyId: 'company-1' },
-  { id: 'equip-2', name: 'Server Room', clientId: 'client-1', companyId: 'company-1' },
-  { id: 'equip-3', name: 'Linea Produzione B', clientId: 'client-2', companyId: 'company-1' },
-  { id: 'equip-4', name: 'Ufficio A', clientId: 'client-3', companyId: 'company-2' },
-];
 
 let surveysMock: Survey[] = [
     {
@@ -261,17 +255,6 @@ export async function getClient(clientId: string): Promise<Client | null> {
         };
     }
     return null;
-}
-
-
-export function getEquipments(companyId: string): Equipment[] {
-    if (!companyId) return [];
-    return equipmentsMock.filter(e => e.companyId === companyId);
-}
-
-
-export function getEquipment(equipmentId: string) {
-  return equipmentsMock.find(e => e.id === equipmentId);
 }
 
 export async function getOperator(operatorId: string) {

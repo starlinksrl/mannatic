@@ -32,16 +32,15 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ScheduledMaintenance, Client, User, Equipment, InterventionPriority } from '@/lib/types';
+import { ScheduledMaintenance, Client, User, InterventionPriority } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addScheduledMaintenance, getEquipments } from '@/lib/data';
+import { addScheduledMaintenance } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
-  equipmentId: z.string({ required_error: 'L\'attrezzatura è obbligatoria.' }),
   description: z.string().optional(),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   dueDate: z.date({ required_error: 'La data di prima esecuzione è obbligatoria.' }),
@@ -59,7 +58,6 @@ interface AddMaintenanceFormProps {
 export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, operators }: AddMaintenanceFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
-  const [equipments, setEquipments] = useState<Equipment[]>([]);
   const { currentCompany } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -72,18 +70,6 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
       priority: 'Media'
     },
   });
-
-  const selectedClientId = form.watch('clientId');
-
-  useEffect(() => {
-    if (selectedClientId && currentCompany) {
-      const companyEquipments = getEquipments(currentCompany.id);
-      setEquipments(companyEquipments.filter(e => e.clientId === selectedClientId));
-      form.setValue('equipmentId', '');
-    } else {
-      setEquipments([]);
-    }
-  }, [selectedClientId, form, currentCompany]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany) return;
@@ -137,52 +123,28 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
                     )}
                     />
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                        control={form.control}
-                        name="clientId"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Cliente</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleziona un cliente" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {clients.map(client => (
-                                    <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="equipmentId"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Attrezzatura</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedClientId}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={selectedClientId ? "Seleziona un'attrezzatura" : "Seleziona prima un cliente"} />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {equipments.map(equipment => (
-                                    <SelectItem key={equipment.id} value={equipment.id}>{equipment.name}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </div>
+                    <FormField
+                    control={form.control}
+                    name="clientId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Cliente</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleziona un cliente" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {clients.map(client => (
+                                <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
 
                     <FormField
                     control={form.control}
