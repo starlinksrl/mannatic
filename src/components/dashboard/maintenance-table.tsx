@@ -14,7 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, formatDistanceToNow, isBefore } from 'date-fns';
+import { format, formatDistanceToNow, isBefore, addDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getClient, getOperator, deleteScheduledMaintenance } from '@/lib/data';
 import { Button } from '../ui/button';
@@ -50,7 +50,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
   const { toast } = useToast();
   const [maintenanceTasks, setMaintenanceTasks] = useState(initialMaintenanceTasks);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('In scadenza');
   const [sortConfig, setSortConfig] = useState<{ key: keyof ScheduledMaintenance | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'nextDueDate', direction: 'ascending' });
   
   const [clientsMap, setClientsMap] = useState<Map<string, string>>(new Map());
@@ -116,8 +116,15 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
 
   const filteredTasks = useMemo(() => {
     let filtered = maintenanceTasks;
+    const now = new Date();
+    const oneMonthFromNow = addDays(now, 30);
 
-    if (statusFilter === 'Scaduto') {
+    if (statusFilter === 'In scadenza') {
+        filtered = filtered.filter(task => {
+            const nextDueDate = new Date(task.nextDueDate);
+            return isBefore(nextDueDate, oneMonthFromNow) && isBefore(now, nextDueDate) && task.status !== 'Completato' && task.status !== 'Annullato';
+        });
+    } else if (statusFilter === 'Scaduto') {
         filtered = filtered.filter(isTaskOverdue);
     } else if (statusFilter !== 'all') {
         filtered = filtered.filter(task => task.status === statusFilter);
@@ -227,6 +234,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                     <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Tutti gli stati</SelectItem>
+                        <SelectItem value="In scadenza">In scadenza (30gg)</SelectItem>
                         <SelectItem value="Scaduto">Scaduto</SelectItem>
                         <SelectItem value="Pianificato">Pianificato</SelectItem>
                         <SelectItem value="In corso">In corso</SelectItem>
@@ -396,7 +404,3 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     </div>
   );
 }
-
-    
-
-    
