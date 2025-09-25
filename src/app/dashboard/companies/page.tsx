@@ -43,6 +43,23 @@ const formSchema = z.object({
 });
 
 const changelog = [
+     {
+        version: "0.9",
+        date: "2024-09-23",
+        title: "Miglioramenti UI e Correzioni Funzionali",
+        icon: Wrench,
+        iconClass: "text-green-500",
+        changes: [
+            { type: Wrench, description: "Migliorata la reattività di tutti gli elenchi per una visualizzazione ottimale su dispositivi mobili e tablet." },
+            { type: Wrench, description: "Impostato il filtro predefinito 'In scadenza (30gg)' per la tabella delle manutenzioni." },
+            { type: Wrench, description: "Aggiunta la possibilità per gli Admin di caricare un logo aziendale, visibile nell'intestazione e nella sidebar." },
+            { type: LayoutDashboard, description: "Creata una pagina 'Info' per il ruolo Creator con riepilogo funzionale e link diretti al monitoraggio delle risorse Firebase." },
+            { type: Wrench, description: "Semplificata la creazione delle manutenzioni rimuovendo il campo 'Attrezzatura'." },
+            { type: Bug, description: "Corretto un bug che impediva il corretto ordinamento delle manutenzioni scadute." },
+            { type: Bug, description: "Risolto un errore che si verificava durante la creazione di un sopralluogo senza specificare un orario." },
+            { type: Bug, description: "La data di esecuzione di una manutenzione programmata viene ora aggiornata correttamente alla data odierna quando viene impostata su 'Completato'." },
+        ]
+    },
      { 
         version: "0.8",
         date: "2024-09-22",
@@ -429,3 +446,6 @@ export default function CompaniesPage() {
         </>
     );
 }
+
+
+    
