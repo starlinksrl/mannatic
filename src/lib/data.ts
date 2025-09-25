@@ -3,6 +3,7 @@
 
 
 
+
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -734,5 +735,22 @@ export async function getAllNotifications(): Promise<Notification[]> {
     } catch (error) {
         console.error("Error fetching all notifications:", error);
         return [];
+    }
+}
+
+
+export async function markNotificationsAsRead(notificationIds: string[]): Promise<boolean> {
+    if (notificationIds.length === 0) return true;
+    try {
+        const batch = writeBatch(db);
+        notificationIds.forEach(id => {
+            const docRef = doc(db, 'notifications', id);
+            batch.update(docRef, { read: true });
+        });
+        await batch.commit();
+        return true;
+    } catch (error) {
+        console.error("Error marking notifications as read:", error);
+        return false;
     }
 }

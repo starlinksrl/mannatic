@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -10,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Bell, AlertTriangle, CheckCircle, Info } from 'lucide-react';
-import { getNotifications } from '@/lib/data';
+import { getNotifications, markNotificationsAsRead } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Badge } from '../ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -39,6 +40,20 @@ export function NotificationsDropdown() {
     }
     fetchNotifications();
   }, [user, currentCompany]);
+  
+  const handleOpenChange = async (isOpen: boolean) => {
+    if (isOpen) {
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      if (unreadIds.length > 0) {
+        const success = await markNotificationsAsRead(unreadIds);
+        if (success) {
+          setNotifications(prev => 
+            prev.map(n => ({ ...n, read: true }))
+          );
+        }
+      }
+    }
+  }
 
   if (!user) return null;
 
@@ -52,7 +67,7 @@ export function NotificationsDropdown() {
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
