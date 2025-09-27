@@ -109,7 +109,13 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
     // Check if a new client was created and update the local list
     const isNewClient = !clients.some(c => c.id === newSurvey.clientId);
     if (isNewClient) {
-        setClientList(prev => [...prev, {id: newSurvey.clientId, name: values.clientId, companyId: currentCompany.id}]);
+        const client = {
+            id: newSurvey.clientId,
+            name: values.clientId,
+            companyId: currentCompany.id,
+            address: values.address
+        }
+        setClientList(prev => [...prev, client]);
     }
     
     toast({
@@ -186,7 +192,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                                             >
                                                 {field.value
                                                     ? clientList.find(
-                                                        (client) => client.name === field.value
+                                                        (client) => client.id === field.value
                                                     )?.name ?? field.value
                                                     : "Seleziona o crea un cliente"}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -214,7 +220,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                                                         value={client.name}
                                                         key={client.id}
                                                         onSelect={() => {
-                                                            form.setValue("clientId", client.name)
+                                                            form.setValue("clientId", client.id)
                                                             const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
                                                             popoverTrigger?.click();
                                                         }}
@@ -222,7 +228,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                                                         <Check
                                                             className={cn(
                                                                 "mr-2 h-4 w-4",
-                                                                client.name === field.value ? "opacity-100" : "opacity-0"
+                                                                client.id === field.value ? "opacity-100" : "opacity-0"
                                                             )}
                                                         />
                                                         {client.name}
@@ -258,7 +264,8 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                             </Autocomplete>
                           ) : (
                             <Input
-                              {...field}
+                              value={addressValue}
+                              onChange={(e) => form.setValue('address', e.target.value)}
                               placeholder="Via, numero civico, città"
                               disabled={!isLoaded}
                             />

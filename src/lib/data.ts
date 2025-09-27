@@ -6,46 +6,6 @@ import { triggerExpiryNotification, triggerNewInterventionNotification } from '@
 import { generateShortId } from './utils';
 
 
-// --- MOCK DATA (to be phased out or used for seeding) ---
-
-let surveysMock: Survey[] = [
-    {
-        id: 'survey-1',
-        title: 'Sopralluogo per nuovo impianto',
-        clientId: 'client-1',
-        address: 'Via Roma 1, Milano',
-        date: addDays(new Date(), 2).toISOString(),
-        assignedOperatorId: 'user-op-1',
-        notes: 'Verificare quadro elettrico e predisposizione canali.',
-        status: 'Pianificato',
-        createdAt: new Date().toISOString(),
-        companyId: 'company-1'
-    },
-    {
-        id: 'survey-2',
-        title: 'Verifica preliminare ufficio',
-        clientId: 'client-2',
-        address: 'Corso Buenos Aires 54, Milano',
-        date: addDays(new Date(), 5).toISOString(),
-        assignedOperatorId: 'user-op-2',
-        status: 'Pianificato',
-        createdAt: subDays(new Date(), 1).toISOString(),
-        companyId: 'company-1'
-    },
-     {
-        id: 'survey-3',
-        title: 'Analisi fattibilità nuovo sistema',
-        clientId: 'client-2',
-        address: 'Piazza Duomo 1, Milano',
-        date: subDays(new Date(), 10).toISOString(),
-        assignedOperatorId: 'user-op-1',
-        notes: 'Cliente ha firmato il verbale. In attesa di preventivo.',
-        status: 'Eseguito',
-        createdAt: subDays(new Date(), 15).toISOString(),
-        companyId: 'company-1'
-    },
-];
-
 // --- GENERIC DOCUMENT MANAGEMENT ---
 export async function updateDocument(collectionName: string, docId: string, data: Partial<any>): Promise<void> {
     try {
@@ -657,62 +617,89 @@ export async function deleteScheduledMaintenance(id: string): Promise<boolean> {
     }
 }
 
-// --- SURVEYS MANAGEMENT (Mocked) ---
+// --- SURVEYS MANAGEMENT (Firestore Implementation) ---
 
 export async function getSurveys(companyId: string): Promise<Survey[]> {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            resolve(surveysMock.filter(s => s.companyId === companyId));
-        }, 500);
-    });
+    if (!companyId) return [];
+    try {
+        const q = query(collection(db, 'surveys'), where("companyId", "==", companyId));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Survey));
+    } catch (error) {
+        console.error("Error fetching surveys:", error);
+        return [];
+    }
 }
 
 export async function getAllSurveys(): Promise<Survey[]> {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            resolve(surveysMock);
-        }, 500);
-    });
+    try {
+        const snapshot = await getDocs(collection(db, 'surveys'));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Survey));
+    } catch (error) {
+        console.error("Error fetching all surveys:", error);
+        return [];
+    }
 }
 
 export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'createdAt'>): Promise<Survey> {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            const newSurvey: Survey = {
-                id: generateShortId(),
-                status: 'Pianificato',
-                createdAt: new Date().toISOString(),
-                ...surveyData,
-            };
-            surveysMock = [newSurvey, ...surveysMock];
-            resolve(newSurvey);
-        }, 300);
-    });
+    const { clientId, companyId, ...restOfData } = surveyData;
+
+    const existingClient = await getUserById(clientId);
+    let finalClientId = existingClient ? existingClient.id : null;
+
+    if (!finalClientId) {
+        console.log(`Client "${clientId}" not found by ID. Creating new client.`);
+        const companyDoc = await getDoc(doc(db, 'companies', companyId));
+        if (!companyDoc.exists()) throw new Error(`Company with id ${companyId} not found`);
+
+        const company = companyDoc.data() as Company;
+        const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
+        const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
+
+        const newClient = await addUser({
+            name: clientId,
+            email: `${clientNameNormalized}@${companyName}.com`,
+            password: 'password123',
+            role: 'Client',
+            companyId: companyId,
+            address: surveyData.address,
+        });
+        finalClientId = newClient.id;
+    }
+
+    const newId = generateShortId();
+    const newSurvey: Omit<Survey, 'id'> = {
+        ...restOfData,
+        id: newId,
+        clientId: finalClientId,
+        companyId: companyId,
+        status: 'Pianificato',
+        createdAt: new Date().toISOString(),
+    };
+    await setDoc(doc(db, 'surveys', newId), newSurvey);
+    return { id: newId, ...newSurvey };
 }
 
 export async function updateSurvey(id: string, updatedData: Partial<Survey>): Promise<Survey | null> {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            let surveyToUpdate = surveysMock.find(s => s.id === id);
-            if (surveyToUpdate) {
-                const updatedSurvey = { ...surveyToUpdate, ...updatedData };
-                surveysMock = surveysMock.map(s => s.id === id ? updatedSurvey : s);
-                resolve(updatedSurvey);
-            } else {
-                resolve(null);
-            }
-        }, 300);
-    });
+    try {
+        const docRef = doc(db, 'surveys', id);
+        await updateDoc(docRef, updatedData);
+        const updatedDoc = await getDoc(docRef);
+        return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Survey : null;
+    } catch (error) {
+        console.error("Error updating survey:", error);
+        return null;
+    }
 }
 
 export async function deleteSurvey(id: string): Promise<boolean> {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            const initialLength = surveysMock.length;
-            surveysMock = surveysMock.filter(s => s.id !== id);
-            resolve(surveysMock.length < initialLength);
-        }, 300);
-    });
+    try {
+        await deleteDoc(doc(db, 'surveys', id));
+        return true;
+    } catch (error) {
+        console.error("Error deleting survey:", error);
+        return false;
+    }
 }
 
 
