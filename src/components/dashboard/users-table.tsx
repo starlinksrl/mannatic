@@ -89,8 +89,8 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
     <Card className="md:hidden">
       <CardContent className="p-2 space-y-2">
         {users.map((user) => (
-            <div key={user.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(user)}>
-                <div className="flex items-center gap-4 flex-1">
+            <div key={user.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
+                <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => handleEditClick(user)}>
                     <Avatar className="h-10 w-10 border">
                         <AvatarImage src={user.avatarUrl} alt={user.name} />
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
@@ -103,7 +103,7 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon">
                             <MoreHorizontal />
                         </Button>
                     </DropdownMenuTrigger>
@@ -139,8 +139,8 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
         </TableHeader>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id} onClick={() => handleEditClick(user)} className="cursor-pointer">
-              <TableCell>
+            <TableRow key={user.id}>
+              <TableCell className="cursor-pointer" onClick={() => handleEditClick(user)}>
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.avatarUrl} alt={user.name} />
@@ -152,12 +152,12 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
                   </div>
                 </div>
               </TableCell>
-              <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
-              <TableCell className="hidden md:table-cell">{getRoleBadge(user.role)}</TableCell>
+              <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleEditClick(user)}>{user.email}</TableCell>
+              <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(user)}>{getRoleBadge(user.role)}</TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon">
                             <MoreHorizontal />
                         </Button>
                     </DropdownMenuTrigger>
@@ -206,5 +206,3 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
     </>
   );
 }
-
-    

@@ -168,8 +168,8 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
             {filteredSurveys.map((survey) => {
               const client = clientsMap.get(survey.clientId);
               return (
-                 <div key={survey.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(survey)}>
-                    <div className="flex-1 space-y-1">
+                 <div key={survey.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
+                    <div className="flex-1 space-y-1 cursor-pointer" onClick={() => handleEditClick(survey)}>
                         <p className="font-medium">{survey.title}</p>
                         <p className="text-sm text-muted-foreground">{client?.name}</p>
                         <p className="text-sm text-muted-foreground">{survey.address}</p>
@@ -180,7 +180,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                     </div>
                      <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
+                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem onSelect={() => handleEditClick(survey)}>
@@ -221,9 +221,9 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
               const client = clientsMap.get(survey.clientId);
               const operatorName = survey.assignedOperatorId ? operatorsMap.get(survey.assignedOperatorId) : null;
               return (
-                <TableRow key={survey.id} onClick={() => handleEditClick(survey)} className="cursor-pointer">
-                    <TableCell className="font-medium">{survey.title}</TableCell>
-                    <TableCell>
+                <TableRow key={survey.id}>
+                    <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(survey)}>{survey.title}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>
                         {client ? (
                             <div>
                                 <span>{client.name}</span>
@@ -237,18 +237,18 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                             <span>-</span>
                         )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>
                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(survey.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
                             <MapPin className="h-4 w-4 shrink-0" /> <span>{survey.address}</span>
                         </a>
                     </TableCell>
-                    <TableCell>{format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>
-                    <TableCell>{operatorName || 'Non assegnato'}</TableCell>
-                    <TableCell>{getStatusBadge(survey.status)}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>{format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>{operatorName || 'Non assegnato'}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>{getStatusBadge(survey.status)}</TableCell>
                     <TableCell className="text-right">
                         <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
+                            <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                             <DropdownMenuItem onSelect={() => handleEditClick(survey)}>

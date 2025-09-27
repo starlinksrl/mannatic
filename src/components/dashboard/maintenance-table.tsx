@@ -258,8 +258,8 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
             {sortedTasks.map((task) => {
               const clientName = clientsMap.get(task.clientId);
               return (
-                 <div key={task.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(task)}>
-                    <div className="flex-1 space-y-1">
+                 <div key={task.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
+                    <div className="flex-1 space-y-1 cursor-pointer" onClick={() => handleEditClick(task)}>
                         <p className="font-medium">{task.title}</p>
                         {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{clientName}</p>}
                         <p className="text-sm text-muted-foreground">Prossima scadenza: {format(new Date(task.nextDueDate), 'dd MMM yyyy', { locale: it })}</p>
@@ -270,7 +270,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                     </div>
                      <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
+                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem onSelect={() => handleEditClick(task)}>
@@ -323,27 +323,27 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
               const clientName = clientsMap.get(task.clientId);
               const operatorName = task.assignedOperatorId ? operatorsMap.get(task.assignedOperatorId) : null;
               return (
-                <TableRow key={task.id} onClick={() => handleEditClick(task)} className="cursor-pointer">
-                    <TableCell className="font-medium">
+                <TableRow key={task.id}>
+                    <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(task)}>
                         <div className="flex flex-col">
                             <span>{task.title}</span>
                             <span className="text-xs text-muted-foreground">ID: {task.id}</span>
                         </div>
                     </TableCell>
-                    <TableCell>{clientName}</TableCell>
-                    <TableCell>{getStatusBadge(task)}</TableCell>
-                    <TableCell>{getPeriodicityText(task)}</TableCell>
-                    <TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{clientName}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{getStatusBadge(task)}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{getPeriodicityText(task)}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>
                         {format(new Date(task.nextDueDate), 'dd MMM yyyy', { locale: it })}
                         <p className="text-xs text-muted-foreground">
                             ({formatDistanceToNow(new Date(task.nextDueDate), { locale: it, addSuffix: true })})
                         </p>
                     </TableCell>
-                    <TableCell>{operatorName || 'Non assegnato'}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{operatorName || 'Non assegnato'}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
+                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                          <DropdownMenuItem onSelect={() => handleEditClick(task)}>

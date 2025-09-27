@@ -79,8 +79,8 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     <Card className="md:hidden">
         <CardContent className="p-2 space-y-2">
           {clients.map((client) => (
-            <div key={client.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(client)}>
-                <div className="flex items-start gap-4 flex-1">
+            <div key={client.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
+                <div className="flex items-start gap-4 flex-1 cursor-pointer" onClick={() => handleEditClick(client)}>
                     <Avatar className="h-10 w-10 border">
                         <AvatarImage src={client.avatarUrl} alt={client.name} />
                         <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
@@ -108,7 +108,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                 </div>
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon">
                             <MoreHorizontal />
                         </Button>
                     </DropdownMenuTrigger>
@@ -144,8 +144,8 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
         </TableHeader>
         <TableBody>
           {clients.map((client) => (
-            <TableRow key={client.id} onClick={() => handleEditClick(client)} className="cursor-pointer">
-              <TableCell>
+            <TableRow key={client.id}>
+              <TableCell onClick={() => handleEditClick(client)} className="cursor-pointer">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={client.avatarUrl} alt={client.name} />
@@ -154,7 +154,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                   <span className="font-medium">{client.name}</span>
                 </div>
               </TableCell>
-              <TableCell className="hidden sm:table-cell">
+              <TableCell onClick={() => handleEditClick(client)} className="hidden sm:table-cell cursor-pointer">
                 <div className="flex flex-col gap-1 text-xs">
                     {client.email && (
                         <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
@@ -170,7 +170,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                     )}
                 </div>
               </TableCell>
-              <TableCell className="hidden md:table-cell text-xs">
+              <TableCell onClick={() => handleEditClick(client)} className="hidden md:table-cell text-xs cursor-pointer">
                  {client.address && (
                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -181,7 +181,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
               <TableCell className="text-right">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon">
                             <MoreHorizontal />
                         </Button>
                     </DropdownMenuTrigger>
@@ -230,5 +230,3 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     </>
   );
 }
-
-    

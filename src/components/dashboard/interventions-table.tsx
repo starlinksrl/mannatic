@@ -304,8 +304,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             {sortedInterventions.map((intervention) => {
               const client = clientsMap.get(intervention.clientId);
               return (
-                 <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start" onClick={() => handleEditClick(intervention as Intervention)}>
-                    <div className="flex-1 space-y-2 pr-4 break-words">
+                 <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
+                    <div className="flex-1 space-y-2 pr-4 break-words cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                         <p className="font-medium break-words">{intervention.title}</p>
                         {currentUser.role !== 'Client' && client && (
                           <div className="space-y-1 text-sm text-muted-foreground">
@@ -334,7 +334,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                     </div>
                      <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
+                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
@@ -380,20 +380,20 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               const client = clientsMap.get(intervention.clientId);
               const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
               return (
-                <TableRow key={intervention.id} onClick={() => handleEditClick(intervention as Intervention)} className="cursor-pointer">
-                    <TableCell className="font-medium">
+                <TableRow key={intervention.id}>
+                    <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                         <div className="flex flex-col break-words">
                             <span className="break-words">{intervention.title}</span>
                             <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
                         </div>
                     </TableCell>
                   {(currentUser.role !== 'Client') && 
-                    <TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                         <span className="break-words">{client ? client.name : '-'}</span>
                     </TableCell>
                    }
                    {currentUser.role === 'Admin' && (
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                       {client && (
                          <div className="flex flex-col gap-1 text-xs">
                             {client.email && (
@@ -413,7 +413,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                     </TableCell>
                    )}
                    {currentUser.role === 'Admin' && (
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                       {client && client.address && (
                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs hover:underline">
                             <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -422,14 +422,14 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                       )}
                     </TableCell>
                    )}
-                  <TableCell>{getStatusBadge(intervention.status)}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{getPriorityBadge(intervention.priority)}</TableCell>
-                  <TableCell className="hidden md:table-cell">{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
-                  {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell">{operatorName || 'Non assegnato'}</TableCell>}
+                  <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getStatusBadge(intervention.status)}</TableCell>
+                  <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getPriorityBadge(intervention.priority)}</TableCell>
+                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
+                  {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{operatorName || 'Non assegnato'}</TableCell>}
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
+                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                          <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
