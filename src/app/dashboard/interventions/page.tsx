@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -28,7 +29,7 @@ export default function InterventionsPage() {
 
         setOperators(allUsers.filter(u => u.role === 'Operator'));
         setClients(allClients);
-        setInterventions(allInterventions);
+        setInterventions(allInterventions.filter(i => !i.isMaintenance));
         setLoading(false);
     }
 
