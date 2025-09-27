@@ -16,29 +16,26 @@ export default function MaintenancePage() {
     const [maintenanceTasks, setMaintenanceTasks] = useState<ScheduledMaintenance[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const fetchData = async () => {
+        if (!user || !currentCompany) return;
+        setLoading(true);
+        const [allUsers, allClients, allMaintenance] = await Promise.all([
+            getUsers(currentCompany.id),
+            getClients(currentCompany.id),
+            getScheduledMaintenance(currentCompany.id)
+        ]);
+        setOperators(allUsers.filter(u => u.role === 'Operator'));
+        setClients(allClients);
+        setMaintenanceTasks(allMaintenance);
+        setLoading(false);
+    }
+
     useEffect(() => {
-        async function fetchData() {
-            if (!user || !currentCompany) return;
-            setLoading(true);
-            const [allUsers, allClients, allMaintenance] = await Promise.all([
-                getUsers(currentCompany.id),
-                getClients(currentCompany.id),
-                getScheduledMaintenance(currentCompany.id)
-            ]);
-            setOperators(allUsers.filter(u => u.role === 'Operator'));
-            setClients(allClients);
-            setMaintenanceTasks(allMaintenance);
-            setLoading(false);
-        }
         fetchData();
     }, [user, currentCompany]);
     
-    const handleMaintenanceAdded = (newMaintenance: ScheduledMaintenance) => {
-        setMaintenanceTasks(prev => [newMaintenance, ...prev]);
-    }
-    
-    const handleMaintenanceUpdated = (updatedMaintenance: ScheduledMaintenance) => {
-        setMaintenanceTasks(prev => prev.map(m => m.id === updatedMaintenance.id ? updatedMaintenance : m));
+    const handleMaintenanceChange = () => {
+        fetchData();
     }
 
 
@@ -62,8 +59,7 @@ export default function MaintenancePage() {
             currentUser={user} 
             clients={clients} 
             operators={operators}
-            onMaintenanceAdded={handleMaintenanceAdded}
-            onMaintenanceUpdated={handleMaintenanceUpdated}
+            onMaintenanceChange={handleMaintenanceChange}
          />
       </main>
     </>

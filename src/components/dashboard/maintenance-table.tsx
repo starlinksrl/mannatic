@@ -40,13 +40,12 @@ interface MaintenanceTableProps {
   currentUser: User;
   clients: Client[];
   operators: User[];
-  onMaintenanceAdded: (maintenance: ScheduledMaintenance) => void;
-  onMaintenanceUpdated: (maintenance: ScheduledMaintenance) => void;
+  onMaintenanceChange: () => void;
 }
 
 const statusOrder: Record<string, number> = { 'Pianificato': 1, 'In corso': 2, 'Completato': 3, 'Annullato': 4 };
 
-export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, currentUser, clients, operators, onMaintenanceAdded, onMaintenanceUpdated }: MaintenanceTableProps) {
+export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, currentUser, clients, operators, onMaintenanceChange }: MaintenanceTableProps) {
   const { toast } = useToast();
   const [maintenanceTasks, setMaintenanceTasks] = useState(initialMaintenanceTasks);
   const [searchTerm, setSearchTerm] = useState('');
@@ -81,10 +80,6 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     setIsEditModalOpen(true);
   }
   
-  const handleMaintenanceDeleted = (deletedId: string) => {
-    setMaintenanceTasks(prev => prev.filter(m => m.id !== deletedId));
-  }
-
   const handleDeleteClick = (maintenance: ScheduledMaintenance) => {
     setMaintenanceToDelete(maintenance);
     setIsDeleteDialogOpen(true);
@@ -94,7 +89,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     if (!maintenanceToDelete) return;
     const success = await deleteScheduledMaintenance(maintenanceToDelete.id);
     if (success) {
-      handleMaintenanceDeleted(maintenanceToDelete.id);
+      onMaintenanceChange();
       toast({
         title: 'Manutenzione eliminata',
         description: `La manutenzione "${maintenanceToDelete.title}" è stata eliminata con successo.`,
@@ -248,7 +243,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                     <AddMaintenanceForm
                         clients={clients}
                         operators={operators}
-                        onMaintenanceAdded={onMaintenanceAdded}
+                        onMaintenanceAdded={onMaintenanceChange}
                     >
                         <Button className="w-full md:w-auto">
                             <PlusCircle className="mr-2" />
@@ -381,7 +376,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
       </Card>
       <EditMaintenanceForm
         maintenance={selectedMaintenance}
-        onMaintenanceUpdated={onMaintenanceUpdated}
+        onMaintenanceUpdated={onMaintenanceChange}
         clients={clients}
         operators={operators}
         isOpen={isEditModalOpen}
