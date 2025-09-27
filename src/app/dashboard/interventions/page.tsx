@@ -16,36 +16,28 @@ export default function InterventionsPage() {
     const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const fetchData = async () => {
+        if (!user || !currentCompany) return;
+        setLoading(true);
+
+        const [allUsers, allClients, allInterventions] = await Promise.all([
+            getUsers(currentCompany.id),
+            getClients(currentCompany.id),
+            getInterventions(currentCompany.id),
+        ]);
+
+        setOperators(allUsers.filter(u => u.role === 'Operator'));
+        setClients(allClients);
+        setInterventions(allInterventions);
+        setLoading(false);
+    }
+
     useEffect(() => {
-        async function fetchData() {
-            if (!user || !currentCompany) return;
-            setLoading(true);
-
-            // Fetch independently
-            const usersPromise = getUsers(currentCompany.id);
-            const clientsPromise = getClients(currentCompany.id);
-            const interventionsPromise = getInterventions(currentCompany.id);
-
-            const [allUsers, allClients, allInterventions] = await Promise.all([
-                usersPromise,
-                clientsPromise,
-                interventionsPromise
-            ]);
-
-            setOperators(allUsers.filter(u => u.role === 'Operator'));
-            setClients(allClients);
-            setInterventions(allInterventions);
-            setLoading(false);
-        }
         fetchData();
     }, [user, currentCompany]);
 
-    const handleInterventionAdded = (newIntervention: Intervention) => {
-        setInterventions(prev => [newIntervention, ...prev]);
-    }
-    
-    const handleInterventionUpdated = (updatedIntervention: Intervention) => {
-        setInterventions(prev => prev.map(i => i.id === updatedIntervention.id ? updatedIntervention : i));
+    const handleInterventionChange = () => {
+        fetchData();
     }
     
     const handleClientUpdated = (updatedClient: Client) => {
@@ -65,7 +57,7 @@ export default function InterventionsPage() {
 
   return (
     <>
-      <Header title="Tutti gli Interventi" />
+      <Header title="Tutti gli Interventi" onInterventionAdded={handleInterventionChange} clients={clients} operators={operators} />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
         <InterventionsTable 
             interventions={interventions} 
@@ -73,6 +65,7 @@ export default function InterventionsPage() {
             clients={clients} 
             operators={operators}
             onClientUpdated={handleClientUpdated}
+            onInterventionChange={handleInterventionChange}
         />
       </main>
     </>

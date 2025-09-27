@@ -42,12 +42,13 @@ interface InterventionsTableProps {
   clients: Client[];
   operators: User[];
   onClientUpdated: (client: Client) => void;
+  onInterventionChange: () => void;
 }
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
 const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'In attesa': 3, 'Completato': 4, 'Da Fatturare': 5, 'Fatturato': 6, 'Annullato': 7 };
 
-export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onClientUpdated }: InterventionsTableProps) {
+export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onClientUpdated, onInterventionChange }: InterventionsTableProps) {
   const { toast } = useToast();
   const [interventions, setInterventions] = useState(initialInterventions);
   const [clients, setClients] = useState(initialClients);
@@ -89,14 +90,6 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     setSelectedIntervention(intervention);
     setIsEditModalOpen(true);
   }
-
-  const handleInterventionAdded = (newIntervention: Intervention) => {
-    setInterventions(prev => [newIntervention, ...prev]);
-  }
-  
-  const handleInterventionUpdated = (updatedIntervention: Intervention) => {
-    setInterventions(prev => prev.map(i => i.id === updatedIntervention.id ? updatedIntervention : i));
-  }
   
   const handleClientUpdatedInternal = (updatedClient: User) => {
     const client: Client = {
@@ -110,10 +103,6 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     onClientUpdated(client);
   }
 
-  const handleInterventionDeleted = (deletedInterventionId: string) => {
-    setInterventions(prev => prev.filter(i => i.id !== deletedInterventionId));
-  }
-
   const handleDeleteClick = (intervention: Intervention) => {
     setInterventionToDelete(intervention);
     setIsDeleteDialogOpen(true);
@@ -123,7 +112,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
       if (!interventionToDelete) return;
       const success = await deleteIntervention(interventionToDelete.id);
       if (success) {
-          handleInterventionDeleted(interventionToDelete.id);
+          onInterventionChange();
           toast({
               title: 'Intervento eliminato',
               description: `L'intervento "${interventionToDelete.title}" è stato eliminato con successo.`,
@@ -309,21 +298,6 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 </Select>
                 )}
             </div>
-            { canCreateIntervention &&
-                <div className="md:ml-4">
-                    <AddInterventionForm
-                        clients={clients}
-                        operators={operators}
-                        onInterventionAdded={handleInterventionAdded}
-                        currentUser={currentUser}
-                    >
-                        <Button className="w-full md:w-auto">
-                            <PlusCircle className="mr-2" />
-                            Crea Intervento
-                        </Button>
-                    </AddInterventionForm>
-                </div>
-            }
       </div>
       <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
@@ -488,7 +462,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
       </Card>
       <EditInterventionForm
         intervention={selectedIntervention}
-        onInterventionUpdated={handleInterventionUpdated}
+        onInterventionUpdated={onInterventionChange}
         onClientUpdated={handleClientUpdatedInternal}
         clients={clients}
         operators={operators}

@@ -131,8 +131,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       finalDueDate = values.dueDate.toISOString();
     }
     
-    // For client users, clientId is their own ID. For others, it could be a name to be resolved.
-    const clientIdentifier = currentUser.role === 'Client' ? currentUser.id : values.clientId;
+    const clientIdentifier = values.clientId;
 
 
     const newIntervention = await addIntervention({
@@ -147,11 +146,6 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     
     onInterventionAdded(newIntervention);
     
-    const isNewClient = !clients.some(c => c.id === newIntervention.clientId);
-    if (isNewClient) {
-        setClientList(prev => [...prev, {id: newIntervention.clientId, name: values.clientId, companyId: currentCompany.id}]);
-    }
-    
     toast({
       title: 'Intervento creato',
       description: `L'intervento "${values.title}" è stato creato con successo.`,
@@ -161,11 +155,11 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     setTitleQuery('');
   }
 
-  const handleTitleSelect = useCallback((value: string) => {
+  const handleTitleSelect = (value: string) => {
     form.setValue('title', value);
     setTitleQuery(value);
     setIsTitlePopoverOpen(false);
-  }, [form]);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -444,7 +438,3 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     </Dialog>
   );
 }
-
-    
-
-    

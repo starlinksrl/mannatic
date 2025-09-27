@@ -73,7 +73,7 @@ const formSchema = z.object({
 
 interface EditInterventionFormProps {
   intervention: Intervention | null;
-  onInterventionUpdated: (intervention: Intervention) => void;
+  onInterventionUpdated: () => void;
   onClientUpdated: (user: User) => void;
   clients: Client[];
   operators: User[];
@@ -158,7 +158,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     const updated = await updateIntervention(intervention!.id, updatedInterventionData);
     
     if (updated) {
-        onInterventionUpdated(updated);
+        onInterventionUpdated();
         toast({
           title: 'Intervento aggiornato',
           description: `L'intervento "${values.title}" è stato aggiornato con successo.`,
