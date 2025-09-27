@@ -268,9 +268,9 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                             <Badge variant="outline">{getPeriodicityText(task)}</Badge>
                         </div>
                     </div>
-                     <DropdownMenu onOpenChange={(e) => e.stopPropagation()}>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                     <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem onSelect={() => handleEditClick(task)}>
@@ -283,6 +283,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                     onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         handleDeleteClick(task);
                                     }}>
                                     <Trash2 className="mr-2" /> Elimina
@@ -359,6 +360,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                     onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         handleDeleteClick(task);
                                     }}>
                                     <Trash2 className="mr-2" /> Elimina

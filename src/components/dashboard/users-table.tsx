@@ -118,6 +118,7 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                     onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         handleDeleteClick(user);
                                     }}>
                                     <Trash2 className="mr-2" /> Elimina
@@ -175,6 +176,7 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                     onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         handleDeleteClick(user);
                                     }}>
                                     <Trash2 className="mr-2" /> Elimina

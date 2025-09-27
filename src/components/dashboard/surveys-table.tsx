@@ -178,9 +178,9 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                             {getStatusBadge(survey.status)}
                         </div>
                     </div>
-                     <DropdownMenu onOpenChange={(e) => e.stopPropagation()}>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                     <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem onSelect={() => handleEditClick(survey)}>
@@ -193,6 +193,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                     onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         handleDeleteClick(survey);
                                     }}>
                                     <Trash2 className="mr-2" /> Elimina
@@ -264,6 +265,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                                         className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                         onSelect={(e) => {
                                             e.preventDefault();
+                                            e.stopPropagation();
                                             handleDeleteClick(survey);
                                         }}>
                                         <Trash2 className="mr-2" /> Elimina

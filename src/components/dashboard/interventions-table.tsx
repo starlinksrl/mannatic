@@ -332,9 +332,9 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                             {getStatusBadge(intervention.status)}
                         </div>
                     </div>
-                     <DropdownMenu onOpenChange={(e) => e.stopPropagation()}>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                     <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
@@ -347,6 +347,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                     onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         handleDeleteClick(intervention as Intervention);
                                     }}>
                                     <Trash2 className="mr-2" /> Elimina
@@ -445,6 +446,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                     onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         handleDeleteClick(intervention as Intervention);
                                     }}>
                                     <Trash2 className="mr-2" /> Elimina

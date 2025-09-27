@@ -123,6 +123,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                     onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         handleDeleteClick(client);
                                     }}>
                                     <Trash2 className="mr-2" /> Elimina
@@ -199,6 +200,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                     onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         handleDeleteClick(client);
                                     }}>
                                     <Trash2 className="mr-2" /> Elimina
