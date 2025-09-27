@@ -34,11 +34,10 @@ import {
 
 interface UsersTableProps {
   users: User[];
-  onUserUpdated: (user: User) => void;
-  onUserDeleted: (userId: string) => void;
+  onDataChange: () => void;
 }
 
-export function UsersTable({ users, onUserUpdated, onUserDeleted }: UsersTableProps) {
+export function UsersTable({ users, onDataChange }: UsersTableProps) {
     const { user: currentUser } = useUser();
     const { toast } = useToast();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -60,7 +59,7 @@ export function UsersTable({ users, onUserUpdated, onUserDeleted }: UsersTablePr
         if (!userToDelete) return;
         const success = await deleteUser(userToDelete.id);
         if (success) {
-            onUserDeleted(userToDelete.id);
+            onDataChange();
             toast({
                 title: 'Utente eliminato',
                 description: `L'utente ${userToDelete.name} è stato eliminato con successo.`,
@@ -192,7 +191,7 @@ export function UsersTable({ users, onUserUpdated, onUserDeleted }: UsersTablePr
     </Card>
      <EditUserForm
         user={selectedUser}
-        onUserUpdated={onUserUpdated}
+        onUserUpdated={onDataChange}
         isOpen={isEditModalOpen}
         setIsOpen={setIsEditModalOpen}
       />

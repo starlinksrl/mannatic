@@ -33,11 +33,10 @@ import {
 
 interface ClientsTableProps {
   clients: User[];
-  onClientUpdated: (client: User) => void;
-  onClientDeleted: (clientId: string) => void;
+  onDataChange: () => void;
 }
 
-export function ClientsTable({ clients, onClientUpdated, onClientDeleted }: ClientsTableProps) {
+export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     const { user: currentUser } = useUser();
     const { toast } = useToast();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -59,7 +58,7 @@ export function ClientsTable({ clients, onClientUpdated, onClientDeleted }: Clie
         if (!clientToDelete) return;
         const success = await deleteUser(clientToDelete.id);
         if (success) {
-            onClientDeleted(clientToDelete.id);
+            onDataChange();
             toast({
                 title: 'Cliente eliminato',
                 description: `Il cliente ${clientToDelete.name} è stato eliminato con successo.`,
@@ -216,7 +215,7 @@ export function ClientsTable({ clients, onClientUpdated, onClientDeleted }: Clie
     </Card>
      <EditUserForm
         user={selectedClient}
-        onUserUpdated={onClientUpdated}
+        onUserUpdated={onDataChange}
         isOpen={isEditModalOpen}
         setIsOpen={setIsEditModalOpen}
       />

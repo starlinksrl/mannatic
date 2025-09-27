@@ -45,7 +45,7 @@ const formSchema = z.object({
 
 interface AddUserFormProps {
   children: React.ReactNode;
-  onUserAdded: (user: User) => void;
+  onUserAdded: (user?: User) => void;
   defaultRole?: 'Admin' | 'Operator' | 'Client';
   isClientForm?: boolean;
 }
@@ -82,7 +82,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         return;
     }
 
-    const newUser = await addUser({
+    await addUser({
         name: values.name,
         email: values.email,
         role: values.role as UserRole,
@@ -92,7 +92,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         phone: values.phone
     });
     
-    onUserAdded(newUser);
+    onUserAdded();
     toast({
       title: `${isClientForm ? 'Cliente' : 'Utente'} creato`,
       description: `${isClientForm ? 'Il cliente' : 'L\'utente'} ${values.name} è stato aggiunto con successo.`,
@@ -248,7 +248,8 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                       </Autocomplete>
                     ) : (
                       <Input
-                        {...field}
+                        value={addressValue}
+                        onChange={(e) => form.setValue('address', e.target.value)}
                         placeholder="Via, Città, CAP"
                         disabled={!isLoaded}
                       />
