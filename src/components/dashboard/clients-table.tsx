@@ -121,11 +121,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                    onSelect={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleDeleteClick(client);
-                                    }}>
+                                    onSelect={() => handleDeleteClick(client)}>
                                     <Trash2 className="mr-2" /> Elimina
                                 </DropdownMenuItem>
                             </>
@@ -198,11 +194,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                    onSelect={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleDeleteClick(client);
-                                    }}>
+                                    onSelect={() => handleDeleteClick(client)}>
                                     <Trash2 className="mr-2" /> Elimina
                                 </DropdownMenuItem>
                             </>

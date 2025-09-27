@@ -345,11 +345,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                    onSelect={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleDeleteClick(intervention as Intervention);
-                                    }}>
+                                    onSelect={() => handleDeleteClick(intervention as Intervention)}>
                                     <Trash2 className="mr-2" /> Elimina
                                 </DropdownMenuItem>
                             </>
@@ -444,11 +440,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                    onSelect={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleDeleteClick(intervention as Intervention);
-                                    }}>
+                                    onSelect={() => handleDeleteClick(intervention as Intervention)}>
                                     <Trash2 className="mr-2" /> Elimina
                                 </DropdownMenuItem>
                             </>
