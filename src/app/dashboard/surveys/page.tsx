@@ -17,31 +17,28 @@ export default function SurveysPage() {
     const [surveys, setSurveys] = useState<Survey[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const fetchData = async () => {
+        if (!user || !currentCompany) return;
+        setLoading(true);
+
+        const [allUsers, allClients, allSurveys] = await Promise.all([
+            getUsers(currentCompany.id),
+            getClients(currentCompany.id),
+            getSurveys(currentCompany.id)
+        ]);
+
+        setOperators(allUsers.filter(u => u.role === 'Operator'));
+        setClients(allClients);
+        setSurveys(allSurveys);
+        setLoading(false);
+    }
+    
     useEffect(() => {
-        async function fetchData() {
-            if (!user || !currentCompany) return;
-            setLoading(true);
-
-            const [allUsers, allClients, allSurveys] = await Promise.all([
-                getUsers(currentCompany.id),
-                getClients(currentCompany.id),
-                getSurveys(currentCompany.id)
-            ]);
-
-            setOperators(allUsers.filter(u => u.role === 'Operator'));
-            setClients(allClients);
-            setSurveys(allSurveys);
-            setLoading(false);
-        }
         fetchData();
     }, [user, currentCompany]);
 
-    const handleSurveyAdded = (newSurvey: Survey) => {
-        setSurveys(prev => [newSurvey, ...prev]);
-    }
-    
-    const handleSurveyUpdated = (updatedSurvey: Survey) => {
-        setSurveys(prev => prev.map(s => s.id === updatedSurvey.id ? updatedSurvey : s));
+    const handleSurveyChange = () => {
+        fetchData();
     }
 
     if (!user || loading) {
@@ -64,8 +61,7 @@ export default function SurveysPage() {
             currentUser={user} 
             clients={clients} 
             operators={operators}
-            onSurveyAdded={handleSurveyAdded}
-            onSurveyUpdated={handleSurveyUpdated}
+            onSurveyChange={handleSurveyChange}
         />
       </main>
     </>

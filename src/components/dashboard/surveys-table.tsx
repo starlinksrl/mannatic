@@ -40,11 +40,10 @@ interface SurveysTableProps {
   currentUser: User;
   clients: Client[];
   operators: User[];
-  onSurveyAdded: (survey: Survey) => void;
-  onSurveyUpdated: (survey: Survey) => void;
+  onSurveyChange: () => void;
 }
 
-export function SurveysTable({ surveys: initialSurveys, currentUser, clients, operators, onSurveyAdded, onSurveyUpdated }: SurveysTableProps) {
+export function SurveysTable({ surveys: initialSurveys, currentUser, clients, operators, onSurveyChange }: SurveysTableProps) {
   const { toast } = useToast();
   const [surveys, setSurveys] = useState(initialSurveys);
   const [searchTerm, setSearchTerm] = useState('');
@@ -78,10 +77,6 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
     setIsEditModalOpen(true);
   }
   
-  const handleSurveyDeleted = (deletedSurveyId: string) => {
-    setSurveys(prev => prev.filter(s => s.id !== deletedSurveyId));
-  }
-
   const handleDeleteClick = (survey: Survey) => {
     setSurveyToDelete(survey);
     setIsDeleteDialogOpen(true);
@@ -91,7 +86,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
       if (!surveyToDelete) return;
       const success = await deleteSurvey(surveyToDelete.id);
       if (success) {
-          handleSurveyDeleted(surveyToDelete.id);
+          onSurveyChange();
           toast({
               title: 'Sopralluogo eliminato',
               description: `Il sopralluogo "${surveyToDelete.title}" è stato eliminato.`,
@@ -158,7 +153,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                     <AddSurveyForm
                         clients={clients}
                         operators={operators}
-                        onSurveyAdded={onSurveyAdded}
+                        onSurveyAdded={onSurveyChange}
                     >
                         <Button className="w-full md:w-auto">
                             <PlusCircle className="mr-2" />
@@ -286,7 +281,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
       </Card>
       <EditSurveyForm
         survey={selectedSurvey}
-        onSurveyUpdated={onSurveyUpdated}
+        onSurveyUpdated={onSurveyChange}
         clients={clients}
         operators={operators}
         isOpen={isEditModalOpen}
