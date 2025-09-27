@@ -77,7 +77,7 @@ export async function updateCompany(id: string, updatedData: Partial<Company>): 
 }
 
 export async function deleteCompanyAndSubcollections(companyId: string): Promise<void> {
-    const collectionsToDelete = ['users', 'interventions', 'notifications'];
+    const collectionsToDelete = ['users', 'interventions', 'notifications', 'surveys'];
     const batch = writeBatch(db);
 
     for (const coll of collectionsToDelete) {
@@ -336,15 +336,19 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
 
 
 
-export async function getInterventions(companyId: string): Promise<Intervention[]> {
+export async function getInterventions(companyId: string): Promise<(Intervention | ScheduledMaintenance)[]> {
     if (!companyId) return [];
     
+    // Check for expiring interventions (could be moved to a cron job in a real app)
+    await checkAndNotifyExpiringInterventions(companyId);
+
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
     const allCompanyInterventions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Intervention | ScheduledMaintenance)));
     
     // Filter in code instead of in the query
-    return allCompanyInterventions.filter(i => !('isMaintenance' in i) || i.isMaintenance !== true) as Intervention[];
+    //return allCompanyInterventions.filter(i => !('isMaintenance' in i) || i.isMaintenance !== true) as Intervention[];
+    return allCompanyInterventions;
 }
 
 export async function getAllInterventions(): Promise<(Intervention | ScheduledMaintenance)[]> {
@@ -371,12 +375,9 @@ export async function getInterventionTitles(companyId: string): Promise<string[]
 export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
     if (!companyId) return [];
 
-    const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
+    const q = query(collection(db, 'interventions'), where("companyId", "==", companyId), where("isMaintenance", "==", true));
     const snapshot = await getDocs(q);
-    const allCompanyInterventions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Intervention | ScheduledMaintenance)));
-
-    // Filter in code instead of in the query
-    return allCompanyInterventions.filter(i => 'isMaintenance' in i && i.isMaintenance === true) as ScheduledMaintenance[];
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduledMaintenance));
 }
 
 type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string };
@@ -461,11 +462,9 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     let finalClientId = existingUser ? existingUser.id : null;
     
     let clientName: string;
-    let newClientWasCreated = false;
 
     if (!finalClientId) {
-        console.log(`Client "${clientId}" not found by ID. Assuming it's a new client name.`);
-        clientName = clientId;
+        clientName = clientId; // This is the new client's name from the input
         const companyDoc = await getDoc(doc(db, 'companies', companyId));
         if (!companyDoc.exists()) {
             throw new Error(`Company with id ${companyId} not found`);
@@ -485,11 +484,8 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             phone: 'Telefono da definire',
         });
         finalClientId = newClient.id;
-        newClientWasCreated = true;
-        console.log(`New client created with ID: ${finalClientId}`);
     } else {
-        const client = await getClient(finalClientId);
-        clientName = client ? client.name : 'Cliente Sconosciuto';
+        clientName = existingUser!.name;
     }
 
     const dataForDb: any = { ...restOfData };
@@ -498,7 +494,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     }
     
     const newId = generateShortId();
-    const newInterventionData: Omit<Intervention, 'id'> = {
+    const newInterventionData: Intervention = {
         ...dataForDb,
         id: newId,
         clientId: finalClientId,
@@ -508,26 +504,26 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         createdAt: new Date().toISOString(),
         updates: [{ date: new Date().toISOString(), description: `Creato da ${creatorName}.`, userName: creatorName }],
         dueDate: restOfData.dueDate || null,
+        isMaintenance: false,
     };
 
     await setDoc(doc(db, 'interventions', newId), newInterventionData);
-    const finalIntervention = { ...newInterventionData };
 
     // Trigger admin notification
-    await notifyAdminOnNewIntervention(finalIntervention, clientName, creatorName);
+    await notifyAdminOnNewIntervention(newInterventionData, clientName, creatorName);
     
-    return finalIntervention;
+    return newInterventionData;
 }
 
 
 export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMaintenance, 'id' | 'status' | 'sla' | 'createdAt' | 'isMaintenance' | 'nextDueDate' | 'updates'>): Promise<ScheduledMaintenance> {
-    const nextDueDate = addMonths(new Date(maintenanceData.dueDate!), maintenanceData.recurrenceMonths).toISOString();
+    const nextDueDate = new Date().toISOString();
     
     const newId = generateShortId();
     const newMaintenanceData = {
         ...maintenanceData,
         id: newId,
-        status: 'Pianificato' as InterventionStatus,
+        status: 'Pianificato' as ScheduledMaintenanceStatus,
         sla: '48h',
         createdAt: new Date().toISOString(),
         isMaintenance: true,
@@ -668,7 +664,7 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
     }
 
     const newId = generateShortId();
-    const newSurvey: Omit<Survey, 'id'> = {
+    const newSurvey: Survey = {
         ...restOfData,
         id: newId,
         clientId: finalClientId,
@@ -677,7 +673,7 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
         createdAt: new Date().toISOString(),
     };
     await setDoc(doc(db, 'surveys', newId), newSurvey);
-    return { id: newId, ...newSurvey };
+    return newSurvey;
 }
 
 export async function updateSurvey(id: string, updatedData: Partial<Survey>): Promise<Survey | null> {
@@ -712,34 +708,6 @@ export async function getNotifications(companyId: string): Promise<Notification[
         const snapshot = await getDocs(q);
         let notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
         
-        // If no notifications, create some demo ones.
-        if (notifications.length === 0 && companyId === 'company-1') { 
-            const allUsers = await getUsers(companyId);
-            const admin = allUsers.find(u => u.role === 'Admin');
-            const operator = allUsers.find(u => u.role === 'Operator');
-            const client = allUsers.find(u => u.role === 'Client');
-            
-            const batch = writeBatch(db);
-            
-            if(admin && admin.id) {
-              const adminNotifRef = doc(collection(db, 'notifications'));
-              batch.set(adminNotifRef, { userId: admin.id, message: 'Rischio di SLA per intervento #1023', read: false, createdAt: subDays(new Date(), 1).toISOString(), companyId, type: 'alert', relatedInterventionId: 'int-1' });
-            }
-            if(operator && operator.id) {
-              const opNotifRef = doc(collection(db, 'notifications'));
-              batch.set(opNotifRef, { userId: operator.id, message: 'Nuovo intervento #1024 assegnato', read: false, createdAt: new Date().toISOString(), companyId, type: 'assignment', relatedInterventionId: 'int-2' });
-            }
-            if(client && client.id) {
-              const clientNotifRef = doc(collection(db, 'notifications'));
-              batch.set(clientNotifRef, { userId: client.id, message: 'Intervento #1021 completato', read: true, createdAt: subDays(new Date(), 2).toISOString(), companyId, type: 'status_change', relatedInterventionId: 'int-3' });
-            }
-
-            await batch.commit();
-            
-            const newSnapshot = await getDocs(q);
-            notifications = newSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
-        }
-
         return notifications.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
         console.error("Error fetching notifications:", error);
@@ -772,7 +740,3 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         console.error("Error marking notifications as read:", error);
         return false;
     }
-}
-
-
-    
