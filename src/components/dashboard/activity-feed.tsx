@@ -21,15 +21,10 @@ interface ActivityFeedProps {
     onUpdate: () => void;
 }
 
-export function ActivityFeed({ interventions: initialInterventions, onUpdate }: ActivityFeedProps) {
+export function ActivityFeed({ interventions, onUpdate }: ActivityFeedProps) {
     const { user } = useUser();
     const { openModal } = useInterventionModal();
-    const [interventions, setInterventions] = useState(initialInterventions);
     
-    useEffect(() => {
-        setInterventions(initialInterventions);
-    }, [initialInterventions]);
-
     const latestUpdates = useMemo(() => {
         return interventions
             .flatMap(i => (i.updates || []).map(u => ({ 
