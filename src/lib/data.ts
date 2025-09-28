@@ -1,6 +1,6 @@
 
 
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector } from './types';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual } from 'firebase/firestore';
@@ -686,6 +686,37 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
     } catch (error) {
         console.error("Error updating intervention:", error);
         return null;
+    }
+}
+
+export async function markInterventionUpdateAsRead(interventionId: string, updateDate: string, userId: string): Promise<boolean> {
+    try {
+        const docRef = doc(db, 'interventions', interventionId);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) {
+            return false;
+        }
+
+        const intervention = docSnap.data() as Intervention;
+        const updates = intervention.updates || [];
+
+        const updateIndex = updates.findIndex(u => u.date === updateDate);
+        if (updateIndex === -1) {
+            return false; // Update not found
+        }
+        
+        const updateToModify = updates[updateIndex];
+        const readBy = updateToModify.readBy || [];
+
+        if (!readBy.includes(userId)) {
+            updates[updateIndex] = { ...updateToModify, readBy: [...readBy, userId] };
+            await updateDoc(docRef, { updates: updates });
+        }
+        
+        return true;
+    } catch (error) {
+        console.error("Error marking update as read:", error);
+        return false;
     }
 }
 

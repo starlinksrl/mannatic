@@ -65,6 +65,7 @@ export interface InterventionUpdate {
   date: string;
   description: string;
   userName: string;
+  readBy?: string[];
 }
 
 export interface Intervention {

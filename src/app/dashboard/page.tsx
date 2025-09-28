@@ -21,6 +21,7 @@ type KpiData = GenerateKpiDashboardInput & {
   operatorWorkloadData: { name: string, workload: number }[],
   highPriorityInterventions: (Intervention | ScheduledMaintenance)[],
   latestUpdates: EnrichedUpdate[],
+  allInterventions: (Intervention | ScheduledMaintenance)[],
 };
 
 export default function DashboardPage() {
@@ -102,7 +103,8 @@ export default function DashboardPage() {
       operatorWorkload,
       operatorWorkloadData,
       highPriorityInterventions,
-      latestUpdates
+      latestUpdates,
+      allInterventions: relevantInterventions,
     });
     setLoading(false);
   }
@@ -149,7 +151,7 @@ export default function DashboardPage() {
                 <KpiDashboard kpiData={kpiData} currentUser={user} />
             </div>
             <div className="xl:col-span-1">
-                <ActivityFeed updates={kpiData.latestUpdates} />
+                <ActivityFeed interventions={kpiData.allInterventions} onUpdate={fetchKpiData} />
             </div>
           </div>
         )}
