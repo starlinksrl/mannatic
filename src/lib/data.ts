@@ -194,7 +194,12 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
       phone: userData.phone || '',
       allowedSectors: userData.allowedSectors || (userData.role === 'Operator' ? ['interventions', 'surveys', 'maintenance'] : undefined),
     };
-    await setDoc(doc(db, 'users', newId), newUserPayload);
+
+    if (newUserPayload.role !== 'Operator') {
+        delete newUserPayload.allowedSectors;
+    }
+    
+    await setDoc(doc(db, 'users', newId), newUserPayload as any);
     
     return { id: newId, ...newUserPayload };
   } catch (error) {
@@ -217,9 +222,12 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
         
-        // Ensure allowedSectors is only set for operators
+        // Ensure allowedSectors is only set for operators, otherwise remove it
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
-            dataToUpdate.allowedSectors = undefined;
+            delete dataToUpdate.allowedSectors;
+        } else if (dataToUpdate.role === 'Operator' && dataToUpdate.allowedSectors === undefined) {
+            // If role is operator and sectors are not provided, ensure it's at least an empty array if not defined
+            dataToUpdate.allowedSectors = [];
         }
         
         await updateDoc(userDocRef, dataToUpdate as any);
@@ -975,3 +983,4 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
