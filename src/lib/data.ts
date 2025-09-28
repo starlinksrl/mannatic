@@ -479,72 +479,6 @@ export async function getScheduledMaintenance(companyId: string): Promise<Schedu
 
 type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string };
 
-async function notifyAdminOnNewIntervention(intervention: Intervention, clientName: string, creatorName: string) {
-    const { companyId, id, title, description, priority, dueDate, assignedOperatorId } = intervention;
-
-    const companyDoc = await getDoc(doc(db, 'companies', companyId));
-    if (!companyDoc.exists()) return;
-    const company = companyDoc.data() as Company;
-
-    if (!company.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPass || !company.senderEmail) {
-        console.log(`Skipping new intervention notification for company ${companyId}: SMTP not configured.`);
-        return;
-    }
-
-    const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
-    const adminsSnapshot = await getDocs(qAdmins);
-    const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
-
-    if (admins.length === 0) return;
-
-    let operatorName: string | undefined;
-    if (assignedOperatorId) {
-        const operator = await getOperator(assignedOperatorId);
-        if (operator) {
-            operatorName = operator.name;
-        }
-    }
-
-    for (const admin of admins) {
-        if (admin.email) {
-            console.log(`Sending new intervention notification for #${id} to admin ${admin.email}`);
-            
-            const notificationInput = {
-                recipientEmail: admin.email,
-                interventionId: id,
-                interventionTitle: title,
-                interventionDescription: description,
-                interventionPriority: priority,
-                interventionDueDate: dueDate,
-                clientName: clientName,
-                creatorName: creatorName,
-                assignedOperatorName: operatorName,
-                smtpConfig: {
-                    host: company.smtpHost,
-                    port: company.smtpPort,
-                    user: company.smtpUser,
-                    pass: company.smtpPass,
-                    from: company.senderEmail,
-                }
-            };
-            
-            triggerNewInterventionNotification(notificationInput);
-
-            const notificationMessage = `Nuovo intervento #${id} (${title}) creato da ${creatorName} per il cliente ${clientName}.`;
-            addDoc(collection(db, 'notifications'), {
-                userId: admin.id,
-                companyId: companyId,
-                message: notificationMessage,
-                read: false,
-                createdAt: new Date().toISOString(),
-                relatedInterventionId: id,
-                type: 'assignment'
-            });
-        }
-    }
-}
-
-
 export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
     const { creatorName, clientId, companyId, ...restOfData } = interventionData;
     
@@ -599,31 +533,62 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
     await setDoc(doc(db, 'interventions', newId), newInterventionData);
 
-    // Notify admins
-    await notifyAdminOnNewIntervention(newInterventionData, clientName, creatorName);
-    
-    // Notify the client who created the ticket
-    const client = await getUserById(newInterventionData.clientId);
-    if (client && client.email) {
-        const company = await getCompanyByUserId(client.id);
-        if (company?.smtpHost) {
-             console.log(`[data.ts] Triggering client creation email for intervention #${newInterventionData.id} to ${client.email}`);
-            triggerClientUpdateNotification({
-                recipientEmail: client.email,
-                clientName: client.name,
-                interventionId: newInterventionData.id,
-                interventionTitle: newInterventionData.title,
-                interventionStatus: newInterventionData.status,
-                updateMessage: `creato`,
-                interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
-                smtpConfig: {
-                    host: company.smtpHost,
-                    port: company.smtpPort!,
-                    user: company.smtpUser!,
-                    pass: company.smtpPass!,
-                    from: company.senderEmail!,
+    // --- NOTIFICATION LOGIC ---
+    const companyDoc = await getDoc(doc(db, 'companies', companyId));
+    if (companyDoc.exists()) {
+        const company = companyDoc.data() as Company;
+        if (company.smtpHost) {
+            // Notify Admins
+            const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
+            const adminsSnapshot = await getDocs(qAdmins);
+            const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
+            let operatorName: string | undefined;
+            if (newInterventionData.assignedOperatorId) {
+                const operator = await getOperator(newInterventionData.assignedOperatorId);
+                if (operator) operatorName = operator.name;
+            }
+            
+            for (const admin of admins) {
+                if (admin.email) {
+                    triggerNewInterventionNotification({
+                        recipientEmail: admin.email,
+                        interventionId: newInterventionData.id,
+                        interventionTitle: newInterventionData.title,
+                        interventionDescription: newInterventionData.description,
+                        interventionPriority: newInterventionData.priority,
+                        interventionDueDate: newInterventionData.dueDate,
+                        clientName: clientName,
+                        creatorName: creatorName,
+                        assignedOperatorName: operatorName,
+                        smtpConfig: {
+                            host: company.smtpHost, port: company.smtpPort!, user: company.smtpUser!, pass: company.smtpPass!, from: company.senderEmail!,
+                        }
+                    });
+                     addDoc(collection(db, 'notifications'), {
+                        userId: admin.id,
+                        companyId: companyId,
+                        message: `Nuovo intervento #${newInterventionData.id} (${newInterventionData.title}) creato da ${creatorName} per il cliente ${clientName}.`,
+                        read: false, createdAt: new Date().toISOString(), relatedInterventionId: newId, type: 'assignment'
+                    });
                 }
-            });
+            }
+
+            // Notify Client
+            const client = await getUserById(newInterventionData.clientId);
+            if (client && client.email) {
+                triggerClientUpdateNotification({
+                    recipientEmail: client.email,
+                    clientName: client.name,
+                    interventionId: newInterventionData.id,
+                    interventionTitle: newInterventionData.title,
+                    interventionStatus: newInterventionData.status,
+                    updateMessage: `creato`,
+                    interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
+                    smtpConfig: {
+                        host: company.smtpHost, port: company.smtpPort!, user: company.smtpUser!, pass: company.smtpPass!, from: company.senderEmail!,
+                    }
+                });
+            }
         }
     }
     
@@ -698,68 +663,69 @@ export async function createUpdateNotification(intervention: Intervention, updat
 export async function updateIntervention(id: string, updatedData: Partial<Intervention>, updater: User): Promise<Intervention | null> {
     try {
         const docRef = doc(db, 'interventions', id);
-        
         const originalDocSnap = await getDoc(docRef);
         if (!originalDocSnap.exists()) return null;
         const originalIntervention = originalDocSnap.data() as Intervention;
-        
+
         const dataToUpdate: { [key: string]: any } = { ...updatedData };
-        if (dataToUpdate.dueDate === undefined) {
-            dataToUpdate.dueDate = null;
-        }
-        if (dataToUpdate.completedAt === undefined) {
-            delete dataToUpdate.completedAt;
-        } else if (dataToUpdate.completedAt === null) {
-            dataToUpdate.completedAt = null;
-        }
-        
+        if (dataToUpdate.dueDate === undefined) dataToUpdate.dueDate = null;
+        if (dataToUpdate.completedAt === undefined) delete dataToUpdate.completedAt;
+        else if (dataToUpdate.completedAt === null) dataToUpdate.completedAt = null;
+
         const statusChanged = originalIntervention.status !== dataToUpdate.status;
-        const originalUpdateDates = (originalIntervention.updates || []).map(u => u.date);
-        const newUpdates = (dataToUpdate.updates || []).filter((u: InterventionUpdate) => !originalUpdateDates.includes(u.date));
-        const hasNewComment = newUpdates.length > 0;
+        const commentAdded = (dataToUpdate.newUpdate || '').trim() !== '';
+
+        if (commentAdded) {
+            const newUpdate: InterventionUpdate = {
+                date: new Date().toISOString(),
+                description: dataToUpdate.newUpdate.trim(),
+                userName: updater.name,
+                readBy: [updater.id],
+            };
+            dataToUpdate.updates = [newUpdate, ...(dataToUpdate.updates || [])];
+        }
+        delete dataToUpdate.newUpdate; // Remove temporary field
 
         await updateDoc(docRef, dataToUpdate);
 
         const interventionForNotif = { ...originalIntervention, ...dataToUpdate } as Intervention;
 
-        // --- INTERNAL IN-APP NOTIFICATION LOGIC ---
-        if (statusChanged || hasNewComment) {
+        // In-app notifications for internal team
+        if (statusChanged || commentAdded) {
             await createUpdateNotification(interventionForNotif, updater);
         }
-        
-        // --- CLIENT EMAIL NOTIFICATION LOGIC ---
-        if (statusChanged || hasNewComment) {
+
+        // Email notification for client
+        if (statusChanged || commentAdded) {
             const client = await getUserById(interventionForNotif.clientId);
-            if (client && client.email) {
-                const company = await getCompanyByUserId(client.id);
-                if (company?.smtpHost) {
-                    const latestUpdate = hasNewComment ? newUpdates[0] : null;
-                    const updateMessage = latestUpdate 
-                        ? `${updater.name} ha aggiunto un aggiornamento: "${latestUpdate.description}"`
-                        : `${updater.name} ha cambiato lo stato in: ${interventionForNotif.status}`;
-                    
-                    console.log(`[data.ts] Triggering client update email for intervention #${id} to ${client.email}`);
-                    triggerClientUpdateNotification({
-                        recipientEmail: client.email,
-                        clientName: client.name,
-                        interventionId: id,
-                        interventionTitle: interventionForNotif.title,
-                        interventionStatus: interventionForNotif.status,
-                        updateMessage: updateMessage,
-                        interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
-                        smtpConfig: {
-                            host: company.smtpHost,
-                            port: company.smtpPort!,
-                            user: company.smtpUser!,
-                            pass: company.smtpPass!,
-                            from: company.senderEmail!,
-                        }
-                    });
-                } else {
-                     console.log(`[data.ts] Skipped client update email for #${id}: SMTP not configured for company ${company?.id}.`);
+            const company = await getCompanyByUserId(interventionForNotif.clientId);
+
+            if (client && client.email && company?.smtpHost) {
+                let updateMessage = '';
+                if (commentAdded) {
+                    const latestUpdate = interventionForNotif.updates[0];
+                    updateMessage = `${latestUpdate.userName} ha aggiunto un aggiornamento: "${latestUpdate.description}"`;
+                } else if (statusChanged) {
+                    updateMessage = `Lo stato del tuo intervento è stato aggiornato a: ${interventionForNotif.status}`;
                 }
-            } else {
-                 console.log(`[data.ts] Skipped client update email for #${id}: Client or client email not found.`);
+
+                console.log(`[data.ts] Triggering client update email for intervention #${id} to ${client.email}`);
+                triggerClientUpdateNotification({
+                    recipientEmail: client.email,
+                    clientName: client.name,
+                    interventionId: id,
+                    interventionTitle: interventionForNotif.title,
+                    interventionStatus: interventionForNotif.status,
+                    updateMessage: updateMessage,
+                    interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
+                    smtpConfig: {
+                        host: company.smtpHost,
+                        port: company.smtpPort!,
+                        user: company.smtpUser!,
+                        pass: company.smtpPass!,
+                        from: company.senderEmail!,
+                    }
+                });
             }
         }
         
@@ -1019,4 +985,5 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
     
 
     
+
 
