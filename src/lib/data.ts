@@ -579,7 +579,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         sla: '24h',
         createdAt: new Date().toISOString(),
         updates: [{ date: new Date().toISOString(), description: `Creato da ${creatorName}.`, userName: creatorName }],
-        dueDate: restOfData.dueDate || undefined,
+        dueDate: restOfData.dueDate || null,
         isMaintenance: false,
     };
 
@@ -596,7 +596,7 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
     const nextDueDate = new Date().toISOString();
     
     const newId = generateShortId();
-    const newMaintenanceData = {
+    const newMaintenanceData: ScheduledMaintenance = {
         ...maintenanceData,
         id: newId,
         status: 'Pianificato' as ScheduledMaintenanceStatus,
@@ -605,12 +605,8 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
         isMaintenance: true,
         nextDueDate,
         updates: [{ date: new Date().toISOString(), description: 'Manutenzione programmata creata.', userName: 'Sistema' }],
-        dueDate: maintenanceData.dueDate || undefined,
+        dueDate: maintenanceData.dueDate || null,
     };
-
-    if (newMaintenanceData.dueDate === undefined) {
-        delete (newMaintenanceData as any).dueDate;
-    }
 
     await setDoc(doc(db, 'interventions', newId), newMaintenanceData);
     return newMaintenanceData;
@@ -667,6 +663,9 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         const originalIntervention = originalDoc.data() as Intervention;
         
         const dataToUpdate = { ...updatedData };
+        if (dataToUpdate.dueDate === undefined) {
+          dataToUpdate.dueDate = null;
+        }
         if (dataToUpdate.completedAt === undefined) {
             delete (dataToUpdate as any).completedAt;
         } else if (dataToUpdate.completedAt === null) {
@@ -700,18 +699,22 @@ export async function updateScheduledMaintenance(id: string, updatedData: Partia
         }
         const originalMaintenance = originalDoc.data() as ScheduledMaintenance;
         
-        const combinedData = { ...originalMaintenance, ...updatedData };
+        const combinedData: Partial<ScheduledMaintenance> = { ...originalMaintenance, ...updatedData };
+
+        if (combinedData.dueDate === undefined) {
+          combinedData.dueDate = null;
+        }
 
         const isBeingCompleted = updatedData.status === 'Completato' && originalMaintenance.status !== 'Completato';
 
         if (isBeingCompleted) {
             // Recalculate next due date from now
-            combinedData.nextDueDate = addMonths(new Date(), combinedData.recurrenceMonths).toISOString();
+            combinedData.nextDueDate = addMonths(new Date(), combinedData.recurrenceMonths!).toISOString();
             // Reset status to 'Pianificato' for the next cycle
             combinedData.status = 'Pianificato';
         } else if (updatedData.recurrenceMonths || updatedData.dueDate) {
             // Recalculate if recurrence or due date is manually changed for other reasons
-            combinedData.nextDueDate = addMonths(new Date(combinedData.dueDate!), combinedData.recurrenceMonths).toISOString();
+            combinedData.nextDueDate = addMonths(new Date(combinedData.dueDate!), combinedData.recurrenceMonths!).toISOString();
         }
 
         await updateDoc(docRef, combinedData as any);
@@ -789,6 +792,7 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
             role: 'Client',
             companyId: companyId,
             address: surveyData.address,
+            phone: null,
         });
         finalClientId = newClient.id;
     }

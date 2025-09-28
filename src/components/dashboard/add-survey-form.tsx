@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -99,6 +100,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
 
     const newSurvey = await addSurvey({
         ...values,
+        notes: values.notes || '',
         date: finalDate,
         companyId: currentCompany.id,
     });
@@ -130,6 +132,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
         const place = autocompleteRef.current.getPlace();
         if (place && place.formatted_address) {
             form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
+            inputRef.current?.focus();
         }
     }
   };

@@ -31,8 +31,8 @@ export interface User {
   avatarUrl: string;
   password?: string;
   companyId: string;
-  address?: string;
-  phone?: string;
+  address?: string | null;
+  phone?: string | null;
   allowedSectors?: AllowedSector[];
 }
 
@@ -47,8 +47,8 @@ export interface Client {
   id: string;
   name: string;
   companyId: string;
-  address?: string;
-  phone?: string;
+  address?: string | null;
+  phone?: string | null;
 }
 
 export interface Equipment {
@@ -77,10 +77,10 @@ export interface Intervention {
   status: InterventionStatus;
   assignedOperatorId: string | null;
   createdAt: string;
-  dueDate?: string;
-  completedAt?: string;
-  timeSpent?: number; // in hours
-  materialsUsed?: string;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  timeSpent?: number | null; // in hours
+  materialsUsed?: string | null;
   photos?: string[];
   clientSignature?: string;
   updates?: InterventionUpdate[];
