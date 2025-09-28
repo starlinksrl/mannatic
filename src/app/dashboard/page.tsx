@@ -77,7 +77,7 @@ export default function DashboardPage() {
     
     const operatorWorkload: Record<string, number> = {};
     users.filter(u => u.role === 'Operator').forEach(op => {
-      operatorWorkload[op.name] = openInterventions.filter(i => i.assignedOperatorId === op.id).length;
+      operatorWorkload[op.name] = allInterventions.filter(i => i.assignedOperatorId === op.id && (i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa')).length;
     });
 
     const operatorWorkloadData = Object.entries(operatorWorkload).map(([name, workload]) => ({ name, workload }));
