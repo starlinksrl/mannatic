@@ -559,7 +559,8 @@ async function notifyClientOnInterventionCreation(intervention: Intervention, cr
         console.log(`Skipping client notification for company ${intervention.companyId}: SMTP not configured.`);
         return;
     }
-
+    
+    console.log(`[data.ts] Triggering client creation email for intervention #${intervention.id} to ${client.email}`);
     triggerClientUpdateNotification({
         recipientEmail: client.email,
         clientName: client.name,
@@ -723,16 +724,16 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             dataToUpdate.completedAt = null;
         }
 
-        const newUpdates = (dataToUpdate.updates || []).filter((u: InterventionUpdate) => 
-            !(originalIntervention.updates || []).some(ou => ou.date === u.date && ou.userName === u.userName)
-        );
-        
         await updateDoc(docRef, dataToUpdate);
-
         const interventionForNotif = { ...originalIntervention, ...dataToUpdate } as Intervention;
+
         const statusChanged = originalIntervention.status !== interventionForNotif.status;
-        const hasNewComment = newUpdates.length > 0;
         
+        // Find if a new update was actually added in this operation.
+        const originalUpdateDates = (originalIntervention.updates || []).map(u => u.date);
+        const newUpdates = (interventionForNotif.updates || []).filter(u => !originalUpdateDates.includes(u.date));
+        const hasNewComment = newUpdates.length > 0;
+
         // --- NOTIFICATION LOGIC ---
         // 1. Send in-app notifications to internal users
         if (statusChanged || hasNewComment) {

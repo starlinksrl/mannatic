@@ -87,15 +87,20 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const { smtpConfig, ...promptInput } = input;
+      const { smtpConfig, recipientEmail, ...promptInput } = input;
       
-      console.log(`Generating client update email for intervention #${input.interventionId}...`);
+      console.log(`[sendClientUpdateNotificationFlow] START for intervention #${input.interventionId} to ${recipientEmail}`);
+      console.log(`[sendClientUpdateNotificationFlow] Prompt Input:`, promptInput);
+      
       const { output } = await prompt(promptInput);
 
       if (!output || !output.emailBody || !output.emailSubject) {
+          console.error('[sendClientUpdateNotificationFlow] ERROR: Failed to generate email content from prompt. Output was:', output);
           throw new Error('Failed to generate email content for client update notification.');
       }
       
+      console.log(`[sendClientUpdateNotificationFlow] Email content generated successfully. Subject: ${output.emailSubject}`);
+
       const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
         port: smtpConfig.port,
@@ -106,7 +111,7 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
         },
       });
       
-      console.log(`Sending client update email to ${input.recipientEmail} via ${smtpConfig.host}...`);
+      console.log(`[sendClientUpdateNotificationFlow] Sending client update email to ${input.recipientEmail} via ${smtpConfig.host}...`);
 
       await transporter.sendMail({
         from: smtpConfig.from,
@@ -115,11 +120,11 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
         html: output.emailBody,
       });
 
-      console.log('Client update email sent successfully.');
+      console.log('[sendClientUpdateNotificationFlow] Client update email sent successfully. END.');
       return { success: true, emailBody: output.emailBody };
 
     } catch (error: any) {
-        console.error('Failed to send client update email:', error);
+        console.error('[sendClientUpdateNotificationFlow] FAILED:', error);
         return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
     }
   }
@@ -128,5 +133,3 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
 export async function sendClientUpdateNotification(input: SendClientUpdateNotificationInput): Promise<SendClientUpdateNotificationOutput> {
     return sendClientUpdateNotificationFlow(input);
 }
-
-    
