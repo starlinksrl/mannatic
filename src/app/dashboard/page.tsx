@@ -157,11 +157,11 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid gap-6 xl:grid-cols-3">
+             <div className="xl:col-span-1">
+                <ActivityFeed interventions={kpiData.allInterventions} onUpdate={fetchKpiData} />
+            </div>
             <div className="xl:col-span-2 grid gap-6">
                 <KpiDashboard kpiData={kpiData} currentUser={user} />
-            </div>
-            <div className="xl:col-span-1">
-                <ActivityFeed interventions={kpiData.allInterventions} onUpdate={fetchKpiData} />
             </div>
           </div>
         )}
