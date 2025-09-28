@@ -45,8 +45,8 @@ const formSchema = z.object({
   description: z.string().min(10, { message: 'La descrizione deve contenere almeno 10 caratteri.' }),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   status: z.enum(['Nuovo', 'In corso', 'In attesa', 'Completato', 'Annullato', 'Da Fatturare', 'Fatturato'], { required_error: 'Lo stato è obbligatorio.' }),
-  dueDate: z.date({ required_error: 'La data di scadenza è obbligatoria.' }),
-  dueTime: z.string({ required_error: "L'ora è obbligatoria." }),
+  dueDate: z.date().optional(),
+  dueTime: z.string().optional(),
   assignedOperatorId: z.string().nullable(),
   newUpdate: z.string().optional(),
   timeSpent: z.coerce.number().positive({ message: 'Le ore impiegate devono essere un numero positivo.' }).optional(),
@@ -96,11 +96,11 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
 
   useEffect(() => {
     if (intervention) {
-      const dueDate = intervention.dueDate ? new Date(intervention.dueDate) : new Date();
+      const dueDate = intervention.dueDate ? new Date(intervention.dueDate) : undefined;
       form.reset({
         ...intervention,
         dueDate: dueDate,
-        dueTime: intervention.dueDate ? format(dueDate, 'HH:mm') : '',
+        dueTime: intervention.dueDate ? format(new Date(intervention.dueDate), 'HH:mm') : '',
         priority: intervention.priority,
         status: intervention.status,
         assignedOperatorId: intervention.assignedOperatorId || null,
@@ -137,11 +137,22 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         }, ...newUpdates];
     }
     
-    const [hours, minutes] = values.dueTime.split(':').map(Number);
-    let date = values.dueDate;
-    date = setHours(date, hours);
-    date = setMinutes(date, minutes);
-    const finalDueDate = date.toISOString();
+    let finalDueDate: string | null = null;
+    if (values.dueDate && values.dueTime) {
+        try {
+            const [hours, minutes] = values.dueTime.split(':').map(Number);
+            let date = new Date(values.dueDate);
+            date = setHours(date, hours);
+            date = setMinutes(date, minutes);
+            finalDueDate = date.toISOString();
+        } catch(e) {
+            console.error("Invalid time value", e);
+            finalDueDate = new Date(values.dueDate).toISOString();
+        }
+    } else if (values.dueDate) {
+        finalDueDate = new Date(values.dueDate).toISOString();
+    }
+
 
     const updatedInterventionData = {
         ...intervention,
@@ -478,5 +489,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
+    
 
     
