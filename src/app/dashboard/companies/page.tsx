@@ -221,11 +221,11 @@ export default function CompaniesPage() {
               <Card key={company.id} className="flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex justify-between items-start">
-                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleCardClick(company.id)}>
+                     <div className="flex items-center gap-3 cursor-pointer break-words" onClick={() => handleCardClick(company.id)}>
                         {company.logoUrl ? (
                             <img src={company.logoUrl} alt={company.name} className="h-10 w-10 rounded-md object-contain border p-1" />
                         ) : (
-                            <Building className="h-8 w-8 text-muted-foreground" />
+                            <Building className="h-8 w-8 text-muted-foreground shrink-0" />
                         )}
                         <span>{company.name}</span>
                      </div>
@@ -315,3 +315,5 @@ export default function CompaniesPage() {
     </>
   );
 }
+
+    
