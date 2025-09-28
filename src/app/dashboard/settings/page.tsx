@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, useForm as useSmtpForm, FormProvider } from 'react-hook-form';
@@ -37,6 +36,11 @@ const profileFormSchema = z.object({
   name: z.string().min(1, { message: 'Il nome è obbligatorio' }),
   address: z.string().optional(),
   logoUrl: z.string().optional(),
+  vatNumber: z.string().optional(),
+  taxCode: z.string().optional(),
+  phone: z.string().optional(),
+  uniqueCode: z.string().optional(),
+  email: z.string().email({ message: 'Email non valida' }).optional(),
 });
 
 
@@ -56,6 +60,11 @@ function CompanyProfileForm({ company, onSave }: { company: Company, onSave: (da
       name: company.name,
       address: company.address || '',
       logoUrl: company.logoUrl || '',
+      vatNumber: company.vatNumber || '',
+      taxCode: company.taxCode || '',
+      phone: company.phone || '',
+      uniqueCode: company.uniqueCode || '',
+      email: company.email || '',
     }
   });
 
@@ -166,6 +175,75 @@ function CompanyProfileForm({ company, onSave }: { company: Company, onSave: (da
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                control={form.control}
+                name="vatNumber"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Partita IVA</FormLabel>
+                    <FormControl>
+                        <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="taxCode"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Codice Fiscale</FormLabel>
+                    <FormControl>
+                        <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Telefono</FormLabel>
+                    <FormControl>
+                        <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="uniqueCode"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Codice Univoco (SDI)</FormLabel>
+                    <FormControl>
+                        <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+             <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Email Contatto</FormLabel>
+                    <FormControl>
+                        <Input type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button type="submit">Salva Profilo</Button>
