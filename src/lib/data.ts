@@ -241,9 +241,6 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
             dataToUpdate.allowedSectors = deleteField();
-        } else if (dataToUpdate.role === 'Operator' && dataToUpdate.allowedSectors === undefined) {
-            // If role is operator and allowedSectors is not provided, don't accidentally delete it.
-            // A bit of a defensive move. The form should always provide it.
         }
         
         await updateDoc(userDocRef, dataToUpdate);
@@ -447,8 +444,6 @@ export async function getInterventions(companyId: string): Promise<(Intervention
     const snapshot = await getDocs(q);
     const allCompanyInterventions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Intervention | ScheduledMaintenance)));
     
-    // Filter in code instead of in the query
-    //return allCompanyInterventions.filter(i => !('isMaintenance' in i) || i.isMaintenance !== true) as Intervention[];
     return allCompanyInterventions;
 }
 
@@ -666,80 +661,73 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
 }
 
 export async function createUpdateNotification(intervention: Intervention, updater: User, updateText?: string) {
-    const recipients: string[] = [];
-
-    // Always add client to recipients for potential email notification
-    if (intervention.clientId) {
-        recipients.push(intervention.clientId);
-    }
-
-    // Add assigned operator to recipients if they didn't make the update
-    if (intervention.assignedOperatorId && intervention.assignedOperatorId !== updater.id) {
-        recipients.push(intervention.assignedOperatorId);
-    }
-    
-    // If client or operator is updating, notify admins
-    if (updater.role === 'Client' || updater.role === 'Operator') {
-        const qAdmins = query(collection(db, 'users'), where("companyId", "==", intervention.companyId), where("role", "==", "Admin"));
-        const adminsSnapshot = await getDocs(qAdmins);
-        adminsSnapshot.docs.forEach(doc => {
-            if (doc.id !== updater.id) {
-                 recipients.push(doc.id);
-            }
-        });
-    }
-
-    const uniqueRecipients = [...new Set(recipients)];
-
     const companyDoc = await getDoc(doc(db, 'companies', intervention.companyId));
     if (!companyDoc.exists()) return;
     const company = companyDoc.data() as Company;
 
-    for (const userId of uniqueRecipients) {
-        const user = await getUserById(userId);
-        if (!user) continue;
-
-        // Create in-app notification for everyone except the updater
-        if (user.id !== updater.id) {
-            const baseMessage = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
-            const inAppMessage = updateText ? `${baseMessage}. Dettagli: ${updateText}` : `${baseMessage}. Nuovo stato: ${intervention.status}`;
-            
-            addDoc(collection(db, 'notifications'), {
-                userId: userId,
-                companyId: intervention.companyId,
-                message: inAppMessage,
-                read: false,
-                createdAt: new Date().toISOString(),
-                relatedInterventionId: intervention.id,
-                type: 'status_change'
-            });
-        }
-        
-        // Send email notification ONLY to the client
-        if (user.role === 'Client' && user.email) {
-             if (!company.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPass || !company.senderEmail) {
-                console.log(`Skipping client update email for company ${intervention.companyId}: SMTP not configured.`);
-                continue;
-            }
-             triggerClientUpdateNotification({
-                recipientEmail: user.email,
-                clientName: user.name,
+    // --- 1. Notify Client via Email ---
+    const client = await getUserById(intervention.clientId);
+    if (client && client.email) {
+        if (!company.smtpHost || !company.smtpPass) {
+            console.log(`Skipping client update email for company ${intervention.companyId}: SMTP not configured.`);
+        } else {
+            triggerClientUpdateNotification({
+                recipientEmail: client.email,
+                clientName: client.name,
                 interventionId: intervention.id,
                 interventionTitle: intervention.title,
                 interventionStatus: intervention.status,
-                updateMessage: updateText ? `${updater.name} ha aggiunto un aggiornamento: "${updateText}"` : `${updater.name} ha cambiato lo stato in: ${intervention.status}`,
+                updateMessage: updateText 
+                    ? `${updater.name} ha aggiunto un aggiornamento: "${updateText}"` 
+                    : `${updater.name} ha cambiato lo stato in: ${intervention.status}`,
                 interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
                 smtpConfig: {
                     host: company.smtpHost,
-                    port: company.smtpPort,
-                    user: company.smtpUser,
-                    pass: company.smtpPass,
-                    from: company.senderEmail,
+                    port: company.smtpPort!,
+                    user: company.smtpUser!,
+                    pass: company.smtpPass!,
+                    from: company.senderEmail!,
                 }
             });
         }
     }
+
+    // --- 2. Create In-App Notifications for Internal Users ---
+    const internalRecipients: string[] = [];
+    // Add assigned operator if they didn't make the update
+    if (intervention.assignedOperatorId && intervention.assignedOperatorId !== updater.id) {
+        internalRecipients.push(intervention.assignedOperatorId);
+    }
+    
+    // If client or operator is updating, notify admins
+    if (['Client', 'Operator'].includes(updater.role)) {
+        const qAdmins = query(collection(db, 'users'), where("companyId", "==", intervention.companyId), where("role", "==", "Admin"));
+        const adminsSnapshot = await getDocs(qAdmins);
+        adminsSnapshot.docs.forEach(doc => {
+            if (doc.id !== updater.id) {
+                 internalRecipients.push(doc.id);
+            }
+        });
+    }
+
+    const uniqueInternalRecipients = [...new Set(internalRecipients)];
+
+    for (const userId of uniqueInternalRecipients) {
+        const baseMessage = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
+        const inAppMessage = updateText ? `${baseMessage}. Dettagli: ${updateText}` : `${baseMessage}. Nuovo stato: ${intervention.status}`;
+        
+        addDoc(collection(db, 'notifications'), {
+            userId: userId,
+            companyId: intervention.companyId,
+            message: inAppMessage,
+            read: false,
+            createdAt: new Date().toISOString(),
+            relatedInterventionId: intervention.id,
+            type: 'status_change'
+        });
+    }
 }
+
 
 
 export async function updateIntervention(id: string, updatedData: Partial<Intervention>, updater: User): Promise<Intervention | null> {
