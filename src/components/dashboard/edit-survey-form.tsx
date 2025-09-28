@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -61,7 +61,8 @@ interface EditSurveyFormProps {
 
 export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, isOpen, setIsOpen }: EditSurveyFormProps) {
   const { toast } = useToast();
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const autocompleteInputRef = useRef<HTMLInputElement>(null);
+  const [isAutocompleteOpen, setAutocompleteOpen] = useState(false);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -74,8 +75,6 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
       time: '',
     },
   });
-  
-  const addressValue = form.watch('address');
   
   useEffect(() => {
     if (survey) {
@@ -125,15 +124,11 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
     }
   }
 
-  const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
-    autocompleteRef.current = autocomplete;
-  };
-
-  const onPlaceChanged = () => {
-    if (autocompleteRef.current) {
-      const place = autocompleteRef.current.getPlace();
-      const formattedAddress = place.formatted_address || '';
-      form.setValue('address', formattedAddress, { shouldValidate: true, shouldDirty: true });
+  const handlePlaceChanged = (autocomplete: google.maps.places.Autocomplete) => {
+    const place = autocomplete.getPlace();
+    if (place && place.formatted_address) {
+      form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
+      setAutocompleteOpen(false);
     }
   };
 
@@ -186,35 +181,45 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                         />
 
                     <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Indirizzo</FormLabel>
-                        <FormControl>
+                          <FormLabel>Indirizzo</FormLabel>
                            {isLoaded && !loadError ? (
-                            <Autocomplete
-                              onLoad={onAutocompleteLoad}
-                              onPlaceChanged={onPlaceChanged}
-                              fields={['formatted_address']}
-                            >
-                              <Input
-                                value={addressValue}
-                                onChange={(e) => form.setValue('address', e.target.value)}
-                                placeholder="Via, numero civico, città"
-                              />
-                            </Autocomplete>
+                            <Popover open={isAutocompleteOpen} onOpenChange={setAutocompleteOpen}>
+                              <PopoverTrigger asChild>
+                                 <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Cerca un indirizzo..."
+                                      onFocus={() => setAutocompleteOpen(true)}
+                                      disabled={!isLoaded}
+                                    />
+                                 </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                <Autocomplete
+                                  onLoad={(autocomplete) => {
+                                    autocomplete.addListener('place_changed', () => handlePlaceChanged(autocomplete));
+                                  }}
+                                  fields={['formatted_address']}
+                                >
+                                  <Input
+                                    ref={autocompleteInputRef}
+                                    placeholder="Cerca un indirizzo..."
+                                    className="border-none focus-visible:ring-0"
+                                    onFocus={() => setAutocompleteOpen(true)}
+                                  />
+                                </Autocomplete>
+                              </PopoverContent>
+                            </Popover>
                           ) : (
-                            <Input
-                              {...field}
-                              placeholder="Via, numero civico, città"
-                              disabled={!isLoaded}
-                            />
+                            <Input {...field} placeholder="Via, numero civico, città" disabled={!isLoaded}/>
                           )}
-                        </FormControl>
-                        <FormMessage />
+                          <FormMessage />
                         </FormItem>
-                    )}
+                      )}
                     />
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
