@@ -41,6 +41,7 @@ export interface PasswordResetToken {
     userId: string;
     token: string;
     expiresAt: string;
+    companyId: string;
 }
 
 export interface Client {

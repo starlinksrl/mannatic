@@ -661,7 +661,7 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
     return newMaintenanceData;
 }
 
-export async function createUpdateNotification(intervention: Intervention, updater: User, updateText?: string) {
+export async function createUpdateNotification(intervention: Intervention, updater: User) {
     const internalRecipients: string[] = [];
     // Add assigned operator if they didn't make the update
     if (intervention.assignedOperatorId && intervention.assignedOperatorId !== updater.id) {
@@ -680,10 +680,15 @@ export async function createUpdateNotification(intervention: Intervention, updat
     }
 
     const uniqueInternalRecipients = [...new Set(internalRecipients)];
+    
+    const latestUpdate = intervention.updates && intervention.updates.length > 0 ? intervention.updates[0] : null;
+    const updateText = latestUpdate?.description;
 
     for (const userId of uniqueInternalRecipients) {
         const baseMessage = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
-        const inAppMessage = updateText ? `${baseMessage}. Dettagli: ${updateText}` : `${baseMessage}. Nuovo stato: ${intervention.status}`;
+        const inAppMessage = updateText && latestUpdate?.userName === updater.name 
+            ? `${baseMessage}. Dettagli: ${updateText}` 
+            : `${baseMessage}. Nuovo stato: ${intervention.status}`;
         
         addDoc(collection(db, 'notifications'), {
             userId: userId,
@@ -695,6 +700,7 @@ export async function createUpdateNotification(intervention: Intervention, updat
             type: 'status_change'
         });
     }
+
 }
 
 
@@ -703,9 +709,9 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
     try {
         const docRef = doc(db, 'interventions', id);
         
-        const originalDoc = await getDoc(docRef);
-        if (!originalDoc.exists()) return null;
-        const originalIntervention = originalDoc.data() as Intervention;
+        const originalDocSnap = await getDoc(docRef);
+        if (!originalDocSnap.exists()) return null;
+        const originalIntervention = originalDocSnap.data() as Intervention;
         
         const dataToUpdate: { [key: string]: any } = { ...updatedData };
         if (dataToUpdate.dueDate === undefined) {
@@ -719,29 +725,36 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         
         await updateDoc(docRef, dataToUpdate);
 
-        const newUpdates = (dataToUpdate.updates || []).filter(u => 
-            !(originalIntervention.updates || []).some(ou => ou.date === u.date && ou.userName === u.userName)
+        const statusChanged = originalIntervention.status !== dataToUpdate.status;
+        const newUpdates = (dataToUpdate.updates || []).filter((u: InterventionUpdate) => 
+            !(originalIntervention.updates || []).some(ou => ou.date === u.date)
         );
-
-        if (newUpdates.length > 0 || originalIntervention.status !== dataToUpdate.status) {
-            const updateText = newUpdates.length > 0 ? newUpdates[0].description : undefined;
-            // Send in-app notifications
-            await createUpdateNotification({ id, ...dataToUpdate } as Intervention, updater, updateText);
+        const hasNewComment = newUpdates.length > 0;
+        
+        // --- NOTIFICATION LOGIC ---
+        if (statusChanged || hasNewComment) {
+            const interventionForNotif = { ...originalIntervention, ...dataToUpdate } as Intervention;
             
-            // Send email to client
-            const client = await getUserById(dataToUpdate.clientId);
+            // 1. Send in-app notifications
+            await createUpdateNotification(interventionForNotif, updater);
+
+            // 2. Send email to client
+            const client = await getUserById(interventionForNotif.clientId);
             if (client && client.email) {
                 const company = await getCompanyByUserId(client.id);
                 if (company?.smtpHost) {
-                     triggerClientUpdateNotification({
+                    const latestUpdate = hasNewComment ? newUpdates[0] : null;
+                    const updateMessage = latestUpdate 
+                        ? `${updater.name} ha aggiunto un aggiornamento: "${latestUpdate.description}"`
+                        : `${updater.name} ha cambiato lo stato in: ${interventionForNotif.status}`;
+
+                    triggerClientUpdateNotification({
                         recipientEmail: client.email,
                         clientName: client.name,
                         interventionId: id,
-                        interventionTitle: dataToUpdate.title,
-                        interventionStatus: dataToUpdate.status,
-                        updateMessage: updateText 
-                            ? `${updater.name} ha aggiunto un aggiornamento: "${updateText}"` 
-                            : `${updater.name} ha cambiato lo stato in: ${dataToUpdate.status}`,
+                        interventionTitle: interventionForNotif.title,
+                        interventionStatus: interventionForNotif.status,
+                        updateMessage: updateMessage,
                         interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
                         smtpConfig: {
                             host: company.smtpHost,
