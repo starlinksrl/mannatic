@@ -8,6 +8,8 @@ import { useUser } from '@/contexts/user-context';
 import { User, Intervention, Client } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
+import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
+import { useInterventionModal } from '@/contexts/intervention-modal-context';
 
 
 export default function InterventionsPage() {
@@ -16,6 +18,7 @@ export default function InterventionsPage() {
     const [clients, setClients] = useState<Client[]>([]);
     const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [loading, setLoading] = useState(true);
+    const { intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
 
     const fetchData = async () => {
         if (!user || !currentCompany) return;
@@ -65,10 +68,21 @@ export default function InterventionsPage() {
             currentUser={user} 
             clients={clients} 
             operators={operators}
-            onClientUpdated={handleClientUpdated}
             onInterventionChange={handleInterventionChange}
         />
       </main>
+      {interventionToEdit && (
+        <EditInterventionForm
+            intervention={interventionToEdit}
+            onInterventionUpdated={handleInterventionChange}
+            onClientUpdated={handleClientUpdated}
+            clients={clients}
+            operators={operators}
+            currentUser={user}
+            isOpen={isOpen}
+            setIsOpen={closeModal}
+        />
+      )}
     </>
   );
 }

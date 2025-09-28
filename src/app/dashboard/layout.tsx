@@ -5,6 +5,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect } from 'react';
 import { Loader } from 'lucide-react';
+import { InterventionModalProvider } from '@/contexts/intervention-modal-context';
 
 export default function DashboardLayout({
   children,
@@ -39,13 +40,15 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[280px_1fr]">
-      <div className="hidden border-r bg-card md:block">
-        <SidebarNav />
+    <InterventionModalProvider>
+      <div className="grid min-h-screen w-full md:grid-cols-[280px_1fr]">
+        <div className="hidden border-r bg-card md:block">
+          <SidebarNav />
+        </div>
+        <div className="flex flex-col">
+          {children}
+        </div>
       </div>
-      <div className="flex flex-col">
-        {children}
-      </div>
-    </div>
+    </InterventionModalProvider>
   );
 }

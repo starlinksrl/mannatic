@@ -23,7 +23,6 @@ import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mai
 import { Card, CardContent } from '@/components/ui/card';
 import { AddInterventionForm } from './add-intervention-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
-import { EditInterventionForm } from './edit-intervention-form';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -35,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useInterventionModal } from '@/contexts/intervention-modal-context';
 
 
 interface InterventionsTableProps {
@@ -42,15 +42,15 @@ interface InterventionsTableProps {
   currentUser: User;
   clients: Client[];
   operators: User[];
-  onClientUpdated: (client: Client) => void;
   onInterventionChange: () => void;
 }
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
 const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'In attesa': 3, 'Completato': 4, 'Da Fatturare': 5, 'Fatturato': 6, 'Annullato': 7 };
 
-export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onClientUpdated, onInterventionChange }: InterventionsTableProps) {
+export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onInterventionChange }: InterventionsTableProps) {
   const { toast } = useToast();
+  const { openModal } = useInterventionModal();
   const [interventions, setInterventions] = useState(initialInterventions);
   const [clients, setClients] = useState(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,9 +62,6 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   
   const [clientsMap, setClientsMap] = useState<Map<string, Client>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
-
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedIntervention, setSelectedIntervention] = useState<Intervention | null>(null);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [interventionToDelete, setInterventionToDelete] = useState<Intervention | null>(null);
@@ -88,20 +85,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   }, [operators, clients]);
 
   const handleEditClick = (intervention: Intervention) => {
-    setSelectedIntervention(intervention);
-    setIsEditModalOpen(true);
-  }
-  
-  const handleClientUpdatedInternal = (updatedClient: User) => {
-    const client: Client = {
-      id: updatedClient.id,
-      name: updatedClient.name,
-      companyId: updatedClient.companyId,
-      address: updatedClient.address,
-      phone: updatedClient.phone,
-    };
-    setClients(prevClients => prevClients.map(c => c.id === client.id ? client : c));
-    onClientUpdated(client);
+    openModal(intervention);
   }
 
   const handleDeleteClick = (intervention: Intervention) => {
@@ -458,16 +442,6 @@ export function InterventionsTable({ interventions: initialInterventions, curren
           </TableBody>
         </Table>
       </Card>
-      <EditInterventionForm
-        intervention={selectedIntervention}
-        onInterventionUpdated={onInterventionChange}
-        onClientUpdated={handleClientUpdatedInternal}
-        clients={clients}
-        operators={operators}
-        currentUser={currentUser}
-        isOpen={isEditModalOpen}
-        setIsOpen={setIsEditModalOpen}
-      />
        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>

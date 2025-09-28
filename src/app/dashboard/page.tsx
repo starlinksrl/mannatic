@@ -14,6 +14,9 @@ import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ActivityFeed } from '@/components/dashboard/activity-feed';
+import { useInterventionModal } from '@/contexts/intervention-modal-context';
+import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
+
 
 type EnrichedUpdate = InterventionUpdate & { interventionTitle: string; interventionId: string };
 
@@ -31,6 +34,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [operators, setOperators] = useState<User[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const { intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
+
 
   const fetchKpiData = async () => {
     if (!currentCompany || !user) {
@@ -136,6 +141,11 @@ export default function DashboardPage() {
         </>
       )
   }
+  
+    const handleClientUpdated = (updatedClient: Client) => {
+        setClients(prevClients => prevClients.map(c => c.id === updatedClient.id ? updatedClient : c));
+    }
+
 
   return (
     <>
@@ -156,6 +166,18 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+      {interventionToEdit && user && (
+        <EditInterventionForm
+            intervention={interventionToEdit}
+            onInterventionUpdated={fetchKpiData}
+            onClientUpdated={handleClientUpdated}
+            clients={clients}
+            operators={operators}
+            currentUser={user}
+            isOpen={isOpen}
+            setIsOpen={closeModal}
+        />
+      )}
     </>
   );
 }
