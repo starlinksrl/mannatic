@@ -7,6 +7,7 @@ import { sendNotificationEmail, SendNotificationEmailInput, SendNotificationEmai
 import { sendExpiryNotification, SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification, SendNewInterventionNotificationInput } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail, SendPasswordResetEmailInput } from '@/ai/flows/send-password-reset-email';
+import { sendClientUpdateNotification, SendClientUpdateNotificationInput, SendClientUpdateNotificationOutput } from '@/ai/flows/send-client-update-notification';
 import { updateCompany, resetUserPassword, getUserByEmail, createPasswordResetToken, getCompanyByUserId } from '@/lib/data';
 import { Company } from '@/lib/types';
 import type { SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
@@ -57,6 +58,16 @@ export async function triggerNewInterventionNotification(input: SendNewIntervent
         return result;
     } catch (error: any) {
         console.error("Error sending new intervention notification email:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function triggerClientUpdateNotification(input: SendClientUpdateNotificationInput): Promise<SendClientUpdateNotificationOutput> {
+    try {
+        const result = await sendClientUpdateNotification(input);
+        return result;
+    } catch (error: any) {
+        console.error("Error sending client update notification email:", error);
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }

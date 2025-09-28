@@ -27,6 +27,7 @@ const SendClientUpdateNotificationInputSchema = z.object({
   interventionStatus: z.string().describe('The current status of the intervention.'),
   updateMessage: z.string().describe('The content of the update (e.g., "Intervento creato" or a specific comment).'),
   clientName: z.string().describe('The name of the client.'),
+  interventionLink: z.string().url().optional().describe('A direct link to view the intervention in the app.'),
   smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
 });
 export type SendClientUpdateNotificationInput = z.infer<typeof SendClientUpdateNotificationInputSchema>;
@@ -47,6 +48,7 @@ const prompt = ai.definePrompt({
       interventionTitle: SendClientUpdateNotificationInputSchema.shape.interventionTitle,
       interventionStatus: SendClientUpdateNotificationInputSchema.shape.interventionStatus,
       updateMessage: SendClientUpdateNotificationInputSchema.shape.updateMessage,
+      interventionLink: SendClientUpdateNotificationInputSchema.shape.interventionLink,
   })},
   output: {schema: z.object({ emailSubject: z.string(), emailBody: z.string() }) },
   prompt: `You are an AI assistant for a business software called MannaTic. Your task is to generate a notification email for a client regarding their maintenance intervention. The email must be in **Italian**.
@@ -58,17 +60,22 @@ Intervention ID: {{{interventionId}}}
 Intervention Title: {{{interventionTitle}}}
 Current Status: {{{interventionStatus}}}
 Update Details: {{{updateMessage}}}
+Intervention Link: {{{interventionLink}}}
 
 The email should:
-1. Have a clear subject line like "Aggiornamento Intervento #{{{interventionId}}}: {{{interventionTitle}}}".
+1. Have a clear subject line. If the update message says "creato", the subject should be "Conferma Creazione Intervento #{{{interventionId}}}". Otherwise, it should be "Aggiornamento Intervento #{{{interventionId}}}: {{{interventionTitle}}}".
 2. Greet the client by name (e.g., "Gentile {{{clientName}}},").
 3. Inform them that there is an update regarding their intervention.
 4. Clearly state the intervention details (ID, title, and current status).
 5. Include the specific update message.
+{{#if interventionLink}}
+6. Provide a clear call-to-action button to view the intervention details using the provided link. The button should say "Visualizza Dettagli Intervento".
+{{else}}
 6. Reassure them that they can view all details by logging into their MannaTic dashboard.
+{{/if}}
 7. End with a professional closing, like "Cordiali saluti, Il Team di MannaTic".
 
-Output a JSON object with "emailSubject" and "emailBody" fields. The emailBody should be in HTML format.
+Output a JSON object with "emailSubject" and "emailBody" fields. The emailBody should be in HTML format, using a clean design with a prominent call-to-action button if the link is present.
 `,
 });
 

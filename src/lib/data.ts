@@ -3,9 +3,8 @@
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual } from 'firebase/firestore';
-import { triggerExpiryNotification, triggerNewInterventionNotification } from '@/app/actions';
-import { sendClientUpdateNotification } from '@/ai/flows/send-client-update-notification';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField } from 'firebase/firestore';
+import { triggerExpiryNotification, triggerNewInterventionNotification, triggerClientUpdateNotification } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -192,11 +191,11 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
       avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
       address: userData.address || '',
       phone: userData.phone || '',
-      allowedSectors: userData.allowedSectors || (userData.role === 'Operator' ? ['interventions', 'surveys', 'maintenance'] : undefined),
+      allowedSectors: userData.role === 'Operator' ? (userData.allowedSectors || ['interventions', 'surveys', 'maintenance']) : undefined,
     };
 
     if (newUserPayload.role !== 'Operator') {
-        delete newUserPayload.allowedSectors;
+        delete (newUserPayload as Partial<User>).allowedSectors;
     }
     
     await setDoc(doc(db, 'users', newId), newUserPayload as any);
@@ -213,7 +212,7 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
     try {
         const userDocRef = doc(db, 'users', id);
         
-        const dataToUpdate: Partial<User> = {...updatedData};
+        const dataToUpdate: { [key: string]: any } = {...updatedData};
         if(dataToUpdate.password === '' || dataToUpdate.password === undefined) {
             delete dataToUpdate.password;
         }
@@ -223,12 +222,10 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         }
         
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
-            delete (dataToUpdate as any).allowedSectors;
-        } else if (dataToUpdate.role === 'Operator' && dataToUpdate.allowedSectors === undefined) {
-            dataToUpdate.allowedSectors = [];
+            dataToUpdate.allowedSectors = deleteField();
         }
         
-        await updateDoc(userDocRef, dataToUpdate as any);
+        await updateDoc(userDocRef, dataToUpdate);
         
         const updatedDoc = await getDoc(userDocRef);
         if (updatedDoc.exists()) {
@@ -468,7 +465,6 @@ type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'creat
 async function notifyAdminOnNewIntervention(intervention: Intervention, clientName: string, creatorName: string) {
     const { companyId, id, title, description, priority, dueDate, assignedOperatorId } = intervention;
 
-    // 1. Get Company and check SMTP settings
     const companyDoc = await getDoc(doc(db, 'companies', companyId));
     if (!companyDoc.exists()) return;
     const company = companyDoc.data() as Company;
@@ -478,14 +474,12 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
         return;
     }
 
-    // 2. Find Admins
     const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
     const adminsSnapshot = await getDocs(qAdmins);
     const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
 
     if (admins.length === 0) return;
 
-    // 3. Get operator name if exists
     let operatorName: string | undefined;
     if (assignedOperatorId) {
         const operator = await getOperator(assignedOperatorId);
@@ -494,8 +488,6 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
         }
     }
 
-
-    // 4. Trigger notification for each admin
     for (const admin of admins) {
         if (admin.email) {
             console.log(`Sending new intervention notification for #${id} to admin ${admin.email}`);
@@ -521,7 +513,6 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
             
             triggerNewInterventionNotification(notificationInput);
 
-             // Create in-app notification for admin
             const notificationMessage = `Nuovo intervento #${id} (${title}) creato da ${creatorName} per il cliente ${clientName}.`;
             addDoc(collection(db, 'notifications'), {
                 userId: admin.id,
@@ -536,7 +527,7 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
     }
 }
 
-async function notifyClientOnInterventionCreation(intervention: Intervention) {
+async function notifyClientOnInterventionCreation(intervention: Intervention, creatorName: string) {
     const client = await getUserById(intervention.clientId);
     if (!client || !client.email) {
         console.log(`Client ${intervention.clientId} not found or has no email.`);
@@ -552,13 +543,14 @@ async function notifyClientOnInterventionCreation(intervention: Intervention) {
         return;
     }
 
-    sendClientUpdateNotification({
+    triggerClientUpdateNotification({
         recipientEmail: client.email,
         clientName: client.name,
         interventionId: intervention.id,
         interventionTitle: intervention.title,
         interventionStatus: intervention.status,
-        updateMessage: "Il tuo intervento è stato creato e preso in carico.",
+        updateMessage: `Il tuo intervento, creato da ${creatorName}, è stato ricevuto e preso in carico.`,
+        interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
         smtpConfig: {
             host: company.smtpHost,
             port: company.smtpPort,
@@ -573,14 +565,13 @@ async function notifyClientOnInterventionCreation(intervention: Intervention) {
 export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
     const { creatorName, clientId, companyId, ...restOfData } = interventionData;
     
-    // Check if clientId is an existing user ID or a new name string
     const existingUser = await getUserById(clientId);
     let finalClientId = existingUser ? existingUser.id : null;
     
     let clientName: string;
 
     if (!finalClientId) {
-        clientName = clientId; // This is the new client's name from the input
+        clientName = clientId; 
         const companyDoc = await getDoc(doc(db, 'companies', companyId));
         if (!companyDoc.exists()) {
             throw new Error(`Company with id ${companyId} not found`);
@@ -605,8 +596,8 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     }
 
     const dataForDb: any = { ...restOfData };
-    if (dataForDb.dueTime === undefined) {
-      delete dataForDb.dueTime;
+    if (dataForDb.dueDate === undefined) {
+      dataForDb.dueDate = null;
     }
     
     const newId = generateShortId();
@@ -627,7 +618,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
     // Trigger notifications
     await notifyAdminOnNewIntervention(newInterventionData, clientName, creatorName);
-    await notifyClientOnInterventionCreation(newInterventionData);
+    await notifyClientOnInterventionCreation(newInterventionData, creatorName);
     
     return newInterventionData;
 }
@@ -656,8 +647,8 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
 export async function createUpdateNotification(intervention: Intervention, updater: User, updateText?: string) {
     const recipients: string[] = [];
 
-    // Add client to recipients if they didn't make the update
-    if (intervention.clientId && intervention.clientId !== updater.id) {
+    // Add client to recipients
+    if (intervention.clientId) {
         recipients.push(intervention.clientId);
     }
 
@@ -687,8 +678,11 @@ export async function createUpdateNotification(intervention: Intervention, updat
         const user = await getUserById(userId);
         if (!user) continue;
 
+        // Skip sending email to the person who made the update
+        if (user.id === updater.id) continue;
+
         const baseMessage = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
-        const inAppMessage = updateText ? `${baseMessage}. Nuovo stato: ${intervention.status}. Dettagli: ${updateText}` : baseMessage;
+        const inAppMessage = updateText ? `${baseMessage}. Dettagli: ${updateText}` : `${baseMessage}. Nuovo stato: ${intervention.status}`;
         
         // Create in-app notification
         addDoc(collection(db, 'notifications'), {
@@ -707,13 +701,14 @@ export async function createUpdateNotification(intervention: Intervention, updat
                 console.log(`Skipping client update email for company ${intervention.companyId}: SMTP not configured.`);
                 continue;
             }
-             sendClientUpdateNotification({
+             triggerClientUpdateNotification({
                 recipientEmail: user.email,
                 clientName: user.name,
                 interventionId: intervention.id,
                 interventionTitle: intervention.title,
                 interventionStatus: intervention.status,
                 updateMessage: updateText ? `${updater.name} ha aggiunto un aggiornamento: "${updateText}"` : `${updater.name} ha cambiato lo stato in: ${intervention.status}`,
+                interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
                 smtpConfig: {
                     host: company.smtpHost,
                     port: company.smtpPort,
@@ -731,17 +726,16 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
     try {
         const docRef = doc(db, 'interventions', id);
         
-        // Get original to compare updates
         const originalDoc = await getDoc(docRef);
         if (!originalDoc.exists()) return null;
         const originalIntervention = originalDoc.data() as Intervention;
         
-        const dataToUpdate = { ...updatedData };
+        const dataToUpdate: { [key: string]: any } = { ...updatedData };
         if (dataToUpdate.dueDate === undefined) {
-          dataToUpdate.dueDate = null;
+            dataToUpdate.dueDate = null;
         }
         if (dataToUpdate.completedAt === undefined) {
-            delete (dataToUpdate as any).completedAt;
+            delete dataToUpdate.completedAt;
         } else if (dataToUpdate.completedAt === null) {
             dataToUpdate.completedAt = null;
         }
@@ -755,7 +749,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             await createUpdateNotification({ id, ...dataToUpdate } as Intervention, updater, updateText);
         }
         
-        await updateDoc(docRef, dataToUpdate as any);
+        await updateDoc(docRef, dataToUpdate);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Intervention : null;
     } catch (error) {

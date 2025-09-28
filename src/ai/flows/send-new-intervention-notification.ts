@@ -50,7 +50,7 @@ export async function sendNewInterventionNotification(input: SendNewIntervention
     try {
       const { smtpConfig, ...promptInput } = input;
       
-      const emailSubject = `Nuovo Intervento Creato: #${promptInput.interventionId}`;
+      const emailSubject = `Nuovo Intervento #${promptInput.interventionId} (${promptInput.creatorName} per ${promptInput.clientName})`;
       const formattedDueDate = promptInput.interventionDueDate 
         ? format(new Date(promptInput.interventionDueDate), 'dd/MM/yyyy', { locale: it }) 
         : 'Non specificata';
