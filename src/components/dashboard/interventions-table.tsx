@@ -139,6 +139,9 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     }
     if (statusFilter !== 'all') {
       filtered = filtered.filter(i => i.status === statusFilter);
+    } else if (currentUser.role === 'Operator') {
+      // Default filter for operators: hide billing statuses
+      filtered = filtered.filter(i => i.status !== 'Da Fatturare' && i.status !== 'Fatturato');
     }
     if (priorityFilter !== 'all') {
         filtered = filtered.filter(i => i.priority === priorityFilter);
@@ -151,7 +154,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     }
 
     return filtered;
-  }, [roleBasedInterventions, searchTerm, statusFilter, priorityFilter, clientFilter, operatorFilter]);
+  }, [roleBasedInterventions, searchTerm, statusFilter, priorityFilter, clientFilter, operatorFilter, currentUser.role]);
   
   const sortedInterventions = useMemo(() => {
     let sortableItems = [...filteredInterventions];
