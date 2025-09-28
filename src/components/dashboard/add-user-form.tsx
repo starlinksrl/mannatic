@@ -90,25 +90,33 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         toast({ variant: 'destructive', title: 'Errore', description: 'Nessuna azienda selezionata.' });
         return;
     }
-
-    await addUser({
-        name: values.name,
-        email: values.email,
-        role: values.role as UserRole,
-        password: values.password,
-        companyId: currentCompany.id,
-        address: values.address,
-        phone: values.phone,
-        allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
-    });
     
-    onUserAdded();
-    toast({
-      title: `${isClientForm ? 'Cliente' : 'Utente'} creato`,
-      description: `${isClientForm ? 'Il cliente' : 'L\'utente'} ${values.name} è stato aggiunto con successo.`,
-    });
-    setIsOpen(false);
-    form.reset();
+    try {
+        await addUser({
+            name: values.name,
+            email: values.email,
+            role: values.role as UserRole,
+            password: values.password,
+            companyId: currentCompany.id,
+            address: values.address,
+            phone: values.phone,
+            allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
+        });
+        
+        onUserAdded();
+        toast({
+          title: `${isClientForm ? 'Cliente' : 'Utente'} creato`,
+          description: `${isClientForm ? 'Il cliente' : 'L\'utente'} ${values.name} è stato aggiunto con successo.`,
+        });
+        setIsOpen(false);
+        form.reset();
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Errore',
+            description: error.message || 'Si è verificato un errore durante la creazione dell\'utente.',
+        });
+    }
   }
   
   const title = isClientForm ? 'Crea nuovo cliente' : 'Crea nuovo utente';

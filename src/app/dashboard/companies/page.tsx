@@ -192,9 +192,13 @@ export default function CompaniesPage() {
         toast({ title: 'Azienda creata', description: `L'azienda ${newCompany.name} è stata creata.` });
       }
       return true;
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Errore', description: 'Si è verificato un errore.' });
-      return false;
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Errore',
+            description: error.message || 'Si è verificato un errore.',
+        });
+        return false;
     }
   }
   

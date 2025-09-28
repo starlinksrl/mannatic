@@ -49,6 +49,12 @@ export async function getCompanyByUserId(userId: string): Promise<Company | null
 }
 
 export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Company> {
+    // Check if email already exists
+    const existingUser = await getUserByEmail(companyData.email!);
+    if (existingUser) {
+        throw new Error('Un utente con questa email esiste già.');
+    }
+
     try {
         const companyPayload: Omit<Company, 'id' | 'password'> = {
             name: companyData.name,
@@ -75,6 +81,9 @@ export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Comp
 
     } catch (error) {
         console.error("Error adding company:", error);
+        if (error instanceof Error) {
+            throw error;
+        }
         throw new Error("Failed to add company.");
     }
 }
@@ -183,28 +192,37 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise<User> {
-  try {
-    const newId = generateShortId();
-    const newUserPayload: Omit<User, 'id'> = {
-      ...userData,
-      email: userData.email.toLowerCase(),
-      avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
-      address: userData.address || '',
-      phone: userData.phone || '',
-      allowedSectors: userData.role === 'Operator' ? (userData.allowedSectors || ['interventions', 'surveys', 'maintenance']) : undefined,
-    };
-
-    if (newUserPayload.role !== 'Operator') {
-        delete (newUserPayload as Partial<User>).allowedSectors;
+    // Check if email already exists
+    const existingUser = await getUserByEmail(userData.email);
+    if (existingUser) {
+        throw new Error('Un utente con questa email esiste già.');
     }
-    
-    await setDoc(doc(db, 'users', newId), newUserPayload as any);
-    
-    return { id: newId, ...newUserPayload };
-  } catch (error) {
-      console.error("Error adding user:", error);
-      throw new Error("Failed to add user.");
-  }
+  
+    try {
+        const newId = generateShortId();
+        const newUserPayload: Omit<User, 'id'> = {
+            ...userData,
+            email: userData.email.toLowerCase(),
+            avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
+            address: userData.address || '',
+            phone: userData.phone || '',
+            allowedSectors: userData.role === 'Operator' ? (userData.allowedSectors || ['interventions', 'surveys', 'maintenance']) : undefined,
+        };
+
+        if (newUserPayload.role !== 'Operator') {
+            delete (newUserPayload as Partial<User>).allowedSectors;
+        }
+        
+        await setDoc(doc(db, 'users', newId), newUserPayload as any);
+        
+        return { id: newId, ...newUserPayload };
+    } catch (error) {
+        console.error("Error adding user:", error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error("Failed to add user.");
+    }
 }
 
 

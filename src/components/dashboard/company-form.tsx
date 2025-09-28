@@ -89,7 +89,16 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                 password: '',
             });
         } else {
-            form.reset();
+            form.reset({
+                name: '',
+                address: '',
+                vatNumber: '',
+                taxCode: '',
+                phone: '',
+                uniqueCode: '',
+                email: '',
+                password: ''
+            });
         }
     }, [company, form, isOpen]);
 
