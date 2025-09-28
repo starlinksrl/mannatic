@@ -69,5 +69,5 @@
 
 /* Fix for Google Maps Autocomplete z-index issue */
 .pac-container {
-  z-index: 1050 !important;
+  z-index: 9999 !important;
 }
