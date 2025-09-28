@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 
 export interface Company {
@@ -30,6 +31,13 @@ export interface User {
   companyId: string;
   address?: string;
   phone?: string;
+}
+
+export interface PasswordResetToken {
+    id: string;
+    userId: string;
+    token: string;
+    expiresAt: string;
 }
 
 export interface Client {

@@ -1,9 +1,10 @@
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus } from './types';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual } from 'firebase/firestore';
 import { triggerExpiryNotification, triggerNewInterventionNotification } from '@/app/actions';
 import { generateShortId } from './utils';
+import { v4 as uuidv4 } from 'uuid';
 
 
 // --- GENERIC DOCUMENT MANAGEMENT ---
@@ -28,6 +29,20 @@ export async function getCompanies(): Promise<Company[]> {
     } catch (error) {
         console.error("Error fetching companies:", error);
         return [];
+    }
+}
+
+export async function getCompanyByUserId(userId: string): Promise<Company | null> {
+    const user = await getUserById(userId);
+    if (!user || user.role === 'Creator') return null;
+
+    try {
+        const docRef = doc(db, 'companies', user.companyId);
+        const docSnap = await getDoc(docRef);
+        return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Company : null;
+    } catch (error) {
+        console.error("Error fetching company by user ID:", error);
+        return null;
     }
 }
 
@@ -77,7 +92,7 @@ export async function updateCompany(id: string, updatedData: Partial<Company>): 
 }
 
 export async function deleteCompanyAndSubcollections(companyId: string): Promise<void> {
-    const collectionsToDelete = ['users', 'interventions', 'notifications', 'surveys'];
+    const collectionsToDelete = ['users', 'interventions', 'notifications', 'surveys', 'passwordResetTokens'];
     const batch = writeBatch(db);
 
     for (const coll of collectionsToDelete) {
@@ -207,6 +222,47 @@ export async function deleteUser(id: string): Promise<boolean> {
         console.error("Error deleting user:", error);
         return false;
     }
+}
+
+// --- PASSWORD RESET ---
+export async function createPasswordResetToken(userId: string): Promise<string> {
+    const token = uuidv4();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1); // Token expires in 1 hour
+
+    const user = await getUserById(userId);
+    if (!user) throw new Error("User not found");
+
+    await addDoc(collection(db, 'passwordResetTokens'), {
+        userId,
+        token,
+        expiresAt: expiresAt.toISOString(),
+        companyId: user.companyId
+    });
+
+    return token;
+}
+
+export async function resetUserPassword(token: string, newPassword: string):Promise<{ success: boolean, message: string }> {
+    const q = query(collection(db, "passwordResetTokens"), where("token", "==", token));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return { success: false, message: "Token di reset non valido o scaduto." };
+    }
+
+    const tokenDoc = querySnapshot.docs[0];
+    const tokenData = tokenDoc.data() as PasswordResetToken;
+    
+    if (new Date() > new Date(tokenData.expiresAt)) {
+         await deleteDoc(tokenDoc.ref);
+         return { success: false, message: "Token di reset scaduto." };
+    }
+
+    await updateUser(tokenData.userId, { password: newPassword });
+    await deleteDoc(tokenDoc.ref);
+
+    return { success: true, message: "Password aggiornata con successo." };
 }
 
 
@@ -740,3 +796,4 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         console.error("Error marking notifications as read:", error);
         return false;
     }
+}

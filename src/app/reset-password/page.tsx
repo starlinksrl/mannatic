@@ -9,40 +9,49 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import { Loader } from 'lucide-react';
+import { handlePasswordReset } from '../actions';
 
 function ResetPasswordFormComponent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
-  const handleResetPassword = () => {
+  const onResetPassword = async () => {
+    if (!token) {
+        toast({ variant: 'destructive', title: 'Errore', description: 'Token di reset non valido o mancante.' });
+        return;
+    }
     if (password !== confirmPassword) {
-      toast({
-        variant: 'destructive',
-        title: 'Errore',
-        description: 'Le password non coincidono.',
-      });
+      toast({ variant: 'destructive', title: 'Errore', description: 'Le password non coincidono.' });
       return;
     }
     if (password.length < 8) {
-      toast({
-        variant: 'destructive',
-        title: 'Errore',
-        description: 'La password deve contenere almeno 8 caratteri.',
-      });
+      toast({ variant: 'destructive', title: 'Errore', description: 'La password deve contenere almeno 8 caratteri.' });
       return;
     }
+    
+    setLoading(true);
+    const result = await handlePasswordReset(token, password);
+    setLoading(false);
 
-    // In a real app, you would call an API to reset the password with the token
-    console.log('Resetting password with token:', token);
-    toast({
-      title: 'Password aggiornata',
-      description: 'La tua password è stata resettata con successo. Ora puoi effettuare il login.',
-    });
-    router.push('/login');
+    if (result.success) {
+        toast({
+          title: 'Password aggiornata',
+          description: 'La tua password è stata resettata con successo. Ora puoi effettuare il login.',
+        });
+        router.push('/login');
+    } else {
+         toast({
+          variant: 'destructive',
+          title: 'Errore',
+          description: result.message,
+        });
+    }
+
   };
 
   return (
@@ -65,6 +74,7 @@ function ResetPasswordFormComponent() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
           />
         </div>
          <div className="grid gap-2">
@@ -75,10 +85,12 @@ function ResetPasswordFormComponent() {
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            disabled={loading}
           />
         </div>
-        <Button className="w-full" onClick={handleResetPassword}>
-          Resetta Password
+        <Button className="w-full" onClick={onResetPassword} disabled={loading}>
+            {loading ? <Loader className="mr-2 animate-spin" /> : null}
+            Resetta Password
         </Button>
       </CardContent>
     </Card>

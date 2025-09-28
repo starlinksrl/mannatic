@@ -9,20 +9,33 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import Link from 'next/link';
+import { handlePasswordResetRequest } from '@/app/actions';
+import { Loader } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleSendResetLink = () => {
-    // In a real app, you would call an API to send the reset link
-    console.log('Sending password reset link to:', email);
-    toast({
-      title: 'Link di reset inviato',
-      description: `Se un account con l'email ${email} esiste, riceverai un link per resettare la password.`,
-    });
-    router.push('/login');
+  const handleSendResetLink = async () => {
+    setLoading(true);
+    const result = await handlePasswordResetRequest(email);
+
+    if (result.success) {
+        toast({
+            title: 'Link di reset inviato',
+            description: result.message,
+        });
+        router.push('/login');
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Errore',
+            description: result.message,
+        });
+    }
+    setLoading(false);
   };
 
   return (
@@ -47,9 +60,11 @@ export default function ForgotPasswordPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
             />
           </div>
-          <Button className="w-full" onClick={handleSendResetLink}>
+          <Button className="w-full" onClick={handleSendResetLink} disabled={loading}>
+            {loading ? <Loader className="mr-2 animate-spin" /> : null}
             Invia link di reset
           </Button>
         </CardContent>
