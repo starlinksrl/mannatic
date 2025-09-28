@@ -60,10 +60,10 @@ export function ActivityFeed({ interventions: initialInterventions, onUpdate }: 
         <Card>
             <CardHeader>
                 <CardTitle>Attività Recenti</CardTitle>
-                <CardDescription>Ultimi aggiornamenti dagli interventi.</CardDescription>
+                <CardDescription>Ultimi aggiornamenti dagli interventi. Clicca su un elemento per vederne i dettagli.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[calc(100vh-20rem)]">
+                <ScrollArea className="h-72">
                     <div className="space-y-4 pr-4">
                         {latestUpdates.length > 0 ? (
                             latestUpdates.map((update, index) => {
