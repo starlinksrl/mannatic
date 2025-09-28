@@ -31,7 +31,6 @@ import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
@@ -56,8 +55,8 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [showPassword, setShowPassword] = useState(false);
-  const autocompleteInputRef = useRef<HTMLInputElement>(null);
-  const [isAutocompleteOpen, setAutocompleteOpen] = useState(false);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -103,11 +102,12 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   
   const title = isClientForm ? 'Crea nuovo cliente' : 'Crea nuovo utente';
 
-  const handlePlaceChanged = (autocomplete: google.maps.places.Autocomplete) => {
-    const place = autocomplete.getPlace();
-    if (place && place.formatted_address) {
-      form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
-      setAutocompleteOpen(false); // Close popover on selection
+  const handlePlaceChanged = () => {
+    if (autocompleteRef.current) {
+        const place = autocompleteRef.current.getPlace();
+        if (place && place.formatted_address) {
+            form.setValue('address', place.formatted_address);
+        }
     }
   };
 
@@ -229,37 +229,29 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Indirizzo</FormLabel>
-                  {isLoaded && !loadError ? (
-                    <Popover open={isAutocompleteOpen} onOpenChange={setAutocompleteOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="Via, Città, CAP"
-                            onFocus={() => setAutocompleteOpen(true)}
-                            disabled={!isLoaded}
-                          />
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                        <Autocomplete
-                          onLoad={(autocomplete) => {
-                            autocomplete.addListener('place_changed', () => handlePlaceChanged(autocomplete));
-                          }}
-                          fields={['formatted_address']}
-                        >
-                          <Input
-                            ref={autocompleteInputRef}
-                            placeholder="Cerca un indirizzo..."
-                            className="border-none focus-visible:ring-0"
-                            onFocus={() => setAutocompleteOpen(true)}
-                          />
-                        </Autocomplete>
-                      </PopoverContent>
-                    </Popover>
-                  ) : (
-                    <Input {...field} placeholder="Via, Città, CAP" disabled={!isLoaded} />
-                  )}
+                    <FormControl>
+                        {isLoaded ? (
+                            <Autocomplete
+                                onLoad={(autocomplete) => {
+                                    autocompleteRef.current = autocomplete;
+                                }}
+                                onPlaceChanged={handlePlaceChanged}
+                                fields={['formatted_address']}
+                            >
+                                <Input
+                                    {...field}
+                                    ref={inputRef}
+                                    placeholder="Via, Città, CAP"
+                                />
+                            </Autocomplete>
+                        ) : (
+                           <Input
+                                {...field}
+                                placeholder="Via, Città, CAP"
+                                disabled
+                            />
+                        )}
+                    </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -276,3 +268,4 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     </Dialog>
   );
 }
+

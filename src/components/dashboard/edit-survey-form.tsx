@@ -61,8 +61,8 @@ interface EditSurveyFormProps {
 
 export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, isOpen, setIsOpen }: EditSurveyFormProps) {
   const { toast } = useToast();
-  const autocompleteInputRef = useRef<HTMLInputElement>(null);
-  const [isAutocompleteOpen, setAutocompleteOpen] = useState(false);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -124,11 +124,12 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
     }
   }
 
-  const handlePlaceChanged = (autocomplete: google.maps.places.Autocomplete) => {
-    const place = autocomplete.getPlace();
-    if (place && place.formatted_address) {
-      form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
-      setAutocompleteOpen(false);
+  const handlePlaceChanged = () => {
+    if (autocompleteRef.current) {
+        const place = autocompleteRef.current.getPlace();
+        if (place && place.formatted_address) {
+            form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
+        }
     }
   };
 
@@ -186,37 +187,29 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Indirizzo</FormLabel>
-                           {isLoaded && !loadError ? (
-                            <Popover open={isAutocompleteOpen} onOpenChange={setAutocompleteOpen}>
-                              <PopoverTrigger asChild>
-                                 <FormControl>
-                                    <Input
-                                      {...field}
-                                      placeholder="Cerca un indirizzo..."
-                                      onFocus={() => setAutocompleteOpen(true)}
-                                      disabled={!isLoaded}
+                           <FormControl>
+                                {isLoaded ? (
+                                    <Autocomplete
+                                        onLoad={(autocomplete) => {
+                                            autocompleteRef.current = autocomplete;
+                                        }}
+                                        onPlaceChanged={handlePlaceChanged}
+                                        fields={['formatted_address']}
+                                    >
+                                        <Input
+                                            {...field}
+                                            ref={inputRef}
+                                            placeholder="Via, numero civico, città"
+                                        />
+                                    </Autocomplete>
+                                ) : (
+                                   <Input
+                                        {...field}
+                                        placeholder="Via, numero civico, città"
+                                        disabled
                                     />
-                                 </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                                <Autocomplete
-                                  onLoad={(autocomplete) => {
-                                    autocomplete.addListener('place_changed', () => handlePlaceChanged(autocomplete));
-                                  }}
-                                  fields={['formatted_address']}
-                                >
-                                  <Input
-                                    ref={autocompleteInputRef}
-                                    placeholder="Cerca un indirizzo..."
-                                    className="border-none focus-visible:ring-0"
-                                    onFocus={() => setAutocompleteOpen(true)}
-                                  />
-                                </Autocomplete>
-                              </PopoverContent>
-                            </Popover>
-                          ) : (
-                            <Input {...field} placeholder="Via, numero civico, città" disabled={!isLoaded}/>
-                          )}
+                                )}
+                            </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
