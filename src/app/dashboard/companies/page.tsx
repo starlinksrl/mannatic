@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Company, addCompany, getCompanies, deleteCompanyAndSubcollections, updateCompany } from '@/lib/data';
-import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact, MoreHorizontal, Pencil, Trash2, Shield, Eye, Database, Camera } from 'lucide-react';
+import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact, MoreHorizontal, Pencil, Trash2, Shield, Eye, Database, Camera, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,21 @@ import {
 import Link from 'next/link';
 
 const changelog = [
+    {
+        version: "0.11",
+        date: "2024-09-25",
+        title: "Comunicazioni Clienti e Miglioramenti Stabilità",
+        icon: Mail,
+        iconClass: "text-green-500",
+        changes: [
+            { type: MailCheck, description: "I clienti ora ricevono un'email di conferma immediata alla creazione di un nuovo intervento." },
+            { type: Mail, description: "Invio automatico di email ai clienti per ogni aggiornamento di stato o commento su un intervento." },
+            { type: LinkIcon, description: "Le email di aggiornamento contengono un link diretto per visualizzare i dettagli dell'intervento." },
+            { type: Wrench, description: "Migliorato il soggetto delle email di notifica per includere il creatore del ticket e il cliente." },
+            { type: AlertCircle, description: "Risolto un errore critico che poteva verificarsi durante l'aggiornamento degli utenti, prevenendo crash." },
+            { type: Bug, description: "Risolto un bug per cui le attività recenti di interventi eliminati potevano rimanere visibili nella dashboard." },
+        ]
+    },
      {
         version: "0.10",
         date: "2024-09-24",
