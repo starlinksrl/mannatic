@@ -25,7 +25,7 @@ const SendClientUpdateNotificationInputSchema = z.object({
   interventionId: z.string().describe('The ID of the intervention.'),
   interventionTitle: z.string().describe('The title of the intervention.'),
   interventionStatus: z.string().describe('The current status of the intervention.'),
-  updateMessage: z.string().describe('The content of the update (e.g., "Intervento creato" or a specific comment).'),
+  updateMessage: z.string().describe('The content of the update (e.g., "creato" or a specific comment).'),
   clientName: z.string().describe('The name of the client.'),
   interventionLink: z.string().url().optional().describe('A direct link to view the intervention in the app.'),
   smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
@@ -63,7 +63,7 @@ Update Details: {{{updateMessage}}}
 Intervention Link: {{{interventionLink}}}
 
 The email should:
-1. Have a clear subject line. If the update message says "creato", the subject should be "Conferma Creazione Intervento #{{{interventionId}}}". Otherwise, it should be "Aggiornamento Intervento #{{{interventionId}}}: {{{interventionTitle}}}".
+1. Have a clear subject line. If the update message is "creato", the subject should be "Conferma Creazione Intervento #{{{interventionId}}}". Otherwise, it should be "Aggiornamento Intervento #{{{interventionId}}}: {{{interventionTitle}}}".
 2. Greet the client by name (e.g., "Gentile {{{clientName}}},").
 3. Inform them that there is an update regarding their intervention.
 4. Clearly state the intervention details (ID, title, and current status).
@@ -128,3 +128,5 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
 export async function sendClientUpdateNotification(input: SendClientUpdateNotificationInput): Promise<SendClientUpdateNotificationOutput> {
     return sendClientUpdateNotificationFlow(input);
 }
+
+    

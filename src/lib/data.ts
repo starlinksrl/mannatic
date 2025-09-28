@@ -566,7 +566,7 @@ async function notifyClientOnInterventionCreation(intervention: Intervention, cr
         interventionId: intervention.id,
         interventionTitle: intervention.title,
         interventionStatus: intervention.status,
-        updateMessage: `Il tuo intervento, creato da ${creatorName}, è stato ricevuto e preso in carico.`,
+        updateMessage: `creato`, // Special keyword for creation subject
         interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
         smtpConfig: {
             host: company.smtpHost,
@@ -722,23 +722,25 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         } else if (dataToUpdate.completedAt === null) {
             dataToUpdate.completedAt = null;
         }
+
+        const newUpdates = (dataToUpdate.updates || []).filter((u: InterventionUpdate) => 
+            !(originalIntervention.updates || []).some(ou => ou.date === u.date && ou.userName === u.userName)
+        );
         
         await updateDoc(docRef, dataToUpdate);
 
-        const statusChanged = originalIntervention.status !== dataToUpdate.status;
-        const newUpdates = (dataToUpdate.updates || []).filter((u: InterventionUpdate) => 
-            !(originalIntervention.updates || []).some(ou => ou.date === u.date)
-        );
+        const interventionForNotif = { ...originalIntervention, ...dataToUpdate } as Intervention;
+        const statusChanged = originalIntervention.status !== interventionForNotif.status;
         const hasNewComment = newUpdates.length > 0;
         
         // --- NOTIFICATION LOGIC ---
+        // 1. Send in-app notifications to internal users
         if (statusChanged || hasNewComment) {
-            const interventionForNotif = { ...originalIntervention, ...dataToUpdate } as Intervention;
-            
-            // 1. Send in-app notifications
             await createUpdateNotification(interventionForNotif, updater);
-
-            // 2. Send email to client
+        }
+        
+        // 2. Send email to client if there was a meaningful update
+        if (statusChanged || hasNewComment) {
             const client = await getUserById(interventionForNotif.clientId);
             if (client && client.email) {
                 const company = await getCompanyByUserId(client.id);
@@ -1020,5 +1022,7 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
     }
 }
 
+
+    
 
     
