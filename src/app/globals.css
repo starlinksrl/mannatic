@@ -66,3 +66,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Fix for Google Maps Autocomplete z-index issue */
+.pac-container {
+  z-index: 1050 !important;
+}
