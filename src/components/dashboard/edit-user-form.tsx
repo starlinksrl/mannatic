@@ -259,7 +259,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 </FormItem>
               )}
             />
-            {role === 'Operator' && (
+            {role === 'Operator' && canEditRole && (
                  <FormField
                     control={form.control}
                     name="allowedSectors"
