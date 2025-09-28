@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -52,7 +53,7 @@ export default function DashboardPage() {
     if (user.role === 'Client') {
         relevantInterventions = allInterventions.filter(i => i.clientId === user.id);
     } else if (user.role === 'Operator') {
-        relevantInterventions = allInterventions.filter(i => i.assignedOperatorId === user.id);
+        relevantInterventions = allInterventions.filter(i => i.assignedOperatorId === user.id || !i.assignedOperatorId);
     } else {
         relevantInterventions = allInterventions;
     }

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -135,7 +136,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
       return interventions;
     }
      if (currentUser.role === 'Operator') {
-      return interventions.filter(i => i.assignedOperatorId === currentUser.id);
+      return interventions.filter(i => i.assignedOperatorId === currentUser.id || !i.assignedOperatorId);
     }
     if (currentUser.role === 'Client') {
         return interventions.filter(i => i.clientId === currentUser.id);
