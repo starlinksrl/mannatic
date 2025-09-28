@@ -1,3 +1,4 @@
+
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -203,7 +204,7 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         }
         
         // Ensure allowedSectors is only set for operators
-        if (dataToUpdate.role !== 'Operator') {
+        if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
             dataToUpdate.allowedSectors = undefined;
         }
         
