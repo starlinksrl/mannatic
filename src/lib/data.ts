@@ -222,11 +222,9 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
         
-        // Ensure allowedSectors is only set for operators, otherwise remove it
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
-            delete dataToUpdate.allowedSectors;
+            delete (dataToUpdate as any).allowedSectors;
         } else if (dataToUpdate.role === 'Operator' && dataToUpdate.allowedSectors === undefined) {
-            // If role is operator and sectors are not provided, ensure it's at least an empty array if not defined
             dataToUpdate.allowedSectors = [];
         }
         
@@ -836,7 +834,20 @@ export async function updateScheduledMaintenance(id: string, updatedData: Partia
 
 export async function deleteIntervention(id: string): Promise<boolean> {
     try {
-        await deleteDoc(doc(db, 'interventions', id));
+        const batch = writeBatch(db);
+
+        // Delete associated notifications
+        const notificationsQuery = query(collection(db, 'notifications'), where('relatedInterventionId', '==', id));
+        const notificationsSnapshot = await getDocs(notificationsQuery);
+        notificationsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        // Delete the intervention itself
+        const interventionRef = doc(db, 'interventions', id);
+        batch.delete(interventionRef);
+        
+        await batch.commit();
         return true;
     } catch (error) {
         console.error("Error deleting intervention:", error);
@@ -845,8 +856,21 @@ export async function deleteIntervention(id: string): Promise<boolean> {
 }
 
 export async function deleteScheduledMaintenance(id: string): Promise<boolean> {
-    try {
-        await deleteDoc(doc(db, 'interventions', id));
+     try {
+        const batch = writeBatch(db);
+
+        // Delete associated notifications
+        const notificationsQuery = query(collection(db, 'notifications'), where('relatedInterventionId', '==', id));
+        const notificationsSnapshot = await getDocs(notificationsQuery);
+        notificationsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        // Delete the maintenance task itself (it's in the 'interventions' collection)
+        const maintenanceRef = doc(db, 'interventions', id);
+        batch.delete(maintenanceRef);
+        
+        await batch.commit();
         return true;
     } catch (error) {
         console.error("Error deleting maintenance:", error);
@@ -983,4 +1007,3 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
-
