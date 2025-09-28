@@ -131,8 +131,11 @@ export function InterventionsTable({ interventions: initialInterventions, curren
 
   const roleBasedInterventions = useMemo(() => {
     if (!currentUser) return [];
-    if (currentUser.role === 'Admin' || currentUser.role === 'Creator' || currentUser.role === 'Operator') {
+    if (currentUser.role === 'Admin' || currentUser.role === 'Creator') {
       return interventions;
+    }
+     if (currentUser.role === 'Operator') {
+      return interventions.filter(i => i.assignedOperatorId === currentUser.id);
     }
     if (currentUser.role === 'Client') {
         return interventions.filter(i => i.clientId === currentUser.id);

@@ -26,10 +26,11 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
   const [description, setDescription] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const isClient = currentUser.role === 'Client';
+  const isOperator = currentUser.role === 'Operator';
 
 
   useEffect(() => {
-    if (isClient) {
+    if (isClient || isOperator) {
       setIsLoading(false);
       setDescription(`Stato attuale dei tuoi interventi. Interventi aperti: ${kpiData.openInterventions}.`);
       return;
@@ -42,7 +43,7 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
       setIsLoading(false);
     };
     fetchDescription();
-  }, [kpiData, isClient]);
+  }, [kpiData, isClient, isOperator]);
 
   const interventionStatusData = [
     { name: 'Aperti', value: kpiData.openInterventions },
@@ -51,7 +52,7 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           title="Interventi Aperti"
           value={kpiData.openInterventions}
@@ -64,7 +65,7 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
           icon={<Check className="h-4 w-4 text-muted-foreground" />}
           description="Percentuale interventi nei tempi"
         />
-         {!isClient && (
+         {(!isClient && !isOperator) && (
             <KpiCard
                 title="Manutenzioni Scadute"
                 value={kpiData.overdueMaintenanceTasks}
@@ -81,25 +82,27 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
       </div>
 
       <div className={`grid gap-6 ${isClient ? 'grid-cols-1' : 'lg:grid-cols-2'}`}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">{isClient ? 'Riepilogo Interventi' : 'Analisi AI della Dashboard'}</CardTitle>
-            <CardDescription>{isClient ? 'Panoramica dello stato dei tuoi interventi.' : 'Riepilogo intelligente e suggerimenti basati sui dati attuali.'}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">{description}</p>
-            )}
-          </CardContent>
-        </Card>
+        { (!isClient && !isOperator) &&
+            <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">Analisi AI della Dashboard</CardTitle>
+                <CardDescription>Riepilogo intelligente e suggerimenti basati sui dati attuali.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                </div>
+                ) : (
+                <p className="text-sm text-muted-foreground">{description}</p>
+                )}
+            </CardContent>
+            </Card>
+        }
 
-        {!isClient && (
+        {(!isClient && !isOperator) && (
             <Card>
             <CardHeader>
                 <CardTitle className="font-headline">Carico Operatori</CardTitle>
@@ -123,8 +126,7 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
             </Card>
         )}
       </div>
-
-      {!isClient && (
+      
         <Card>
             <CardHeader>
             <CardTitle className="font-headline">Interventi ad alta priorità</CardTitle>
@@ -140,10 +142,10 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
                             <Badge variant={int.priority === 'Critica' ? 'destructive' : 'secondary'} className="text-accent-foreground">{int.priority}</Badge>
                         </div>
                     ))}
+                    {kpiData.highPriorityInterventions.length === 0 && <p className="text-sm text-muted-foreground">Nessun intervento ad alta priorità.</p>}
                 </div>
             </CardContent>
         </Card>
-      )}
     </div>
   );
 }

@@ -137,10 +137,10 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         }, ...newUpdates];
     }
     
-    let finalDueDate: string | null = null;
-    if (values.dueDate && values.dueTime) {
+    let finalDueDate: string | undefined;
+    if (values.dueDate) {
         try {
-            const [hours, minutes] = values.dueTime.split(':').map(Number);
+            const [hours, minutes] = values.dueTime ? values.dueTime.split(':').map(Number) : [0,0];
             let date = new Date(values.dueDate);
             date = setHours(date, hours);
             date = setMinutes(date, minutes);
@@ -149,8 +149,6 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             console.error("Invalid time value", e);
             finalDueDate = new Date(values.dueDate).toISOString();
         }
-    } else if (values.dueDate) {
-        finalDueDate = new Date(values.dueDate).toISOString();
     }
 
 
@@ -166,7 +164,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt || null,
     };
     
-    const updated = await updateIntervention(intervention!.id, updatedInterventionData);
+    const updated = await updateIntervention(intervention!.id, updatedInterventionData, currentUser);
     
     if (updated) {
         onInterventionUpdated();
@@ -366,7 +364,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                         </div>
                     </div>
 
-                    {currentUser.role === 'Admin' && (
+                    {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
                         <FormField
                             control={form.control}
                             name="assignedOperatorId"
@@ -489,7 +487,3 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
-
-    
-
-    

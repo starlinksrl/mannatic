@@ -1,4 +1,5 @@
 
+
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
@@ -156,6 +157,18 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
 export async function getUserById(id: string): Promise<User | null> {
     if (!id) return null;
+    if (id === 'user-creator') {
+        const creatorUser: User = { 
+          id: 'user-creator', 
+          name: 'Creator', 
+          email: 'creator@mannatic.com', 
+          role: 'Creator', 
+          avatarUrl: 'https://i.pravatar.cc/150?u=creator', 
+          password: 'creatorpassword',
+          companyId: 'none'
+        };
+        return Promise.resolve(creatorUser);
+    }
     try {
         const userDocRef = doc(db, 'users', id);
         const userDoc = await getDoc(userDocRef);
@@ -566,7 +579,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         sla: '24h',
         createdAt: new Date().toISOString(),
         updates: [{ date: new Date().toISOString(), description: `Creato da ${creatorName}.`, userName: creatorName }],
-        dueDate: restOfData.dueDate || null,
+        dueDate: restOfData.dueDate || undefined,
         isMaintenance: false,
     };
 
@@ -592,7 +605,7 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
         isMaintenance: true,
         nextDueDate,
         updates: [{ date: new Date().toISOString(), description: 'Manutenzione programmata creata.', userName: 'Sistema' }],
-        dueDate: maintenanceData.dueDate || null,
+        dueDate: maintenanceData.dueDate || undefined,
     };
 
     if (newMaintenanceData.dueDate === undefined) {
@@ -603,15 +616,69 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
     return newMaintenanceData;
 }
 
-export async function updateIntervention(id: string, updatedData: Partial<Intervention>): Promise<Intervention | null> {
+export async function createUpdateNotification(intervention: Intervention, updater: User) {
+    const recipients: string[] = [];
+
+    // Notify the client
+    if (intervention.clientId && intervention.clientId !== updater.id) {
+        recipients.push(intervention.clientId);
+    }
+
+    // Notify the assigned operator
+    if (intervention.assignedOperatorId && intervention.assignedOperatorId !== updater.id) {
+        recipients.push(intervention.assignedOperatorId);
+    }
+    
+    // If client or operator is updating, notify admins
+    if (updater.role === 'Client' || updater.role === 'Operator') {
+        const qAdmins = query(collection(db, 'users'), where("companyId", "==", intervention.companyId), where("role", "==", "Admin"));
+        const adminsSnapshot = await getDocs(qAdmins);
+        adminsSnapshot.docs.forEach(doc => {
+            if (doc.id !== updater.id) {
+                 recipients.push(doc.id);
+            }
+        });
+    }
+
+    const uniqueRecipients = [...new Set(recipients)];
+
+    for (const userId of uniqueRecipients) {
+        const message = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
+        addDoc(collection(db, 'notifications'), {
+            userId: userId,
+            companyId: intervention.companyId,
+            message: message,
+            read: false,
+            createdAt: new Date().toISOString(),
+            relatedInterventionId: intervention.id,
+            type: 'status_change'
+        });
+    }
+}
+
+
+export async function updateIntervention(id: string, updatedData: Partial<Intervention>, updater: User): Promise<Intervention | null> {
     try {
         const docRef = doc(db, 'interventions', id);
+        
+        // Get original to compare updates
+        const originalDoc = await getDoc(docRef);
+        if (!originalDoc.exists()) return null;
+        const originalIntervention = originalDoc.data() as Intervention;
         
         const dataToUpdate = { ...updatedData };
         if (dataToUpdate.completedAt === undefined) {
             delete (dataToUpdate as any).completedAt;
         } else if (dataToUpdate.completedAt === null) {
             dataToUpdate.completedAt = null;
+        }
+        
+        const newUpdates = (dataToUpdate.updates || []).filter(u => 
+            !(originalIntervention.updates || []).some(ou => ou.date === u.date && ou.userName === u.userName)
+        );
+
+        if (newUpdates.length > 0) {
+            await createUpdateNotification({ id, ...dataToUpdate } as Intervention, updater);
         }
         
         await updateDoc(docRef, dataToUpdate as any);
