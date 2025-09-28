@@ -5,6 +5,7 @@ import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, 
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual } from 'firebase/firestore';
 import { triggerExpiryNotification, triggerNewInterventionNotification } from '@/app/actions';
+import { sendClientUpdateNotification } from '@/ai/flows/send-client-update-notification';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -529,6 +530,39 @@ async function notifyAdminOnNewIntervention(intervention: Intervention, clientNa
     }
 }
 
+async function notifyClientOnInterventionCreation(intervention: Intervention) {
+    const client = await getUserById(intervention.clientId);
+    if (!client || !client.email) {
+        console.log(`Client ${intervention.clientId} not found or has no email.`);
+        return;
+    }
+
+    const companyDoc = await getDoc(doc(db, 'companies', intervention.companyId));
+    if (!companyDoc.exists()) return;
+    const company = companyDoc.data() as Company;
+
+    if (!company.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPass || !company.senderEmail) {
+        console.log(`Skipping client notification for company ${intervention.companyId}: SMTP not configured.`);
+        return;
+    }
+
+    sendClientUpdateNotification({
+        recipientEmail: client.email,
+        clientName: client.name,
+        interventionId: intervention.id,
+        interventionTitle: intervention.title,
+        interventionStatus: intervention.status,
+        updateMessage: "Il tuo intervento è stato creato e preso in carico.",
+        smtpConfig: {
+            host: company.smtpHost,
+            port: company.smtpPort,
+            user: company.smtpUser,
+            pass: company.smtpPass,
+            from: company.senderEmail,
+        }
+    });
+}
+
 
 export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
     const { creatorName, clientId, companyId, ...restOfData } = interventionData;
@@ -585,8 +619,9 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
     await setDoc(doc(db, 'interventions', newId), newInterventionData);
 
-    // Trigger admin notification
+    // Trigger notifications
     await notifyAdminOnNewIntervention(newInterventionData, clientName, creatorName);
+    await notifyClientOnInterventionCreation(newInterventionData);
     
     return newInterventionData;
 }
@@ -612,15 +647,15 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
     return newMaintenanceData;
 }
 
-export async function createUpdateNotification(intervention: Intervention, updater: User) {
+export async function createUpdateNotification(intervention: Intervention, updater: User, updateText?: string) {
     const recipients: string[] = [];
 
-    // Notify the client
+    // Add client to recipients if they didn't make the update
     if (intervention.clientId && intervention.clientId !== updater.id) {
         recipients.push(intervention.clientId);
     }
 
-    // Notify the assigned operator
+    // Add assigned operator to recipients if they didn't make the update
     if (intervention.assignedOperatorId && intervention.assignedOperatorId !== updater.id) {
         recipients.push(intervention.assignedOperatorId);
     }
@@ -638,17 +673,50 @@ export async function createUpdateNotification(intervention: Intervention, updat
 
     const uniqueRecipients = [...new Set(recipients)];
 
+    const companyDoc = await getDoc(doc(db, 'companies', intervention.companyId));
+    if (!companyDoc.exists()) return;
+    const company = companyDoc.data() as Company;
+
     for (const userId of uniqueRecipients) {
-        const message = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
+        const user = await getUserById(userId);
+        if (!user) continue;
+
+        const baseMessage = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
+        const inAppMessage = updateText ? `${baseMessage}. Nuovo stato: ${intervention.status}. Dettagli: ${updateText}` : baseMessage;
+        
+        // Create in-app notification
         addDoc(collection(db, 'notifications'), {
             userId: userId,
             companyId: intervention.companyId,
-            message: message,
+            message: inAppMessage,
             read: false,
             createdAt: new Date().toISOString(),
             relatedInterventionId: intervention.id,
             type: 'status_change'
         });
+
+        // Send email notification to client
+        if (user.role === 'Client' && user.email) {
+             if (!company.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPass || !company.senderEmail) {
+                console.log(`Skipping client update email for company ${intervention.companyId}: SMTP not configured.`);
+                continue;
+            }
+             sendClientUpdateNotification({
+                recipientEmail: user.email,
+                clientName: user.name,
+                interventionId: intervention.id,
+                interventionTitle: intervention.title,
+                interventionStatus: intervention.status,
+                updateMessage: updateText ? `${updater.name} ha aggiunto un aggiornamento: "${updateText}"` : `${updater.name} ha cambiato lo stato in: ${intervention.status}`,
+                smtpConfig: {
+                    host: company.smtpHost,
+                    port: company.smtpPort,
+                    user: company.smtpUser,
+                    pass: company.smtpPass,
+                    from: company.senderEmail,
+                }
+            });
+        }
     }
 }
 
@@ -676,8 +744,9 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             !(originalIntervention.updates || []).some(ou => ou.date === u.date && ou.userName === u.userName)
         );
 
-        if (newUpdates.length > 0) {
-            await createUpdateNotification({ id, ...dataToUpdate } as Intervention, updater);
+        if (newUpdates.length > 0 || originalIntervention.status !== dataToUpdate.status) {
+            const updateText = newUpdates.length > 0 ? newUpdates[0].description : undefined;
+            await createUpdateNotification({ id, ...dataToUpdate } as Intervention, updater, updateText);
         }
         
         await updateDoc(docRef, dataToUpdate as any);
