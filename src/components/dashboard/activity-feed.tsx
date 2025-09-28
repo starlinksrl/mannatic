@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,26 +64,23 @@ export function ActivityFeed({ interventions: initialInterventions, onUpdate }: 
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[calc(100vh-20rem)]">
-                    <div className="space-y-6 pr-4">
+                    <div className="space-y-4 pr-4">
                         {latestUpdates.length > 0 ? (
                             latestUpdates.map((update, index) => {
                                 const isUnread = !update.readBy?.includes(user.id);
                                 return (
                                     <div 
                                         key={index} 
-                                        className="flex items-start gap-4 text-sm cursor-pointer"
+                                        className="text-sm cursor-pointer group"
                                         onClick={() => handleUpdateClick(update)}
                                     >
-                                        <MessageSquarePlus className={cn("w-5 h-5 mt-1 shrink-0", isUnread ? 'text-red-500' : 'text-muted-foreground')} />
-                                        <div className="flex-1">
-                                            <p className={cn("font-medium", isUnread && "text-red-500")}>{update.userName}</p>
-                                            <p className="text-muted-foreground">{update.description}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                su <span className="font-semibold">{update.interventionTitle}</span>
-                                                {' - '}
-                                                {formatDistanceToNow(new Date(update.date), { addSuffix: true, locale: it })}
-                                            </p>
-                                        </div>
+                                       <p className={cn("font-semibold group-hover:underline", isUnread ? 'text-red-500' : 'text-foreground')}>{update.interventionTitle}</p>
+                                       <p className="text-muted-foreground truncate">{update.description}</p>
+                                       <p className="text-xs text-muted-foreground mt-1">
+                                            da <span className="font-medium">{update.userName}</span>
+                                            {' - '}
+                                            {formatDistanceToNow(new Date(update.date), { addSuffix: true, locale: it })}
+                                        </p>
                                     </div>
                                 )
                             })
