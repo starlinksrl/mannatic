@@ -90,7 +90,6 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
       const { smtpConfig, recipientEmail, ...promptInput } = input;
       
       console.log(`[sendClientUpdateNotificationFlow] START for intervention #${input.interventionId} to ${recipientEmail}`);
-      console.log(`[sendClientUpdateNotificationFlow] Prompt Input:`, promptInput);
       
       const { output } = await prompt(promptInput);
 
