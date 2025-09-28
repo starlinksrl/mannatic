@@ -200,7 +200,7 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
   
     try {
         const newId = generateShortId();
-        const newUserPayload: Omit<User, 'id'> = {
+        const newUserPayload: Partial<User> = {
             ...userData,
             email: userData.email.toLowerCase(),
             avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
@@ -210,12 +210,12 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
         };
 
         if (newUserPayload.role !== 'Operator') {
-            delete (newUserPayload as Partial<User>).allowedSectors;
+            delete newUserPayload.allowedSectors;
         }
         
         await setDoc(doc(db, 'users', newId), newUserPayload as any);
         
-        return { id: newId, ...newUserPayload };
+        return { id: newId, ...newUserPayload as User };
     } catch (error) {
         console.error("Error adding user:", error);
         if (error instanceof Error) {
@@ -241,6 +241,9 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
             dataToUpdate.allowedSectors = deleteField();
+        } else if (dataToUpdate.role === 'Operator' && dataToUpdate.allowedSectors === undefined) {
+            // If role is operator and allowedSectors is not provided, don't accidentally delete it.
+            // A bit of a defensive move. The form should always provide it.
         }
         
         await updateDoc(userDocRef, dataToUpdate);
@@ -665,7 +668,7 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
 export async function createUpdateNotification(intervention: Intervention, updater: User, updateText?: string) {
     const recipients: string[] = [];
 
-    // Add client to recipients
+    // Always add client to recipients for potential email notification
     if (intervention.clientId) {
         recipients.push(intervention.clientId);
     }
@@ -696,24 +699,23 @@ export async function createUpdateNotification(intervention: Intervention, updat
         const user = await getUserById(userId);
         if (!user) continue;
 
-        // Skip sending email to the person who made the update
-        if (user.id === updater.id) continue;
-
-        const baseMessage = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
-        const inAppMessage = updateText ? `${baseMessage}. Dettagli: ${updateText}` : `${baseMessage}. Nuovo stato: ${intervention.status}`;
+        // Create in-app notification for everyone except the updater
+        if (user.id !== updater.id) {
+            const baseMessage = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
+            const inAppMessage = updateText ? `${baseMessage}. Dettagli: ${updateText}` : `${baseMessage}. Nuovo stato: ${intervention.status}`;
+            
+            addDoc(collection(db, 'notifications'), {
+                userId: userId,
+                companyId: intervention.companyId,
+                message: inAppMessage,
+                read: false,
+                createdAt: new Date().toISOString(),
+                relatedInterventionId: intervention.id,
+                type: 'status_change'
+            });
+        }
         
-        // Create in-app notification
-        addDoc(collection(db, 'notifications'), {
-            userId: userId,
-            companyId: intervention.companyId,
-            message: inAppMessage,
-            read: false,
-            createdAt: new Date().toISOString(),
-            relatedInterventionId: intervention.id,
-            type: 'status_change'
-        });
-
-        // Send email notification to client
+        // Send email notification ONLY to the client
         if (user.role === 'Client' && user.email) {
              if (!company.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPass || !company.senderEmail) {
                 console.log(`Skipping client update email for company ${intervention.companyId}: SMTP not configured.`);
