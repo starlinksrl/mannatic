@@ -1,4 +1,4 @@
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken } from './types';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual } from 'firebase/firestore';
@@ -176,7 +176,8 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
       email: userData.email.toLowerCase(),
       avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
       address: userData.address || '',
-      phone: userData.phone || ''
+      phone: userData.phone || '',
+      allowedSectors: userData.allowedSectors || (userData.role === 'Operator' ? ['interventions', 'surveys', 'maintenance'] : undefined),
     };
     await setDoc(doc(db, 'users', newId), newUserPayload);
     
@@ -192,7 +193,7 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
     try {
         const userDocRef = doc(db, 'users', id);
         
-        const dataToUpdate = {...updatedData};
+        const dataToUpdate: Partial<User> = {...updatedData};
         if(dataToUpdate.password === '' || dataToUpdate.password === undefined) {
             delete dataToUpdate.password;
         }
@@ -201,7 +202,12 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
         
-        await updateDoc(userDocRef, dataToUpdate);
+        // Ensure allowedSectors is only set for operators
+        if (dataToUpdate.role !== 'Operator') {
+            dataToUpdate.allowedSectors = undefined;
+        }
+        
+        await updateDoc(userDocRef, dataToUpdate as any);
         
         const updatedDoc = await getDoc(userDocRef);
         if (updatedDoc.exists()) {

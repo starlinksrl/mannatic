@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useUser } from '@/contexts/user-context';
@@ -21,12 +22,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '../icons/logo';
 import Image from 'next/image';
+import { AllowedSector } from '@/lib/types';
 
-const navItems = [
+const navItems: {
+    href: string;
+    label: string;
+    icon: React.ElementType;
+    roles: ('Creator' | 'Admin' | 'Operator' | 'Client')[];
+    sector?: AllowedSector;
+}[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
-  { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'] },
-  { href: '/dashboard/surveys', label: 'Sopralluoghi', icon: ClipboardCheck, roles: ['Admin', 'Operator'] },
-  { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'] },
+  { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'], sector: 'interventions' },
+  { href: '/dashboard/surveys', label: 'Sopralluoghi', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'surveys' },
+  { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'], sector: 'maintenance' },
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/requests', label: 'Le mie Richieste', icon: ClipboardList, roles: ['Client'] },
   { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin', 'Creator'] },
@@ -42,6 +50,20 @@ export function SidebarNav() {
   const { user, currentCompany } = useUser();
 
   if (!user) return null;
+  
+  const userCanSeeItem = (item: typeof navItems[0]) => {
+    if (!item.roles.includes(user.role)) {
+        return false;
+    }
+    if (user.role === 'Operator') {
+        // If it's a sector-specific item, check permissions
+        if (item.sector) {
+            return user.allowedSectors?.includes(item.sector) ?? true;
+        }
+    }
+    // For non-operators or non-sector items, role-based access is enough
+    return true;
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -57,7 +79,7 @@ export function SidebarNav() {
       </div>
       <nav className="flex-1 space-y-2 p-4">
         {navItems.map((item) =>
-          item.roles.includes(user.role) ? (
+          userCanSeeItem(item) ? (
             <Link
               key={item.href}
               href={item.href}

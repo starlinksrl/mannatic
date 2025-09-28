@@ -21,6 +21,8 @@ export interface Company {
   senderEmail?: string;
 }
 
+export type AllowedSector = 'interventions' | 'surveys' | 'maintenance';
+
 export interface User {
   id: string;
   name:string;
@@ -31,6 +33,7 @@ export interface User {
   companyId: string;
   address?: string;
   phone?: string;
+  allowedSectors?: AllowedSector[];
 }
 
 export interface PasswordResetToken {

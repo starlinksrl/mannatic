@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, UserRole } from '@/lib/types';
+import { User, UserRole, AllowedSector } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateUser } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
@@ -33,8 +33,15 @@ import { Pencil, Eye, EyeOff } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import { Checkbox } from '../ui/checkbox';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
+
+const allowedSectors: { id: AllowedSector; label: string }[] = [
+    { id: 'interventions', label: 'Interventi' },
+    { id: 'surveys', label: 'Sopralluoghi' },
+    { id: 'maintenance', label: 'Manutenzioni' },
+];
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
@@ -44,6 +51,7 @@ const formSchema = z.object({
   avatarUrl: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
+  allowedSectors: z.array(z.string()).optional(),
 });
 
 interface EditUserFormProps {
@@ -71,6 +79,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   });
   
   const avatarUrl = form.watch('avatarUrl');
+  const role = form.watch('role');
   
   const isEditingOwnProfile = currentUser?.id === user?.id;
 
@@ -83,7 +92,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             password: '',
             avatarUrl: user.avatarUrl,
             address: user.address || '',
-            phone: user.phone || ''
+            phone: user.phone || '',
+            allowedSectors: user.allowedSectors || []
         })
     }
   }, [user, form]);
@@ -91,10 +101,13 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   if(!user) return null;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const updatedUser = await updateUser(user!.id, {
+    const dataToUpdate = {
         ...values,
         role: values.role as UserRole,
-    });
+        allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
+    };
+    
+    const updatedUser = await updateUser(user!.id, dataToUpdate);
     
     if (updatedUser) {
         onUserUpdated(updatedUser);
@@ -131,7 +144,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     if (autocompleteRef.current) {
         const place = autocompleteRef.current.getPlace();
         if (place && place.formatted_address) {
-            form.setValue('address', place.formatted_address);
+            form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
+            inputRef.current?.focus();
         }
     }
   };
@@ -245,6 +259,55 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 </FormItem>
               )}
             />
+            {role === 'Operator' && (
+                 <FormField
+                    control={form.control}
+                    name="allowedSectors"
+                    render={() => (
+                        <FormItem>
+                            <div className="mb-4">
+                                <FormLabel className="text-base">Settori operativi</FormLabel>
+                            </div>
+                            <div className="space-y-2">
+                            {allowedSectors.map((item) => (
+                                <FormField
+                                key={item.id}
+                                control={form.control}
+                                name="allowedSectors"
+                                render={({ field }) => {
+                                    return (
+                                    <FormItem
+                                        key={item.id}
+                                        className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                        <FormControl>
+                                        <Checkbox
+                                            checked={field.value?.includes(item.id)}
+                                            onCheckedChange={(checked) => {
+                                            return checked
+                                                ? field.onChange([...(field.value || []), item.id])
+                                                : field.onChange(
+                                                    field.value?.filter(
+                                                        (value) => value !== item.id
+                                                    )
+                                                    )
+                                            }}
+                                        />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">
+                                        {item.label}
+                                        </FormLabel>
+                                    </FormItem>
+                                    )
+                                }}
+                                />
+                            ))}
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+            )}
             <FormField
               control={form.control}
               name="phone"
@@ -276,13 +339,15 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                                 <Input
                                     {...field}
                                     ref={inputRef}
-                                    placeholder="Via, Città, CAP"
+                                    placeholder="Cerca un indirizzo..."
+                                    onBlur={field.onBlur}
+                                    onChange={field.onChange}
                                 />
                             </Autocomplete>
                         ) : (
                            <Input
                                 {...field}
-                                placeholder="Via, Città, CAP"
+                                placeholder="Cerca un indirizzo..."
                                 disabled
                             />
                         )}
@@ -305,4 +370,3 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
-

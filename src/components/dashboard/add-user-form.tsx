@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -25,14 +26,21 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, UserRole } from '@/lib/types';
+import { User, UserRole, AllowedSector } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import { Checkbox } from '../ui/checkbox';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
+
+const allowedSectors: { id: AllowedSector; label: string }[] = [
+    { id: 'interventions', label: 'Interventi' },
+    { id: 'surveys', label: 'Sopralluoghi' },
+    { id: 'maintenance', label: 'Manutenzioni' },
+];
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
@@ -41,6 +49,7 @@ const formSchema = z.object({
   password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}),
   address: z.string().optional(),
   phone: z.string().optional(),
+  allowedSectors: z.array(z.string()).optional(),
 });
 
 interface AddUserFormProps {
@@ -71,7 +80,8 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       password: '',
       address: '',
       phone: '',
-      role: defaultRole
+      role: defaultRole,
+      allowedSectors: ['interventions', 'surveys', 'maintenance'], // Default to all for new operators
     },
   });
 
@@ -88,7 +98,8 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         password: values.password,
         companyId: currentCompany.id,
         address: values.address,
-        phone: values.phone
+        phone: values.phone,
+        allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
     });
     
     onUserAdded();
@@ -106,10 +117,13 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     if (autocompleteRef.current) {
         const place = autocompleteRef.current.getPlace();
         if (place && place.formatted_address) {
-            form.setValue('address', place.formatted_address);
+            form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
+            inputRef.current?.focus();
         }
     }
   };
+  
+  const role = form.watch('role');
 
 
   return (
@@ -122,7 +136,8 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
               password: '',
               address: '',
               phone: '',
-              role: defaultRole
+              role: defaultRole,
+              allowedSectors: ['interventions', 'surveys', 'maintenance'],
             });
             setShowPassword(false);
         }
@@ -210,6 +225,57 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 )}
                 />
             )}
+            
+            {role === 'Operator' && (
+                 <FormField
+                    control={form.control}
+                    name="allowedSectors"
+                    render={() => (
+                        <FormItem>
+                            <div className="mb-4">
+                                <FormLabel className="text-base">Settori operativi</FormLabel>
+                            </div>
+                            <div className="space-y-2">
+                            {allowedSectors.map((item) => (
+                                <FormField
+                                key={item.id}
+                                control={form.control}
+                                name="allowedSectors"
+                                render={({ field }) => {
+                                    return (
+                                    <FormItem
+                                        key={item.id}
+                                        className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                        <FormControl>
+                                        <Checkbox
+                                            checked={field.value?.includes(item.id)}
+                                            onCheckedChange={(checked) => {
+                                            return checked
+                                                ? field.onChange([...(field.value || []), item.id])
+                                                : field.onChange(
+                                                    field.value?.filter(
+                                                        (value) => value !== item.id
+                                                    )
+                                                    )
+                                            }}
+                                        />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">
+                                        {item.label}
+                                        </FormLabel>
+                                    </FormItem>
+                                    )
+                                }}
+                                />
+                            ))}
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+            )}
+            
             <FormField
               control={form.control}
               name="phone"
@@ -231,7 +297,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                   <FormLabel>Indirizzo</FormLabel>
                     <FormControl>
                         {isLoaded ? (
-                            <Autocomplete
+                             <Autocomplete
                                 onLoad={(autocomplete) => {
                                     autocompleteRef.current = autocomplete;
                                 }}
@@ -241,13 +307,15 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                                 <Input
                                     {...field}
                                     ref={inputRef}
-                                    placeholder="Via, Città, CAP"
+                                    placeholder="Cerca un indirizzo..."
+                                    onBlur={field.onBlur}
+                                    onChange={field.onChange}
                                 />
                             </Autocomplete>
                         ) : (
                            <Input
                                 {...field}
-                                placeholder="Via, Città, CAP"
+                                placeholder="Cerca un indirizzo..."
                                 disabled
                             />
                         )}
@@ -268,4 +336,3 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     </Dialog>
   );
 }
-
