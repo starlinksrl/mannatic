@@ -206,10 +206,11 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
             avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
             address: userData.address || '',
             phone: userData.phone || '',
-            allowedSectors: userData.role === 'Operator' ? (userData.allowedSectors || ['interventions', 'surveys', 'maintenance']) : undefined,
         };
 
-        if (newUserPayload.role !== 'Operator') {
+        if (newUserPayload.role === 'Operator') {
+             newUserPayload.allowedSectors = userData.allowedSectors || ['interventions', 'surveys', 'maintenance'];
+        } else {
             delete newUserPayload.allowedSectors;
         }
         
@@ -661,38 +662,6 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
 }
 
 export async function createUpdateNotification(intervention: Intervention, updater: User, updateText?: string) {
-    const companyDoc = await getDoc(doc(db, 'companies', intervention.companyId));
-    if (!companyDoc.exists()) return;
-    const company = companyDoc.data() as Company;
-
-    // --- 1. Notify Client via Email ---
-    const client = await getUserById(intervention.clientId);
-    if (client && client.email) {
-        if (!company.smtpHost || !company.smtpPass) {
-            console.log(`Skipping client update email for company ${intervention.companyId}: SMTP not configured.`);
-        } else {
-            triggerClientUpdateNotification({
-                recipientEmail: client.email,
-                clientName: client.name,
-                interventionId: intervention.id,
-                interventionTitle: intervention.title,
-                interventionStatus: intervention.status,
-                updateMessage: updateText 
-                    ? `${updater.name} ha aggiunto un aggiornamento: "${updateText}"` 
-                    : `${updater.name} ha cambiato lo stato in: ${intervention.status}`,
-                interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
-                smtpConfig: {
-                    host: company.smtpHost,
-                    port: company.smtpPort!,
-                    user: company.smtpUser!,
-                    pass: company.smtpPass!,
-                    from: company.senderEmail!,
-                }
-            });
-        }
-    }
-
-    // --- 2. Create In-App Notifications for Internal Users ---
     const internalRecipients: string[] = [];
     // Add assigned operator if they didn't make the update
     if (intervention.assignedOperatorId && intervention.assignedOperatorId !== updater.id) {
@@ -748,16 +717,44 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             dataToUpdate.completedAt = null;
         }
         
+        await updateDoc(docRef, dataToUpdate);
+
         const newUpdates = (dataToUpdate.updates || []).filter(u => 
             !(originalIntervention.updates || []).some(ou => ou.date === u.date && ou.userName === u.userName)
         );
 
         if (newUpdates.length > 0 || originalIntervention.status !== dataToUpdate.status) {
             const updateText = newUpdates.length > 0 ? newUpdates[0].description : undefined;
+            // Send in-app notifications
             await createUpdateNotification({ id, ...dataToUpdate } as Intervention, updater, updateText);
+            
+            // Send email to client
+            const client = await getUserById(dataToUpdate.clientId);
+            if (client && client.email) {
+                const company = await getCompanyByUserId(client.id);
+                if (company?.smtpHost) {
+                     triggerClientUpdateNotification({
+                        recipientEmail: client.email,
+                        clientName: client.name,
+                        interventionId: id,
+                        interventionTitle: dataToUpdate.title,
+                        interventionStatus: dataToUpdate.status,
+                        updateMessage: updateText 
+                            ? `${updater.name} ha aggiunto un aggiornamento: "${updateText}"` 
+                            : `${updater.name} ha cambiato lo stato in: ${dataToUpdate.status}`,
+                        interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
+                        smtpConfig: {
+                            host: company.smtpHost,
+                            port: company.smtpPort!,
+                            user: company.smtpUser!,
+                            pass: company.smtpPass!,
+                            from: company.senderEmail!,
+                        }
+                    });
+                }
+            }
         }
         
-        await updateDoc(docRef, dataToUpdate);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Intervention : null;
     } catch (error) {
@@ -1009,3 +1006,6 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
+
+    
