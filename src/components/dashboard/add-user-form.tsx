@@ -248,8 +248,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                       </Autocomplete>
                     ) : (
                       <Input
-                        value={addressValue}
-                        onChange={(e) => form.setValue('address', e.target.value)}
+                        {...field}
                         placeholder="Via, Città, CAP"
                         disabled={!isLoaded}
                       />
