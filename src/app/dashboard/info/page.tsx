@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Building, Users, UserCog, User, Wrench, ShieldCheck, ClipboardCheck, Bot, Palette, Server, HardDrive, ExternalLink, Database } from 'lucide-react';
+import { Building, Users, UserCog, User, Wrench, ShieldCheck, ClipboardCheck, Bot, Palette, Server, HardDrive, ExternalLink, Database, FileText } from 'lucide-react';
 
 const features = [
     {
@@ -118,6 +118,16 @@ export default function InfoPage() {
                         </CardHeader>
                         <CardContent>
                             <ul className="space-y-4">
+                                 <li className="flex items-start gap-4">
+                                    <FileText className="h-5 w-5 mt-1 text-primary" />
+                                    <div className="flex-1">
+                                        <p className="font-semibold">Log Applicazione (Cloud Logging)</p>
+                                        <p className="text-sm text-muted-foreground">Visualizza i log del server, incluse le operazioni AI e l'invio delle email.</p>
+                                        <a href={`https://console.cloud.google.com/logs/viewer?project=${projectId}&resource=app_hosting_backend`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
+                                            Vai ai Log <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    </div>
+                                </li>
                                 <li className="flex items-start gap-4">
                                     <Database className="h-5 w-5 mt-1 text-primary" />
                                     <div className="flex-1">
