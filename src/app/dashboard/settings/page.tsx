@@ -445,14 +445,14 @@ function EmailLogsTab({ companyId, refreshTrigger }: { companyId: string, refres
     const [logs, setLogs] = useState<EmailLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const loadLogs = async () => {
-        setIsLoading(true);
-        const fetchedLogs = await fetchEmailLogs(companyId);
-        setLogs(fetchedLogs);
-        setIsLoading(false);
-    }
-    
     useEffect(() => {
+        const loadLogs = async () => {
+            if (!companyId) return;
+            setIsLoading(true);
+            const fetchedLogs = await fetchEmailLogs(companyId);
+            setLogs(fetchedLogs);
+            setIsLoading(false);
+        }
         loadLogs();
     }, [companyId, refreshTrigger]);
 
@@ -476,7 +476,7 @@ function EmailLogsTab({ companyId, refreshTrigger }: { companyId: string, refres
                                     <TableHead>Data</TableHead>
                                     <TableHead>Destinatario</TableHead>
                                     <TableHead>Oggetto</TableHead>
-                                    <TableHead>Risposta Server</TableHead>
+                                    <TableHead className="hidden md:table-cell">Errore</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -496,8 +496,8 @@ function EmailLogsTab({ companyId, refreshTrigger }: { companyId: string, refres
                                             </TableCell>
                                             <TableCell>{format(new Date(log.timestamp), 'dd/MM/yy HH:mm:ss', { locale: it })}</TableCell>
                                             <TableCell>{log.recipient}</TableCell>
-                                            <TableCell>{log.subject}</TableCell>
-                                            <TableCell className="text-xs font-mono break-all">{log.error}</TableCell>
+                                            <TableCell className="max-w-[200px] truncate">{log.subject}</TableCell>
+                                            <TableCell className="hidden md:table-cell text-xs font-mono break-all">{log.error}</TableCell>
                                         </TableRow>
                                     ))
                                 )}
@@ -586,5 +586,3 @@ export default function SettingsPage() {
     </>
   );
 }
-
-    
