@@ -22,41 +22,34 @@ export default function ClientRequestsPage() {
     const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const fetchData = async () => {
+        if (!user || !currentCompany) return;
+        setLoading(true);
+        
+        if (user.role !== 'Client') {
+          setLoading(false);
+          return;
+        }
+
+        const [allUsers, allClients, allInterventions] = await Promise.all([
+            getUsers(currentCompany.id),
+            getClients(currentCompany.id),
+            getInterventions(currentCompany.id)
+        ]);
+
+        setOperators(allUsers.filter(u => u.role === 'Operator'));
+        setClients(allClients.filter(c => c.id === user.id));
+        setInterventions(allInterventions.filter(i => i.clientId === user.id));
+        setLoading(false);
+    }
+
     useEffect(() => {
         if (user && user.role !== 'Client') {
           router.push('/dashboard');
         }
 
-        async function fetchData() {
-            if (!user || !currentCompany) return;
-            setLoading(true);
-            
-            if (user.role !== 'Client') {
-              setLoading(false);
-              return;
-            }
-
-            const [allUsers, allClients, allInterventions] = await Promise.all([
-                getUsers(currentCompany.id),
-                getClients(currentCompany.id),
-                getInterventions(currentCompany.id)
-            ]);
-
-            setOperators(allUsers.filter(u => u.role === 'Operator'));
-            setClients(allClients.filter(c => c.id === user.id));
-            setInterventions(allInterventions.filter(i => i.clientId === user.id));
-            setLoading(false);
-        }
         fetchData();
     }, [user, currentCompany, router]);
-
-    const handleInterventionAdded = (newIntervention: Intervention) => {
-        setInterventions(prev => [newIntervention, ...prev]);
-    }
-    
-    const handleInterventionUpdated = (updatedIntervention: Intervention) => {
-        setInterventions(prev => prev.map(i => i.id === updatedIntervention.id ? updatedIntervention : i));
-    }
     
     if (user?.role !== 'Client') {
       return null;
@@ -113,7 +106,8 @@ export default function ClientRequestsPage() {
             interventions={interventions} 
             currentUser={user} 
             clients={clients} 
-            operators={operators} 
+            operators={operators}
+            onInterventionChange={fetchData}
         />
       </main>
     </>
