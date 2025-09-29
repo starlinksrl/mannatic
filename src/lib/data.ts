@@ -589,7 +589,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                     interventionTitle: newInterventionData.title,
                     interventionStatus: newInterventionData.status,
                     updateMessage: 'creato',
-                    company: {id: company.id, ...company},
+                    company: company,
                     interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
                 });
             }
@@ -628,7 +628,15 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         if (!originalDocSnap.exists()) return null;
         const originalIntervention = originalDocSnap.data() as Intervention;
 
-        const dataToUpdate: { [key: string]: any } = { ...updatedData };
+        // Separate attachments to handle them as plain objects
+        const { attachments, ...restOfData } = updatedData;
+        const cleanAttachments = attachments ? JSON.parse(JSON.stringify(attachments)) : [];
+
+        const dataToUpdate: { [key: string]: any } = { 
+            ...restOfData,
+            attachments: cleanAttachments
+        };
+
         if (dataToUpdate.dueDate === undefined) dataToUpdate.dueDate = null;
         if (dataToUpdate.completedAt === undefined) delete dataToUpdate.completedAt;
         else if (dataToUpdate.completedAt === null) dataToUpdate.completedAt = null;
@@ -997,3 +1005,4 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
     
 
     
+
