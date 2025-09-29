@@ -968,9 +968,11 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 export async function getEmailLogs(companyId: string): Promise<EmailLog[]> {
     if (!companyId) return [];
     try {
-        const q = query(collection(db, 'emailLogs'), where("companyId", "==", companyId), orderBy('timestamp', 'desc'));
+        const q = query(collection(db, 'emailLogs'), where("companyId", "==", companyId));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailLog));
+        const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailLog));
+        // Sort in code to avoid composite index requirement
+        return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     } catch (error) {
         console.error("Error fetching email logs:", error);
         return [];
