@@ -418,16 +418,6 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
                             from: company.senderEmail,
                         }
                     });
-
-                    await addDoc(collection(db, 'notifications'), {
-                        userId: operator.id,
-                        companyId: companyId,
-                        message: `L'intervento #${intervention.id} (${intervention.title}) scade a breve.`,
-                        read: false,
-                        createdAt: new Date().toISOString(),
-                        relatedInterventionId: intervention.id,
-                        type: 'expiry'
-                    });
                 }
             }
         }
@@ -584,7 +574,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                     interventionId: newInterventionData.id,
                     interventionTitle: newInterventionData.title,
                     interventionStatus: newInterventionData.status,
-                    updateMessage: `creato`,
+                    updateMessage: 'creato',
                     company: company,
                     interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
                 });
@@ -971,3 +961,6 @@ export async function getEmailLogs(companyId: string): Promise<EmailLog[]> {
         return [];
     }
 }
+
+
+    
