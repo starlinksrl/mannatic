@@ -1,4 +1,3 @@
-// src/ai/flows/send-notification-email.ts
 'use server';
 import 'dotenv/config';
 /**
@@ -70,7 +69,7 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
       },
     });
     
-    console.log(`Sending static test email to ${recipientEmail} via ${smtpConfig.host}...`);
+    console.log(`[sendNotificationEmail] START for company ${companyId}. Sending static test email to ${recipientEmail} via ${smtpConfig.host}.`);
 
     const info = await transporter.sendMail({
       from: smtpConfig.from,
@@ -79,10 +78,10 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
       html: emailBody,
     });
 
-    console.log('Test email sent successfully.');
+    console.log('[sendNotificationEmail] Test email sent successfully. Response:', info.response);
     
     await addDoc(collection(db, 'emailLogs'), {
-      companyId,
+      companyId: companyId,
       timestamp: new Date().toISOString(),
       recipient: recipientEmail,
       subject: emailSubject,
@@ -93,7 +92,7 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
     return { success: true, emailBody: emailBody };
 
   } catch (error: any) {
-      console.error('Failed to send test email:', error);
+      console.error('[sendNotificationEmail] FAILED:', error.message);
 
       await addDoc(collection(db, 'emailLogs'), {
         companyId: input.companyId,

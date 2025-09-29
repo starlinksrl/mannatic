@@ -89,11 +89,11 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
     outputSchema: SendClientUpdateNotificationOutputSchema,
   },
   async (input) => {
-    let emailSubject = '';
+    let emailSubject = `Update for intervention #${input.interventionId}`;
     try {
       const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
       
-      console.log(`[sendClientUpdateNotificationFlow] START for intervention #${input.interventionId} to ${recipientEmail}`);
+      console.log(`[sendClientUpdateNotificationFlow] START for intervention #${input.interventionId} to ${recipientEmail} for company ${companyId}.`);
       
       const { output } = await prompt(promptInput);
 
@@ -103,7 +103,7 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
       }
       
       emailSubject = output.emailSubject;
-      console.log(`[sendClientUpdateNotificationFlow] Email content generated successfully. Subject: ${emailSubject}`);
+      console.log(`[sendClientUpdateNotificationFlow] Email content generated. Subject: ${emailSubject}`);
 
       const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
@@ -115,21 +115,21 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
         },
       });
       
-      console.log(`[sendClientUpdateNotificationFlow] Sending client update email to ${input.recipientEmail} via ${smtpConfig.host}...`);
+      console.log(`[sendClientUpdateNotificationFlow] Sending email to ${recipientEmail} via ${smtpConfig.host}.`);
 
       const info = await transporter.sendMail({
         from: smtpConfig.from,
-        to: input.recipientEmail,
+        to: recipientEmail,
         subject: output.emailSubject,
         html: output.emailBody,
       });
 
-      console.log('[sendClientUpdateNotificationFlow] Client update email sent successfully. END.');
+      console.log('[sendClientUpdateNotificationFlow] Email sent successfully. Response:', info.response);
       
       await addDoc(collection(db, 'emailLogs'), {
-        companyId,
+        companyId: companyId,
         timestamp: new Date().toISOString(),
-        recipient: input.recipientEmail,
+        recipient: recipientEmail,
         subject: output.emailSubject,
         status: 'success',
         response: info.response,
@@ -138,13 +138,13 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
       return { success: true, emailBody: output.emailBody };
 
     } catch (error: any) {
-        console.error('[sendClientUpdateNotificationFlow] FAILED:', error);
+        console.error('[sendClientUpdateNotificationFlow] FAILED:', error.message);
         
         await addDoc(collection(db, 'emailLogs'), {
             companyId: input.companyId,
             timestamp: new Date().toISOString(),
             recipient: input.recipientEmail,
-            subject: emailSubject || `Update for intervention #${input.interventionId}`,
+            subject: emailSubject,
             status: 'failure',
             response: error.response || 'N/A',
             error: error.message || 'An unknown error occurred.',

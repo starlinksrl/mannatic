@@ -80,11 +80,11 @@ const sendExpiryNotificationFlow = ai.defineFlow(
     outputSchema: SendExpiryNotificationOutputSchema,
   },
   async (input) => {
-    let emailSubject = '';
+    let emailSubject = `Expiry for intervention #${input.interventionId}`;
     try {
-      const { smtpConfig, companyId, ...promptInput } = input;
+      const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
       
-      console.log(`Generating expiry email for intervention #${input.interventionId}...`);
+      console.log(`[sendExpiryNotificationFlow] START for intervention #${input.interventionId} to ${recipientEmail} for company ${companyId}.`);
       const { output } = await prompt(promptInput);
 
       if (!output || !output.emailBody || !output.emailSubject) {
@@ -92,7 +92,7 @@ const sendExpiryNotificationFlow = ai.defineFlow(
       }
       
       emailSubject = output.emailSubject;
-      console.log(`Generated expiry email body for ${input.recipientEmail}: \n${output.emailBody}`);
+      console.log(`[sendExpiryNotificationFlow] Email content generated. Subject: ${emailSubject}`);
 
       const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
@@ -104,21 +104,21 @@ const sendExpiryNotificationFlow = ai.defineFlow(
         },
       });
       
-      console.log(`Sending expiry email to ${input.recipientEmail} via ${smtpConfig.host}...`);
+      console.log(`[sendExpiryNotificationFlow] Sending email to ${recipientEmail} via ${smtpConfig.host}.`);
 
       const info = await transporter.sendMail({
         from: smtpConfig.from,
-        to: input.recipientEmail,
+        to: recipientEmail,
         subject: output.emailSubject,
         html: output.emailBody,
       });
 
-      console.log('Expiry email sent successfully.');
+      console.log('[sendExpiryNotificationFlow] Email sent successfully. Response:', info.response);
       
       await addDoc(collection(db, 'emailLogs'), {
-        companyId,
+        companyId: companyId,
         timestamp: new Date().toISOString(),
-        recipient: input.recipientEmail,
+        recipient: recipientEmail,
         subject: output.emailSubject,
         status: 'success',
         response: info.response,
@@ -127,13 +127,13 @@ const sendExpiryNotificationFlow = ai.defineFlow(
       return { success: true, emailBody: output.emailBody };
 
     } catch (error: any) {
-        console.error('Failed to send expiry email:', error);
+        console.error('[sendExpiryNotificationFlow] FAILED:', error.message);
         
         await addDoc(collection(db, 'emailLogs'), {
             companyId: input.companyId,
             timestamp: new Date().toISOString(),
             recipient: input.recipientEmail,
-            subject: emailSubject || `Expiry for intervention #${input.interventionId}`,
+            subject: emailSubject,
             status: 'failure',
             response: error.response || 'N/A',
             error: error.message || 'An unknown error occurred.',

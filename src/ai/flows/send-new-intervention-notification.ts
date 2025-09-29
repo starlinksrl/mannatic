@@ -1,4 +1,3 @@
-
 'use server';
 import 'dotenv/config';
 /**
@@ -50,7 +49,7 @@ export type SendNewInterventionNotificationOutput = z.infer<typeof SendNewInterv
 
 
 export async function sendNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionNotificationOutput> {
-    const { smtpConfig, companyId, ...promptInput } = input;
+    const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
     const emailSubject = `Nuovo Intervento #${promptInput.interventionId} (${promptInput.creatorName} per ${promptInput.clientName})`;
     const formattedDueDate = promptInput.interventionDueDate 
       ? format(new Date(promptInput.interventionDueDate), 'dd/MM/yyyy', { locale: it }) 
@@ -110,21 +109,21 @@ export async function sendNewInterventionNotification(input: SendNewIntervention
         },
       });
       
-      console.log(`Sending new intervention email to ${input.recipientEmail} via ${smtpConfig.host}...`);
+      console.log(`[sendNewInterventionNotification] START for company ${companyId}. Sending email to ${recipientEmail} via ${smtpConfig.host}.`);
 
       const info = await transporter.sendMail({
         from: smtpConfig.from,
-        to: input.recipientEmail,
+        to: recipientEmail,
         subject: emailSubject,
         html: emailBody,
       });
 
-      console.log('New intervention email sent successfully.');
+      console.log('[sendNewInterventionNotification] Email sent successfully. Response:', info.response);
 
       await addDoc(collection(db, 'emailLogs'), {
-        companyId,
+        companyId: companyId,
         timestamp: new Date().toISOString(),
-        recipient: input.recipientEmail,
+        recipient: recipientEmail,
         subject: emailSubject,
         status: 'success',
         response: info.response,
@@ -133,12 +132,12 @@ export async function sendNewInterventionNotification(input: SendNewIntervention
       return { success: true, emailBody: emailBody };
 
     } catch (error: any) {
-        console.error('Failed to send new intervention email:', error);
+        console.error('[sendNewInterventionNotification] FAILED:', error.message);
 
         await addDoc(collection(db, 'emailLogs'), {
-            companyId,
+            companyId: companyId,
             timestamp: new Date().toISOString(),
-            recipient: input.recipientEmail,
+            recipient: recipientEmail,
             subject: emailSubject,
             status: 'failure',
             response: error.response || 'N/A',
