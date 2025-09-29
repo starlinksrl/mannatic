@@ -86,14 +86,14 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
       },
     });
 
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: company.senderEmail,
       to: recipientEmail,
       subject: emailSubject,
       html: emailBody,
     });
 
-    console.log(`[sendClientUpdateEmail] Email sent successfully to ${recipientEmail}. Response:`, info.response);
+    console.log(`[sendClientUpdateEmail] Email sent successfully to ${recipientEmail}.`);
 
     await addDoc(collection(db, 'emailLogs'), {
       companyId: company.id,
@@ -101,7 +101,6 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
       recipient: recipientEmail,
       subject: emailSubject,
       status: 'success',
-      response: info.response,
     });
 
     return { success: true };
@@ -115,7 +114,6 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
       recipient: recipientEmail,
       subject: emailSubject,
       status: 'failure',
-      response: error.response || 'N/A',
       error: error.message || 'An unknown error occurred.',
     });
 

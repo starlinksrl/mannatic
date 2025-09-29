@@ -136,7 +136,7 @@ export interface EmailLog {
   recipient: string;
   subject: string;
   status: 'success' | 'failure';
-  response: string;
+  response?: string;
   error?: string;
 }
     

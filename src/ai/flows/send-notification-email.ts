@@ -71,14 +71,14 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
     
     console.log(`[sendNotificationEmail] START for company ${companyId}. Sending static test email to ${recipientEmail} via ${smtpConfig.host}.`);
 
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: smtpConfig.from,
       to: recipientEmail,
       subject: emailSubject,
       html: emailBody,
     });
 
-    console.log('[sendNotificationEmail] Test email sent successfully. Response:', info.response);
+    console.log('[sendNotificationEmail] Test email sent successfully.');
     
     await addDoc(collection(db, 'emailLogs'), {
       companyId: companyId,
@@ -86,7 +86,6 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
       recipient: recipientEmail,
       subject: emailSubject,
       status: 'success',
-      response: info.response,
     });
     
     return { success: true, emailBody: emailBody };
@@ -100,7 +99,6 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
         recipient: input.recipientEmail,
         subject: emailSubject,
         status: 'failure',
-        response: error.response || 'N/A',
         error: error.message || 'An unknown error occurred.',
       });
 

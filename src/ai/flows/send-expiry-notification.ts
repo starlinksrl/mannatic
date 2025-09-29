@@ -80,10 +80,9 @@ const sendExpiryNotificationFlow = ai.defineFlow(
     outputSchema: SendExpiryNotificationOutputSchema,
   },
   async (input) => {
+    const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
     let emailSubject = `Expiry for intervention #${input.interventionId}`;
     try {
-      const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
-      
       console.log(`[sendExpiryNotificationFlow] START for intervention #${input.interventionId} to ${recipientEmail} for company ${companyId}.`);
       const { output } = await prompt(promptInput);
 
@@ -106,14 +105,14 @@ const sendExpiryNotificationFlow = ai.defineFlow(
       
       console.log(`[sendExpiryNotificationFlow] Sending email to ${recipientEmail} via ${smtpConfig.host}.`);
 
-      const info = await transporter.sendMail({
+      await transporter.sendMail({
         from: smtpConfig.from,
         to: recipientEmail,
         subject: output.emailSubject,
         html: output.emailBody,
       });
 
-      console.log('[sendExpiryNotificationFlow] Email sent successfully. Response:', info.response);
+      console.log('[sendExpiryNotificationFlow] Email sent successfully.');
       
       await addDoc(collection(db, 'emailLogs'), {
         companyId: companyId,
@@ -121,7 +120,6 @@ const sendExpiryNotificationFlow = ai.defineFlow(
         recipient: recipientEmail,
         subject: output.emailSubject,
         status: 'success',
-        response: info.response,
       });
 
       return { success: true, emailBody: output.emailBody };
@@ -135,7 +133,6 @@ const sendExpiryNotificationFlow = ai.defineFlow(
             recipient: input.recipientEmail,
             subject: emailSubject,
             status: 'failure',
-            response: error.response || 'N/A',
             error: error.message || 'An unknown error occurred.',
         });
 
