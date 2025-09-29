@@ -72,6 +72,10 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
 
   console.log(`[sendClientUpdateEmail] START for intervention #${interventionId} to ${recipientEmail} for company ${company.id}.`);
   try {
+    if (!company.smtpHost || !company.senderEmail) {
+      throw new Error('La configurazione SMTP per questa azienda è incompleta.');
+    }
+    
     const transporter = nodemailer.createTransport({
       host: company.smtpHost,
       port: company.smtpPort,
@@ -207,3 +211,5 @@ export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {
         return [];
     }
 }
+
+    
