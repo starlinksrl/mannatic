@@ -4,7 +4,7 @@ import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRol
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { triggerExpiryNotification, triggerNewInterventionNotification, triggerClientUpdateNotification } from '@/app/actions';
+import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -537,7 +537,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     // --- NOTIFICATION LOGIC ---
     const companyDoc = await getDoc(doc(db, 'companies', companyId));
     if (companyDoc.exists()) {
-        const company = companyDoc.data() as Company;
+        const company = { id: companyDoc.id, ...companyDoc.data() } as Company;
         if (company.smtpHost) {
             // Notify Admins
             const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
@@ -578,18 +578,15 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             // Notify Client
             const client = await getUserById(newInterventionData.clientId);
             if (client && client.email) {
-                await triggerClientUpdateNotification({
+                await sendClientUpdateEmail({
                     recipientEmail: client.email,
                     clientName: client.name,
                     interventionId: newInterventionData.id,
                     interventionTitle: newInterventionData.title,
                     interventionStatus: newInterventionData.status,
                     updateMessage: `creato`,
-                    companyId: company.id,
+                    company: company,
                     interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
-                    smtpConfig: {
-                        host: company.smtpHost, port: company.smtpPort!, user: company.smtpUser!, pass: company.smtpPass!, from: company.senderEmail!,
-                    }
                 });
             }
         }
@@ -633,21 +630,28 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         else if (dataToUpdate.completedAt === null) dataToUpdate.completedAt = null;
 
         const statusChanged = originalIntervention.status !== dataToUpdate.status;
-        const newUpdates = dataToUpdate.updates || [];
+        
         const oldUpdates = originalIntervention.updates || [];
-        const commentAdded = newUpdates.length > oldUpdates.length;
+        const newUpdatesProvided = updatedData.updates || [];
+        const commentAdded = newUpdatesProvided.length > oldUpdates.length;
 
+        let latestUpdateMessage = '';
         if (commentAdded) {
-            const newUpdate = dataToUpdate.updates[0];
-            dataToUpdate.updates[0] = {
+            const newUpdate = newUpdatesProvided[0];
+             dataToUpdate.updates[0] = {
                 ...newUpdate,
                 readBy: [updater.id],
             };
+            latestUpdateMessage = `${newUpdate.userName} ha aggiunto un aggiornamento: "${newUpdate.description}"`
+        }
+
+        if (statusChanged) {
+            latestUpdateMessage = `Lo stato è stato aggiornato a: ${dataToUpdate.status}`;
         }
         
         await updateDoc(docRef, dataToUpdate);
-
         const interventionForNotif = { ...originalIntervention, ...dataToUpdate } as Intervention;
+
 
         if (statusChanged || commentAdded) {
             // In-app notifications for internal team
@@ -666,14 +670,9 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             }
 
             const uniqueInternalRecipients = [...new Set(internalRecipients)];
-            const latestUpdate = interventionForNotif.updates && interventionForNotif.updates.length > 0 ? interventionForNotif.updates[0] : null;
-            const updateText = latestUpdate?.description;
-
             for (const userId of uniqueInternalRecipients) {
                 const baseMessage = `${updater.name} ha aggiornato l'intervento #${interventionForNotif.id}: "${interventionForNotif.title}"`;
-                const inAppMessage = updateText && latestUpdate?.userName === updater.name 
-                    ? `${baseMessage}. Dettagli: ${updateText}` 
-                    : `${baseMessage}. Nuovo stato: ${interventionForNotif.status}`;
+                const inAppMessage = `${baseMessage}. ${latestUpdateMessage}`;
                 
                 await addDoc(collection(db, 'notifications'), {
                     userId: userId,
@@ -688,31 +687,20 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
 
             // Email notification for client
             const client = await getUserById(interventionForNotif.clientId);
-            const company = await getCompanyByUserId(interventionForNotif.clientId);
+            const companyDoc = await getDoc(doc(db, 'companies', interventionForNotif.companyId));
 
-            if (client && client.email && company?.smtpHost) {
-                let updateMessage = '';
-                const latestUpdate = commentAdded ? (interventionForNotif.updates || [])[0] : null;
-
-                if (commentAdded && latestUpdate) {
-                     updateMessage = `${latestUpdate.userName} ha aggiunto un aggiornamento: "${latestUpdate.description}"`;
-                } else if (statusChanged) {
-                    updateMessage = `Lo stato del tuo intervento è stato aggiornato a: ${interventionForNotif.status}`;
-                }
-
-                if (updateMessage) {
-                    await triggerClientUpdateNotification({
+            if (client && client.email && companyDoc.exists()) {
+                const company = {id: companyDoc.id, ...companyDoc.data()} as Company;
+                if(company.smtpHost) {
+                     await sendClientUpdateEmail({
                         recipientEmail: client.email,
                         clientName: client.name,
                         interventionId: id,
                         interventionTitle: interventionForNotif.title,
                         interventionStatus: interventionForNotif.status,
-                        updateMessage: updateMessage,
-                        companyId: company.id,
+                        updateMessage: latestUpdateMessage,
+                        company: company,
                         interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
-                        smtpConfig: {
-                            host: company.smtpHost, port: company.smtpPort!, user: company.smtpUser!, pass: company.smtpPass!, from: company.senderEmail!,
-                        }
                     });
                 }
             }
@@ -983,10 +971,3 @@ export async function getEmailLogs(companyId: string): Promise<EmailLog[]> {
         return [];
     }
 }
-    
-
-    
-
-
-
-

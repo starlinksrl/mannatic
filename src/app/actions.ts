@@ -8,10 +8,12 @@ import { sendNotificationEmail, SendNotificationEmailInput, SendNotificationEmai
 import { sendExpiryNotification, SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification, SendNewInterventionNotificationInput } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail, SendPasswordResetEmailInput } from '@/ai/flows/send-password-reset-email';
-import { sendClientUpdateNotification, SendClientUpdateNotificationInput, SendClientUpdateNotificationOutput } from '@/ai/flows/send-client-update-notification';
 import { updateCompany, resetUserPassword, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs } from '@/lib/data';
 import { Company, EmailLog } from '@/lib/types';
 import type { SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
+import nodemailer from 'nodemailer';
+import { addDoc, collection } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
   try {
@@ -32,6 +34,91 @@ export async function sendTestEmail(input: SendNotificationEmailInput): Promise<
     return { success: false, error: error.message || "An unknown error occurred." };
   }
 }
+
+interface SendClientUpdateEmailInput {
+  recipientEmail: string;
+  clientName: string;
+  interventionId: string;
+  interventionTitle: string;
+  interventionStatus: string;
+  updateMessage: string;
+  interventionLink: string;
+  company: Company;
+}
+
+export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): Promise<{ success: boolean; error?: string }> {
+  const { recipientEmail, clientName, interventionId, interventionTitle, interventionStatus, updateMessage, interventionLink, company } = input;
+
+  const isCreation = updateMessage === 'creato';
+  const emailSubject = isCreation
+    ? `Conferma Creazione Intervento #${interventionId}`
+    : `Aggiornamento Intervento #${interventionId}: ${interventionTitle}`;
+
+  const emailBody = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+      <h3>Gentile ${clientName},</h3>
+      <p>La informiamo che c'è un aggiornamento riguardo il suo intervento di manutenzione.</p>
+      <hr>
+      <p><b>ID Intervento:</b> ${interventionId}</p>
+      <p><b>Titolo:</b> ${interventionTitle}</p>
+      <p><b>Stato:</b> ${interventionStatus}</p>
+      <p><b>Dettaglio:</b> ${updateMessage}</p>
+      <br>
+      <a href="${interventionLink}" style="background-color: #64B5F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Visualizza Dettagli Intervento</a>
+      <br>
+      <p>Cordiali saluti,<br>Il Team di MannaTic</p>
+    </div>
+  `;
+
+  console.log(`[sendClientUpdateEmail] START for intervention #${interventionId} to ${recipientEmail} for company ${company.id}.`);
+  try {
+    const transporter = nodemailer.createTransport({
+      host: company.smtpHost,
+      port: company.smtpPort,
+      secure: company.smtpPort === 465,
+      auth: {
+        user: company.smtpUser,
+        pass: company.smtpPass,
+      },
+    });
+
+    const info = await transporter.sendMail({
+      from: company.senderEmail,
+      to: recipientEmail,
+      subject: emailSubject,
+      html: emailBody,
+    });
+
+    console.log(`[sendClientUpdateEmail] Email sent successfully to ${recipientEmail}. Response:`, info.response);
+
+    await addDoc(collection(db, 'emailLogs'), {
+      companyId: company.id,
+      timestamp: new Date().toISOString(),
+      recipient: recipientEmail,
+      subject: emailSubject,
+      status: 'success',
+      response: info.response,
+    });
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error(`[sendClientUpdateEmail] FAILED for ${recipientEmail}:`, error.message);
+
+    await addDoc(collection(db, 'emailLogs'), {
+      companyId: company.id,
+      timestamp: new Date().toISOString(),
+      recipient: recipientEmail,
+      subject: emailSubject,
+      status: 'failure',
+      response: error.response || 'N/A',
+      error: error.message || 'An unknown error occurred.',
+    });
+
+    return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
+  }
+}
+
 
 export async function saveSmtpSettings(companyId: string, settings: Partial<Company>): Promise<Company | null> {
     try {
@@ -59,16 +146,6 @@ export async function triggerNewInterventionNotification(input: SendNewIntervent
         return result;
     } catch (error: any) {
         console.error("Error sending new intervention notification email:", error);
-        return { success: false, error: error.message || "An unknown error occurred." };
-    }
-}
-
-export async function triggerClientUpdateNotification(input: SendClientUpdateNotificationInput): Promise<SendClientUpdateNotificationOutput> {
-    try {
-        const result = await sendClientUpdateNotification(input);
-        return result;
-    } catch (error: any) {
-        console.error("Error sending client update notification email:", error);
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }
@@ -130,4 +207,3 @@ export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {
         return [];
     }
 }
-
