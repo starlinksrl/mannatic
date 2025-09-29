@@ -171,7 +171,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         timeSpent: values.timeSpent || null,
         materialsUsed: values.materialsUsed || null,
         completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt || null,
-        attachments: values.attachments ? values.attachments.map(a => ({...a})) : [],
+        attachments: values.attachments ? JSON.parse(JSON.stringify(values.attachments)) : [],
     };
     
     const updated = await updateIntervention(intervention!.id, updatedInterventionData, currentUser);
