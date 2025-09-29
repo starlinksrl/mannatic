@@ -83,7 +83,6 @@ const sendExpiryNotificationFlow = ai.defineFlow(
     const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
     let emailSubject = `Expiry for intervention #${input.interventionId}`;
     try {
-      console.log(`[sendExpiryNotificationFlow] START for intervention #${input.interventionId} to ${recipientEmail} for company ${companyId}.`);
       const { output } = await prompt(promptInput);
 
       if (!output || !output.emailBody || !output.emailSubject) {
@@ -91,7 +90,6 @@ const sendExpiryNotificationFlow = ai.defineFlow(
       }
       
       emailSubject = output.emailSubject;
-      console.log(`[sendExpiryNotificationFlow] Email content generated. Subject: ${emailSubject}`);
 
       const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
@@ -102,30 +100,27 @@ const sendExpiryNotificationFlow = ai.defineFlow(
           pass: smtpConfig.pass,
         },
       });
-      
-      console.log(`[sendExpiryNotificationFlow] Sending email to ${recipientEmail} via ${smtpConfig.host}.`);
 
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: smtpConfig.from,
         to: recipientEmail,
         subject: output.emailSubject,
         html: output.emailBody,
       });
 
-      console.log('[sendExpiryNotificationFlow] Email sent successfully.');
-      
       await addDoc(collection(db, 'emailLogs'), {
         companyId: companyId,
         timestamp: new Date().toISOString(),
         recipient: recipientEmail,
         subject: output.emailSubject,
         status: 'success',
+        response: info.response,
       });
 
       return { success: true, emailBody: output.emailBody };
 
     } catch (error: any) {
-        console.error('[sendExpiryNotificationFlow] FAILED:', error.message);
+        console.error('[sendExpiryNotificationFlow] FAILED:', error);
         
         await addDoc(collection(db, 'emailLogs'), {
             companyId: input.companyId,

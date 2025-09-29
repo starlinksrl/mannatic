@@ -68,24 +68,21 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
         pass: smtpConfig.pass,
       },
     });
-    
-    console.log(`[sendNotificationEmail] START for company ${companyId}. Sending static test email to ${recipientEmail} via ${smtpConfig.host}.`);
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: smtpConfig.from,
       to: recipientEmail,
       subject: emailSubject,
       html: emailBody,
     });
 
-    console.log('[sendNotificationEmail] Test email sent successfully.');
-    
     await addDoc(collection(db, 'emailLogs'), {
       companyId: companyId,
       timestamp: new Date().toISOString(),
       recipient: recipientEmail,
       subject: emailSubject,
       status: 'success',
+      response: info.response,
     });
     
     return { success: true, emailBody: emailBody };

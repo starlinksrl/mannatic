@@ -73,7 +73,6 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
     const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
     let emailSubject = `Password Reset for ${input.userName}`;
     try {
-      console.log(`[sendPasswordResetEmailFlow] START for ${input.userName} for company ${companyId}.`);
       const { output } = await prompt(promptInput);
 
       if (!output || !output.emailBody || !output.emailSubject) {
@@ -81,7 +80,6 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
       }
       
       emailSubject = output.emailSubject;
-      console.log(`[sendPasswordResetEmailFlow] Email content generated. Subject: ${emailSubject}`);
 
       const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
@@ -92,30 +90,27 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
           pass: smtpConfig.pass,
         },
       });
-      
-      console.log(`[sendPasswordResetEmailFlow] Sending email to ${recipientEmail} via ${smtpConfig.host}.`);
 
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: smtpConfig.from,
         to: recipientEmail,
         subject: output.emailSubject,
         html: output.emailBody,
       });
 
-      console.log('[sendPasswordResetEmailFlow] Email sent successfully.');
-      
       await addDoc(collection(db, 'emailLogs'), {
         companyId: companyId,
         timestamp: new Date().toISOString(),
         recipient: recipientEmail,
         subject: output.emailSubject,
         status: 'success',
+        response: info.response,
       });
 
       return { success: true };
 
     } catch (error: any) {
-        console.error('[sendPasswordResetEmailFlow] FAILED:', error.message);
+        console.error('[sendPasswordResetEmailFlow] FAILED:', error);
 
         await addDoc(collection(db, 'emailLogs'), {
             companyId: input.companyId,

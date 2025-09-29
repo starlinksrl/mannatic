@@ -70,7 +70,6 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
     </div>
   `;
 
-  console.log(`[sendClientUpdateEmail] START for intervention #${interventionId} to ${recipientEmail} for company ${company.id}.`);
   try {
     if (!company.smtpHost || !company.senderEmail) {
       throw new Error('La configurazione SMTP per questa azienda è incompleta.');
@@ -86,14 +85,12 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
       },
     });
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: company.senderEmail,
       to: recipientEmail,
       subject: emailSubject,
       html: emailBody,
     });
-
-    console.log(`[sendClientUpdateEmail] Email sent successfully to ${recipientEmail}.`);
 
     await addDoc(collection(db, 'emailLogs'), {
       companyId: company.id,
@@ -101,12 +98,13 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
       recipient: recipientEmail,
       subject: emailSubject,
       status: 'success',
+      response: info.response,
     });
 
     return { success: true };
 
   } catch (error: any) {
-    console.error(`[sendClientUpdateEmail] FAILED for ${recipientEmail}:`, error.message);
+    console.error(`[sendClientUpdateEmail] FAILED for ${recipientEmail}:`, error);
 
     await addDoc(collection(db, 'emailLogs'), {
       companyId: company.id,

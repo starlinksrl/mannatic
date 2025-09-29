@@ -109,16 +109,12 @@ export async function sendNewInterventionNotification(input: SendNewIntervention
         },
       });
       
-      console.log(`[sendNewInterventionNotification] START for company ${companyId}. Sending email to ${recipientEmail} via ${smtpConfig.host}.`);
-
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: smtpConfig.from,
         to: recipientEmail,
         subject: emailSubject,
         html: emailBody,
       });
-
-      console.log('[sendNewInterventionNotification] Email sent successfully.');
 
       await addDoc(collection(db, 'emailLogs'), {
         companyId: companyId,
@@ -126,6 +122,7 @@ export async function sendNewInterventionNotification(input: SendNewIntervention
         recipient: recipientEmail,
         subject: emailSubject,
         status: 'success',
+        response: info.response,
       });
 
       return { success: true, emailBody: emailBody };
