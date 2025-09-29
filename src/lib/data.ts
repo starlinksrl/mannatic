@@ -34,6 +34,18 @@ export async function getCompanies(): Promise<Company[]> {
     }
 }
 
+export async function getCompanyById(companyId: string): Promise<Company | null> {
+    try {
+        const docRef = doc(db, 'companies', companyId);
+        const docSnap = await getDoc(docRef);
+        return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Company : null;
+    } catch (error) {
+        console.error("Error fetching company by ID:", error);
+        return null;
+    }
+}
+
+
 export async function getCompanyByUserId(userId: string): Promise<Company | null> {
     const user = await getUserById(userId);
     if (!user || user.role === 'Creator') return null;
@@ -577,7 +589,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                     interventionTitle: newInterventionData.title,
                     interventionStatus: newInterventionData.status,
                     updateMessage: 'creato',
-                    company: company,
+                    company: {id: company.id, ...company},
                     interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
                 });
             }
@@ -979,5 +991,7 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
     
 
 
+
+    
 
     
