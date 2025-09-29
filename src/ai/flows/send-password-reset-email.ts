@@ -12,6 +12,8 @@ import 'dotenv/config';
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import nodemailer from 'nodemailer';
+import { db } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 const SmtpConfigSchema = z.object({
   host: z.string().describe('SMTP server host.'),
@@ -26,6 +28,7 @@ const SendPasswordResetEmailInputSchema = z.object({
   userName: z.string().describe('The name of the user.'),
   resetLink: z.string().url().describe('The password reset link.'),
   smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+  companyId: z.string().describe('The ID of the company.'),
 });
 export type SendPasswordResetEmailInput = z.infer<typeof SendPasswordResetEmailInputSchema>;
 
@@ -68,8 +71,9 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
     outputSchema: SendPasswordResetEmailOutputSchema,
   },
   async (input) => {
+    let emailSubject = '';
     try {
-      const { smtpConfig, ...promptInput } = input;
+      const { smtpConfig, companyId, ...promptInput } = input;
       
       console.log(`Generating password reset email for ${input.userName}...`);
       const { output } = await prompt(promptInput);
@@ -78,6 +82,8 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
           throw new Error('Failed to generate email content for password reset.');
       }
       
+      emailSubject = output.emailSubject;
+
       const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
         port: smtpConfig.port,
@@ -90,7 +96,7 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
       
       console.log(`Sending password reset email to ${input.recipientEmail} via ${smtpConfig.host}...`);
 
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: smtpConfig.from,
         to: input.recipientEmail,
         subject: output.emailSubject,
@@ -98,10 +104,31 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
       });
 
       console.log('Password reset email sent successfully.');
+      
+      await addDoc(collection(db, 'emailLogs'), {
+        companyId,
+        timestamp: new Date().toISOString(),
+        recipient: input.recipientEmail,
+        subject: output.emailSubject,
+        status: 'success',
+        response: info.response,
+      });
+
       return { success: true };
 
     } catch (error: any) {
         console.error('Failed to send password reset email:', error);
+
+        await addDoc(collection(db, 'emailLogs'), {
+            companyId: input.companyId,
+            timestamp: new Date().toISOString(),
+            recipient: input.recipientEmail,
+            subject: emailSubject || `Password Reset for ${input.userName}`,
+            status: 'failure',
+            response: error.response || 'N/A',
+            error: error.message || 'An unknown error occurred.',
+        });
+
         return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
     }
   }

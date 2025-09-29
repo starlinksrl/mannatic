@@ -129,4 +129,14 @@ export interface Notification {
   type: NotificationType;
 }
 
+export interface EmailLog {
+  id: string;
+  companyId: string;
+  timestamp: string;
+  recipient: string;
+  subject: string;
+  status: 'success' | 'failure';
+  response: string;
+  error?: string;
+}
     

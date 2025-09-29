@@ -1,9 +1,9 @@
 
 
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate } from './types';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
 import { triggerExpiryNotification, triggerNewInterventionNotification, triggerClientUpdateNotification } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -103,7 +103,7 @@ export async function updateCompany(id: string, updatedData: Partial<Company>): 
 }
 
 export async function deleteCompanyAndSubcollections(companyId: string): Promise<void> {
-    const collectionsToDelete = ['users', 'interventions', 'notifications', 'surveys', 'passwordResetTokens'];
+    const collectionsToDelete = ['users', 'interventions', 'notifications', 'surveys', 'passwordResetTokens', 'emailLogs'];
     const batch = writeBatch(db);
 
     for (const coll of collectionsToDelete) {
@@ -616,49 +616,6 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
     return newMaintenanceData;
 }
 
-export async function createUpdateNotification(intervention: Intervention, updater: User) {
-    const internalRecipients: string[] = [];
-    // Add assigned operator if they didn't make the update
-    if (intervention.assignedOperatorId && intervention.assignedOperatorId !== updater.id) {
-        internalRecipients.push(intervention.assignedOperatorId);
-    }
-    
-    // If client or operator is updating, notify admins
-    if (['Client', 'Operator'].includes(updater.role)) {
-        const qAdmins = query(collection(db, 'users'), where("companyId", "==", intervention.companyId), where("role", "==", "Admin"));
-        const adminsSnapshot = await getDocs(qAdmins);
-        adminsSnapshot.docs.forEach(doc => {
-            if (doc.id !== updater.id) {
-                 internalRecipients.push(doc.id);
-            }
-        });
-    }
-
-    const uniqueInternalRecipients = [...new Set(internalRecipients)];
-    
-    const latestUpdate = intervention.updates && intervention.updates.length > 0 ? intervention.updates[0] : null;
-    const updateText = latestUpdate?.description;
-
-    for (const userId of uniqueInternalRecipients) {
-        const baseMessage = `${updater.name} ha aggiornato l'intervento #${intervention.id}: "${intervention.title}"`;
-        const inAppMessage = updateText && latestUpdate?.userName === updater.name 
-            ? `${baseMessage}. Dettagli: ${updateText}` 
-            : `${baseMessage}. Nuovo stato: ${intervention.status}`;
-        
-        addDoc(collection(db, 'notifications'), {
-            userId: userId,
-            companyId: intervention.companyId,
-            message: inAppMessage,
-            read: false,
-            createdAt: new Date().toISOString(),
-            relatedInterventionId: intervention.id,
-            type: 'status_change'
-        });
-    }
-
-}
-
-
 
 export async function updateIntervention(id: string, updatedData: Partial<Intervention>, updater: User): Promise<Intervention | null> {
     try {
@@ -673,59 +630,83 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         else if (dataToUpdate.completedAt === null) dataToUpdate.completedAt = null;
 
         const statusChanged = originalIntervention.status !== dataToUpdate.status;
-        const commentAdded = (dataToUpdate.newUpdate || '').trim() !== '';
+        const commentAdded = (updatedData.updates?.length || 0) > (originalIntervention.updates?.length || 0);
 
         if (commentAdded) {
-            const newUpdate: InterventionUpdate = {
-                date: new Date().toISOString(),
-                description: dataToUpdate.newUpdate.trim(),
-                userName: updater.name,
+            const newUpdate = dataToUpdate.updates[0];
+            dataToUpdate.updates[0] = {
+                ...newUpdate,
                 readBy: [updater.id],
             };
-            dataToUpdate.updates = [newUpdate, ...(dataToUpdate.updates || [])];
         }
-        delete dataToUpdate.newUpdate; // Remove temporary field
-
+        
         await updateDoc(docRef, dataToUpdate);
 
         const interventionForNotif = { ...originalIntervention, ...dataToUpdate } as Intervention;
 
-        // In-app notifications for internal team
         if (statusChanged || commentAdded) {
-            await createUpdateNotification(interventionForNotif, updater);
-        }
+            // In-app notifications for internal team
+            const internalRecipients: string[] = [];
+            if (interventionForNotif.assignedOperatorId && interventionForNotif.assignedOperatorId !== updater.id) {
+                internalRecipients.push(interventionForNotif.assignedOperatorId);
+            }
+            if (['Client', 'Operator'].includes(updater.role)) {
+                const qAdmins = query(collection(db, 'users'), where("companyId", "==", interventionForNotif.companyId), where("role", "==", "Admin"));
+                const adminsSnapshot = await getDocs(qAdmins);
+                adminsSnapshot.docs.forEach(doc => {
+                    if (doc.id !== updater.id) {
+                         internalRecipients.push(doc.id);
+                    }
+                });
+            }
 
-        // Email notification for client
-        if (statusChanged || commentAdded) {
+            const uniqueInternalRecipients = [...new Set(internalRecipients)];
+            const latestUpdate = interventionForNotif.updates && interventionForNotif.updates.length > 0 ? interventionForNotif.updates[0] : null;
+            const updateText = latestUpdate?.description;
+
+            for (const userId of uniqueInternalRecipients) {
+                const baseMessage = `${updater.name} ha aggiornato l'intervento #${interventionForNotif.id}: "${interventionForNotif.title}"`;
+                const inAppMessage = updateText && latestUpdate?.userName === updater.name 
+                    ? `${baseMessage}. Dettagli: ${updateText}` 
+                    : `${baseMessage}. Nuovo stato: ${interventionForNotif.status}`;
+                
+                addDoc(collection(db, 'notifications'), {
+                    userId: userId,
+                    companyId: interventionForNotif.companyId,
+                    message: inAppMessage,
+                    read: false,
+                    createdAt: new Date().toISOString(),
+                    relatedInterventionId: interventionForNotif.id,
+                    type: 'status_change'
+                });
+            }
+
+            // Email notification for client
             const client = await getUserById(interventionForNotif.clientId);
             const company = await getCompanyByUserId(interventionForNotif.clientId);
 
             if (client && client.email && company?.smtpHost) {
                 let updateMessage = '';
-                if (commentAdded) {
-                    const latestUpdate = interventionForNotif.updates[0];
+                if (commentAdded && latestUpdate) {
                     updateMessage = `${latestUpdate.userName} ha aggiunto un aggiornamento: "${latestUpdate.description}"`;
                 } else if (statusChanged) {
                     updateMessage = `Lo stato del tuo intervento è stato aggiornato a: ${interventionForNotif.status}`;
                 }
 
-                console.log(`[data.ts] Triggering client update email for intervention #${id} to ${client.email}`);
-                triggerClientUpdateNotification({
-                    recipientEmail: client.email,
-                    clientName: client.name,
-                    interventionId: id,
-                    interventionTitle: interventionForNotif.title,
-                    interventionStatus: interventionForNotif.status,
-                    updateMessage: updateMessage,
-                    interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
-                    smtpConfig: {
-                        host: company.smtpHost,
-                        port: company.smtpPort!,
-                        user: company.smtpUser!,
-                        pass: company.smtpPass!,
-                        from: company.senderEmail!,
-                    }
-                });
+                if (updateMessage) {
+                    triggerClientUpdateNotification({
+                        recipientEmail: client.email,
+                        clientName: client.name,
+                        interventionId: id,
+                        interventionTitle: interventionForNotif.title,
+                        interventionStatus: interventionForNotif.status,
+                        updateMessage: updateMessage,
+                        interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
+                        smtpConfig: {
+                            host: company.smtpHost, port: company.smtpPort!, user: company.smtpUser!, pass: company.smtpPass!, from: company.senderEmail!,
+                        }
+                    });
+                }
             }
         }
         
@@ -981,9 +962,22 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
     }
 }
 
+// --- EMAIL LOGS ---
 
+export async function getEmailLogs(companyId: string): Promise<EmailLog[]> {
+    if (!companyId) return [];
+    try {
+        const q = query(collection(db, 'emailLogs'), where("companyId", "==", companyId), orderBy('timestamp', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailLog));
+    } catch (error) {
+        console.error("Error fetching email logs:", error);
+        return [];
+    }
+}
     
 
     
+
 
 

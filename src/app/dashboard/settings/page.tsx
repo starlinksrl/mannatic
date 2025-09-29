@@ -13,13 +13,18 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { sendTestEmail, saveSmtpSettings } from '@/app/actions';
-import { Loader, AlertTriangle, Pencil } from 'lucide-react';
-import { Company } from '@/lib/types';
+import { sendTestEmail, saveSmtpSettings, fetchEmailLogs } from '@/app/actions';
+import { Loader, AlertTriangle, Pencil, CheckCircle, MailWarning } from 'lucide-react';
+import { Company, EmailLog } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
@@ -302,6 +307,7 @@ function SmtpSettingsForm({ company, onSave, onTest }: { company: Company, onSav
         pass: values.smtpPass,
         from: values.senderEmail,
       },
+      companyId: company.id
     });
 
     if (!result.success) {
@@ -434,6 +440,81 @@ function SmtpSettingsForm({ company, onSave, onTest }: { company: Company, onSav
   )
 }
 
+function EmailLogsTab({ companyId }: { companyId: string }) {
+    const [logs, setLogs] = useState<EmailLog[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const loadLogs = async () => {
+        setIsLoading(true);
+        const fetchedLogs = await fetchEmailLogs(companyId);
+        setLogs(fetchedLogs);
+        setIsLoading(false);
+    }
+    
+    useEffect(() => {
+        loadLogs();
+    }, [companyId]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Log Email Inviate</CardTitle>
+                <CardDescription>Visualizza lo storico delle email inviate e le risposte del server.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex justify-end mb-4">
+                    <Button variant="outline" onClick={loadLogs} disabled={isLoading}>
+                        {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                        Aggiorna Log
+                    </Button>
+                </div>
+                {isLoading ? (
+                    <div className="flex items-center justify-center p-8">
+                        <Loader className="h-8 w-8 animate-spin" />
+                    </div>
+                ) : (
+                    <ScrollArea className="h-[400px]">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Stato</TableHead>
+                                    <TableHead>Data</TableHead>
+                                    <TableHead>Destinatario</TableHead>
+                                    <TableHead>Oggetto</TableHead>
+                                    <TableHead>Risposta Server</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {logs.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center">Nessun log trovato.</TableCell>
+                                    </TableRow>
+                                ) : (
+                                    logs.map(log => (
+                                        <TableRow key={log.id} className={log.status === 'failure' ? 'bg-destructive/10' : ''}>
+                                            <TableCell>
+                                                {log.status === 'success' ? (
+                                                    <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1"/>Success</Badge>
+                                                ) : (
+                                                    <Badge variant="destructive"><MailWarning className="h-3 w-3 mr-1"/>Failure</Badge>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>{format(new Date(log.timestamp), 'dd/MM/yy HH:mm:ss', { locale: it })}</TableCell>
+                                            <TableCell>{log.recipient}</TableCell>
+                                            <TableCell>{log.subject}</TableCell>
+                                            <TableCell className="text-xs font-mono break-all">{log.error || log.response}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 
 export default function SettingsPage() {
   const { user, currentCompany, setCurrentCompany } = useUser();
@@ -481,6 +562,11 @@ export default function SettingsPage() {
         description: `Email di prova inviata con successo.`,
       });
     }
+    if (activeTab === 'logs') {
+        // Force a refresh of the logs tab if it's active
+        const button = document.querySelector('button[data-radix-collection-item][value="logs"]') as HTMLButtonElement | null;
+        if(button) button.click();
+    }
   }
 
   return (
@@ -488,15 +574,19 @@ export default function SettingsPage() {
       <Header title="Impostazioni" />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile">Profilo Azienda</TabsTrigger>
             <TabsTrigger value="smtp">Notifiche (SMTP)</TabsTrigger>
+            <TabsTrigger value="logs">Log Email</TabsTrigger>
           </TabsList>
           <TabsContent value="profile">
             <CompanyProfileForm company={currentCompany} onSave={handleSave} />
           </TabsContent>
           <TabsContent value="smtp">
              <SmtpSettingsForm company={currentCompany} onSave={handleSave} onTest={handleTestResult} />
+          </TabsContent>
+          <TabsContent value="logs">
+             <EmailLogsTab companyId={currentCompany.id} />
           </TabsContent>
         </Tabs>
       </main>

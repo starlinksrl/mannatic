@@ -11,6 +11,8 @@ import 'dotenv/config';
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import nodemailer from 'nodemailer';
+import { db } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 const SmtpConfigSchema = z.object({
   host: z.string().describe('SMTP server host.'),
@@ -29,6 +31,7 @@ const SendClientUpdateNotificationInputSchema = z.object({
   clientName: z.string().describe('The name of the client.'),
   interventionLink: z.string().url().optional().describe('A direct link to view the intervention in the app.'),
   smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+  companyId: z.string().describe('The ID of the company.'),
 });
 export type SendClientUpdateNotificationInput = z.infer<typeof SendClientUpdateNotificationInputSchema>;
 
@@ -86,8 +89,9 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
     outputSchema: SendClientUpdateNotificationOutputSchema,
   },
   async (input) => {
+    let emailSubject = '';
     try {
-      const { smtpConfig, recipientEmail, ...promptInput } = input;
+      const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
       
       console.log(`[sendClientUpdateNotificationFlow] START for intervention #${input.interventionId} to ${recipientEmail}`);
       
@@ -98,7 +102,8 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
           throw new Error('Failed to generate email content for client update notification.');
       }
       
-      console.log(`[sendClientUpdateNotificationFlow] Email content generated successfully. Subject: ${output.emailSubject}`);
+      emailSubject = output.emailSubject;
+      console.log(`[sendClientUpdateNotificationFlow] Email content generated successfully. Subject: ${emailSubject}`);
 
       const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
@@ -112,7 +117,7 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
       
       console.log(`[sendClientUpdateNotificationFlow] Sending client update email to ${input.recipientEmail} via ${smtpConfig.host}...`);
 
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: smtpConfig.from,
         to: input.recipientEmail,
         subject: output.emailSubject,
@@ -120,10 +125,31 @@ const sendClientUpdateNotificationFlow = ai.defineFlow(
       });
 
       console.log('[sendClientUpdateNotificationFlow] Client update email sent successfully. END.');
+      
+      await addDoc(collection(db, 'emailLogs'), {
+        companyId,
+        timestamp: new Date().toISOString(),
+        recipient: input.recipientEmail,
+        subject: output.emailSubject,
+        status: 'success',
+        response: info.response,
+      });
+
       return { success: true, emailBody: output.emailBody };
 
     } catch (error: any) {
         console.error('[sendClientUpdateNotificationFlow] FAILED:', error);
+        
+        await addDoc(collection(db, 'emailLogs'), {
+            companyId: input.companyId,
+            timestamp: new Date().toISOString(),
+            recipient: input.recipientEmail,
+            subject: emailSubject || `Update for intervention #${input.interventionId}`,
+            status: 'failure',
+            response: error.response || 'N/A',
+            error: error.message || 'An unknown error occurred.',
+        });
+
         return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
     }
   }

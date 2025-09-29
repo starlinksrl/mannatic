@@ -8,8 +8,8 @@ import { sendExpiryNotification, SendExpiryNotificationInput, SendExpiryNotifica
 import { sendNewInterventionNotification, SendNewInterventionNotificationInput } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail, SendPasswordResetEmailInput } from '@/ai/flows/send-password-reset-email';
 import { sendClientUpdateNotification, SendClientUpdateNotificationInput, SendClientUpdateNotificationOutput } from '@/ai/flows/send-client-update-notification';
-import { updateCompany, resetUserPassword, getUserByEmail, createPasswordResetToken, getCompanyByUserId } from '@/lib/data';
-import { Company } from '@/lib/types';
+import { updateCompany, resetUserPassword, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs } from '@/lib/data';
+import { Company, EmailLog } from '@/lib/types';
 import type { SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
@@ -92,6 +92,7 @@ export async function handlePasswordResetRequest(email: string): Promise<{ succe
             recipientEmail: user.email,
             userName: user.name,
             resetLink,
+            companyId: company.id,
             smtpConfig: {
                 host: company.smtpHost,
                 port: company.smtpPort!,
@@ -116,5 +117,15 @@ export async function handlePasswordReset(token: string, newPassword: string):Pr
     } catch (error: any) {
         console.error("Error resetting password:", error);
         return { success: false, message: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {
+    try {
+        const logs = await getEmailLogs(companyId);
+        return logs;
+    } catch (error) {
+        console.error("Error fetching email logs:", error);
+        return [];
     }
 }

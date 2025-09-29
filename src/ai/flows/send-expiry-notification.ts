@@ -12,6 +12,8 @@ import 'dotenv/config';
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import nodemailer from 'nodemailer';
+import { db } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 const SmtpConfigSchema = z.object({
   host: z.string().describe('SMTP server host.'),
@@ -28,6 +30,7 @@ const SendExpiryNotificationInputSchema = z.object({
   clientName: z.string().describe('The name of the client for the intervention.'),
   dueDate: z.string().describe('The due date of the intervention.'),
   smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+  companyId: z.string().describe('The ID of the company.'),
 });
 export type SendExpiryNotificationInput = z.infer<typeof SendExpiryNotificationInputSchema>;
 
@@ -77,8 +80,9 @@ const sendExpiryNotificationFlow = ai.defineFlow(
     outputSchema: SendExpiryNotificationOutputSchema,
   },
   async (input) => {
+    let emailSubject = '';
     try {
-      const { smtpConfig, ...promptInput } = input;
+      const { smtpConfig, companyId, ...promptInput } = input;
       
       console.log(`Generating expiry email for intervention #${input.interventionId}...`);
       const { output } = await prompt(promptInput);
@@ -87,6 +91,7 @@ const sendExpiryNotificationFlow = ai.defineFlow(
           throw new Error('Failed to generate email content for expiry notification.');
       }
       
+      emailSubject = output.emailSubject;
       console.log(`Generated expiry email body for ${input.recipientEmail}: \n${output.emailBody}`);
 
       const transporter = nodemailer.createTransport({
@@ -101,7 +106,7 @@ const sendExpiryNotificationFlow = ai.defineFlow(
       
       console.log(`Sending expiry email to ${input.recipientEmail} via ${smtpConfig.host}...`);
 
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: smtpConfig.from,
         to: input.recipientEmail,
         subject: output.emailSubject,
@@ -109,10 +114,31 @@ const sendExpiryNotificationFlow = ai.defineFlow(
       });
 
       console.log('Expiry email sent successfully.');
+      
+      await addDoc(collection(db, 'emailLogs'), {
+        companyId,
+        timestamp: new Date().toISOString(),
+        recipient: input.recipientEmail,
+        subject: output.emailSubject,
+        status: 'success',
+        response: info.response,
+      });
+
       return { success: true, emailBody: output.emailBody };
 
     } catch (error: any) {
         console.error('Failed to send expiry email:', error);
+        
+        await addDoc(collection(db, 'emailLogs'), {
+            companyId: input.companyId,
+            timestamp: new Date().toISOString(),
+            recipient: input.recipientEmail,
+            subject: emailSubject || `Expiry for intervention #${input.interventionId}`,
+            status: 'failure',
+            response: error.response || 'N/A',
+            error: error.message || 'An unknown error occurred.',
+        });
+
         return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
     }
   }

@@ -13,6 +13,8 @@ import 'dotenv/config';
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import nodemailer from 'nodemailer';
+import { db } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 const SmtpConfigSchema = z.object({
   host: z.string().describe('SMTP server host.'),
@@ -27,6 +29,7 @@ const SendNotificationEmailInputSchema = z.object({
   maintenanceDetails: z.string().describe('A brief description of the scheduled maintenance.'),
   nextDueDate: z.string().describe('The next due date for the maintenance.'),
   smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+  companyId: z.string().describe('The ID of the company.'),
 });
 export type SendNotificationEmailInput = z.infer<typeof SendNotificationEmailInputSchema>;
 
@@ -39,10 +42,23 @@ export type SendNotificationEmailOutput = z.infer<typeof SendNotificationEmailOu
 
 
 export async function sendNotificationEmail(input: SendNotificationEmailInput): Promise<SendNotificationEmailOutput> {
-  // Bypassing AI generation for the test email to fix persistent API key errors.
-  // We will send a static email directly with nodemailer.
+  const emailSubject = 'Test Email da MannaTic';
+  const emailBody = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h1 style="color: #333;">Email di Prova per Configurazione SMTP</h1>
+          <p>Questa è un'email di prova generata automaticamente da MannaTic per verificare la tua configurazione SMTP.</p>
+          <p><b>Se stai leggendo questa email, le tue impostazioni sono corrette e il sistema è in grado di inviare notifiche.</b></p>
+          <hr>
+          <p style="font-size: 0.9em; color: #555;">I dati sottostanti sono solo a scopo di esempio e non corrispondono a dati reali:</p>
+          <ul>
+              <li><b>Dettagli Manutenzione di Esempio:</b> ${input.maintenanceDetails}</li>
+              <li><b>Data Scadenza di Esempio:</b> ${input.nextDueDate}</li>
+          </ul>
+      </div>
+  `;
+
   try {
-    const { smtpConfig, recipientEmail, maintenanceDetails, nextDueDate } = input;
+    const { smtpConfig, recipientEmail, companyId } = input;
 
     const transporter = nodemailer.createTransport({
       host: smtpConfig.host,
@@ -53,25 +69,10 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
         pass: smtpConfig.pass,
       },
     });
-
-    const emailSubject = 'Test Email da MannaTic';
-    const emailBody = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-            <h1 style="color: #333;">Email di Prova per Configurazione SMTP</h1>
-            <p>Questa è un'email di prova generata automaticamente da MannaTic per verificare la tua configurazione SMTP.</p>
-            <p><b>Se stai leggendo questa email, le tue impostazioni sono corrette e il sistema è in grado di inviare notifiche.</b></p>
-            <hr>
-            <p style="font-size: 0.9em; color: #555;">I dati sottostanti sono solo a scopo di esempio e non corrispondono a dati reali:</p>
-            <ul>
-                <li><b>Dettagli Manutenzione di Esempio:</b> ${maintenanceDetails}</li>
-                <li><b>Data Scadenza di Esempio:</b> ${nextDueDate}</li>
-            </ul>
-        </div>
-    `;
     
     console.log(`Sending static test email to ${recipientEmail} via ${smtpConfig.host}...`);
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: smtpConfig.from,
       to: recipientEmail,
       subject: emailSubject,
@@ -79,87 +80,31 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
     });
 
     console.log('Test email sent successfully.');
+    
+    await addDoc(collection(db, 'emailLogs'), {
+      companyId,
+      timestamp: new Date().toISOString(),
+      recipient: recipientEmail,
+      subject: emailSubject,
+      status: 'success',
+      response: info.response,
+    });
+    
     return { success: true, emailBody: emailBody };
 
   } catch (error: any) {
       console.error('Failed to send test email:', error);
+
+      await addDoc(collection(db, 'emailLogs'), {
+        companyId: input.companyId,
+        timestamp: new Date().toISOString(),
+        recipient: input.recipientEmail,
+        subject: emailSubject,
+        status: 'failure',
+        response: error.response || 'N/A',
+        error: error.message || 'An unknown error occurred.',
+      });
+
       return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
   }
 }
-
-// Keeping the original AI flow for potential future use, but it's not called by the test button anymore.
-const prompt = ai.definePrompt({
-  name: 'sendNotificationEmailPrompt',
-  input: {schema: z.object({
-      recipientEmail: SendNotificationEmailInputSchema.shape.recipientEmail,
-      maintenanceDetails: SendNotificationEmailInputSchema.shape.maintenanceDetails,
-      nextDueDate: SendNotificationEmailInputSchema.shape.nextDueDate,
-  })},
-  output: {schema: z.object({ emailSubject: z.string(), emailBody: z.string() }) },
-  prompt: `You are an AI assistant tasked with generating professional email notifications for scheduled maintenance tasks.
-
-Generate the subject and body of an email to be sent to {{{recipientEmail}}}.
-
-The email should be a friendly but professional reminder about an upcoming scheduled maintenance.
-
-Maintenance Details: {{{maintenanceDetails}}}
-Next Due Date: {{{nextDueDate}}}
-
-The email should:
-1. Have a clear subject line like "Promemoria Manutenzione Programmata".
-2. Clearly state the maintenance task and its due date.
-3. Be written in Italian.
-4. Be concise and to the point.
-5. End with a polite closing.
-
-Output a JSON object with "emailSubject" and "emailBody" fields. Do not include "To:" in the body.
-`,
-});
-
-const sendNotificationEmailFlow = ai.defineFlow(
-  {
-    name: 'sendNotificationEmailFlow',
-    inputSchema: SendNotificationEmailInputSchema,
-    outputSchema: SendNotificationEmailOutputSchema,
-  },
-  async (input) => {
-    try {
-      const { smtpConfig, ...promptInput } = input;
-      
-      console.log(`Generating email content for ${input.recipientEmail}...`);
-      const { output } = await prompt(promptInput);
-
-      if (!output || !output.emailBody || !output.emailSubject) {
-          throw new Error('Failed to generate email content.');
-      }
-      
-      console.log(`Generated email body for ${input.recipientEmail}: \n${output.emailBody}`);
-
-      const transporter = nodemailer.createTransport({
-        host: smtpConfig.host,
-        port: smtpConfig.port,
-        secure: smtpConfig.port === 465,
-        auth: {
-          user: smtpConfig.user,
-          pass: smtpConfig.pass,
-        },
-      });
-      
-      console.log(`Sending email to ${input.recipientEmail} via ${smtpConfig.host}...`);
-
-      await transporter.sendMail({
-        from: smtpConfig.from,
-        to: input.recipientEmail,
-        subject: output.emailSubject,
-        html: output.emailBody,
-      });
-
-      console.log('Email sent successfully.');
-      return { success: true, emailBody: output.emailBody };
-
-    } catch (error: any) {
-        console.error('Failed to send email:', error);
-        return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
-    }
-  }
-);
