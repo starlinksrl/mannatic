@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -11,8 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getCompanies, getAllUsers, getAllInterventions, getAllSurveys, getAllNotifications, updateDocument } from '@/lib/data';
-import { Company, User, Intervention, ScheduledMaintenance, Survey, Notification } from '@/lib/types';
+import { getCompanies, getAllUsers, getAllInterventions, getAllSurveys, getAllNotifications, updateDocument, getAllEmailLogs } from '@/lib/data';
+import { Company, User, Intervention, ScheduledMaintenance, Survey, Notification, EmailLog } from '@/lib/types';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ type Data = {
     interventions: (Intervention | ScheduledMaintenance)[];
     surveys: Survey[];
     notifications: Notification[];
+    emailLogs: EmailLog[];
 }
 
 type CollectionName = keyof Data;
@@ -222,14 +224,15 @@ export default function ExplorerPage() {
 
     const fetchData = async () => {
         setIsLoading(true);
-        const [companies, users, interventions, surveys, notifications] = await Promise.all([
+        const [companies, users, interventions, surveys, notifications, emailLogs] = await Promise.all([
             getCompanies(),
             getAllUsers(),
             getAllInterventions(),
             getAllSurveys(),
-            getAllNotifications()
+            getAllNotifications(),
+            getAllEmailLogs(),
         ]);
-        setData({ companies, users, interventions, surveys, notifications });
+        setData({ companies, users, interventions, surveys, notifications, emailLogs });
         setIsLoading(false);
     }
 
@@ -259,7 +262,7 @@ export default function ExplorerPage() {
         return null;
     }
 
-    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'surveys', 'notifications'];
+    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'surveys', 'notifications', 'emailLogs'];
 
     return (
         <>
