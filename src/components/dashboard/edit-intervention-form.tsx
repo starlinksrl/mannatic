@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,17 +28,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2 } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Intervention, Client, User, InterventionPriority, InterventionStatus } from '@/lib/types';
+import { Intervention, Client, User, InterventionPriority, InterventionStatus, Attachment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateIntervention, getUserById } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { useUser } from '@/contexts/user-context';
 import { EditUserForm } from './edit-user-form';
+import { v4 as uuidv4 } from 'uuid';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -51,6 +53,7 @@ const formSchema = z.object({
   newUpdate: z.string().optional(),
   timeSpent: z.coerce.number().positive({ message: 'Le ore impiegate devono essere un numero positivo.' }).optional(),
   materialsUsed: z.string().optional(),
+  attachments: z.array(z.any()).optional(),
 }).superRefine((data, ctx) => {
     if (data.status === 'Completato') {
         if (!data.timeSpent) {
@@ -86,11 +89,13 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const { toast } = useToast();
   const [isClientEditOpen, setIsClientEditOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<User | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       dueTime: '',
+      attachments: [],
     }
   });
 
@@ -107,9 +112,13 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         newUpdate: '',
         timeSpent: intervention.timeSpent || undefined,
         materialsUsed: intervention.materialsUsed || '',
+        attachments: intervention.attachments || [],
       });
     }
   }, [intervention, form]);
+  
+  const attachments = form.watch('attachments');
+
 
   const handleOpenClientEdit = async () => {
     const clientId = form.getValues('clientId');
@@ -162,6 +171,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         timeSpent: values.timeSpent || null,
         materialsUsed: values.materialsUsed || null,
         completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt || null,
+        attachments: values.attachments,
     };
     
     const updated = await updateIntervention(intervention!.id, updatedInterventionData, currentUser);
@@ -180,6 +190,31 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             description: "Impossibile aggiornare l'intervento.",
         });
     }
+  }
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    for (const file of Array.from(files)) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const newAttachment: Attachment = {
+          id: uuidv4(),
+          name: file.name,
+          url: e.target?.result as string,
+          type: file.type,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: currentUser.name,
+        };
+        form.setValue('attachments', [...(form.getValues('attachments') || []), newAttachment]);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    form.setValue('attachments', (form.getValues('attachments') || []).filter(att => att.id !== id));
   }
   
   const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
@@ -424,6 +459,35 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                             </FormItem>
                         )}
                     />
+                    
+                    <Separator />
+
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Allegati</h4>
+                       <div className="space-y-2">
+                        {(attachments || []).map((att) => (
+                           <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
+                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:underline truncate">
+                                    <FileIcon className="h-4 w-4" />
+                                    <span className="truncate">{att.name}</span>
+                                </a>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveAttachment(att.id)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                           </div>
+                        ))}
+                        {(!attachments || attachments.length === 0) && (
+                            <p className="text-sm text-muted-foreground text-center py-2">Nessun allegato.</p>
+                        )}
+                       </div>
+                       <div>
+                          <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple className="hidden" />
+                          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                              <UploadCloud className="mr-2" />
+                              Aggiungi File
+                          </Button>
+                       </div>
+                    </div>
                     
                     <Separator />
 

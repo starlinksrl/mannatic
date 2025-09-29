@@ -69,6 +69,16 @@ export interface InterventionUpdate {
   readBy?: string[];
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  url: string; // data URI
+  type: string; // MIME type
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
+
 export interface Intervention {
   id: string;
   title: string;
@@ -86,6 +96,7 @@ export interface Intervention {
   photos?: string[];
   clientSignature?: string;
   updates?: InterventionUpdate[];
+  attachments?: Attachment[];
   companyId: string;
   isMaintenance?: boolean;
 }
@@ -136,7 +147,6 @@ export interface EmailLog {
   recipient: string;
   subject: string;
   status: 'success' | 'failure';
-  response?: string;
   error?: string;
 }
     
