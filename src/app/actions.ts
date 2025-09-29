@@ -4,16 +4,19 @@
 import 'dotenv/config';
 
 import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOutput } from '@/ai/flows/generate-kpi-dashboard';
-import { sendNotificationEmail, SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
-import { sendExpiryNotification, SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
-import { sendNewInterventionNotification, SendNewInterventionNotificationInput } from '@/ai/flows/send-new-intervention-notification';
-import { sendPasswordResetEmail, SendPasswordResetEmailInput } from '@/ai/flows/send-password-reset-email';
+import { sendNotificationEmail } from '@/ai/flows/send-notification-email';
+import { sendExpiryNotification } from '@/ai/flows/send-expiry-notification';
+import { sendNewInterventionNotification } from '@/ai/flows/send-new-intervention-notification';
+import { sendPasswordResetEmail } from '@/ai/flows/send-password-reset-email';
 import { updateCompany, resetUserPassword, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs } from '@/lib/data';
 import { Company, EmailLog } from '@/lib/types';
-import type { SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import nodemailer from 'nodemailer';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
+import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
+import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
+import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
   try {
@@ -85,7 +88,7 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
       },
     });
 
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: company.senderEmail,
       to: recipientEmail,
       subject: emailSubject,
@@ -98,22 +101,22 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
       recipient: recipientEmail,
       subject: emailSubject,
       status: 'success',
-      response: info.response,
     });
 
     return { success: true };
 
   } catch (error: any) {
-    console.error(`[sendClientUpdateEmail] FAILED for ${recipientEmail}:`, error);
-
-    await addDoc(collection(db, 'emailLogs'), {
-      companyId: company.id,
-      timestamp: new Date().toISOString(),
-      recipient: recipientEmail,
-      subject: emailSubject,
-      status: 'failure',
-      error: error.message || 'An unknown error occurred.',
-    });
+    console.error(`[sendClientUpdateEmail] FAILED for ${recipientEmail}:`, error.message);
+    if (company.id) {
+        await addDoc(collection(db, 'emailLogs'), {
+            companyId: company.id,
+            timestamp: new Date().toISOString(),
+            recipient: recipientEmail,
+            subject: emailSubject,
+            status: 'failure',
+            error: error.message || 'An unknown error occurred.',
+        });
+    }
 
     return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
   }
@@ -207,5 +210,3 @@ export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {
         return [];
     }
 }
-
-    

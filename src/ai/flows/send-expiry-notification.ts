@@ -101,7 +101,7 @@ const sendExpiryNotificationFlow = ai.defineFlow(
         },
       });
 
-      const info = await transporter.sendMail({
+      await transporter.sendMail({
         from: smtpConfig.from,
         to: recipientEmail,
         subject: output.emailSubject,
@@ -114,13 +114,12 @@ const sendExpiryNotificationFlow = ai.defineFlow(
         recipient: recipientEmail,
         subject: output.emailSubject,
         status: 'success',
-        response: info.response,
       });
 
       return { success: true, emailBody: output.emailBody };
 
     } catch (error: any) {
-        console.error('[sendExpiryNotificationFlow] FAILED:', error);
+        console.error(`[sendExpiryNotificationFlow] FAILED for ${recipientEmail}:`, error.message);
         
         await addDoc(collection(db, 'emailLogs'), {
             companyId: input.companyId,
@@ -140,5 +139,3 @@ const sendExpiryNotificationFlow = ai.defineFlow(
 export async function sendExpiryNotification(input: SendExpiryNotificationInput): Promise<SendExpiryNotificationOutput> {
     return sendExpiryNotificationFlow(input);
 }
-
-    

@@ -4,7 +4,7 @@ import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRol
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
+import { sendClientUpdateEmail, triggerExpiryNotification, triggerNewInterventionNotification } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -363,7 +363,7 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
     
     const companyDoc = await getDoc(doc(db, 'companies', companyId));
     if (!companyDoc.exists()) return;
-    const company = companyDoc.data() as Company;
+    const company = { id: companyDoc.id, ...companyDoc.data() } as Company;
 
     if (!company.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPass || !company.senderEmail) {
         console.log(`Skipping expiry notifications for company ${companyId}: SMTP not configured.`);
@@ -527,7 +527,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     // --- NOTIFICATION LOGIC ---
     const companyDoc = await getDoc(doc(db, 'companies', companyId));
     if (companyDoc.exists()) {
-        const company = { id: companyDoc.id, ...companyDoc.data() } as Company;
+        const company: Company = { id: companyDoc.id, ...companyDoc.data() as Omit<Company, 'id'> };
         if (company.smtpHost) {
             // Notify Admins
             const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
@@ -680,7 +680,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             const companyDoc = await getDoc(doc(db, 'companies', interventionForNotif.companyId));
 
             if (client && client.email && companyDoc.exists()) {
-                const company = {id: companyDoc.id, ...companyDoc.data()} as Company;
+                const company: Company = {id: companyDoc.id, ...companyDoc.data()};
                 if(company.smtpHost) {
                      await sendClientUpdateEmail({
                         recipientEmail: client.email,

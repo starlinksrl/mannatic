@@ -91,7 +91,7 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
         },
       });
 
-      const info = await transporter.sendMail({
+      await transporter.sendMail({
         from: smtpConfig.from,
         to: recipientEmail,
         subject: output.emailSubject,
@@ -104,13 +104,12 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
         recipient: recipientEmail,
         subject: output.emailSubject,
         status: 'success',
-        response: info.response,
       });
 
       return { success: true };
 
     } catch (error: any) {
-        console.error('[sendPasswordResetEmailFlow] FAILED:', error);
+        console.error(`[sendPasswordResetEmailFlow] FAILED for ${recipientEmail}:`, error.message);
 
         await addDoc(collection(db, 'emailLogs'), {
             companyId: input.companyId,
@@ -129,5 +128,3 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
 export async function sendPasswordResetEmail(input: SendPasswordResetEmailInput): Promise<SendPasswordResetEmailOutput> {
     return sendPasswordResetEmailFlow(input);
 }
-
-    
