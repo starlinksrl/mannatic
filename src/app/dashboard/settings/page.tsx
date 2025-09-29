@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, useForm as useSmtpForm, FormProvider } from 'react-hook-form';
@@ -440,7 +441,7 @@ function SmtpSettingsForm({ company, onSave, onTest }: { company: Company, onSav
   )
 }
 
-function EmailLogsTab({ companyId }: { companyId: string }) {
+function EmailLogsTab({ companyId, refreshTrigger }: { companyId: string, refreshTrigger: number }) {
     const [logs, setLogs] = useState<EmailLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -453,7 +454,7 @@ function EmailLogsTab({ companyId }: { companyId: string }) {
     
     useEffect(() => {
         loadLogs();
-    }, [companyId]);
+    }, [companyId, refreshTrigger]);
 
     return (
         <Card>
@@ -462,13 +463,7 @@ function EmailLogsTab({ companyId }: { companyId: string }) {
                 <CardDescription>Visualizza lo storico delle email inviate e le risposte del server.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex justify-end mb-4">
-                    <Button variant="outline" onClick={loadLogs} disabled={isLoading}>
-                        {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                        Aggiorna Log
-                    </Button>
-                </div>
-                {isLoading ? (
+                 {isLoading ? (
                     <div className="flex items-center justify-center p-8">
                         <Loader className="h-8 w-8 animate-spin" />
                     </div>
@@ -502,7 +497,7 @@ function EmailLogsTab({ companyId }: { companyId: string }) {
                                             <TableCell>{format(new Date(log.timestamp), 'dd/MM/yy HH:mm:ss', { locale: it })}</TableCell>
                                             <TableCell>{log.recipient}</TableCell>
                                             <TableCell>{log.subject}</TableCell>
-                                            <TableCell className="text-xs font-mono break-all">{log.error || log.response}</TableCell>
+                                            <TableCell className="text-xs font-mono break-all">{log.error}</TableCell>
                                         </TableRow>
                                     ))
                                 )}
@@ -522,6 +517,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (user && user.role !== 'Admin') {
@@ -559,13 +555,10 @@ export default function SettingsPage() {
      if (result.success) {
       toast({
         title: 'Test connessione riuscito!',
-        description: `Email di prova inviata con successo.`,
+        description: `Email di prova inviata con successo. Il log apparirà a breve.`,
       });
-    }
-    if (activeTab === 'logs') {
-        // Force a refresh of the logs tab if it's active
-        const button = document.querySelector('button[data-radix-collection-item][value="logs"]') as HTMLButtonElement | null;
-        if(button) button.click();
+      // Trigger a refresh of the log tab after a short delay
+      setTimeout(() => setRefreshTrigger(prev => prev + 1), 2000);
     }
   }
 
@@ -586,10 +579,12 @@ export default function SettingsPage() {
              <SmtpSettingsForm company={currentCompany} onSave={handleSave} onTest={handleTestResult} />
           </TabsContent>
           <TabsContent value="logs">
-             <EmailLogsTab companyId={currentCompany.id} />
+             <EmailLogsTab companyId={currentCompany.id} refreshTrigger={refreshTrigger} />
           </TabsContent>
         </Tabs>
       </main>
     </>
   );
 }
+
+    

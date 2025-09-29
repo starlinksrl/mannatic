@@ -525,9 +525,11 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     await setDoc(doc(db, 'interventions', newId), newInterventionData);
 
     // --- NOTIFICATION LOGIC ---
-    const companyDoc = await getDoc(doc(db, 'companies', companyId));
+    const companyDocRef = doc(db, 'companies', companyId);
+    const companyDoc = await getDoc(companyDocRef);
     if (companyDoc.exists()) {
-        const company: Company = { id: companyDoc.id, ...companyDoc.data() as Omit<Company, 'id'> };
+        const company: Company = { id: companyDoc.id, ...companyDoc.data() };
+
         if (company.smtpHost) {
             // Notify Admins
             const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
@@ -677,7 +679,8 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
 
             // Email notification for client
             const client = await getUserById(interventionForNotif.clientId);
-            const companyDoc = await getDoc(doc(db, 'companies', interventionForNotif.companyId));
+            const companyDocRef = doc(db, 'companies', interventionForNotif.companyId);
+            const companyDoc = await getDoc(companyDocRef);
 
             if (client && client.email && companyDoc.exists()) {
                 const company: Company = {id: companyDoc.id, ...companyDoc.data()};
@@ -964,7 +967,7 @@ export async function getEmailLogs(companyId: string): Promise<EmailLog[]> {
 
 export async function getAllEmailLogs(): Promise<EmailLog[]> {
     try {
-        const snapshot = await getDocs(collection(db, 'emailLogs'));
+        const snapshot = await getDocs(query(collection(db, 'emailLogs'), orderBy('timestamp', 'desc')));
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailLog));
     } catch (error) {
         console.error("Error fetching all email logs:", error);
@@ -975,3 +978,6 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 
     
 
+
+
+    

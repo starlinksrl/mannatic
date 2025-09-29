@@ -1,3 +1,4 @@
+
 'use server';
 import 'dotenv/config';
 /**
@@ -69,7 +70,7 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
       },
     });
 
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: smtpConfig.from,
       to: recipientEmail,
       subject: emailSubject,
@@ -82,7 +83,6 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
       recipient: recipientEmail,
       subject: emailSubject,
       status: 'success',
-      response: info.response,
     });
     
     return { success: true, emailBody: emailBody };
