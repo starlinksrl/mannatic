@@ -38,6 +38,7 @@ import { addIntervention, getInterventionTitles } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ScrollArea } from '../ui/scroll-area';
+import { useDebounce } from 'use-debounce';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -67,6 +68,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   const [clientList, setClientList] = useState(clients);
   
   const [titleQuery, setTitleQuery] = useState('');
+  const [debouncedTitleQuery] = useDebounce(titleQuery, 300);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isTitlePopoverOpen, setIsTitlePopoverOpen] = useState(false);
   const [existingTitles, setExistingTitles] = useState<string[]>([]);
@@ -104,9 +106,9 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   }, [currentCompany, isOpen]);
   
   useEffect(() => {
-    if (titleQuery.length > 2 && existingTitles.length >= 3) {
+    if (debouncedTitleQuery.length > 2 && existingTitles.length > 0) {
       const filteredSuggestions = existingTitles.filter(t => 
-        t.toLowerCase().includes(titleQuery.toLowerCase())
+        t.toLowerCase().includes(debouncedTitleQuery.toLowerCase()) && t.toLowerCase() !== debouncedTitleQuery.toLowerCase()
       );
       setSuggestions(filteredSuggestions);
       setIsTitlePopoverOpen(filteredSuggestions.length > 0);
@@ -114,7 +116,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       setSuggestions([]);
       setIsTitlePopoverOpen(false);
     }
-  }, [titleQuery, existingTitles]);
+  }, [debouncedTitleQuery, existingTitles]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
