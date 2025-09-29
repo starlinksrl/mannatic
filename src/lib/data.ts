@@ -403,12 +403,13 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
                 if (operator && operator.email && client) {
                     console.log(`Sending expiry notification for intervention #${intervention.id} to ${operator.email}`);
                     
-                    triggerExpiryNotification({
+                    await triggerExpiryNotification({
                         recipientEmail: operator.email,
                         interventionId: intervention.id,
                         interventionTitle: intervention.title,
                         clientName: client.name,
                         dueDate: dueDate.toLocaleDateString('it-IT'),
+                        companyId: company.id,
                         smtpConfig: {
                             host: company.smtpHost,
                             port: company.smtpPort,
@@ -418,7 +419,7 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
                         }
                     });
 
-                    addDoc(collection(db, 'notifications'), {
+                    await addDoc(collection(db, 'notifications'), {
                         userId: operator.id,
                         companyId: companyId,
                         message: `L'intervento #${intervention.id} (${intervention.title}) scade a breve.`,
@@ -550,7 +551,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             
             for (const admin of admins) {
                 if (admin.email) {
-                    triggerNewInterventionNotification({
+                    await triggerNewInterventionNotification({
                         recipientEmail: admin.email,
                         interventionId: newInterventionData.id,
                         interventionTitle: newInterventionData.title,
@@ -560,11 +561,12 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                         clientName: clientName,
                         creatorName: creatorName,
                         assignedOperatorName: operatorName,
+                        companyId: company.id,
                         smtpConfig: {
                             host: company.smtpHost, port: company.smtpPort!, user: company.smtpUser!, pass: company.smtpPass!, from: company.senderEmail!,
                         }
                     });
-                     addDoc(collection(db, 'notifications'), {
+                     await addDoc(collection(db, 'notifications'), {
                         userId: admin.id,
                         companyId: companyId,
                         message: `Nuovo intervento #${newInterventionData.id} (${newInterventionData.title}) creato da ${creatorName} per il cliente ${clientName}.`,
@@ -576,13 +578,14 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             // Notify Client
             const client = await getUserById(newInterventionData.clientId);
             if (client && client.email) {
-                triggerClientUpdateNotification({
+                await triggerClientUpdateNotification({
                     recipientEmail: client.email,
                     clientName: client.name,
                     interventionId: newInterventionData.id,
                     interventionTitle: newInterventionData.title,
                     interventionStatus: newInterventionData.status,
                     updateMessage: `creato`,
+                    companyId: company.id,
                     interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
                     smtpConfig: {
                         host: company.smtpHost, port: company.smtpPort!, user: company.smtpUser!, pass: company.smtpPass!, from: company.senderEmail!,
@@ -630,7 +633,9 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         else if (dataToUpdate.completedAt === null) dataToUpdate.completedAt = null;
 
         const statusChanged = originalIntervention.status !== dataToUpdate.status;
-        const commentAdded = (updatedData.updates?.length || 0) > (originalIntervention.updates?.length || 0);
+        const newUpdates = dataToUpdate.updates || [];
+        const oldUpdates = originalIntervention.updates || [];
+        const commentAdded = newUpdates.length > oldUpdates.length;
 
         if (commentAdded) {
             const newUpdate = dataToUpdate.updates[0];
@@ -670,7 +675,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                     ? `${baseMessage}. Dettagli: ${updateText}` 
                     : `${baseMessage}. Nuovo stato: ${interventionForNotif.status}`;
                 
-                addDoc(collection(db, 'notifications'), {
+                await addDoc(collection(db, 'notifications'), {
                     userId: userId,
                     companyId: interventionForNotif.companyId,
                     message: inAppMessage,
@@ -687,20 +692,23 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
 
             if (client && client.email && company?.smtpHost) {
                 let updateMessage = '';
+                const latestUpdate = commentAdded ? (interventionForNotif.updates || [])[0] : null;
+
                 if (commentAdded && latestUpdate) {
-                    updateMessage = `${latestUpdate.userName} ha aggiunto un aggiornamento: "${latestUpdate.description}"`;
+                     updateMessage = `${latestUpdate.userName} ha aggiunto un aggiornamento: "${latestUpdate.description}"`;
                 } else if (statusChanged) {
                     updateMessage = `Lo stato del tuo intervento è stato aggiornato a: ${interventionForNotif.status}`;
                 }
 
                 if (updateMessage) {
-                    triggerClientUpdateNotification({
+                    await triggerClientUpdateNotification({
                         recipientEmail: client.email,
                         clientName: client.name,
                         interventionId: id,
                         interventionTitle: interventionForNotif.title,
                         interventionStatus: interventionForNotif.status,
                         updateMessage: updateMessage,
+                        companyId: company.id,
                         interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
                         smtpConfig: {
                             host: company.smtpHost, port: company.smtpPort!, user: company.smtpUser!, pass: company.smtpPass!, from: company.senderEmail!,
@@ -978,6 +986,7 @@ export async function getEmailLogs(companyId: string): Promise<EmailLog[]> {
     
 
     
+
 
 
 

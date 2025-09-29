@@ -1,4 +1,5 @@
 
+
 'use server';
 import 'dotenv/config';
 
@@ -129,3 +130,4 @@ export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {
         return [];
     }
 }
+
