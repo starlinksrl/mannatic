@@ -234,8 +234,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const tableHeaders = [
     { key: 'title', label: 'Titolo', visible: true, className: 'w-[30%]' },
     { key: 'client', label: 'Cliente', visible: currentUser.role !== 'Client' },
-    { key: 'contact', label: 'Contatti Cliente', visible: currentUser.role === 'Admin', className: 'hidden md:table-cell' },
-    { key: 'address', label: 'Indirizzo', visible: currentUser.role === 'Admin', className: 'hidden lg:table-cell' },
+    { key: 'contact', label: 'Contatti Cliente', visible: currentUser.role === 'Admin', className: 'hidden xl:table-cell' },
+    { key: 'address', label: 'Indirizzo', visible: currentUser.role === 'Admin', className: 'hidden 2xl:table-cell' },
     { key: 'status', label: 'Stato', visible: true },
     { key: 'priority', label: 'Priorità', visible: true, className: 'hidden sm:table-cell' },
     { key: 'dueDate', label: 'Scadenza', visible: true, className: 'hidden md:table-cell' },
@@ -290,7 +290,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 )}
             </div>
       </div>
-      <Card className="lg:hidden">
+      <Card className="xl:hidden">
         <CardContent className="p-2 space-y-2">
             {sortedInterventions.map((intervention) => {
               const client = clientsMap.get(intervention.clientId);
@@ -348,7 +348,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             })}
         </CardContent>
       </Card>
-      <Card className="hidden lg:block">
+      <Card className="hidden xl:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
@@ -384,7 +384,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                     </TableCell>
                    }
                    {currentUser.role === 'Admin' && (
-                    <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
+                    <TableCell className="hidden xl:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                       {client && (
                          <div className="flex flex-col gap-1 text-xs">
                             {client.email && (
@@ -404,7 +404,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                     </TableCell>
                    )}
                    {currentUser.role === 'Admin' && (
-                    <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
+                    <TableCell className="hidden 2xl:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                       {client && client.address && (
                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs hover:underline">
                             <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -462,3 +462,4 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     </div>
   );
 }
+

@@ -64,7 +64,7 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
             ) : (
                 <Building className="h-5 w-5 text-muted-foreground" />
             )}
-             <span className="font-medium hidden lg:inline">{currentCompany.name}</span>
+             <span className="font-medium hidden md:inline">{currentCompany.name}</span>
           </div>
         )}
         <h1 className="font-headline text-xl font-semibold">{title}</h1>
@@ -79,7 +79,7 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
             >
                 <Button>
                     <PlusCircle className="mr-2" />
-                    Crea Intervento
+                    <span className="hidden sm:inline">Crea Intervento</span>
                 </Button>
             </AddInterventionForm>
         )}
@@ -89,3 +89,4 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
     </header>
   );
 }
+

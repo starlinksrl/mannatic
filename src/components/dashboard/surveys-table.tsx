@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -163,7 +164,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                 </div>
             }
       </div>
-      <Card className="md:hidden">
+      <Card className="xl:hidden">
         <CardContent className="p-2 space-y-2">
             {filteredSurveys.map((survey) => {
               const client = clientsMap.get(survey.clientId);
@@ -203,7 +204,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
             })}
         </CardContent>
       </Card>
-      <Card className="hidden md:block">
+      <Card className="hidden xl:block">
         <Table>
           <TableHeader>
             <TableRow>

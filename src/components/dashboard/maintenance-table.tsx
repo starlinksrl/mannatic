@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -253,7 +254,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                 </div>
             }
       </div>
-      <Card className="md:hidden">
+      <Card className="xl:hidden">
         <CardContent className="p-2 space-y-2">
             {sortedTasks.map((task) => {
               const clientName = clientsMap.get(task.clientId);
@@ -293,7 +294,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
             })}
         </CardContent>
       </Card>
-      <Card className="hidden md:block">
+      <Card className="hidden xl:block">
         <Table>
           <TableHeader>
             <TableRow>

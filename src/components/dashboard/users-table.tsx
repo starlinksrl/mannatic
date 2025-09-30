@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -86,7 +87,7 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
 
   return (
     <>
-    <Card className="md:hidden">
+    <Card className="xl:hidden">
       <CardContent className="p-2 space-y-2">
         {users.map((user) => (
             <div key={user.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
@@ -127,7 +128,7 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
           ))}
       </CardContent>
     </Card>
-    <Card className="hidden md:block">
+    <Card className="hidden xl:block">
       <Table>
         <TableHeader>
           <TableRow>
