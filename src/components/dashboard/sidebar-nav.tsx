@@ -40,6 +40,7 @@ const navItems: {
   { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin', 'Creator'] },
   { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin', 'Creator'] },
   { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
+  { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'] },
   { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'] },
   { href: '/dashboard/admin-explorer', label: 'Explorer', icon: Database, roles: ['Admin'] },
   { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'] },

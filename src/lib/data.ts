@@ -1,12 +1,39 @@
 
 
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog } from './types';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
+
+
+// --- APP CONFIGURATION ---
+
+export async function getAppConfiguration(): Promise<AppConfiguration | null> {
+    try {
+        const docRef = doc(db, 'appConfiguration', 'global');
+        const docSnap = await getDoc(docRef);
+        return docSnap.exists() ? { id: 'global', ...docSnap.data() } as AppConfiguration : null;
+    } catch (error) {
+        console.error("Error fetching app configuration:", error);
+        return null;
+    }
+}
+
+export async function updateAppConfiguration(config: Partial<Omit<AppConfiguration, 'id'>>): Promise<AppConfiguration | null> {
+    try {
+        const docRef = doc(db, 'appConfiguration', 'global');
+        // Use set with merge to create the document if it doesn't exist, or update it if it does.
+        await setDoc(docRef, config, { merge: true });
+        const updatedDoc = await getDoc(docRef);
+        return updatedDoc.exists() ? { id: 'global', ...updatedDoc.data() } as AppConfiguration : null;
+    } catch (error) {
+        console.error("Error updating app configuration:", error);
+        return null;
+    }
+}
 
 
 // --- GENERIC DOCUMENT MANAGEMENT ---
@@ -68,14 +95,21 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
     }
 
     try {
+        const appConfig = await getAppConfiguration();
+        
         const companyPayload: Omit<Company, 'id'> = {
             name: companyData.name!,
             address: companyData.address || '',
             vatNumber: companyData.vatNumber || '',
             taxCode: companyData.taxCode || '',
-phone: companyData.phone || '',
+            phone: companyData.phone || '',
             uniqueCode: companyData.uniqueCode || '',
             email: companyData.email || '',
+            smtpHost: appConfig?.defaultSmtpHost,
+            smtpPort: appConfig?.defaultSmtpPort,
+            smtpUser: appConfig?.defaultSmtpUser,
+            smtpPass: appConfig?.defaultSmtpPass,
+            senderEmail: appConfig?.defaultSenderEmail,
         };
 
         const docRef = await addDoc(collection(db, 'companies'), companyPayload);

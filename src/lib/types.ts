@@ -2,6 +2,19 @@
 
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 
+export interface AppConfiguration {
+  id: 'global';
+  appName?: string;
+  appLogoUrl?: string;
+  defaultSmtpHost?: string;
+  defaultSmtpPort?: number;
+  defaultSmtpUser?: string;
+  defaultSmtpPass?: string;
+  defaultSenderEmail?: string;
+  gcsBucketName?: string;
+}
+
+
 export interface Company {
   id: string;
   name: string;
