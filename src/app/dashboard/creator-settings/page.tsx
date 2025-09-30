@@ -326,9 +326,15 @@ export default function CreatorSettingsPage() {
               <CardContent className="space-y-4">
                  <Alert>
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Connessione Sicura</AlertTitle>
+                    <AlertTitle>Come connettere un Bucket</AlertTitle>
                     <AlertDescription>
-                        Per connettere un bucket, crea un Service Account in Google Cloud, assegnagli il ruolo "Storage Object Admin" e genera una chiave JSON. Inserisci i valori richiesti qui sotto. La chiave privata verrà salvata in modo sicuro. Per la massima sicurezza in produzione, imposta queste credenziali come variabili d'ambiente sul server.
+                        <ol className="list-decimal list-inside space-y-1">
+                            <li>Vai in Google Cloud su "IAM & Admin" &gt; "Service Accounts".</li>
+                            <li>Seleziona un Service Account o creane uno nuovo.</li>
+                            <li>Assicurati che abbia il ruolo <b>"Storage Object Admin"</b>.</li>
+                            <li>Vai nella tab "Keys", clicca "Add Key" &gt; "Create new key", scegli <b>JSON</b> e crea.</li>
+                            <li>Un file JSON verrà scaricato. Aprilo e copia i valori `project_id`, `client_email` e `private_key` nei campi sottostanti.</li>
+                        </ol>
                     </AlertDescription>
                  </Alert>
                 <FormField
