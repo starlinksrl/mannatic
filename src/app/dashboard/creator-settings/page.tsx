@@ -14,10 +14,12 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { Loader, Settings, Upload, Save } from 'lucide-react';
+import { Loader, Settings, Upload, Save, AlertCircle, Send } from 'lucide-react';
 import { getAppConfiguration, updateAppConfiguration } from '@/lib/data';
 import { AppConfiguration } from '@/lib/types';
 import Image from 'next/image';
+import { sendTestEmailAction } from '@/app/actions';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const formSchema = z.object({
   appName: z.string().optional(),
@@ -28,6 +30,7 @@ const formSchema = z.object({
   defaultSmtpPass: z.string().optional(),
   defaultSenderEmail: z.string().email({ message: "L'email del mittente non è valida." }).optional().or(z.literal('')),
   gcsBucketName: z.string().optional(),
+  testRecipientEmail: z.string().email({ message: "L'email del destinatario non è valida." }).optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -38,6 +41,7 @@ export default function CreatorSettingsPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTestingSmtp, setIsTestingSmtp] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormData>({
@@ -51,6 +55,7 @@ export default function CreatorSettingsPage() {
       defaultSmtpPass: '',
       defaultSenderEmail: '',
       gcsBucketName: '',
+      testRecipientEmail: '',
     },
   });
 
@@ -78,7 +83,8 @@ export default function CreatorSettingsPage() {
 
   const onSubmit = async (values: FormData) => {
     setIsSaving(true);
-    const result = await updateAppConfiguration(values);
+    const { testRecipientEmail, ...configToSave } = values;
+    const result = await updateAppConfiguration(configToSave);
     if (result) {
       toast({
         title: 'Configurazione salvata',
@@ -105,6 +111,30 @@ export default function CreatorSettingsPage() {
     }
   };
 
+  const handleSmtpTest = async () => {
+    const values = form.getValues();
+    if (!values.testRecipientEmail || !values.defaultSmtpHost || !values.defaultSenderEmail) {
+        toast({ variant: 'destructive', title: 'Campi Mancanti', description: 'Per inviare un test, inserisci Host, Email Mittente e Email Destinatario Test.' });
+        return;
+    }
+    setIsTestingSmtp(true);
+    const result = await sendTestEmailAction({
+        recipientEmail: values.testRecipientEmail,
+        smtpConfig: {
+            host: values.defaultSmtpHost,
+            port: values.defaultSmtpPort || 587,
+            user: values.defaultSmtpUser || '',
+            pass: values.defaultSmtpPass || '',
+            from: values.defaultSenderEmail,
+        }
+    });
+    if (result.success) {
+        toast({ title: 'Email di prova inviata!', description: `Controlla la casella di posta di ${values.testRecipientEmail}.`});
+    } else {
+        toast({ variant: 'destructive', title: 'Invio fallito', description: result.error || 'Si è verificato un errore sconosciuto.'});
+    }
+    setIsTestingSmtp(false);
+  }
 
   if (isLoading || !user) {
     return (
@@ -242,6 +272,26 @@ export default function CreatorSettingsPage() {
                           </FormItem>
                         )}
                       />
+                <Separator />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                     <FormField
+                        control={form.control}
+                        name="testRecipientEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Destinatario Test</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="test@example.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    <Button type="button" variant="outline" onClick={handleSmtpTest} disabled={isTestingSmtp}>
+                        {isTestingSmtp ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                        Invia Email di Prova
+                    </Button>
+                 </div>
               </CardContent>
             </Card>
 
@@ -249,23 +299,33 @@ export default function CreatorSettingsPage() {
               <CardHeader>
                 <CardTitle>Google Cloud Storage</CardTitle>
                 <CardDescription>
-                  Parametri per il collegamento a un bucket di Google Cloud Storage per il salvataggio di file e allegati.
+                  Configura il bucket per il salvataggio di file e allegati.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                 <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Connessione Semplificata</AlertTitle>
+                    <AlertDescription>
+                        L'app utilizza le credenziali del progetto Firebase per connettersi a Cloud Storage. Devi solo fornire il nome esatto del bucket e assicurarti che le regole di sicurezza nel tuo progetto Firebase consentano l'accesso.
+                    </AlertDescription>
+                 </Alert>
                 <FormField
                   control={form.control}
                   name="gcsBucketName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome del Bucket</FormLabel>
+                      <FormLabel>Nome del Bucket GCS</FormLabel>
                       <FormControl>
-                        <Input placeholder="nome-del-tuo-bucket" {...field} />
+                        <Input placeholder="nome-del-tuo-bucket.appspot.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                 <Button type="button" variant="outline" disabled>
+                    Testa Connessione al Bucket
+                </Button>
               </CardContent>
             </Card>
             

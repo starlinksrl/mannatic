@@ -8,6 +8,8 @@ import { sendNotificationEmail } from '@/ai/flows/send-notification-email';
 import { sendExpiryNotification } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail } from '@/ai/flows/send-password-reset-email';
+import { sendTestEmail as sendTestEmailFlow } from '@/ai/flows/send-test-email';
+import type { SendTestEmailInput, SendTestEmailOutput } from '@/lib/types';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword } from '@/lib/data';
 import { Company, EmailLog } from '@/lib/types';
 import nodemailer from 'nodemailer';
@@ -28,15 +30,16 @@ export async function getKpiDashboardDescription(input: GenerateKpiDashboardInpu
   }
 }
 
-export async function sendTestEmail(input: SendNotificationEmailInput): Promise<SendNotificationEmailOutput> {
+export async function sendTestEmailAction(input: SendTestEmailInput): Promise<SendTestEmailOutput> {
   try {
-    const result = await sendNotificationEmail(input);
+    const result = await sendTestEmailFlow(input);
     return result;
   } catch (error: any) {
     console.error("Error sending test email:", error);
     return { success: false, error: error.message || "An unknown error occurred." };
   }
 }
+
 
 interface SendClientUpdateEmailInput {
   recipientEmail: string;

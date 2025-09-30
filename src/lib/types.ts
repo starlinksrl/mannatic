@@ -1,5 +1,7 @@
 
 
+import { z } from 'zod';
+
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 
 export interface AppConfiguration {
@@ -162,3 +164,22 @@ export interface EmailLog {
   error?: string;
 }
     
+export const SmtpConfigSchema = z.object({
+  host: z.string().describe('SMTP server host.'),
+  port: z.number().describe('SMTP server port.'),
+  user: z.string().describe('SMTP username.'),
+  pass: z.string().describe('SMTP password.'),
+  from: z.string().email().describe("The sender's email address."),
+});
+
+export const SendTestEmailInputSchema = z.object({
+  recipientEmail: z.string().email().describe('The email address of the recipient.'),
+  smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+});
+export type SendTestEmailInput = z.infer<typeof SendTestEmailInputSchema>;
+
+export const SendTestEmailOutputSchema = z.object({
+  success: z.boolean().describe('Whether the email was sent successfully.'),
+  error: z.string().optional().describe('Error message if sending failed.'),
+});
+export type SendTestEmailOutput = z.infer<typeof SendTestEmailOutputSchema>;
