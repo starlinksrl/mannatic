@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Building, Users, UserCog, User, Wrench, ShieldCheck, ClipboardCheck, Bot, Palette, Server, HardDrive, ExternalLink, Database, FileText } from 'lucide-react';
+import { Building, Users, UserCog, User, Wrench, ShieldCheck, ClipboardCheck, Bot, Palette, Server, HardDrive, ExternalLink, Database, FileText, FolderArchive } from 'lucide-react';
 
 const features = [
     {
@@ -110,14 +110,34 @@ export default function InfoPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-3">
                                 <HardDrive className="h-6 w-6" />
-                                Monitoraggio Risorse
+                                Monitoraggio Risorse Firebase
                             </CardTitle>
                              <CardDescription>
-                                Accedi alla console Firebase per visualizzare i consumi di spazio e le performance.
+                                Accedi alla console Firebase per visualizzare i consumi, i dati e i log.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ul className="space-y-4">
+                                 <li className="flex items-start gap-4">
+                                    <FolderArchive className="h-5 w-5 mt-1 text-primary" />
+                                    <div className="flex-1">
+                                        <p className="font-semibold">Gestione Allegati (Cloud Storage)</p>
+                                        <p className="text-sm text-muted-foreground">Abilita e gestisci lo spazio di archiviazione per gli allegati degli interventi.</p>
+                                        <a href={`https://console.firebase.google.com/project/${projectId}/storage`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
+                                            Vai a Cloud Storage <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    </div>
+                                </li>
+                                 <li className="flex items-start gap-4">
+                                    <Database className="h-5 w-5 mt-1 text-primary" />
+                                    <div className="flex-1">
+                                        <p className="font-semibold">Database (Firestore)</p>
+                                        <p className="text-sm text-muted-foreground">Esplora e gestisci direttamente i dati salvati nel database.</p>
+                                        <a href={`https://console.firebase.google.com/project/${projectId}/firestore/data`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
+                                            Vai a Firestore <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    </div>
+                                </li>
                                  <li className="flex items-start gap-4">
                                     <FileText className="h-5 w-5 mt-1 text-primary" />
                                     <div className="flex-1">
@@ -125,26 +145,6 @@ export default function InfoPage() {
                                         <p className="text-sm text-muted-foreground">Visualizza i log del server, incluse le operazioni AI e l'invio delle email.</p>
                                         <a href={`https://console.cloud.google.com/logs/viewer?project=${projectId}&resource=app_hosting_backend`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
                                             Vai ai Log <ExternalLink className="h-3 w-3" />
-                                        </a>
-                                    </div>
-                                </li>
-                                <li className="flex items-start gap-4">
-                                    <Database className="h-5 w-5 mt-1 text-primary" />
-                                    <div className="flex-1">
-                                        <p className="font-semibold">Utilizzo Database (Firestore)</p>
-                                        <p className="text-sm text-muted-foreground">Controlla lo spazio di archiviazione, le letture, le scritture e le eliminazioni dei documenti.</p>
-                                        <a href={`https://console.firebase.google.com/project/${projectId}/firestore/usage`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
-                                            Vai a Firestore Usage <ExternalLink className="h-3 w-3" />
-                                        </a>
-                                    </div>
-                                </li>
-                                <li className="flex items-start gap-4">
-                                    <Server className="h-5 w-5 mt-1 text-primary" />
-                                    <div className="flex-1">
-                                        <p className="font-semibold">Utilizzo Hosting (App Hosting)</p>
-                                        <p className="text-sm text-muted-foreground">Monitora il traffico di rete, lo spazio di archiviazione e l'utilizzo delle istanze del servizio.</p>
-                                         <a href={`https://console.firebase.google.com/project/${projectId}/hosting/usage`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
-                                            Vai a Hosting Usage <ExternalLink className="h-3 w-3" />
                                         </a>
                                     </div>
                                 </li>
