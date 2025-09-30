@@ -29,13 +29,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Intervention, Client, User, InterventionPriority, InterventionStatus, Attachment } from '@/lib/types';
+import { Intervention, Client, User, InterventionPriority, InterventionStatus, Attachment, AppConfiguration } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateIntervention, getUserById } from '@/lib/data';
+import { updateIntervention, getUserById, getAppConfiguration } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { useUser } from '@/contexts/user-context';
@@ -43,6 +43,7 @@ import { EditUserForm } from './edit-user-form';
 import { v4 as uuidv4 } from 'uuid';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Image from 'next/image';
+import { fetchAttachmentAction } from '@/app/actions';
 
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 
@@ -97,6 +98,9 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [attachmentToView, setAttachmentToView] = useState<Attachment | null>(null);
+  const [isFetchingAttachment, setIsFetchingAttachment] = useState(false);
+  const [attachmentDataUri, setAttachmentDataUri] = useState<string | null>(null);
+  const [appConfig, setAppConfig] = useState<AppConfiguration | null>(null);
 
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -108,6 +112,12 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   });
 
   useEffect(() => {
+    async function loadConfig() {
+        const config = await getAppConfiguration();
+        setAppConfig(config);
+    }
+    loadConfig();
+
     if (intervention) {
       const dueDate = intervention.dueDate ? new Date(intervention.dueDate) : undefined;
       form.reset({
@@ -225,7 +235,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                 resolve({
                     id: uuidv4(),
                     name: file.name,
-                    url: reader.result as string,
+                    url: reader.result as string, // This will be a temporary data URI
                     type: file.type,
                     uploadedAt: new Date().toISOString(),
                     uploadedBy: currentUser.name,
@@ -270,6 +280,35 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         title: 'Allegato rimosso',
         description: `Il file "${attachmentToRemove.name}" è stato rimosso dalla lista. Salva per confermare.`,
     });
+  }
+
+  const handleViewAttachment = async (attachment: Attachment) => {
+    if (!appConfig) {
+        toast({ variant: 'destructive', title: 'Errore Configurazione', description: 'La configurazione GCS non è stata caricata.' });
+        return;
+    }
+    setAttachmentToView(attachment);
+    setIsFetchingAttachment(true);
+    setAttachmentDataUri(null);
+
+    const filePath = `${intervention.id}/${attachment.id}-${attachment.name}`;
+    
+    const result = await fetchAttachmentAction({
+        filePath: filePath,
+        config: {
+            projectId: appConfig.gcsProjectId!,
+            clientEmail: appConfig.gcsClientEmail!,
+            privateKey: appConfig.gcsPrivateKey!,
+            bucketName: appConfig.gcsBucketName!,
+        }
+    });
+
+    if (result.success && result.dataUri) {
+        setAttachmentDataUri(result.dataUri);
+    } else {
+        toast({ variant: 'destructive', title: 'Errore Download', description: result.error || 'Impossibile scaricare l\'allegato.' });
+    }
+    setIsFetchingAttachment(false);
   }
   
   const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
@@ -539,7 +578,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                        <div className="space-y-2">
                         {(attachments || []).map((att) => (
                            <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
-                                <button type="button" onClick={() => setAttachmentToView(att)} className="flex items-center gap-2 text-sm hover:underline truncate">
+                                <button type="button" onClick={() => handleViewAttachment(att)} className="flex items-center gap-2 text-sm hover:underline truncate">
                                     <AttachmentPreview att={att} />
                                     <span className="truncate">{att.name}</span>
                                 </button>
@@ -622,7 +661,12 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     />
     
     {attachmentToView && (
-      <Dialog open={!!attachmentToView} onOpenChange={(open) => !open && setAttachmentToView(null)}>
+      <Dialog open={!!attachmentToView} onOpenChange={(open) => {
+        if (!open) {
+          setAttachmentToView(null);
+          setAttachmentDataUri(null);
+        }
+      }}>
         <DialogContent className="max-w-3xl">
             <DialogHeader>
                 <DialogTitle>{attachmentToView.name}</DialogTitle>
@@ -630,23 +674,29 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                     Caricato da {attachmentToView.uploadedBy} il {format(new Date(attachmentToView.uploadedAt), 'dd/MM/yyyy HH:mm')}
                 </DialogDescription>
             </DialogHeader>
-            <div className="mt-4 max-h-[70vh] overflow-auto">
-                {attachmentToView.type.startsWith('image/') ? (
-                    <Image src={attachmentToView.url} alt={attachmentToView.name} width={800} height={600} className="w-full h-auto object-contain" />
-                ) : attachmentToView.type === 'application/pdf' ? (
-                    <iframe src={attachmentToView.url} className="w-full h-[70vh]" title={attachmentToView.name}></iframe>
+            <div className="mt-4 max-h-[70vh] overflow-auto flex items-center justify-center">
+                 {isFetchingAttachment ? (
+                    <Loader className="h-8 w-8 animate-spin" />
+                ) : attachmentDataUri ? (
+                    attachmentToView.type.startsWith('image/') ? (
+                        <Image src={attachmentDataUri} alt={attachmentToView.name} width={800} height={600} className="w-full h-auto object-contain" />
+                    ) : attachmentToView.type === 'application/pdf' ? (
+                        <iframe src={attachmentDataUri} className="w-full h-[70vh]" title={attachmentToView.name}></iframe>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-md">
+                            <FileIcon className="w-16 h-16 text-muted-foreground" />
+                            <p className="mt-4 font-semibold">Anteprima non disponibile</p>
+                            <p className="text-sm text-muted-foreground">Il file non può essere visualizzato direttamente nel browser.</p>
+                            <Button asChild className="mt-6">
+                                <a href={attachmentDataUri} download={attachmentToView.name}>
+                                    <Download className="mr-2" />
+                                    Scarica {attachmentToView.name}
+                                </a>
+                            </Button>
+                        </div>
+                    )
                 ) : (
-                    <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-md">
-                        <FileIcon className="w-16 h-16 text-muted-foreground" />
-                        <p className="mt-4 font-semibold">Anteprima non disponibile</p>
-                        <p className="text-sm text-muted-foreground">Il file non può essere visualizzato direttamente nel browser.</p>
-                        <Button asChild className="mt-6">
-                            <a href={attachmentToView.url} download={attachmentToView.name}>
-                                <Download className="mr-2" />
-                                Scarica {attachmentToView.name}
-                            </a>
-                        </Button>
-                    </div>
+                    <p className="text-destructive">Impossibile caricare l'allegato.</p>
                 )}
             </div>
         </DialogContent>

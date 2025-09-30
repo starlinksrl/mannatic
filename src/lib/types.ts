@@ -89,7 +89,7 @@ export interface InterventionUpdate {
 export interface Attachment {
   id: string;
   name: string;
-  url: string; // data URI
+  url: string; // Can be a temporary data URI or a permanent GCS URL
   type: string;
   uploadedAt: string;
   uploadedBy: string;
@@ -200,3 +200,23 @@ export const TestGcsConnectionOutputSchema = z.object({
   error: z.string().optional().describe('Error message if the test failed.'),
 });
 export type TestGcsConnectionOutput = z.infer<typeof TestGcsConnectionOutputSchema>;
+
+export const GcsConfigSchema = z.object({
+    projectId: z.string(),
+    clientEmail: z.string(),
+    privateKey: z.string(),
+    bucketName: z.string(),
+});
+
+export const FetchFileFromGcsInputSchema = z.object({
+  filePath: z.string().describe("The path to the file in the bucket."),
+  config: GcsConfigSchema,
+});
+export type FetchFileFromGcsInput = z.infer<typeof FetchFileFromGcsInputSchema>;
+
+export const FetchFileFromGcsOutputSchema = z.object({
+  success: z.boolean(),
+  dataUri: z.string().optional(),
+  error: z.string().optional(),
+});
+export type FetchFileFromGcsOutput = z.infer<typeof FetchFileFromGcsOutputSchema>;

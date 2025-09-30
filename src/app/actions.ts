@@ -10,6 +10,7 @@ import { sendNewInterventionNotification } from '@/ai/flows/send-new-interventio
 import { sendPasswordResetEmail } from '@/ai/flows/send-password-reset-email';
 import { sendTestEmail as sendTestEmailFlow } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
+import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword } from '@/lib/data';
 import { Company, EmailLog } from '@/lib/types';
 import nodemailer from 'nodemailer';
@@ -19,7 +20,7 @@ import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/
 import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
-import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput } from '@/lib/types';
+import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
   try {
@@ -47,6 +48,16 @@ export async function testGcsConnectionAction(input: TestGcsConnectionInput): Pr
         return result;
     } catch (error: any) {
         console.error("Error testing GCS connection:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function fetchAttachmentAction(input: FetchFileFromGcsInput): Promise<FetchFileFromGcsOutput> {
+    try {
+        const result = await fetchFileFromGcsFlow(input);
+        return result;
+    } catch (error: any) {
+        console.error("Error fetching attachment:", error);
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }

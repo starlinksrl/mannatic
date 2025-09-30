@@ -9,3 +9,4 @@ import '@/ai/flows/send-password-reset-email.ts';
 import '@/ai/flows/send-test-email.ts';
 import '@/ai/flows/test-gcs-connection.ts';
 import '@/ai/flows/upload-file-to-gcs.ts';
+import '@/ai/flows/fetch-file-from-gcs.ts';
