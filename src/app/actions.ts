@@ -9,6 +9,7 @@ import { sendExpiryNotification } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail } from '@/ai/flows/send-password-reset-email';
 import { sendTestEmail as sendTestEmailFlow } from '@/ai/flows/send-test-email';
+import { testGcsConnection as testGcsConnectionFlow, TestGcsConnectionInput, TestGcsConnectionOutput } from '@/ai/flows/test-gcs-connection';
 import type { SendTestEmailInput, SendTestEmailOutput } from '@/lib/types';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword } from '@/lib/data';
 import { Company, EmailLog } from '@/lib/types';
@@ -38,6 +39,16 @@ export async function sendTestEmailAction(input: SendTestEmailInput): Promise<Se
     console.error("Error sending test email:", error);
     return { success: false, error: error.message || "An unknown error occurred." };
   }
+}
+
+export async function testGcsConnectionAction(input: TestGcsConnectionInput): Promise<TestGcsConnectionOutput> {
+    try {
+        const result = await testGcsConnectionFlow(input);
+        return result;
+    } catch (error: any) {
+        console.error("Error testing GCS connection:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
 }
 
 

@@ -7,3 +7,4 @@ import '@/ai/flows/send-expiry-notification.ts';
 import '@/ai/flows/send-new-intervention-notification.ts';
 import '@/ai/flows/send-password-reset-email.ts';
 import '@/ai/flows/send-test-email.ts';
+import '@/ai/flows/test-gcs-connection.ts';

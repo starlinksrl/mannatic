@@ -14,11 +14,11 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { Loader, Settings, Upload, Save, AlertCircle, Send } from 'lucide-react';
+import { Loader, Settings, Upload, Save, AlertCircle, Send, TestTubeDiagonal } from 'lucide-react';
 import { getAppConfiguration, updateAppConfiguration } from '@/lib/data';
 import { AppConfiguration } from '@/lib/types';
 import Image from 'next/image';
-import { sendTestEmailAction } from '@/app/actions';
+import { sendTestEmailAction, testGcsConnectionAction } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -46,6 +46,7 @@ export default function CreatorSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTestingSmtp, setIsTestingSmtp] = useState(false);
+  const [isTestingGcs, setIsTestingGcs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormData>({
@@ -65,6 +66,8 @@ export default function CreatorSettingsPage() {
       testRecipientEmail: '',
     },
   });
+  
+  const originalPrivateKey = useRef('');
 
   useEffect(() => {
     if (user && user.role !== 'Creator') {
@@ -78,8 +81,9 @@ export default function CreatorSettingsPage() {
       if (config) {
         form.reset({
           ...config,
-          gcsPrivateKey: config.gcsPrivateKey ? '••••••••' : '', // Mask private key
+          gcsPrivateKey: config.gcsPrivateKey ? '••••••••' : '',
         });
+        originalPrivateKey.current = config.gcsPrivateKey || '';
       }
       setIsLoading(false);
     }
@@ -94,10 +98,11 @@ export default function CreatorSettingsPage() {
   const onSubmit = async (values: FormData) => {
     setIsSaving(true);
     
-    // Don't save the masked private key unless it has been changed
     const configToSave: Partial<FormData> = { ...values };
     if (values.gcsPrivateKey === '••••••••') {
-      delete configToSave.gcsPrivateKey;
+      configToSave.gcsPrivateKey = originalPrivateKey.current;
+    } else {
+       originalPrivateKey.current = values.gcsPrivateKey || '';
     }
     
     const { testRecipientEmail, ...finalConfig } = configToSave;
@@ -157,11 +162,30 @@ export default function CreatorSettingsPage() {
     setIsTestingSmtp(false);
   }
   
-  const handleBucketTest = () => {
-    toast({
-        title: 'Funzione non disponibile',
-        description: 'Il test di connessione al bucket non è ancora implementato.',
+  const handleBucketTest = async () => {
+    const values = form.getValues();
+     if (!values.gcsProjectId || !values.gcsClientEmail || (!form.getValues('gcsPrivateKey') && !originalPrivateKey.current) || !values.gcsBucketName) {
+        toast({ variant: 'destructive', title: 'Campi Mancanti', description: 'Per testare il bucket, tutti i campi di Google Cloud Storage sono obbligatori.' });
+        return;
+    }
+    setIsTestingGcs(true);
+    
+    const privateKey = values.gcsPrivateKey === '••••••••' ? originalPrivateKey.current : values.gcsPrivateKey;
+
+    const result = await testGcsConnectionAction({
+        projectId: values.gcsProjectId,
+        clientEmail: values.gcsClientEmail,
+        privateKey: privateKey!,
+        bucketName: values.gcsBucketName,
     });
+    
+    if (result.success) {
+        toast({ title: 'Connessione al Bucket riuscita!', description: `Un file di test è stato scritto e cancellato con successo dal bucket ${values.gcsBucketName}.`});
+    } else {
+        toast({ variant: 'destructive', title: 'Connessione al Bucket fallita', description: result.error || 'Si è verificato un errore sconosciuto.'});
+    }
+
+    setIsTestingGcs(false);
   }
 
   if (isLoading || !user) {
@@ -336,10 +360,10 @@ export default function CreatorSettingsPage() {
                     <AlertTitle>Come connettere un Bucket</AlertTitle>
                     <AlertDescription>
                         <ol className="list-decimal list-inside space-y-1">
-                            <li>Vai in Google Cloud su "IAM & Admin" &gt; "Service Accounts".</li>
+                            <li>Vai in Google Cloud su "IAM & Admin" > "Service Accounts".</li>
                             <li>Seleziona un Service Account o creane uno nuovo.</li>
                             <li>Assicurati che abbia il ruolo <b>"Storage Object Admin"</b>.</li>
-                            <li>Vai nella tab "Keys", clicca "Add Key" &gt; "Create new key", scegli <b>JSON</b> e crea.</li>
+                            <li>Vai nella tab "Keys", clicca "Add Key" > "Create new key", scegli <b>JSON</b> e crea.</li>
                             <li>Un file JSON verrà scaricato. Aprilo e copia i valori `project_id`, `client_email` e `private_key` nei campi sottostanti.</li>
                         </ol>
                     </AlertDescription>
@@ -396,7 +420,8 @@ export default function CreatorSettingsPage() {
                     </FormItem>
                   )}
                 />
-                 <Button type="button" variant="outline" onClick={handleBucketTest}>
+                 <Button type="button" variant="outline" onClick={handleBucketTest} disabled={isTestingGcs}>
+                    {isTestingGcs ? <Loader className="mr-2 animate-spin" /> : <TestTubeDiagonal className="mr-2" />}
                     Testa Connessione al Bucket
                 </Button>
               </CardContent>
