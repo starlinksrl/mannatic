@@ -38,9 +38,6 @@ const testGcsConnectionFlow = ai.defineFlow(
       await testFile.save('This is a test file to verify write permissions.', {
         contentType: 'text/plain',
       });
-      
-      // Optional: Delete the file after successful write to keep the bucket clean
-      await testFile.delete();
 
       return { success: true };
     } catch (error: any) {
