@@ -34,13 +34,14 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, InterventionPriority, InterventionStatus, Attachment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateIntervention, getUserById } from '@/lib/data';
+import { updateIntervention, getUserById, deleteFromStorage } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { useUser } from '@/contexts/user-context';
 import { EditUserForm } from './edit-user-form';
 import { v4 as uuidv4 } from 'uuid';
-import { Alert, AlertDescription } from '../ui/alert';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -91,6 +92,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const [isClientEditOpen, setIsClientEditOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<User | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -172,7 +174,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         timeSpent: values.timeSpent || null,
         materialsUsed: values.materialsUsed || null,
         completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt || null,
-        attachments: values.attachments ? JSON.parse(JSON.stringify(values.attachments)) : [],
+        attachments: values.attachments,
     };
     
     const updated = await updateIntervention(intervention!.id, updatedInterventionData, currentUser);
@@ -193,38 +195,58 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     }
   }
   
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
+    if (!files || !intervention) return;
+    
+    setIsUploading(true);
 
     for (const file of Array.from(files)) {
-      // 1 MiB limit for the whole document, Base64 is ~33% larger
-      if (file.size > 750 * 1024) { 
-          toast({
-              variant: 'destructive',
-              title: 'File troppo grande',
-              description: `Il file "${file.name}" supera il limite di ~750KB.`,
-          });
-          continue;
-      }
-      const reader = new FileReader();
-      reader.onload = (e) => {
+      const storagePath = `attachments/${intervention.companyId}/${intervention.id}/${uuidv4()}-${file.name}`;
+      const storageRef = ref(storage, storagePath);
+
+      try {
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
         const newAttachment: Attachment = {
           id: uuidv4(),
           name: file.name,
-          url: e.target?.result as string,
+          url: downloadURL,
+          storagePath: storagePath,
           type: file.type,
           uploadedAt: new Date().toISOString(),
           uploadedBy: currentUser.name,
         };
         form.setValue('attachments', [...(form.getValues('attachments') || []), newAttachment]);
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error("Upload failed", error);
+        toast({
+            variant: 'destructive',
+            title: 'Upload fallito',
+            description: `Impossibile caricare il file "${file.name}".`,
+        });
+      }
     }
+    setIsUploading(false);
   };
 
-  const handleRemoveAttachment = (id: string) => {
-    form.setValue('attachments', (form.getValues('attachments') || []).filter(att => att.id !== id));
+  const handleRemoveAttachment = async (attachmentToRemove: Attachment) => {
+    try {
+        await deleteFromStorage(attachmentToRemove.storagePath);
+        form.setValue('attachments', (form.getValues('attachments') || []).filter(att => att.id !== attachmentToRemove.id));
+        toast({
+            title: 'Allegato rimosso',
+            description: `Il file "${attachmentToRemove.name}" è stato rimosso.`,
+        });
+    } catch (error) {
+        console.error("Failed to delete attachment", error);
+        toast({
+            variant: 'destructive',
+            title: 'Errore',
+            description: 'Impossibile rimuovere l\'allegato.',
+        });
+    }
   }
   
   const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
@@ -481,7 +503,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                     <FileIcon className="h-4 w-4" />
                                     <span className="truncate">{att.name}</span>
                                 </a>
-                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveAttachment(att.id)}>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveAttachment(att)}>
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                            </div>
@@ -491,17 +513,11 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                         )}
                        </div>
                        <div>
-                          <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple className="hidden" />
-                          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                          <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple className="hidden" disabled={isUploading} />
+                          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                               <UploadCloud className="mr-2" />
-                              Aggiungi File
+                              {isUploading ? 'Caricamento...' : 'Aggiungi File'}
                           </Button>
-                          <Alert variant="default" className="mt-2 text-xs">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>
-                                Attenzione: La dimensione massima di un ticket è 1MB. Si consiglia di non superare i 750KB per singolo allegato.
-                            </AlertDescription>
-                          </Alert>
                        </div>
                     </div>
                     

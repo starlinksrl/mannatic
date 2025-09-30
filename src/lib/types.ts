@@ -72,7 +72,8 @@ export interface InterventionUpdate {
 export interface Attachment {
   id: string;
   name: string;
-  url: string; // data URI
+  url: string; // Cloud Storage download URL
+  storagePath: string; // Path in Cloud Storage
   type: string; // MIME type
   uploadedAt: string;
   uploadedBy: string;

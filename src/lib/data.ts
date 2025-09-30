@@ -2,8 +2,9 @@
 
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
-import { db } from './firebase';
+import { db, storage } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -17,6 +18,16 @@ export async function updateDocument(collectionName: string, docId: string, data
     } catch (error) {
         console.error(`Error updating document in ${collectionName}:`, error);
         throw new Error(`Failed to update document in ${collectionName}.`);
+    }
+}
+
+export async function deleteFromStorage(path: string): Promise<void> {
+    try {
+        const fileRef = ref(storage, path);
+        await deleteObject(fileRef);
+    } catch (error) {
+        console.error(`Error deleting file from storage at ${path}:`, error);
+        // We don't throw an error here because the record in Firestore might be more important
     }
 }
 
@@ -628,14 +639,11 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         if (!originalDocSnap.exists()) return null;
         const originalIntervention = originalDocSnap.data() as Intervention;
 
-        // Separate attachments to handle them as plain objects
-        const { attachments, ...restOfData } = updatedData;
-        const cleanAttachments = attachments ? JSON.parse(JSON.stringify(attachments)) : [];
-
-        const dataToUpdate: { [key: string]: any } = { 
-            ...restOfData,
-            attachments: cleanAttachments
-        };
+        // Ensure attachments are plain objects before saving
+        const dataToUpdate: { [key: string]: any } = { ...updatedData };
+        if (dataToUpdate.attachments) {
+            dataToUpdate.attachments = JSON.parse(JSON.stringify(dataToUpdate.attachments));
+        }
 
         if (dataToUpdate.dueDate === undefined) dataToUpdate.dueDate = null;
         if (dataToUpdate.completedAt === undefined) delete dataToUpdate.completedAt;
