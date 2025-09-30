@@ -156,6 +156,13 @@ export default function CreatorSettingsPage() {
     }
     setIsTestingSmtp(false);
   }
+  
+  const handleBucketTest = () => {
+    toast({
+        title: 'Funzione non disponibile',
+        description: 'Il test di connessione al bucket non è ancora implementato.',
+    });
+  }
 
   if (isLoading || !user) {
     return (
@@ -389,7 +396,7 @@ export default function CreatorSettingsPage() {
                     </FormItem>
                   )}
                 />
-                 <Button type="button" variant="outline" disabled>
+                 <Button type="button" variant="outline" onClick={handleBucketTest}>
                     Testa Connessione al Bucket
                 </Button>
               </CardContent>
