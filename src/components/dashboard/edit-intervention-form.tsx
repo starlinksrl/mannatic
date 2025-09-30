@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,7 @@ import { useUser } from '@/contexts/user-context';
 import { EditUserForm } from './edit-user-form';
 import { v4 as uuidv4 } from 'uuid';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import Image from 'next/image';
 
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 
@@ -269,6 +270,16 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   }
   
   const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+  
+  const AttachmentPreview = ({ att }: { att: Attachment }) => {
+    if (att.type.startsWith('image/')) {
+        return <Image src={att.url} alt={att.name} width={20} height={20} className="object-contain" />;
+    }
+    if (att.type === 'application/pdf') {
+        return <FileText className="h-5 w-5" />;
+    }
+    return <FileIcon className="h-5 w-5" />;
+  };
 
 
   return (
@@ -526,7 +537,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                         {(attachments || []).map((att) => (
                            <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
                                 <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:underline truncate">
-                                    <FileIcon className="h-4 w-4" />
+                                    <AttachmentPreview att={att} />
                                     <span className="truncate">{att.name}</span>
                                 </a>
                                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveAttachment(att)}>
