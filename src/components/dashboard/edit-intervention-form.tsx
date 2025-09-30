@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -28,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -95,6 +96,8 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const [selectedClient, setSelectedClient] = useState<User | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [attachmentToView, setAttachmentToView] = useState<Attachment | null>(null);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -273,7 +276,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   
   const AttachmentPreview = ({ att }: { att: Attachment }) => {
     if (att.type.startsWith('image/')) {
-        return <Image src={att.url} alt={att.name} width={20} height={20} className="object-contain" />;
+        return <ImageIcon className="h-5 w-5" />;
     }
     if (att.type === 'application/pdf') {
         return <FileText className="h-5 w-5" />;
@@ -536,10 +539,10 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                        <div className="space-y-2">
                         {(attachments || []).map((att) => (
                            <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
-                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:underline truncate">
+                                <button type="button" onClick={() => setAttachmentToView(att)} className="flex items-center gap-2 text-sm hover:underline truncate">
                                     <AttachmentPreview att={att} />
                                     <span className="truncate">{att.name}</span>
-                                </a>
+                                </button>
                                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveAttachment(att)}>
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
@@ -617,6 +620,38 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         isOpen={isClientEditOpen}
         setIsOpen={setIsClientEditOpen}
     />
+    
+    {attachmentToView && (
+      <Dialog open={!!attachmentToView} onOpenChange={(open) => !open && setAttachmentToView(null)}>
+        <DialogContent className="max-w-3xl">
+            <DialogHeader>
+                <DialogTitle>{attachmentToView.name}</DialogTitle>
+                <DialogDescription>
+                    Caricato da {attachmentToView.uploadedBy} il {format(new Date(attachmentToView.uploadedAt), 'dd/MM/yyyy HH:mm')}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 max-h-[70vh] overflow-auto">
+                {attachmentToView.type.startsWith('image/') ? (
+                    <Image src={attachmentToView.url} alt={attachmentToView.name} width={800} height={600} className="w-full h-auto object-contain" />
+                ) : attachmentToView.type === 'application/pdf' ? (
+                    <iframe src={attachmentToView.url} className="w-full h-[70vh]" title={attachmentToView.name}></iframe>
+                ) : (
+                    <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-md">
+                        <FileIcon className="w-16 h-16 text-muted-foreground" />
+                        <p className="mt-4 font-semibold">Anteprima non disponibile</p>
+                        <p className="text-sm text-muted-foreground">Il file non può essere visualizzato direttamente nel browser.</p>
+                        <Button asChild className="mt-6">
+                            <a href={attachmentToView.url} download={attachmentToView.name}>
+                                <Download className="mr-2" />
+                                Scarica {attachmentToView.name}
+                            </a>
+                        </Button>
+                    </div>
+                )}
+            </div>
+        </DialogContent>
+      </Dialog>
+    )}
     </>
   );
 }
