@@ -186,3 +186,17 @@ export const SendTestEmailOutputSchema = z.object({
   error: z.string().optional().describe('Error message if sending failed.'),
 });
 export type SendTestEmailOutput = z.infer<typeof SendTestEmailOutputSchema>;
+
+export const TestGcsConnectionInputSchema = z.object({
+  projectId: z.string().describe('Google Cloud Project ID.'),
+  clientEmail: z.string().email().describe('Service Account client email.'),
+  privateKey: z.string().describe('Service Account private key.'),
+  bucketName: z.string().describe('The GCS bucket name.'),
+});
+export type TestGcsConnectionInput = z.infer<typeof TestGcsConnectionInputSchema>;
+
+export const TestGcsConnectionOutputSchema = z.object({
+  success: z.boolean().describe('Whether the connection test was successful.'),
+  error: z.string().optional().describe('Error message if the test failed.'),
+});
+export type TestGcsConnectionOutput = z.infer<typeof TestGcsConnectionOutputSchema>;
