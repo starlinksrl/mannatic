@@ -642,6 +642,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         // Ensure attachments are plain objects before saving
         const dataToUpdate: { [key: string]: any } = { ...updatedData };
         if (dataToUpdate.attachments) {
+            // This is the critical fix: ensure attachments are plain objects.
             dataToUpdate.attachments = JSON.parse(JSON.stringify(dataToUpdate.attachments));
         }
 
@@ -1005,12 +1006,3 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
     }
 }
     
-
-    
-
-
-
-    
-
-    
-
