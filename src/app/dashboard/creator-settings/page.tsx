@@ -328,7 +328,7 @@ export default function CreatorSettingsPage() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Connessione Sicura</AlertTitle>
                     <AlertDescription>
-                        Inserisci qui le credenziali del tuo Service Account di Google Cloud. La chiave privata verrà salvata in modo sicuro e non sarà più visibile. Per motivi di sicurezza, la logica di connessione darà sempre la priorità alle variabili d'ambiente del server, se impostate.
+                        Per connettere un bucket, crea un Service Account in Google Cloud, assegnagli il ruolo "Storage Object Admin" e genera una chiave JSON. Inserisci i valori richiesti qui sotto. La chiave privata verrà salvata in modo sicuro. Per la massima sicurezza in produzione, imposta queste credenziali come variabili d'ambiente sul server.
                     </AlertDescription>
                  </Alert>
                 <FormField
