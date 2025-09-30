@@ -667,18 +667,19 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         const originalDocSnap = await getDoc(docRef);
         if (!originalDocSnap.exists()) return null;
         const originalIntervention = originalDocSnap.data() as Intervention;
+        
+        const dataToUpdate: { [key: string]: any } = { ...updatedData };
 
         // Handle attachments upload
         const appConfig = await getAppConfiguration();
-        if (!appConfig || !appConfig.gcsBucketName) {
-            console.error("GCS bucket not configured.");
-        } else {
-            const newAttachments = (updatedData.attachments || []).filter(
+        if (appConfig && appConfig.gcsBucketName && dataToUpdate.attachments) {
+            const newAttachments = (dataToUpdate.attachments as Attachment[]).filter(
                 att => att.url.startsWith('data:')
             );
 
             if (newAttachments.length > 0) {
-                 for (const attachment of newAttachments) {
+                 for (let i = 0; i < newAttachments.length; i++) {
+                    const attachment = newAttachments[i];
                     try {
                         const uploadResult = await uploadFileToGcs({
                             fileDataUri: attachment.url,
@@ -692,20 +693,21 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                         });
 
                         if (uploadResult.success && uploadResult.fileUrl) {
-                            attachment.url = uploadResult.fileUrl; // Replace data URI with GCS URL
+                            // Find the corresponding attachment in the main array and update its URL
+                            const originalIndex = dataToUpdate.attachments.findIndex((att: Attachment) => att.id === attachment.id);
+                            if (originalIndex > -1) {
+                                dataToUpdate.attachments[originalIndex].url = uploadResult.fileUrl;
+                            }
                         } else {
                             throw new Error(uploadResult.error || 'Upload failed');
                         }
                     } catch(uploadError) {
                         console.error("Failed to upload attachment:", uploadError);
-                        // Decide on error handling: fail the whole update or just skip the attachment
-                        // For now, we'll let the attachment URL remain a data URI, which is bad but won't crash
                     }
                 }
             }
         }
         
-        const dataToUpdate: { [key: string]: any } = { ...updatedData };
         if (dataToUpdate.dueDate === undefined) dataToUpdate.dueDate = null;
         if (dataToUpdate.completedAt === undefined) delete dataToUpdate.completedAt;
         else if (dataToUpdate.completedAt === null) dataToUpdate.completedAt = null;
