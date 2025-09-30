@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +15,6 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
   const handleSendResetLink = async () => {
     setLoading(true);
@@ -27,7 +25,6 @@ export default function ForgotPasswordPage() {
             title: 'Link di reset inviato',
             description: result.message,
         });
-        router.push('/login');
     } else {
         toast({
             variant: 'destructive',

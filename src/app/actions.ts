@@ -8,7 +8,7 @@ import { sendNotificationEmail } from '@/ai/flows/send-notification-email';
 import { sendExpiryNotification } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail } from '@/ai/flows/send-password-reset-email';
-import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs } from '@/lib/data';
+import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword } from '@/lib/data';
 import { Company, EmailLog } from '@/lib/types';
 import nodemailer from 'nodemailer';
 import { addDoc, collection } from 'firebase/firestore';
@@ -17,7 +17,6 @@ import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/
 import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
-import { getAuth, sendPasswordResetEmail as firebaseSendPasswordResetEmail } from 'firebase/auth';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
   try {
@@ -155,21 +154,56 @@ export async function triggerNewInterventionNotification(input: SendNewIntervent
 }
 
 export async function handlePasswordResetRequest(email: string): Promise<{ success: boolean, message: string }> {
+    const user = await getUserByEmail(email);
+    if (!user) {
+        // Don't reveal if user exists, for security.
+        return { success: true, message: "Se un account con questa email esiste, un link di reset verrà inviato." };
+    }
+    
+    const company = await getCompanyByUserId(user.id);
+    if (!company || !company.smtpHost) {
+        return { success: false, message: "Impossibile inviare email. La configurazione SMTP dell'azienda non è completa." };
+    }
+
     try {
-        const auth = getAuth();
-        await firebaseSendPasswordResetEmail(auth, email);
-        return { success: true, message: "If an account with this email exists, a reset link will be sent." };
+        const token = await createPasswordResetToken(user.id);
+        const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
+
+        const input: SendPasswordResetEmailInput = {
+            recipientEmail: user.email,
+            userName: user.name,
+            resetLink,
+            companyId: company.id,
+            smtpConfig: {
+                host: company.smtpHost,
+                port: company.smtpPort!,
+                user: company.smtpUser!,
+                pass: company.smtpPass!,
+                from: company.senderEmail!,
+            }
+        };
+
+        const result = await sendPasswordResetEmail(input);
+
+        if (result.success) {
+            return { success: true, message: "Se un account con questa email esiste, un link di reset verrà inviato." };
+        } else {
+            return { success: false, message: result.error || "Impossibile inviare l'email di reset password." };
+        }
+
     } catch (error: any) {
         console.error("Error in password reset request:", error);
-        // Don't reveal if user exists for security, but log the error.
-        return { success: true, message: "If an account with this email exists, a reset link will be sent." };
+        return { success: false, message: "Si è verificato un errore durante la richiesta di reset." };
     }
 }
 
 export async function handlePasswordReset(token: string, newPassword: string):Promise<{ success: boolean, message: string }> {
-    // This function is now deprecated as Firebase handles the reset link and confirmation.
-    // The logic is now inside the component using Firebase SDK.
-    return { success: false, message: "This function is deprecated." };
+    try {
+        return await resetUserPassword(token, newPassword);
+    } catch (error: any) {
+        console.error("Error resetting password:", error);
+        return { success: false, message: "Si è verificato un errore." };
+    }
 }
 
 export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {

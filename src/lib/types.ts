@@ -31,6 +31,7 @@ export interface User {
   companyId: string;
   address?: string | null;
   phone?: string | null;
+  password?: string;
   allowedSectors?: AllowedSector[];
 }
 
@@ -70,9 +71,8 @@ export interface InterventionUpdate {
 export interface Attachment {
   id: string;
   name: string;
-  url: string; // Cloud Storage download URL
-  storagePath: string; // Path in Cloud Storage
-  type: string; // MIME type
+  url: string; // data URI
+  type: string;
   uploadedAt: string;
   uploadedBy: string;
 }

@@ -34,14 +34,15 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, InterventionPriority, InterventionStatus, Attachment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateIntervention, getUserById, deleteFromStorage } from '@/lib/data';
+import { updateIntervention, getUserById } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { useUser } from '@/contexts/user-context';
 import { EditUserForm } from './edit-user-form';
 import { v4 as uuidv4 } from 'uuid';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+
+const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -197,62 +198,74 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files || !intervention || files.length === 0) return;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
-    try {
-        const uploadPromises = Array.from(files).map(async (file) => {
-            const storagePath = `attachments/${intervention.companyId}/${intervention.id}/${uuidv4()}-${file.name}`;
-            const storageRef = ref(storage, storagePath);
-            const snapshot = await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(snapshot.ref);
+    let newAttachments: Attachment[] = [];
+    let hadError = false;
 
-            return {
-                id: uuidv4(),
-                name: file.name,
-                url: downloadURL,
-                storagePath: storagePath,
-                type: file.type,
-                uploadedAt: new Date().toISOString(),
-                uploadedBy: currentUser.name,
+    for (const file of Array.from(files)) {
+        if (file.size > MAX_FILE_SIZE) {
+            toast({
+                variant: 'destructive',
+                title: 'File troppo grande',
+                description: `Il file "${file.name}" supera il limite di 1MB.`,
+            });
+            hadError = true;
+            continue;
+        }
+
+        const reader = new FileReader();
+        const promise = new Promise<Attachment>((resolve, reject) => {
+            reader.onloadend = () => {
+                resolve({
+                    id: uuidv4(),
+                    name: file.name,
+                    url: reader.result as string,
+                    type: file.type,
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: currentUser.name,
+                });
             };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
         });
 
-        const newAttachments = await Promise.all(uploadPromises);
+        try {
+            const newAttachment = await promise;
+            newAttachments.push(newAttachment);
+        } catch (error) {
+            console.error("File read failed", error);
+            toast({
+                variant: 'destructive',
+                title: 'Lettura file fallita',
+                description: `Impossibile leggere il file "${file.name}".`,
+            });
+            hadError = true;
+        }
+    }
 
+    if (newAttachments.length > 0) {
         form.setValue('attachments', [
             ...(form.getValues('attachments') || []),
             ...newAttachments,
         ]);
-        
-    } catch (error) {
-        console.error("Upload failed", error);
+    }
+    setIsUploading(false);
+    if (!hadError) {
         toast({
-            variant: 'destructive',
-            title: 'Upload fallito',
-            description: 'Uno o più file non sono stati caricati.',
+            title: 'File aggiunti',
+            description: 'Ricorda di salvare per rendere permanenti le modifiche.',
         });
-    } finally {
-        setIsUploading(false);
     }
   };
 
   const handleRemoveAttachment = async (attachmentToRemove: Attachment) => {
-    try {
-        await deleteFromStorage(attachmentToRemove.storagePath);
-        form.setValue('attachments', (form.getValues('attachments') || []).filter(att => att.id !== attachmentToRemove.id));
-        toast({
-            title: 'Allegato rimosso',
-            description: `Il file "${attachmentToRemove.name}" è stato rimosso.`,
-        });
-    } catch (error) {
-        console.error("Failed to delete attachment", error);
-        toast({
-            variant: 'destructive',
-            title: 'Errore',
-            description: 'Impossibile rimuovere l\'allegato.',
-        });
-    }
+    form.setValue('attachments', (form.getValues('attachments') || []).filter(att => att.id !== attachmentToRemove.id));
+    toast({
+        title: 'Allegato rimosso',
+        description: `Il file "${attachmentToRemove.name}" è stato rimosso dalla lista. Salva per confermare.`,
+    });
   }
   
   const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
@@ -502,6 +515,13 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
 
                     <div className="space-y-4">
                       <h4 className="text-sm font-medium">Allegati</h4>
+                       <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Attenzione</AlertTitle>
+                        <AlertDescription>
+                           La dimensione totale degli allegati non deve superare 1MB per non rallentare l'applicazione.
+                        </AlertDescription>
+                      </Alert>
                        <div className="space-y-2">
                         {(attachments || []).map((att) => (
                            <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
@@ -589,8 +609,3 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
-
-    
-
-    
-

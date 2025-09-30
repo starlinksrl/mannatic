@@ -2,9 +2,8 @@
 
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
-import { db, storage } from './firebase';
+import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -18,16 +17,6 @@ export async function updateDocument(collectionName: string, docId: string, data
     } catch (error) {
         console.error(`Error updating document in ${collectionName}:`, error);
         throw new Error(`Failed to update document in ${collectionName}.`);
-    }
-}
-
-export async function deleteFromStorage(path: string): Promise<void> {
-    try {
-        const fileRef = ref(storage, path);
-        await deleteObject(fileRef);
-    } catch (error) {
-        console.error(`Error deleting file from storage at ${path}:`, error);
-        // We don't throw an error here because the record in Firestore might be more important
     }
 }
 
@@ -95,6 +84,7 @@ phone: companyData.phone || '',
         await addUser({
             name: `Admin ${companyData.name}`,
             email: companyData.email!,
+            password: 'password', // Default password, should be changed by user
             role: 'Admin',
             companyId: docRef.id
         });
@@ -193,7 +183,8 @@ export async function getUserById(id: string): Promise<User | null> {
           email: 'creator@mannatic.com', 
           role: 'Creator', 
           avatarUrl: 'https://i.pravatar.cc/150?u=creator', 
-          companyId: 'none'
+          companyId: 'none',
+          password: 'creatorpassword'
         };
         return Promise.resolve(creatorUser);
     }
@@ -225,6 +216,7 @@ export async function addUser(userData: Partial<Omit<User, 'id' | 'avatarUrl'>>)
             avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
             address: userData.address || '',
             phone: userData.phone || '',
+            password: userData.password,
         };
 
         if (newUserPayload.role === 'Operator') {
@@ -318,9 +310,7 @@ export async function resetUserPassword(token: string, newPassword: string):Prom
          return { success: false, message: "Token di reset scaduto." };
     }
 
-    // This function does not update the password in Firebase Auth.
-    // That needs to be handled separately.
-    // await updateUser(tokenData.userId, { password: newPassword });
+    await updateUser(tokenData.userId, { password: newPassword });
 
     await deleteDoc(tokenDoc.ref);
 
@@ -511,6 +501,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         const newClient = await addUser({
             name: clientId,
             email: `${clientNameNormalized}@${companyName}.com`,
+            password: 'password',
             role: 'Client',
             companyId: companyId,
             address: 'Indirizzo da definire',
@@ -635,10 +626,6 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         const originalIntervention = originalDocSnap.data() as Intervention;
 
         const dataToUpdate: { [key: string]: any } = { ...updatedData };
-        if (dataToUpdate.attachments) {
-            dataToUpdate.attachments = JSON.parse(JSON.stringify(dataToUpdate.attachments));
-        }
-
         if (dataToUpdate.dueDate === undefined) dataToUpdate.dueDate = null;
         if (dataToUpdate.completedAt === undefined) delete dataToUpdate.completedAt;
         else if (dataToUpdate.completedAt === null) dataToUpdate.completedAt = null;
@@ -885,6 +872,7 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
         const newClient = await addUser({
             name: clientId,
             email: `${clientNameNormalized}@${companyName}.com`,
+            password: 'password',
             role: 'Client',
             companyId: companyId,
             address: surveyData.address,
