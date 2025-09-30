@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Company, addCompany, getCompanies, deleteCompanyAndSubcollections, updateCompany } from '@/lib/data';
-import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact, MoreHorizontal, Pencil, Trash2, Shield, Eye, Database, Camera, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact, MoreHorizontal, Pencil, Trash2, Shield, Eye, Database, Camera, Link as LinkIcon, AlertCircle, Paperclip } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,20 @@ import {
 import Link from 'next/link';
 
 const changelog = [
+    {
+        version: "0.12",
+        date: "2024-09-26",
+        title: "Allegati, Explorer per Admin e Stabilità",
+        icon: Paperclip,
+        iconClass: "text-blue-500",
+        changes: [
+            { type: Paperclip, description: "Aggiunta la possibilità di caricare e gestire file allegati direttamente negli interventi." },
+            { type: Database, description: "Implementato un Data Explorer per gli Admin, con visibilità limitata ai soli dati della propria azienda." },
+            { type: Bug, description: "Risolto un bug critico che impediva il salvataggio dei log delle email a causa di un errore di riferimento." },
+            { type: Wrench, description: "Rimosso l'autocompletamento del titolo durante la creazione di un intervento per migliorare la fluidità." },
+            { type: Bug, description: "Corretti diversi errori di importazione e di gestione dati che causavano instabilità." },
+        ]
+    },
     {
         version: "0.11",
         date: "2024-09-25",
@@ -334,5 +348,7 @@ export default function CompaniesPage() {
     </>
   );
 }
+
+    
 
     
