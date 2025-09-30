@@ -283,8 +283,8 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   }
 
   const handleViewAttachment = async (attachment: Attachment) => {
-    if (!appConfig) {
-        toast({ variant: 'destructive', title: 'Errore Configurazione', description: 'La configurazione GCS non è stata caricata.' });
+    if (!appConfig || !appConfig.gcsBucketName) {
+        toast({ variant: 'destructive', title: 'Errore Configurazione', description: 'La configurazione GCS non è stata caricata o è incompleta.' });
         return;
     }
     setAttachmentToView(attachment);
@@ -680,8 +680,6 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                 ) : attachmentDataUri ? (
                     attachmentToView.type.startsWith('image/') ? (
                         <Image src={attachmentDataUri} alt={attachmentToView.name} width={800} height={600} className="w-full h-auto object-contain" />
-                    ) : attachmentToView.type === 'application/pdf' ? (
-                        <iframe src={attachmentDataUri} className="w-full h-[70vh]" title={attachmentToView.name}></iframe>
                     ) : (
                         <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-md">
                             <FileIcon className="w-16 h-16 text-muted-foreground" />
