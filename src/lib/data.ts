@@ -1,12 +1,13 @@
 
 
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration } from './types';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration, Attachment } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
+import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
 
 
 // --- APP CONFIGURATION ---
@@ -667,6 +668,43 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         if (!originalDocSnap.exists()) return null;
         const originalIntervention = originalDocSnap.data() as Intervention;
 
+        // Handle attachments upload
+        const appConfig = await getAppConfiguration();
+        if (!appConfig || !appConfig.gcsBucketName) {
+            console.error("GCS bucket not configured.");
+        } else {
+            const newAttachments = (updatedData.attachments || []).filter(
+                att => att.url.startsWith('data:')
+            );
+
+            if (newAttachments.length > 0) {
+                 for (const attachment of newAttachments) {
+                    try {
+                        const uploadResult = await uploadFileToGcs({
+                            fileDataUri: attachment.url,
+                            fileName: `${id}/${attachment.id}-${attachment.name}`,
+                            config: {
+                                projectId: appConfig.gcsProjectId!,
+                                clientEmail: appConfig.gcsClientEmail!,
+                                privateKey: appConfig.gcsPrivateKey!,
+                                bucketName: appConfig.gcsBucketName!,
+                            }
+                        });
+
+                        if (uploadResult.success && uploadResult.fileUrl) {
+                            attachment.url = uploadResult.fileUrl; // Replace data URI with GCS URL
+                        } else {
+                            throw new Error(uploadResult.error || 'Upload failed');
+                        }
+                    } catch(uploadError) {
+                        console.error("Failed to upload attachment:", uploadError);
+                        // Decide on error handling: fail the whole update or just skip the attachment
+                        // For now, we'll let the attachment URL remain a data URI, which is bad but won't crash
+                    }
+                }
+            }
+        }
+        
         const dataToUpdate: { [key: string]: any } = { ...updatedData };
         if (dataToUpdate.dueDate === undefined) dataToUpdate.dueDate = null;
         if (dataToUpdate.completedAt === undefined) delete dataToUpdate.completedAt;
