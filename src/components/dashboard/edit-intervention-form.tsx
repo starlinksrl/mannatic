@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2 } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -40,6 +40,7 @@ import { Separator } from '../ui/separator';
 import { useUser } from '@/contexts/user-context';
 import { EditUserForm } from './edit-user-form';
 import { v4 as uuidv4 } from 'uuid';
+import { Alert, AlertDescription } from '../ui/alert';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -197,6 +198,15 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     if (!files) return;
 
     for (const file of Array.from(files)) {
+      // 1 MiB limit for the whole document, Base64 is ~33% larger
+      if (file.size > 750 * 1024) { 
+          toast({
+              variant: 'destructive',
+              title: 'File troppo grande',
+              description: `Il file "${file.name}" supera il limite di ~750KB.`,
+          });
+          continue;
+      }
       const reader = new FileReader();
       reader.onload = (e) => {
         const newAttachment: Attachment = {
@@ -486,6 +496,12 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                               <UploadCloud className="mr-2" />
                               Aggiungi File
                           </Button>
+                          <Alert variant="default" className="mt-2 text-xs">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                                Attenzione: La dimensione massima di un ticket è 1MB. Si consiglia di non superare i 750KB per singolo allegato.
+                            </AlertDescription>
+                          </Alert>
                        </div>
                     </div>
                     
@@ -551,5 +567,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
+    
 
     
