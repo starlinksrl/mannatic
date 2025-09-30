@@ -47,7 +47,6 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
   role: z.enum(['Admin', 'Operator', 'Client', 'Creator'], { required_error: 'Il ruolo è obbligatorio.' }),
-  password: z.string().optional(),
   avatarUrl: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
@@ -65,7 +64,6 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const { toast } = useToast();
   const { user: currentUser } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showPassword, setShowPassword] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -89,7 +87,6 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             name: user.name,
             email: user.email,
             role: user.role,
-            password: '',
             avatarUrl: user.avatarUrl,
             address: user.address || '',
             phone: user.phone || '',
@@ -134,10 +131,6 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     }
   };
   
-  const togglePasswordVisibility = () => {
-    setShowPassword(prev => !prev);
-  }
-  
   const canEditRole = currentUser?.role === 'Admin' || currentUser?.role === 'Creator';
 
   const handlePlaceChanged = () => {
@@ -152,12 +145,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
 
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      setIsOpen(open);
-      if(!open) {
-        setShowPassword(false);
-      }
-    }}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[425px] grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>{isEditingOwnProfile ? 'Modifica il tuo profilo' : 'Modifica utente'}</DialogTitle>
@@ -206,33 +194,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="mario.rossi@example.com" {...field} />
+                    <Input placeholder="mario.rossi@example.com" {...field} disabled />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nuova Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input type={showPassword ? 'text' : 'password'} placeholder="Lascia vuoto per non modificare" {...field} />
-                    </FormControl>
-                     <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                      onClick={togglePasswordVisibility}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}

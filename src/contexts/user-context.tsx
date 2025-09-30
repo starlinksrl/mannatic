@@ -4,7 +4,9 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, getUserByEmail, getUserById, getAllUsers, getCompanies, Company, getUsers } from '@/lib/data';
+import { User, getUserByEmail, getUserById, getCompanies, Company, getUsers } from '@/lib/data';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User as FirebaseUser } from 'firebase/auth';
 
 const CREATOR_USER_ID = 'user-creator';
 
@@ -32,7 +34,6 @@ const creatorUser: User = {
   email: 'creator@mannatic.com', 
   role: 'Creator', 
   avatarUrl: 'https://i.pravatar.cc/150?u=creator', 
-  password: 'creatorpassword',
   companyId: 'none'
 };
 
@@ -46,107 +47,83 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   
   useEffect(() => {
-    const loadInitialData = async () => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setIsLoading(true);
-      
       const allCompanies = await getCompanies();
       setCompanies(allCompanies);
 
-      const savedUserJson = localStorage.getItem('user');
-      const savedSessionUserJson = localStorage.getItem('sessionUser');
-
-      let userToLoad: User | null = null;
-      let sessionUserToLoad: User | null = null;
-      
-      if (savedSessionUserJson) {
-          sessionUserToLoad = JSON.parse(savedSessionUserJson);
-          const freshSessionUser = await getUserById(sessionUserToLoad!.id);
-          setSessionUser(freshSessionUser);
-      }
-
-      if (savedUserJson) {
-        userToLoad = JSON.parse(savedUserJson);
-        const freshUser = await getUserById(userToLoad!.id);
-        setUser(freshUser);
-
-        // If no session user, the logged in user is the session user
-        if (!sessionUserToLoad && freshUser) {
-          setSessionUser(freshUser);
-          localStorage.setItem('sessionUser', JSON.stringify(freshUser));
+      if (firebaseUser) {
+        // User is signed in to Firebase Auth
+        let appUser = await getUserById(firebaseUser.uid);
+        
+        // Handle special case for creator login via email
+        if (!appUser && firebaseUser.email === creatorUser.email) {
+            appUser = creatorUser;
         }
 
-        const activeUserForContext = freshUser || sessionUserToLoad;
-
-        if (activeUserForContext) {
-            const companyIdForContext = activeUserForContext.role === 'Creator'
-                ? localStorage.getItem('companyId')
-                : activeUserForContext.companyId;
-
-            if (companyIdForContext) {
-                const company = allCompanies.find(c => c.id === companyIdForContext);
-                if (company) {
-                    setCurrentCompany(company);
-                    const companyUsers = await getUsers(company.id);
-                    setAvailableUsers([creatorUser, ...companyUsers]);
-                } else {
-                    setAvailableUsers([creatorUser]);
-                }
-            } else {
-                setAvailableUsers([creatorUser]);
+        if (appUser) {
+          setSessionUser(appUser);
+          localStorage.setItem('sessionUser', JSON.stringify(appUser));
+          
+          const savedSimulatedUserJson = localStorage.getItem('user');
+          let simulatedUserToLoad = null;
+          if (savedSimulatedUserJson) {
+            const savedSimulatedUser = JSON.parse(savedSimulatedUserJson);
+            // Ensure the simulated user is still valid and different from the session user
+            if (savedSimulatedUser.id !== appUser.id) {
+               simulatedUserToLoad = await getUserById(savedSimulatedUser.id);
             }
+          }
+          
+          const activeUser = simulatedUserToLoad || appUser;
+          setUser(activeUser);
+          localStorage.setItem('user', JSON.stringify(activeUser));
+
+          const companyIdForContext = activeUser.role === 'Creator'
+                ? localStorage.getItem('companyId')
+                : activeUser.companyId;
+
+          if (companyIdForContext) {
+            const company = allCompanies.find(c => c.id === companyIdForContext);
+             if (company) {
+                setCurrentCompany(company);
+                const companyUsers = await getUsers(company.id);
+                setAvailableUsers([creatorUser, ...companyUsers]);
+             }
+          } else {
+             setAvailableUsers([creatorUser]);
+          }
         }
+      } else {
+        // User is signed out
+        setUser(null);
+        setSessionUser(null);
+        setCurrentCompany(null);
+        localStorage.clear();
       }
       setIsLoading(false);
-    };
+    });
 
-    loadInitialData();
+    return () => unsubscribe();
   }, []);
 
   const login = async (email: string, password?: string): Promise<boolean> => {
-    const normalizedEmail = email.toLowerCase();
-    let foundUser: User | null = null;
+    if (!password) return false;
     
-    if (normalizedEmail === creatorUser.email.toLowerCase() && password === creatorUser.password) {
-      foundUser = creatorUser;
-    } else {
-      foundUser = await getUserByEmail(normalizedEmail);
-      if (foundUser?.password !== password) foundUser = null;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged will handle the rest
+        return true;
+    } catch(error) {
+        console.error("Firebase login failed:", error);
+        return false;
     }
-    
-    if (foundUser) {
-      setUser(foundUser);
-      setSessionUser(foundUser);
-      localStorage.setItem('user', JSON.stringify(foundUser));
-      localStorage.setItem('sessionUser', JSON.stringify(foundUser));
-
-
-      if (foundUser.role === 'Creator') {
-        setCurrentCompany(null);
-        localStorage.removeItem('companyId');
-        setAvailableUsers([creatorUser]);
-        router.push('/dashboard/companies');
-      } else {
-        const company = companies.find(c => c.id === foundUser?.companyId);
-        setCurrentCompany(company || null);
-        if (company) {
-          localStorage.setItem('companyId', company.id);
-          const companyUsers = await getUsers(company.id);
-          setAvailableUsers([creatorUser, ...companyUsers]);
-        }
-        router.push('/dashboard');
-      }
-      return true;
-    }
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
-    setSessionUser(null);
-    setCurrentCompany(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('sessionUser');
-    localStorage.removeItem('companyId');
+  const logout = async () => {
+    await signOut(auth);
+    // onAuthStateChanged will handle cleanup
+    router.push('/login');
   };
   
   const switchUser = async (userId: string) => {

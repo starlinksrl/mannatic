@@ -33,6 +33,7 @@ import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
@@ -92,11 +93,15 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     }
     
     try {
+        const auth = getAuth();
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const firebaseUser = userCredential.user;
+
         await addUser({
+            id: firebaseUser.uid,
             name: values.name,
             email: values.email,
             role: values.role as UserRole,
-            password: values.password,
             companyId: currentCompany.id,
             address: values.address,
             phone: values.phone,
@@ -111,10 +116,14 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         setIsOpen(false);
         form.reset();
     } catch (error: any) {
+         let description = 'Si è verificato un errore durante la creazione dell\'utente.';
+        if (error.code === 'auth/email-already-in-use') {
+            description = 'Questa email è già in uso. Prova con un\'altra email.';
+        }
         toast({
             variant: 'destructive',
             title: 'Errore',
-            description: error.message || 'Si è verificato un errore durante la creazione dell\'utente.',
+            description: description,
         });
     }
   }

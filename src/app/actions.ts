@@ -8,7 +8,7 @@ import { sendNotificationEmail } from '@/ai/flows/send-notification-email';
 import { sendExpiryNotification } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail } from '@/ai/flows/send-password-reset-email';
-import { updateCompany, resetUserPassword, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs } from '@/lib/data';
+import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs } from '@/lib/data';
 import { Company, EmailLog } from '@/lib/types';
 import nodemailer from 'nodemailer';
 import { addDoc, collection } from 'firebase/firestore';
@@ -17,6 +17,7 @@ import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/
 import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
+import { getAuth, sendPasswordResetEmail as firebaseSendPasswordResetEmail } from 'firebase/auth';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
   try {
@@ -155,50 +156,20 @@ export async function triggerNewInterventionNotification(input: SendNewIntervent
 
 export async function handlePasswordResetRequest(email: string): Promise<{ success: boolean, message: string }> {
     try {
-        const user = await getUserByEmail(email);
-        if (!user) {
-            // Don't reveal if user exists or not for security reasons
-            return { success: true, message: "If an account with this email exists, a reset link will be sent." };
-        }
-
-        const company = await getCompanyByUserId(user.id);
-        if (!company || !company.smtpHost || !company.senderEmail) {
-            return { success: false, message: "La configurazione per l'invio email non è completa. Contattare l'amministratore." };
-        }
-
-        const token = await createPasswordResetToken(user.id);
-        const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
-
-        await sendPasswordResetEmail({
-            recipientEmail: user.email,
-            userName: user.name,
-            resetLink,
-            companyId: company.id,
-            smtpConfig: {
-                host: company.smtpHost,
-                port: company.smtpPort!,
-                user: company.smtpUser!,
-                pass: company.smtpPass!,
-                from: company.senderEmail,
-            }
-        });
-
-        return { success: true, message: "Se un account con questa email esiste, un link di reset è stato inviato." };
-
+        const auth = getAuth();
+        await firebaseSendPasswordResetEmail(auth, email);
+        return { success: true, message: "If an account with this email exists, a reset link will be sent." };
     } catch (error: any) {
         console.error("Error in password reset request:", error);
-        return { success: false, message: error.message || "An unknown error occurred." };
+        // Don't reveal if user exists for security, but log the error.
+        return { success: true, message: "If an account with this email exists, a reset link will be sent." };
     }
 }
 
 export async function handlePasswordReset(token: string, newPassword: string):Promise<{ success: boolean, message: string }> {
-    try {
-        const result = await resetUserPassword(token, newPassword);
-        return result;
-    } catch (error: any) {
-        console.error("Error resetting password:", error);
-        return { success: false, message: error.message || "An unknown error occurred." };
-    }
+    // This function is now deprecated as Firebase handles the reset link and confirmation.
+    // The logic is now inside the component using Firebase SDK.
+    return { success: false, message: "This function is deprecated." };
 }
 
 export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {
@@ -210,5 +181,4 @@ export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {
         return [];
     }
 }
-
     

@@ -19,6 +19,8 @@ import { Input } from '@/components/ui/input';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Company } from '@/lib/types';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { addUser } from '@/lib/data';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
@@ -41,7 +43,6 @@ const editFormSchema = z.object({
     phone: z.string().optional(),
     uniqueCode: z.string().optional(),
     email: z.string().email({ message: 'Email non valida' }),
-    password: z.string().optional() // Password is optional on edit
 });
 
 
@@ -62,7 +63,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
         libraries,
     });
 
-    const form = useForm<z.infer<typeof editFormSchema>>({
+    const form = useForm<z.infer<typeof createFormSchema | typeof editFormSchema>>({
         resolver: zodResolver(isEditing ? editFormSchema : createFormSchema),
         defaultValues: {
             name: '',
@@ -86,7 +87,6 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                 phone: company.phone || '',
                 uniqueCode: company.uniqueCode || '',
                 email: company.email || '',
-                password: '',
             });
         } else {
             form.reset({
@@ -103,8 +103,21 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
     }, [company, form, isOpen]);
 
 
-    const handleFormSubmit = async (values: z.infer<typeof editFormSchema>) => {
-        const success = await onSubmit(values);
+    const handleFormSubmit = async (values: z.infer<typeof createFormSchema | typeof editFormSchema>) => {
+        let success = false;
+        if (isEditing) {
+             success = await onSubmit(values);
+        } else {
+            const createValues = values as z.infer<typeof createFormSchema>;
+            // Create user in Firebase Auth
+            const auth = getAuth();
+            const userCredential = await createUserWithEmailAndPassword(auth, createValues.email, createValues.password);
+            const adminUser = userCredential.user;
+            
+            // Now submit company to create it in DB, which will also create the user record in Firestore
+            success = await onSubmit({ ...createValues, id: adminUser.uid });
+        }
+        
         if (success) {
             setIsOpen(false);
         }
@@ -236,25 +249,27 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                                         <FormItem>
                                         <FormLabel>Email (per login admin)</FormLabel>
                                         <FormControl>
-                                            <Input type="email" placeholder="admin@azienda.com" {...field} />
+                                            <Input type="email" placeholder="admin@azienda.com" {...field} disabled={isEditing} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+                                {!isEditing && (
                                     <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Password (per login admin)</FormLabel>
-                                        <FormControl>
-                                            <Input type="password" placeholder={isEditing ? "Lascia vuoto per non modificare" : ""} {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                        control={form.control}
+                                        name="password"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Password (per login admin)</FormLabel>
+                                            <FormControl>
+                                                <Input type="password" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
                             </div>
                         </form>
                     </Form>

@@ -12,7 +12,6 @@ export interface Company {
   phone?: string;
   uniqueCode?: string;
   email?: string;
-  password?: string; // Only used for creation
   // SMTP settings
   smtpHost?: string;
   smtpPort?: number;
@@ -29,7 +28,6 @@ export interface User {
   email: string;
   role: UserRole;
   avatarUrl: string;
-  password?: string;
   companyId: string;
   address?: string | null;
   phone?: string | null;

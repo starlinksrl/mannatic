@@ -71,7 +71,7 @@ export async function getCompanyByUserId(userId: string): Promise<Company | null
     }
 }
 
-export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Company> {
+export async function addCompany(companyData: Partial<Company>): Promise<Company> {
     // Check if email already exists
     const existingUser = await getUserByEmail(companyData.email!);
     if (existingUser) {
@@ -79,12 +79,12 @@ export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Comp
     }
 
     try {
-        const companyPayload: Omit<Company, 'id' | 'password'> = {
-            name: companyData.name,
+        const companyPayload: Omit<Company, 'id'> = {
+            name: companyData.name!,
             address: companyData.address || '',
             vatNumber: companyData.vatNumber || '',
             taxCode: companyData.taxCode || '',
-            phone: companyData.phone || '',
+phone: companyData.phone || '',
             uniqueCode: companyData.uniqueCode || '',
             email: companyData.email || '',
         };
@@ -95,7 +95,6 @@ export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Comp
         await addUser({
             name: `Admin ${companyData.name}`,
             email: companyData.email!,
-            password: companyData.password!,
             role: 'Admin',
             companyId: docRef.id
         });
@@ -114,9 +113,7 @@ export async function addCompany(companyData: Omit<Company, 'id'>): Promise<Comp
 export async function updateCompany(id: string, updatedData: Partial<Company>): Promise<Company | null> {
     try {
         const docRef = doc(db, 'companies', id);
-        // We shouldn't be updating the password this way
-        const { password, ...dataToSave } = updatedData;
-        await updateDoc(docRef, dataToSave);
+        await updateDoc(docRef, updatedData);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Company : null;
     } catch (error) {
@@ -196,7 +193,6 @@ export async function getUserById(id: string): Promise<User | null> {
           email: 'creator@mannatic.com', 
           role: 'Creator', 
           avatarUrl: 'https://i.pravatar.cc/150?u=creator', 
-          password: 'creatorpassword',
           companyId: 'none'
         };
         return Promise.resolve(creatorUser);
@@ -214,9 +210,9 @@ export async function getUserById(id: string): Promise<User | null> {
     }
 }
 
-export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise<User> {
+export async function addUser(userData: Partial<Omit<User, 'id' | 'avatarUrl'>>): Promise<User> {
     // Check if email already exists
-    const existingUser = await getUserByEmail(userData.email);
+    const existingUser = await getUserByEmail(userData.email!);
     if (existingUser) {
         throw new Error('Un utente con questa email esiste già.');
     }
@@ -225,7 +221,7 @@ export async function addUser(userData: Omit<User, 'id' | 'avatarUrl'>): Promise
         const newId = generateShortId();
         const newUserPayload: Partial<User> = {
             ...userData,
-            email: userData.email.toLowerCase(),
+            email: userData.email!.toLowerCase(),
             avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
             address: userData.address || '',
             phone: userData.phone || '',
@@ -255,10 +251,7 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         const userDocRef = doc(db, 'users', id);
         
         const dataToUpdate: { [key: string]: any } = {...updatedData};
-        if(dataToUpdate.password === '' || dataToUpdate.password === undefined) {
-            delete dataToUpdate.password;
-        }
-
+        
         if (dataToUpdate.email) {
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
@@ -325,7 +318,10 @@ export async function resetUserPassword(token: string, newPassword: string):Prom
          return { success: false, message: "Token di reset scaduto." };
     }
 
-    await updateUser(tokenData.userId, { password: newPassword });
+    // This function does not update the password in Firebase Auth.
+    // That needs to be handled separately.
+    // await updateUser(tokenData.userId, { password: newPassword });
+
     await deleteDoc(tokenDoc.ref);
 
     return { success: true, message: "Password aggiornata con successo." };
@@ -515,7 +511,6 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         const newClient = await addUser({
             name: clientId,
             email: `${clientNameNormalized}@${companyName}.com`,
-            password: 'password123',
             role: 'Client',
             companyId: companyId,
             address: 'Indirizzo da definire',
@@ -639,10 +634,8 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         if (!originalDocSnap.exists()) return null;
         const originalIntervention = originalDocSnap.data() as Intervention;
 
-        // Ensure attachments are plain objects before saving
         const dataToUpdate: { [key: string]: any } = { ...updatedData };
         if (dataToUpdate.attachments) {
-            // This is the critical fix: ensure attachments are plain objects.
             dataToUpdate.attachments = JSON.parse(JSON.stringify(dataToUpdate.attachments));
         }
 
@@ -892,7 +885,6 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
         const newClient = await addUser({
             name: clientId,
             email: `${clientNameNormalized}@${companyName}.com`,
-            password: 'password123',
             role: 'Client',
             companyId: companyId,
             address: surveyData.address,

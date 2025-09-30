@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import { Loader } from 'lucide-react';
-import { handlePasswordReset } from '../actions';
+import { getAuth, confirmPasswordReset } from 'firebase/auth';
 
 function ResetPasswordFormComponent() {
   const [password, setPassword] = useState('');
@@ -18,11 +18,11 @@ function ResetPasswordFormComponent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const oobCode = searchParams.get('oobCode');
 
   const onResetPassword = async () => {
-    if (!token) {
-        toast({ variant: 'destructive', title: 'Errore', description: 'Token di reset non valido o mancante.' });
+    if (!oobCode) {
+        toast({ variant: 'destructive', title: 'Errore', description: 'Codice di reset non valido o mancante.' });
         return;
     }
     if (password !== confirmPassword) {
@@ -35,23 +35,25 @@ function ResetPasswordFormComponent() {
     }
     
     setLoading(true);
-    const result = await handlePasswordReset(token, password);
-    setLoading(false);
-
-    if (result.success) {
+    try {
+        const auth = getAuth();
+        await confirmPasswordReset(auth, oobCode, password);
         toast({
           title: 'Password aggiornata',
           description: 'La tua password è stata resettata con successo. Ora puoi effettuare il login.',
         });
         router.push('/login');
-    } else {
-         toast({
+
+    } catch (error: any) {
+        toast({
           variant: 'destructive',
           title: 'Errore',
-          description: result.message,
+          description: 'Link di reset non valido o scaduto. Riprova la procedura.',
         });
+        console.error("Password reset error:", error);
+    } finally {
+        setLoading(false);
     }
-
   };
 
   return (
@@ -88,7 +90,7 @@ function ResetPasswordFormComponent() {
             disabled={loading}
           />
         </div>
-        <Button className="w-full" onClick={onResetPassword} disabled={loading}>
+        <Button className="w-full" onClick={onResetPassword} disabled={!oobCode || loading}>
             {loading ? <Loader className="mr-2 animate-spin" /> : null}
             Resetta Password
         </Button>
