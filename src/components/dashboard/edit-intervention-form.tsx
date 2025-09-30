@@ -45,7 +45,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Image from 'next/image';
 import { fetchAttachmentAction } from '@/app/actions';
 
-const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -223,7 +223,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             toast({
                 variant: 'destructive',
                 title: 'File troppo grande',
-                description: `Il file "${file.name}" supera il limite di 1MB.`,
+                description: `Il file "${file.name}" supera il limite di 5MB.`,
             });
             hadError = true;
             continue;
@@ -572,7 +572,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Attenzione</AlertTitle>
                         <AlertDescription>
-                           La dimensione totale degli allegati non deve superare 1MB per non rallentare l'applicazione.
+                           La dimensione totale degli allegati non deve superare 5MB per non rallentare l'applicazione.
                         </AlertDescription>
                       </Alert>
                        <div className="space-y-2">
@@ -680,6 +680,18 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                 ) : attachmentDataUri ? (
                     attachmentToView.type.startsWith('image/') ? (
                         <Image src={attachmentDataUri} alt={attachmentToView.name} width={800} height={600} className="w-full h-auto object-contain" />
+                    ) : attachmentToView.type === 'application/pdf' ? (
+                        <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-md">
+                            <FileText className="w-16 h-16 text-muted-foreground" />
+                            <p className="mt-4 font-semibold">Anteprima PDF non disponibile</p>
+                            <p className="text-sm text-muted-foreground">La visualizzazione dei PDF è stata bloccata dal browser per motivi di sicurezza.</p>
+                             <Button asChild className="mt-6">
+                                <a href={attachmentDataUri} download={attachmentToView.name}>
+                                    <Download className="mr-2" />
+                                    Scarica {attachmentToView.name}
+                                </a>
+                            </Button>
+                        </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center text-center p-8 bg-muted rounded-md">
                             <FileIcon className="w-16 h-16 text-muted-foreground" />
