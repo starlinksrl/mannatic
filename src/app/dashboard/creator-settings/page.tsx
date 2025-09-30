@@ -20,6 +20,7 @@ import { AppConfiguration } from '@/lib/types';
 import Image from 'next/image';
 import { sendTestEmailAction } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   appName: z.string().optional(),
@@ -29,6 +30,9 @@ const formSchema = z.object({
   defaultSmtpUser: z.string().optional(),
   defaultSmtpPass: z.string().optional(),
   defaultSenderEmail: z.string().email({ message: "L'email del mittente non è valida." }).optional().or(z.literal('')),
+  gcsProjectId: z.string().optional(),
+  gcsClientEmail: z.string().optional(),
+  gcsPrivateKey: z.string().optional(),
   gcsBucketName: z.string().optional(),
   testRecipientEmail: z.string().email({ message: "L'email del destinatario non è valida." }).optional().or(z.literal('')),
 });
@@ -54,6 +58,9 @@ export default function CreatorSettingsPage() {
       defaultSmtpUser: '',
       defaultSmtpPass: '',
       defaultSenderEmail: '',
+      gcsProjectId: '',
+      gcsClientEmail: '',
+      gcsPrivateKey: '',
       gcsBucketName: '',
       testRecipientEmail: '',
     },
@@ -69,7 +76,10 @@ export default function CreatorSettingsPage() {
       setIsLoading(true);
       const config = await getAppConfiguration();
       if (config) {
-        form.reset(config);
+        form.reset({
+          ...config,
+          gcsPrivateKey: config.gcsPrivateKey ? '••••••••' : '', // Mask private key
+        });
       }
       setIsLoading(false);
     }
@@ -83,13 +93,24 @@ export default function CreatorSettingsPage() {
 
   const onSubmit = async (values: FormData) => {
     setIsSaving(true);
-    const { testRecipientEmail, ...configToSave } = values;
-    const result = await updateAppConfiguration(configToSave);
+    
+    // Don't save the masked private key unless it has been changed
+    const configToSave: Partial<FormData> = { ...values };
+    if (values.gcsPrivateKey === '••••••••') {
+      delete configToSave.gcsPrivateKey;
+    }
+    
+    const { testRecipientEmail, ...finalConfig } = configToSave;
+
+    const result = await updateAppConfiguration(finalConfig);
     if (result) {
       toast({
         title: 'Configurazione salvata',
         description: 'Le impostazioni globali sono state aggiornate.',
       });
+       if (result.gcsPrivateKey) {
+         form.setValue('gcsPrivateKey', '••••••••');
+       }
     } else {
       toast({
         variant: 'destructive',
@@ -297,7 +318,7 @@ export default function CreatorSettingsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Google Cloud Storage</CardTitle>
+                <CardTitle>Google Cloud Storage (Universale)</CardTitle>
                 <CardDescription>
                   Configura il bucket per il salvataggio di file e allegati.
                 </CardDescription>
@@ -305,19 +326,58 @@ export default function CreatorSettingsPage() {
               <CardContent className="space-y-4">
                  <Alert>
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Connessione Semplificata</AlertTitle>
+                    <AlertTitle>Connessione Sicura</AlertTitle>
                     <AlertDescription>
-                        L'app utilizza le credenziali del progetto Firebase per connettersi a Cloud Storage. Devi solo fornire il nome esatto del bucket e assicurarti che le regole di sicurezza nel tuo progetto Firebase consentano l'accesso.
+                        Inserisci qui le credenziali del tuo Service Account di Google Cloud. La chiave privata verrà salvata in modo sicuro e non sarà più visibile. Per motivi di sicurezza, la logica di connessione darà sempre la priorità alle variabili d'ambiente del server, se impostate.
                     </AlertDescription>
                  </Alert>
                 <FormField
+                  control={form.control}
+                  name="gcsProjectId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project ID</FormLabel>
+                      <FormControl>
+                        <Input placeholder="il-tuo-project-id" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="gcsClientEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email del Service Account</FormLabel>
+                      <FormControl>
+                        <Input placeholder="nome-sa@il-tuo-project-id.iam.gserviceaccount.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="gcsPrivateKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Chiave Privata del Service Account</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
                   control={form.control}
                   name="gcsBucketName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nome del Bucket GCS</FormLabel>
                       <FormControl>
-                        <Input placeholder="nome-del-tuo-bucket.appspot.com" {...field} />
+                        <Input placeholder="nome-del-tuo-bucket" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

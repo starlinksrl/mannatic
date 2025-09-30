@@ -13,6 +13,9 @@ export interface AppConfiguration {
   defaultSmtpUser?: string;
   defaultSmtpPass?: string;
   defaultSenderEmail?: string;
+  gcsProjectId?: string;
+  gcsClientEmail?: string;
+  gcsPrivateKey?: string;
   gcsBucketName?: string;
 }
 

@@ -25,8 +25,16 @@ export async function getAppConfiguration(): Promise<AppConfiguration | null> {
 export async function updateAppConfiguration(config: Partial<Omit<AppConfiguration, 'id'>>): Promise<AppConfiguration | null> {
     try {
         const docRef = doc(db, 'appConfiguration', 'global');
-        // Use set with merge to create the document if it doesn't exist, or update it if it does.
-        await setDoc(docRef, config, { merge: true });
+        
+        const configToSave = { ...config };
+        
+        // If private key is provided and not empty, save it. Otherwise, don't update it.
+        if (!config.gcsPrivateKey || config.gcsPrivateKey.trim() === '') {
+            delete configToSave.gcsPrivateKey;
+        }
+
+        await setDoc(docRef, configToSave, { merge: true });
+        
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: 'global', ...updatedDoc.data() } as AppConfiguration : null;
     } catch (error) {
