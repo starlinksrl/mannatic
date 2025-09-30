@@ -197,38 +197,44 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files || !intervention) return;
-    
+    if (!files || !intervention || files.length === 0) return;
+
     setIsUploading(true);
+    try {
+        const uploadPromises = Array.from(files).map(async (file) => {
+            const storagePath = `attachments/${intervention.companyId}/${intervention.id}/${uuidv4()}-${file.name}`;
+            const storageRef = ref(storage, storagePath);
+            const snapshot = await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
 
-    for (const file of Array.from(files)) {
-      const storagePath = `attachments/${intervention.companyId}/${intervention.id}/${uuidv4()}-${file.name}`;
-      const storageRef = ref(storage, storagePath);
+            return {
+                id: uuidv4(),
+                name: file.name,
+                url: downloadURL,
+                storagePath: storagePath,
+                type: file.type,
+                uploadedAt: new Date().toISOString(),
+                uploadedBy: currentUser.name,
+            };
+        });
 
-      try {
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
+        const newAttachments = await Promise.all(uploadPromises);
 
-        const newAttachment: Attachment = {
-          id: uuidv4(),
-          name: file.name,
-          url: downloadURL,
-          storagePath: storagePath,
-          type: file.type,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: currentUser.name,
-        };
-        form.setValue('attachments', [...(form.getValues('attachments') || []), newAttachment]);
-      } catch (error) {
+        form.setValue('attachments', [
+            ...(form.getValues('attachments') || []),
+            ...newAttachments,
+        ]);
+        
+    } catch (error) {
         console.error("Upload failed", error);
         toast({
             variant: 'destructive',
             title: 'Upload fallito',
-            description: `Impossibile caricare il file "${file.name}".`,
+            description: 'Uno o più file non sono stati caricati.',
         });
-      }
+    } finally {
+        setIsUploading(false);
     }
-    setIsUploading(false);
   };
 
   const handleRemoveAttachment = async (attachmentToRemove: Attachment) => {
@@ -587,3 +593,4 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     
 
     
+
