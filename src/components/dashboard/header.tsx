@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -76,7 +77,7 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
                 onInterventionAdded={onInterventionAdded}
                 currentUser={user}
             >
-                <Button className="hidden sm:flex">
+                <Button>
                     <PlusCircle className="mr-2" />
                     Crea Intervento
                 </Button>
