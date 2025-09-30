@@ -65,7 +65,7 @@ const uploadFileToGcsFlow = ai.defineFlow(
         public: true, // Make the file publicly readable
       });
       
-      const publicUrl = `https://storage.googleapis.com/${input.config.bucketName}/${input.fileName}`;
+      const publicUrl = `https://storage.cloud.google.com/${input.config.bucketName}/${input.fileName}`;
 
       return { success: true, fileUrl: publicUrl };
     } catch (error: any) {
