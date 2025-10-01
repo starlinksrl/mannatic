@@ -23,6 +23,7 @@ import { usePathname } from 'next/navigation';
 import { Logo } from '../icons/logo';
 import Image from 'next/image';
 import { AllowedSector } from '@/lib/types';
+import { Separator } from '../ui/separator';
 
 const navItems: {
     href: string;
@@ -97,6 +98,12 @@ export function SidebarNav() {
           ) : null
         )}
       </nav>
+      <div className="mt-auto p-4">
+        <Separator className="mb-2" />
+        <p className="text-xs text-muted-foreground text-center">
+            creato da Francesco Mannarini con Firebase e Google AI
+        </p>
+      </div>
     </div>
   );
 }
