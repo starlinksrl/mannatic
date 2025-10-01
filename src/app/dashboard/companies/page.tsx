@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Company, addCompany, getCompanies, deleteCompanyAndSubcollections, updateCompany } from '@/lib/data';
-import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact, MoreHorizontal, Pencil, Trash2, Shield, Eye, Database, Camera, Link as LinkIcon, AlertCircle, Paperclip } from 'lucide-react';
+import { Loader, PlusCircle, Building, Mail, Phone, Rocket, Bug, Wrench, ShieldCheck, ClipboardCheck, MailCheck, LayoutDashboard, Users as UsersIcon, Contact, MoreHorizontal, Pencil, Trash2, Shield, Eye, Database, Camera, Link as LinkIcon, AlertCircle, Paperclip, Monitor, Tablet, Smartphone } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,20 @@ import {
 import Link from 'next/link';
 
 const changelog = [
+    {
+        version: "0.13",
+        date: "2024-09-27",
+        title: "Visualizzazione Allegati e Ottimizzazione UI",
+        icon: Monitor,
+        iconClass: "text-purple-500",
+        changes: [
+            { type: Eye, description: "Implementata una nuova visualizzazione popup per gli allegati, che mostra anteprime per immagini e PDF e offre un download sicuro per gli altri file, risolvendo i problemi di accesso diretto." },
+            { type: Paperclip, description: "Aumentato il limite di dimensione per il caricamento degli allegati a 5MB." },
+            { type: Tablet, description: "Migliorata significativamente la reattività dell'applicazione per schermi di medie dimensioni (tablet e laptop piccoli), ottimizzando le tabelle e la visibilità delle colonne." },
+            { type: Smartphone, description: "Corretto un bug per cui il pulsante 'Crea Intervento' non era visibile su schermi di smartphone." },
+            { type: Bug, description: "Risolto un errore 'Failed to fetch' che si verificava durante il tentativo di visualizzare un allegato a causa di credenziali mancanti." },
+        ]
+    },
     {
         version: "0.12",
         date: "2024-09-26",
