@@ -569,7 +569,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         status: 'Nuovo' as InterventionStatus,
         sla: '24h',
         createdAt: new Date().toISOString(),
-        updates: [{ date: new Date().toISOString(), description: `Creato da ${creatorName}.`, userName: creatorName }],
+        updates: [{ date: new Date().toISOString(), description: `Creato da ${creatorName} per ${clientName}.`, userName: creatorName }],
         dueDate: restOfData.dueDate || null,
         isMaintenance: false,
     };
