@@ -27,10 +27,10 @@ export async function updateAppConfiguration(config: Partial<Omit<AppConfigurati
     try {
         const docRef = doc(db, 'appConfiguration', 'global');
         
-        const configToSave = { ...config };
+        const configToSave: Partial<AppConfiguration> = { ...config };
         
         // If private key is provided and not empty, save it. Otherwise, don't update it.
-        if (!config.gcsPrivateKey || config.gcsPrivateKey.trim() === '') {
+        if (!config.gcsPrivateKey || config.gcsPrivateKey.trim() === '' || config.gcsPrivateKey === '••••••••') {
             delete configToSave.gcsPrivateKey;
         }
 
@@ -569,7 +569,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         status: 'Nuovo' as InterventionStatus,
         sla: '24h',
         createdAt: new Date().toISOString(),
-        updates: [{ date: new Date().toISOString(), description: `Creato da ${creatorName} per ${clientName}.`, userName: creatorName }],
+        updates: [{ date: new Date().toISOString(), description: `Intervento creato.`, userName: creatorName }],
         dueDate: restOfData.dueDate || null,
         isMaintenance: false,
     };
@@ -1067,4 +1067,5 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
         return [];
     }
 }
+    
     
