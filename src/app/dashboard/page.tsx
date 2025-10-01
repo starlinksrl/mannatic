@@ -18,7 +18,11 @@ import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
 
 
-type EnrichedUpdate = InterventionUpdate & { interventionTitle: string; interventionId: string };
+export type EnrichedUpdate = InterventionUpdate & { 
+  interventionTitle: string; 
+  interventionId: string;
+  clientName?: string;
+};
 
 type KpiData = GenerateKpiDashboardInput & { 
   operatorWorkloadData: { name: string, workload: number }[],
@@ -52,6 +56,7 @@ export default function DashboardPage() {
       getClients(currentCompany.id),
     ]);
 
+    const clientsMap = new Map(allClients.map(c => [c.id, c.name]));
     setClients(allClients);
     setOperators(users.filter(u => u.role === 'Operator'));
     
@@ -91,12 +96,13 @@ export default function DashboardPage() {
 
     const highPriorityInterventions = relevantInterventions.filter(i => i.priority === 'Alta' || i.priority === 'Critica').slice(0, 3);
     
-    const latestUpdates = relevantInterventions
+    const latestUpdates: EnrichedUpdate[] = relevantInterventions
       .flatMap(i => (i.updates || []).map(u => ({ 
           ...u, 
           interventionTitle: i.title,
-          interventionId: i.id 
-      } as EnrichedUpdate)))
+          interventionId: i.id,
+          clientName: clientsMap.get(i.clientId)
+      })))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
 
