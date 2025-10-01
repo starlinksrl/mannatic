@@ -21,7 +21,7 @@ import { EditInterventionForm } from '@/components/dashboard/edit-intervention-f
 export type EnrichedUpdate = InterventionUpdate & { 
   interventionTitle: string; 
   interventionId: string;
-  clientName?: string;
+  clientName: string;
 };
 
 type KpiData = GenerateKpiDashboardInput & { 
@@ -101,7 +101,7 @@ export default function DashboardPage() {
           ...u, 
           interventionTitle: i.title,
           interventionId: i.id,
-          clientName: clientsMap.get(i.clientId)
+          clientName: clientsMap.get(i.clientId) || 'Cliente non trovato'
       })))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
@@ -163,7 +163,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid gap-6">
-             <ActivityFeed interventions={kpiData.allInterventions} onUpdate={fetchKpiData} />
+             <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
             <KpiDashboard kpiData={kpiData} currentUser={user} />
           </div>
         )}
