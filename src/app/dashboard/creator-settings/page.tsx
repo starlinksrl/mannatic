@@ -180,7 +180,7 @@ export default function CreatorSettingsPage() {
     });
     
     if (result.success) {
-        toast({ title: 'Connessione al Bucket riuscita!', description: `Un file di test è stato scritto e cancellato con successo dal bucket ${values.gcsBucketName}.`});
+        toast({ title: 'Connessione al Bucket riuscita!', description: `Un file di test è stato scritto con successo nel bucket ${values.gcsBucketName}.`});
     } else {
         toast({ variant: 'destructive', title: 'Connessione al Bucket fallita', description: result.error || 'Si è verificato un errore sconosciuto.'});
     }
