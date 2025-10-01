@@ -139,9 +139,10 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     }
     if (statusFilter !== 'all') {
       filtered = filtered.filter(i => i.status === statusFilter);
-    } else if (currentUser.role === 'Operator') {
-      // Default filter for operators: hide billing statuses
-      filtered = filtered.filter(i => i.status !== 'Da Fatturare' && i.status !== 'Fatturato');
+    } else {
+        // Default filter: show only active interventions
+        const activeStatuses = ['Nuovo', 'In corso', 'In attesa'];
+        filtered = filtered.filter(i => activeStatuses.includes(i.status));
     }
     if (priorityFilter !== 'all') {
         filtered = filtered.filter(i => i.priority === priorityFilter);
@@ -259,7 +260,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">Tutti gli stati</SelectItem>
+                    <SelectItem value="all">Tutti gli attivi</SelectItem>
                     <SelectItem value="Nuovo">Nuovo</SelectItem>
                     <SelectItem value="In corso">In corso</SelectItem>
                     <SelectItem value="In attesa">In attesa</SelectItem>
