@@ -2,9 +2,9 @@
 
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration, Attachment, InterventionType } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
-import { db, auth } from './firebase';
+import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -106,6 +106,7 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
     }
 
     try {
+        const { auth } = await import('./firebase');
         const appConfig = await getAppConfiguration();
         
         // Create user in Firebase Auth first
@@ -543,6 +544,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     let clientName: string;
 
     if (!finalClientId) {
+        const { auth } = await import('./firebase');
         clientName = clientId; 
         const companyDoc = await getDoc(doc(db, 'companies', companyId));
         if (!companyDoc.exists()) {
@@ -958,6 +960,7 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
     let finalClientId = existingClient ? existingClient.id : null;
 
     if (!finalClientId) {
+        const { auth } = await import('./firebase');
         console.log(`Client "${clientId}" not found by ID. Creating new client.`);
         const companyDoc = await getDoc(doc(db, 'companies', companyId));
         if (!companyDoc.exists()) throw new Error(`Company with id ${companyId} not found`);
