@@ -19,7 +19,8 @@ import { Input } from '@/components/ui/input';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Company } from '@/lib/types';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import { addUser } from '@/lib/data';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
@@ -110,7 +111,6 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
         } else {
             const createValues = values as z.infer<typeof createFormSchema>;
             // Create user in Firebase Auth
-            const auth = getAuth();
             const userCredential = await createUserWithEmailAndPassword(auth, createValues.email, createValues.password);
             const adminUser = userCredential.user;
             
