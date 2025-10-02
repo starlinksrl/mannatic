@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -241,8 +240,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     { key: 'actions', label: 'Azioni', visible: true, className: 'w-12' },
   ];
   
-  const canCreateIntervention = ['Admin', 'Client', 'Operator'].includes(currentUser.role);
-  const canDeleteIntervention = ['Admin', 'Client'].includes(currentUser.role);
+  const canDeleteIntervention = ['Admin', 'Client', 'Creator'].includes(currentUser.role);
 
   return (
     <div className="space-y-4">
@@ -460,5 +458,3 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     </div>
   );
 }
-
-
