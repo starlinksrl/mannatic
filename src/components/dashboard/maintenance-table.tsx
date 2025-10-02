@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, formatDistanceToNow, isBefore, addDays, startOfToday } from 'date-fns';
+import { format, formatDistanceToNow, isBefore, addDays, startOfToday, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getClient, getOperator, deleteScheduledMaintenance } from '@/lib/data';
 import { Button } from '../ui/button';
@@ -113,13 +113,24 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
   const filteredTasks = useMemo(() => {
     let filtered = maintenanceTasks;
     const now = new Date();
-    const oneMonthFromNow = addDays(now, 30);
+    
+    if (statusFilter.startsWith('In scadenza')) {
+        let limitDate;
+        if (statusFilter === 'In scadenza (30gg)') {
+            limitDate = addDays(now, 30);
+        } else if (statusFilter === 'In scadenza (3 mesi)') {
+            limitDate = addMonths(now, 3);
+        } else if (statusFilter === 'In scadenza (6 mesi)') {
+            limitDate = addMonths(now, 6);
+        }
 
-    if (statusFilter === 'In scadenza') {
-        filtered = filtered.filter(task => {
-            const nextDueDate = new Date(task.nextDueDate);
-            return isBefore(nextDueDate, oneMonthFromNow) && isBefore(now, nextDueDate) && task.status !== 'Completato' && task.status !== 'Annullato';
-        });
+        if (limitDate) {
+            filtered = filtered.filter(task => {
+                const nextDueDate = new Date(task.nextDueDate);
+                return isBefore(nextDueDate, limitDate) && isBefore(now, nextDueDate) && task.status !== 'Completato' && task.status !== 'Annullato';
+            });
+        }
+
     } else if (statusFilter === 'Scaduto') {
         filtered = filtered.filter(isTaskOverdue);
     } else if (statusFilter !== 'all') {
@@ -230,7 +241,9 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                     <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Tutti gli stati</SelectItem>
-                        <SelectItem value="In scadenza">In scadenza (30gg)</SelectItem>
+                        <SelectItem value="In scadenza (30gg)">In scadenza (30gg)</SelectItem>
+                        <SelectItem value="In scadenza (3 mesi)">In scadenza (3 mesi)</SelectItem>
+                        <SelectItem value="In scadenza (6 mesi)">In scadenza (6 mesi)</SelectItem>
                         <SelectItem value="Scaduto">Scaduto</SelectItem>
                         <SelectItem value="Pianificato">Pianificato</SelectItem>
                         <SelectItem value="In corso">In corso</SelectItem>
