@@ -366,6 +366,12 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                     startPosition: coords,
                 };
                 form.setValue('workLogs', [...currentLogs, newLog]);
+                
+                // Auto-assign if not already assigned
+                if (!form.getValues('assignedOperatorId')) {
+                    form.setValue('assignedOperatorId', currentUser.id);
+                }
+                
                 toast({ title: 'Entrata registrata', description: 'Hai iniziato il lavoro per questo intervento.' });
             }
             setIsProcessingGeo(false);
@@ -378,7 +384,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   };
   
   const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
-  const isOperatorAssigned = currentUser.role === 'Operator' && intervention.assignedOperatorId === currentUser.id;
+  const isOperator = currentUser.role === 'Operator';
   
   const AttachmentPreview = ({ att }: { att: Attachment }) => {
     if (att.type.startsWith('image/')) {
@@ -403,7 +409,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                 <Form {...form}>
                 <form id="edit-intervention-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     
-                    {isOperatorAssigned && (
+                    {isOperator && (
                         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
                             <Button type="button" onClick={handleWorkLogToggle} disabled={isProcessingGeo} className={cn(activeWorkLog ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600', 'w-full')}>
                                 {isProcessingGeo && <Loader className="mr-2 animate-spin" />}
