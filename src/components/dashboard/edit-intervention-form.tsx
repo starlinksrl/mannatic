@@ -33,7 +33,7 @@ import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon,
 import { format, formatDistanceToNow, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Intervention, Client, User, InterventionPriority, InterventionStatus, Attachment, AppConfiguration } from '@/lib/types';
+import { Intervention, Client, User, InterventionPriority, InterventionStatus, InterventionType, Attachment, AppConfiguration } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateIntervention, getUserById, getAppConfiguration } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
@@ -50,6 +50,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
+  type: z.enum(['standard', 'new_installation']),
   description: z.string().min(10, { message: 'La descrizione deve contenere almeno 10 caratteri.' }),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   status: z.enum(['Nuovo', 'In corso', 'In attesa', 'Completato', 'Annullato', 'Da Fatturare', 'Fatturato'], { required_error: 'Lo stato è obbligatorio.' }),
@@ -106,6 +107,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      type: 'standard',
       dueTime: '',
       attachments: [],
     }
@@ -122,6 +124,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
       const dueDate = intervention.dueDate ? new Date(intervention.dueDate) : undefined;
       form.reset({
         ...intervention,
+        type: intervention.type || 'standard',
         dueDate: dueDate,
         dueTime: intervention.dueDate ? format(new Date(intervention.dueDate), 'HH:mm') : '',
         priority: intervention.priority,
@@ -182,6 +185,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     const updatedInterventionData = {
         ...intervention,
         ...values,
+        type: values.type as InterventionType,
         priority: values.priority as InterventionPriority,
         status: values.status as InterventionStatus,
         dueDate: finalDueDate,
@@ -349,6 +353,28 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                     )}
                     />
                     
+                    <FormField
+                        control={form.control}
+                        name="type"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Tipo Intervento</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleziona un tipo" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="standard">Standard</SelectItem>
+                                    <SelectItem value="new_installation">Nuovo Impianto</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
                     <FormField
                         control={form.control}
                         name="clientId"

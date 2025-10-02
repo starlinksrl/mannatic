@@ -78,6 +78,7 @@ export interface Equipment {
 
 export type InterventionStatus = 'Nuovo' | 'In corso' | 'In attesa' | 'Completato' | 'Annullato' | 'Pianificato' | 'Da Fatturare' | 'Fatturato';
 export type InterventionPriority = 'Bassa' | 'Media' | 'Alta' | 'Critica';
+export type InterventionType = 'standard' | 'new_installation';
 
 export interface InterventionUpdate {
   date: string;
@@ -100,6 +101,7 @@ export interface Intervention {
   id: string;
   title: string;
   clientId: string;
+  type: InterventionType;
   description?: string;
   priority: InterventionPriority;
   sla: string; // e.g., '4h', '8h', '24h'

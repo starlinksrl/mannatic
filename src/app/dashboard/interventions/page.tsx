@@ -32,7 +32,7 @@ export default function InterventionsPage() {
 
         setOperators(allUsers.filter(u => u.role === 'Operator'));
         setClients(allClients);
-        setInterventions(allInterventions.filter(i => !i.isMaintenance));
+        setInterventions(allInterventions.filter(i => !i.isMaintenance && i.type !== 'new_installation'));
         setLoading(false);
     }
 

@@ -32,7 +32,7 @@ import { CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Intervention, Client, User, InterventionPriority } from '@/lib/types';
+import { Intervention, Client, User, InterventionPriority, InterventionType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addIntervention } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
@@ -42,6 +42,7 @@ import { ScrollArea } from '../ui/scroll-area';
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
+  type: z.enum(['standard', 'new_installation']),
   description: z.string().optional(),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   dueDate: z.date().optional(),
@@ -71,6 +72,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     defaultValues: {
       title: '',
       description: '',
+      type: 'standard',
       assignedOperatorId: null,
       priority: 'Bassa',
       clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
@@ -107,6 +109,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
 
     const newIntervention = await addIntervention({
         ...values,
+        type: values.type as InterventionType,
         clientId: clientIdentifier,
         description: values.description || values.title,
         priority: values.priority as InterventionPriority,
@@ -130,8 +133,9 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
         setIsOpen(open);
         if (!open) {
             form.reset({
-                 title: '',
+                title: '',
                 description: '',
+                type: 'standard',
                 assignedOperatorId: null,
                 priority: 'Bassa',
                 clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
@@ -164,6 +168,28 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                             <FormMessage />
                         </FormItem>
                     )}
+                    />
+                    
+                     <FormField
+                        control={form.control}
+                        name="type"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Tipo Intervento</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleziona un tipo" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="standard">Standard</SelectItem>
+                                    <SelectItem value="new_installation">Nuovo Impianto</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
                     />
                     
                     <FormField
