@@ -31,7 +31,7 @@ import Link from 'next/link';
 const changelog = [
     {
         version: "0.14",
-        date: "2024-09-28",
+        date: "2024-09-29",
         title: "Ottimizzazione Mobile e Qualità della Vita",
         icon: Smartphone,
         iconClass: "text-green-500",
