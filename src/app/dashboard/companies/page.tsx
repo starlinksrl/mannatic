@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -28,6 +29,19 @@ import {
 import Link from 'next/link';
 
 const changelog = [
+    {
+        version: "0.14",
+        date: "2024-09-28",
+        title: "Ottimizzazione Mobile e Qualità della Vita",
+        icon: Smartphone,
+        iconClass: "text-green-500",
+        changes: [
+            { type: Smartphone, description: "Migliorata drasticamente la reattività della scheda 'Modifica Intervento' per una visualizzazione ottimale su schermi verticali stretti (smartphone)." },
+            { type: Tablet, description: "Ottimizzata la visualizzazione della Dashboard e dell'elenco interventi su dispositivi mobili e tablet, con stacking automatico degli elementi." },
+            { type: Phone, description: "Resi cliccabili i contatti (telefono, indirizzo) nella vista mobile dell'elenco interventi per un accesso rapido." },
+            { type: Monitor, description: "Implementata la visibilità intelligente delle colonne nelle tabelle per schermi di medie dimensioni, nascondendo le informazioni meno critiche per evitare lo scorrimento orizzontale." },
+        ]
+    },
     {
         version: "0.13",
         date: "2024-09-27",
