@@ -107,6 +107,10 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
     try {
         const appConfig = await getAppConfiguration();
         
+        // Create user in Firebase Auth first
+        const userCredential = await createUserWithEmailAndPassword(auth, companyData.email!, companyData.password!);
+        const adminUser = userCredential.user;
+
         const companyPayload: Omit<Company, 'id'> = {
             name: companyData.name!,
             address: companyData.address || '',
@@ -124,9 +128,9 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
 
         const docRef = await addDoc(collection(db, 'companies'), companyPayload);
         
-        // Create an admin user for the new company
+        // Create an admin user for the new company in Firestore
         await addUser({
-            id: companyData.id, // Pass the UID from the form
+            id: adminUser.uid,
             name: `Admin ${companyData.name}`,
             email: companyData.email!,
             role: 'Admin',

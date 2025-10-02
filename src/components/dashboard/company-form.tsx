@@ -106,19 +106,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
 
 
     const handleFormSubmit = async (values: z.infer<typeof createFormSchema | typeof editFormSchema>) => {
-        let success = false;
-        if (isEditing) {
-             success = await onSubmit(values);
-        } else {
-            const createValues = values as z.infer<typeof createFormSchema>;
-            // Create user in Firebase Auth
-            const userCredential = await createUserWithEmailAndPassword(auth, createValues.email, createValues.password);
-            const adminUser = userCredential.user;
-            
-            // Now submit company to create it in DB, which will also create the user record in Firestore
-            success = await onSubmit({ ...createValues, id: adminUser.uid });
-        }
-        
+        const success = await onSubmit(values);
         if (success) {
             setIsOpen(false);
         }
