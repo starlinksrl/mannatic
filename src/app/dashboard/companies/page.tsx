@@ -27,11 +27,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link';
+import { format } from 'date-fns';
 
 const changelog = [
     {
         version: "0.14",
-        date: "2024-09-30",
+        date: format(new Date(), 'yyyy-MM-dd'),
         title: "Ottimizzazione Mobile e Qualità della Vita",
         icon: Smartphone,
         iconClass: "text-green-500",
