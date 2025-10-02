@@ -8,7 +8,7 @@ import { sendNotificationEmail } from '@/ai/flows/send-notification-email';
 import { sendExpiryNotification } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail } from '@/ai/flows/send-password-reset-email';
-import { sendTestEmail as sendTestEmailFlow } from '@/ai/flows/send-test-email';
+import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword } from '@/lib/data';
@@ -34,7 +34,7 @@ export async function getKpiDashboardDescription(input: GenerateKpiDashboardInpu
 
 export async function sendTestEmailAction(input: SendTestEmailInput): Promise<SendTestEmailOutput> {
   try {
-    const result = await sendTestEmailFlow(input);
+    const result = await sendTestEmail(input);
     return result;
   } catch (error: any) {
     console.error("Error sending test email:", error);
