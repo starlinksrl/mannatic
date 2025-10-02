@@ -4,7 +4,8 @@ import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRol
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from './firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -556,7 +557,6 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
 
-        const auth = getAuth();
         const userCredential = await createUserWithEmailAndPassword(auth, `${clientNameNormalized}@${companyName}.com`, 'password');
 
         const newClient = await addUser({
@@ -971,7 +971,6 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
 
-        const auth = getAuth();
         const userCredential = await createUserWithEmailAndPassword(auth, `${clientNameNormalized}@${companyName}.com`, 'password');
         
         const newClient = await addUser({
