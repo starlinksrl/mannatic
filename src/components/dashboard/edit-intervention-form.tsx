@@ -134,8 +134,8 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         status: intervention.status,
         assignedOperatorId: intervention.assignedOperatorId || null,
         newUpdate: '',
-        timeSpent: intervention.timeSpent || undefined,
-        materialsUsed: intervention.materialsUsed || '',
+        timeSpent: intervention.timeSpent ?? undefined,
+        materialsUsed: intervention.materialsUsed ?? '',
         attachments: intervention.attachments || [],
         workLogs: intervention.workLogs || [],
       });
