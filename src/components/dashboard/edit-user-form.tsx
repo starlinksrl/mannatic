@@ -278,7 +278,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 <FormItem>
                   <FormLabel>Telefono</FormLabel>
                   <FormControl>
-                    <Input placeholder="Numero di telefono" {...field} />
+                    <Input placeholder="Numero di telefono" {...field} value={field.value ?? ''}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -305,6 +305,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                                     placeholder="Cerca un indirizzo..."
                                     onBlur={field.onBlur}
                                     onChange={field.onChange}
+                                    value={field.value ?? ''}
                                 />
                             </Autocomplete>
                         ) : (
@@ -312,6 +313,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                                 {...field}
                                 placeholder="Cerca un indirizzo..."
                                 disabled
+                                value={field.value ?? ''}
                             />
                         )}
                     </FormControl>
