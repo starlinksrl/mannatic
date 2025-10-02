@@ -13,8 +13,6 @@ import { Logo } from '@/components/icons/logo';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { getUserByEmail } from '@/lib/data';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { User } from '@/lib/types';
 import { CREATOR_USER } from '@/lib/constants';
 
@@ -36,13 +34,10 @@ export default function LoginPage() {
                 throw new Error("Invalid credentials");
             }
         } else {
-            // For regular users, we authenticate against Firebase Auth
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            // For regular users, we check against firestore
             userToLogin = await getUserByEmail(email);
-
-            if (!userToLogin || userToLogin.id !== userCredential.user.uid) {
-                // This case handles if a user exists in Auth but not Firestore, or if there's a mismatch.
-                throw new Error("User record not found or mismatched.");
+            if (!userToLogin || userToLogin.password !== password) {
+                 throw new Error("Invalid credentials");
             }
         }
         

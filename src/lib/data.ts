@@ -4,7 +4,6 @@ import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRol
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -99,20 +98,14 @@ export async function getCompanyByUserId(userId: string): Promise<Company | null
 }
 
 export async function addCompany(companyData: Partial<Company>): Promise<Company> {
-    // Check if email already exists
     const existingUser = await getUserByEmail(companyData.email!);
     if (existingUser) {
         throw new Error('Un utente con questa email esiste già.');
     }
 
     try {
-        const { auth } = await import('./firebase');
         const appConfig = await getAppConfiguration();
         
-        // Create user in Firebase Auth first
-        const userCredential = await createUserWithEmailAndPassword(auth, companyData.email!, companyData.password!);
-        const adminUser = userCredential.user;
-
         const companyPayload: Omit<Company, 'id'> = {
             name: companyData.name!,
             address: companyData.address || '',
@@ -131,10 +124,12 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
         const docRef = await addDoc(collection(db, 'companies'), companyPayload);
         
         // Create an admin user for the new company in Firestore
+        const newAdminId = uuidv4();
         await addUser({
-            id: adminUser.uid,
+            id: newAdminId,
             name: `Admin ${companyData.name}`,
             email: companyData.email!,
+            password: companyData.password!,
             role: 'Admin',
             companyId: docRef.id
         });
@@ -244,8 +239,23 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     try {
-        // UID is now passed in from the form after creating user in Auth
-        const userId = userData.id!;
+        const { auth } = await import('./firebase');
+        const { createUserWithEmailAndPassword } = await import('firebase/auth');
+
+        // This function is now dual-purpose:
+        // 1. If password is provided, it's for a new client user who needs a Firebase Auth account.
+        // 2. If no password, it might be for a company admin (handled in addCompany) where we just create a DB record.
+        
+        let userId = userData.id;
+
+        if (userData.password && userData.email) {
+            // This path is for users needing a Firebase Auth account (like clients from addIntervention/addSurvey)
+            const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+            userId = userCredential.user.uid;
+        } else if (!userId) {
+            // This path is for creating a DB-only user (like a new company admin).
+            userId = uuidv4();
+        }
 
         const newUserPayload: Partial<User> = {
             id: userId,
@@ -256,6 +266,7 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             avatarUrl: `https://i.pravatar.cc/150?u=${userId}`,
             address: userData.address || '',
             phone: userData.phone || '',
+            password: userData.password, // Storing password for DB-only auth users
         };
         
         if (newUserPayload.role === 'Operator') {
@@ -263,9 +274,6 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
         } else {
             delete newUserPayload.allowedSectors;
         }
-
-        // Don't save password in Firestore
-        delete newUserPayload.password;
         
         await setDoc(doc(db, 'users', userId), newUserPayload);
         
@@ -290,11 +298,8 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
 
-        if (dataToUpdate.password) {
-            // This is not a secure way to update passwords. In a real app, use Firebase Admin SDK on a backend.
-            // For now, we just remove it to prevent storing it in Firestore.
-            delete dataToUpdate.password;
-        }
+        // Do not store password in firestore for updates
+        delete dataToUpdate.password;
         
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
             dataToUpdate.allowedSectors = deleteField();
@@ -544,7 +549,6 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     let clientName: string;
 
     if (!finalClientId) {
-        const { auth } = await import('./firebase');
         clientName = clientId; 
         const companyDoc = await getDoc(doc(db, 'companies', companyId));
         if (!companyDoc.exists()) {
@@ -554,12 +558,10 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
 
-        const userCredential = await createUserWithEmailAndPassword(auth, `${clientNameNormalized}@${companyName}.com`, 'password');
-
         const newClient = await addUser({
-            id: userCredential.user.uid,
             name: clientId,
             email: `${clientNameNormalized}@${companyName}.com`,
+            password: 'password', // Default password for new clients
             role: 'Client',
             companyId: companyId,
             address: 'Indirizzo da definire',
@@ -960,7 +962,6 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
     let finalClientId = existingClient ? existingClient.id : null;
 
     if (!finalClientId) {
-        const { auth } = await import('./firebase');
         console.log(`Client "${clientId}" not found by ID. Creating new client.`);
         const companyDoc = await getDoc(doc(db, 'companies', companyId));
         if (!companyDoc.exists()) throw new Error(`Company with id ${companyId} not found`);
@@ -969,12 +970,10 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
 
-        const userCredential = await createUserWithEmailAndPassword(auth, `${clientNameNormalized}@${companyName}.com`, 'password');
-        
         const newClient = await addUser({
-            id: userCredential.user.uid,
             name: clientId,
             email: `${clientNameNormalized}@${companyName}.com`,
+            password: 'password', // Default password
             role: 'Client',
             companyId: companyId,
             address: surveyData.address,
