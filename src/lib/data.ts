@@ -1,6 +1,5 @@
 
 
-
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration, Attachment, InterventionType } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db, auth } from './firebase';
@@ -126,9 +125,10 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
         const docRef = await addDoc(collection(db, 'companies'), companyPayload);
         
         // Create an admin user for the new company in Firestore
-        const newAdminId = uuidv4();
+        const userCredential = await createUserWithEmailAndPassword(auth, companyData.email!, companyData.password!);
+        
         await addUser({
-            id: newAdminId,
+            id: userCredential.user.uid,
             name: `Admin ${companyData.name}`,
             email: companyData.email!,
             password: companyData.password!,
@@ -241,7 +241,7 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     try {
-        const userId = userData.id || uuidv4();
+        const userId = userData.id!;
 
         const newUserPayload: Partial<User> = {
             id: userId,
@@ -252,7 +252,6 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             avatarUrl: `https://i.pravatar.cc/150?u=${userId}`,
             address: userData.address || '',
             phone: userData.phone || '',
-            password: userData.password, // Storing password for DB-only auth users
         };
         
         if (newUserPayload.role === 'Operator') {
@@ -554,7 +553,6 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             id: firebaseUserId,
             name: clientId,
             email: clientEmail,
-            password: clientPassword,
             role: 'Client',
             companyId: companyId,
             address: 'Indirizzo da definire',
@@ -860,8 +858,11 @@ export async function updateScheduledMaintenance(id: string, updatedData: Partia
         const isBeingCompleted = updatedData.status === 'Completato' && originalMaintenance.status !== 'Completato';
 
         if (isBeingCompleted) {
-            // Recalculate next due date from now
-            combinedData.nextDueDate = addMonths(new Date(), combinedData.recurrenceMonths!).toISOString();
+            const completionDate = new Date();
+            // Recalculate next due date from the completion date
+            combinedData.nextDueDate = addMonths(completionDate, combinedData.recurrenceMonths!).toISOString();
+            // Set the execution date to today
+            combinedData.dueDate = completionDate.toISOString();
             // Reset status to 'Pianificato' for the next cycle
             combinedData.status = 'Pianificato';
         } else if (updatedData.recurrenceMonths || updatedData.dueDate) {
@@ -973,7 +974,6 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
             id: firebaseUserId,
             name: clientId,
             email: clientEmail,
-            password: clientPassword,
             role: 'Client',
             companyId: companyId,
             address: surveyData.address,
@@ -1088,4 +1088,5 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 }
     
     
+
 
