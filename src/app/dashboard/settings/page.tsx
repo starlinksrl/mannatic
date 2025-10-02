@@ -14,7 +14,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { sendTestEmail, saveSmtpSettings, fetchEmailLogs } from '@/app/actions';
+import { sendTestEmailAction, saveSmtpSettings, fetchEmailLogs } from '@/app/actions';
 import { Loader, AlertTriangle, Pencil, CheckCircle, MailWarning } from 'lucide-react';
 import { Company, EmailLog } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -297,18 +297,15 @@ function SmtpSettingsForm({ company, onSave, onTest }: { company: Company, onSav
     setTestError(null);
     const values = form.getValues();
     
-    const result = await sendTestEmail({
-      recipientEmail: values.recipientEmail,
-      maintenanceDetails: 'Controllo trimestrale del sistema di condizionamento.',
-      nextDueDate: new Date().toLocaleDateString('it-IT'),
-      smtpConfig: {
-        host: values.smtpHost,
-        port: values.smtpPort,
-        user: values.smtpUser,
-        pass: values.smtpPass,
-        from: values.senderEmail,
-      },
-      companyId: company.id
+    const result = await sendTestEmailAction({
+        recipientEmail: values.recipientEmail,
+        smtpConfig: {
+            host: values.smtpHost,
+            port: values.smtpPort,
+            user: values.smtpUser,
+            pass: values.smtpPass,
+            from: values.senderEmail,
+        }
     });
 
     if (!result.success) {
