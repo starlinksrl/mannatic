@@ -1,14 +1,16 @@
 
 
+
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration, Attachment, InterventionType } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
 import { CREATOR_USER } from './constants';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 
 // --- APP CONFIGURATION ---
@@ -239,23 +241,7 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     try {
-        const { auth } = await import('./firebase');
-        const { createUserWithEmailAndPassword } = await import('firebase/auth');
-
-        // This function is now dual-purpose:
-        // 1. If password is provided, it's for a new client user who needs a Firebase Auth account.
-        // 2. If no password, it might be for a company admin (handled in addCompany) where we just create a DB record.
-        
-        let userId = userData.id;
-
-        if (userData.password && userData.email) {
-            // This path is for users needing a Firebase Auth account (like clients from addIntervention/addSurvey)
-            const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-            userId = userCredential.user.uid;
-        } else if (!userId) {
-            // This path is for creating a DB-only user (like a new company admin).
-            userId = uuidv4();
-        }
+        const userId = userData.id || uuidv4();
 
         const newUserPayload: Partial<User> = {
             id: userId,
@@ -557,11 +543,18 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         const company = companyDoc.data() as Company;
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
+        
+        const clientEmail = `${clientNameNormalized}@${companyName}.com`;
+        const clientPassword = 'password';
+
+        const userCredential = await createUserWithEmailAndPassword(auth, clientEmail, clientPassword);
+        const firebaseUserId = userCredential.user.uid;
 
         const newClient = await addUser({
+            id: firebaseUserId,
             name: clientId,
-            email: `${clientNameNormalized}@${companyName}.com`,
-            password: 'password', // Default password for new clients
+            email: clientEmail,
+            password: clientPassword,
             role: 'Client',
             companyId: companyId,
             address: 'Indirizzo da definire',
@@ -970,10 +963,17 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
 
+        const clientEmail = `${clientNameNormalized}@${companyName}.com`;
+        const clientPassword = 'password';
+
+        const userCredential = await createUserWithEmailAndPassword(auth, clientEmail, clientPassword);
+        const firebaseUserId = userCredential.user.uid;
+
         const newClient = await addUser({
+            id: firebaseUserId,
             name: clientId,
-            email: `${clientNameNormalized}@${companyName}.com`,
-            password: 'password', // Default password
+            email: clientEmail,
+            password: clientPassword,
             role: 'Client',
             companyId: companyId,
             address: surveyData.address,
@@ -1088,3 +1088,4 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 }
     
     
+
