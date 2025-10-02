@@ -33,8 +33,7 @@ import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
@@ -94,6 +93,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     }
     
     try {
+        const auth = getAuth();
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
         const firebaseUser = userCredential.user;
 

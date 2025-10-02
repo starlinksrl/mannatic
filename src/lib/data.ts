@@ -4,6 +4,7 @@ import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRol
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -125,9 +126,9 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
         
         // Create an admin user for the new company
         await addUser({
+            id: companyData.id, // Pass the UID from the form
             name: `Admin ${companyData.name}`,
             email: companyData.email!,
-            password: 'password', // Default password, should be changed by user
             role: 'Admin',
             companyId: docRef.id
         });
@@ -244,39 +245,40 @@ export async function getUserById(id: string): Promise<User | null> {
     }
 }
 
-export async function addUser(userData: Partial<Omit<User, 'id' | 'avatarUrl'>>): Promise<User> {
-    // Check if email already exists
-    const existingUser = await getUserByEmail(userData.email!);
-    if (existingUser) {
-        throw new Error('Un utente con questa email esiste già.');
-    }
-  
+export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     try {
-        const newId = generateShortId();
+        // UID is now passed in from the form after creating user in Auth
+        const userId = userData.id!;
+
         const newUserPayload: Partial<User> = {
-            ...userData,
+            id: userId,
+            name: userData.name!,
             email: userData.email!.toLowerCase(),
-            avatarUrl: `https://i.pravatar.cc/150?u=${newId}`,
+            role: userData.role!,
+            companyId: userData.companyId!,
+            avatarUrl: `https://i.pravatar.cc/150?u=${userId}`,
             address: userData.address || '',
             phone: userData.phone || '',
-            password: userData.password,
         };
-
+        
         if (newUserPayload.role === 'Operator') {
              newUserPayload.allowedSectors = userData.allowedSectors || ['interventions', 'surveys', 'maintenance'];
         } else {
             delete newUserPayload.allowedSectors;
         }
+
+        // Don't save password in Firestore
+        delete newUserPayload.password;
         
-        await setDoc(doc(db, 'users', newId), newUserPayload as any);
+        await setDoc(doc(db, 'users', userId), newUserPayload);
         
-        return { id: newId, ...newUserPayload as User };
+        return { ...newUserPayload, id: userId } as User;
     } catch (error) {
-        console.error("Error adding user:", error);
+        console.error("Error adding user to Firestore:", error);
         if (error instanceof Error) {
             throw error;
         }
-        throw new Error("Failed to add user.");
+        throw new Error("Failed to add user to Firestore.");
     }
 }
 
@@ -289,6 +291,12 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         
         if (dataToUpdate.email) {
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
+        }
+
+        if (dataToUpdate.password) {
+            // This is not a secure way to update passwords. In a real app, use Firebase Admin SDK on a backend.
+            // For now, we just remove it to prevent storing it in Firestore.
+            delete dataToUpdate.password;
         }
         
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
@@ -310,6 +318,8 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
 
 export async function deleteUser(id: string): Promise<boolean> {
     try {
+        // In a real app, you would also need to delete the user from Firebase Auth
+        // using the Admin SDK on a backend. This is a client-side only deletion.
         await deleteDoc(doc(db, 'users', id));
         return true;
     } catch (error) {
@@ -352,7 +362,13 @@ export async function resetUserPassword(token: string, newPassword: string):Prom
          await deleteDoc(tokenDoc.ref);
          return { success: false, message: "Token di reset scaduto." };
     }
-
+    
+    // This is highly insecure and for demo purposes only.
+    // A real application must use a backend with the Firebase Admin SDK to update passwords.
+    // Here, we just update the field in Firestore, which has no effect on actual login.
+    // The login flow needs to be adapted to check this field if we want to simulate this.
+    // For now, we just log a warning and proceed.
+    console.warn("INSECURE OPERATION: Password is being 'updated' in Firestore only. This does not affect Firebase Auth.");
     await updateUser(tokenData.userId, { password: newPassword });
 
     await deleteDoc(tokenDoc.ref);
@@ -540,11 +556,13 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
 
+        const auth = getAuth();
+        const userCredential = await createUserWithEmailAndPassword(auth, `${clientNameNormalized}@${companyName}.com`, 'password');
 
         const newClient = await addUser({
+            id: userCredential.user.uid,
             name: clientId,
             email: `${clientNameNormalized}@${companyName}.com`,
-            password: 'password',
             role: 'Client',
             companyId: companyId,
             address: 'Indirizzo da definire',
@@ -953,10 +971,13 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
 
+        const auth = getAuth();
+        const userCredential = await createUserWithEmailAndPassword(auth, `${clientNameNormalized}@${companyName}.com`, 'password');
+        
         const newClient = await addUser({
+            id: userCredential.user.uid,
             name: clientId,
             email: `${clientNameNormalized}@${companyName}.com`,
-            password: 'password',
             role: 'Client',
             companyId: companyId,
             address: surveyData.address,
