@@ -80,8 +80,18 @@ export default function CreatorSettingsPage() {
       const config = await getAppConfiguration();
       if (config) {
         form.reset({
-          ...config,
+          appName: config.appName ?? '',
+          appLogoUrl: config.appLogoUrl ?? '',
+          defaultSmtpHost: config.defaultSmtpHost ?? '',
+          defaultSmtpPort: config.defaultSmtpPort ?? 587,
+          defaultSmtpUser: config.defaultSmtpUser ?? '',
+          defaultSmtpPass: config.defaultSmtpPass ?? '',
+          defaultSenderEmail: config.defaultSenderEmail ?? '',
+          gcsProjectId: config.gcsProjectId ?? '',
+          gcsClientEmail: config.gcsClientEmail ?? '',
           gcsPrivateKey: config.gcsPrivateKey ? '••••••••' : '',
+          gcsBucketName: config.gcsBucketName ?? '',
+          testRecipientEmail: '', // This should not be persisted
         });
         originalPrivateKey.current = config.gcsPrivateKey || '';
       }
@@ -220,7 +230,7 @@ export default function CreatorSettingsPage() {
                     <FormItem>
                       <FormLabel>Nome Applicazione</FormLabel>
                       <FormControl>
-                        <Input placeholder="MannaTic" {...field} />
+                        <Input placeholder="MannaTic" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -263,7 +273,7 @@ export default function CreatorSettingsPage() {
                           <FormItem>
                             <FormLabel>Host SMTP</FormLabel>
                             <FormControl>
-                              <Input placeholder="smtp.example.com" {...field} />
+                              <Input placeholder="smtp.example.com" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -276,7 +286,7 @@ export default function CreatorSettingsPage() {
                           <FormItem>
                             <FormLabel>Porta SMTP</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="587" {...field} />
+                              <Input type="number" placeholder="587" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -291,7 +301,7 @@ export default function CreatorSettingsPage() {
                           <FormItem>
                             <FormLabel>Username SMTP</FormLabel>
                             <FormControl>
-                              <Input placeholder="Username" {...field} />
+                              <Input placeholder="Username" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -304,7 +314,7 @@ export default function CreatorSettingsPage() {
                           <FormItem>
                             <FormLabel>Password SMTP</FormLabel>
                             <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} />
+                              <Input type="password" placeholder="••••••••" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -318,7 +328,7 @@ export default function CreatorSettingsPage() {
                           <FormItem>
                             <FormLabel>Email Mittente di Default</FormLabel>
                             <FormControl>
-                              <Input type="email" placeholder="noreply@example.com" {...field} />
+                              <Input type="email" placeholder="noreply@example.com" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -333,7 +343,7 @@ export default function CreatorSettingsPage() {
                           <FormItem>
                             <FormLabel>Email Destinatario Test</FormLabel>
                             <FormControl>
-                              <Input type="email" placeholder="test@example.com" {...field} />
+                              <Input type="email" placeholder="test@example.com" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -375,7 +385,7 @@ export default function CreatorSettingsPage() {
                     <FormItem>
                       <FormLabel>Project ID</FormLabel>
                       <FormControl>
-                        <Input placeholder="il-tuo-project-id" {...field} />
+                        <Input placeholder="il-tuo-project-id" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -388,7 +398,7 @@ export default function CreatorSettingsPage() {
                     <FormItem>
                       <FormLabel>Email del Service Account</FormLabel>
                       <FormControl>
-                        <Input placeholder="nome-sa@il-tuo-project-id.iam.gserviceaccount.com" {...field} />
+                        <Input placeholder="nome-sa@il-tuo-project-id.iam.gserviceaccount.com" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -401,7 +411,7 @@ export default function CreatorSettingsPage() {
                     <FormItem>
                       <FormLabel>Chiave Privata del Service Account</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n" {...field} />
+                        <Textarea placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -414,7 +424,7 @@ export default function CreatorSettingsPage() {
                     <FormItem>
                       <FormLabel>Nome del Bucket GCS</FormLabel>
                       <FormControl>
-                        <Input placeholder="nome-del-tuo-bucket" {...field} />
+                        <Input placeholder="nome-del-tuo-bucket" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -439,3 +449,5 @@ export default function CreatorSettingsPage() {
     </>
   );
 }
+
+    
