@@ -1,4 +1,5 @@
 
+
 'use client';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { useUser } from '@/contexts/user-context';
@@ -6,6 +7,9 @@ import { useRouter } from 'next/navigation';
 import React, { useEffect } from 'react';
 import { Loader } from 'lucide-react';
 import { InterventionModalProvider } from '@/contexts/intervention-modal-context';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
+import { changelog } from '@/lib/changelog';
 
 export default function DashboardLayout({
   children,
@@ -39,6 +43,8 @@ export default function DashboardLayout({
     )
   }
 
+  const latestVersion = changelog[0]?.version;
+
   return (
     <InterventionModalProvider>
       <div className="grid min-h-screen w-full md:grid-cols-[280px_1fr]">
@@ -49,6 +55,16 @@ export default function DashboardLayout({
           {children}
         </div>
       </div>
+      {latestVersion && (
+          <Link href="/dashboard/changelog">
+            <Badge 
+              variant="secondary" 
+              className="fixed bottom-4 right-4 z-50 cursor-pointer hover:ring-2 hover:ring-ring"
+            >
+              v{latestVersion}
+            </Badge>
+          </Link>
+      )}
     </InterventionModalProvider>
   );
 }

@@ -18,6 +18,7 @@ import {
   Database,
   Info,
   HardHat,
+  GitMerge,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -48,6 +49,7 @@ const navItems: {
   { href: '/dashboard/admin-explorer', label: 'Explorer', icon: Database, roles: ['Admin'] },
   { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'] },
   { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
+  { href: '/dashboard/changelog', label: 'Changelog', icon: GitMerge, roles: ['Admin', 'Operator', 'Client', 'Creator'] },
 ];
 
 export function SidebarNav() {
@@ -90,8 +92,7 @@ export function SidebarNav() {
               href={item.href}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
-                pathname.startsWith(item.href) && item.href !== '/dashboard' ? 'bg-muted text-primary' : '',
-                pathname === item.href && item.href === '/dashboard' ? 'bg-muted text-primary' : '',
+                pathname === item.href ? 'bg-muted text-primary' : '',
               )}
             >
               <item.icon className="h-4 w-4" />
