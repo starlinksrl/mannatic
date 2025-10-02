@@ -4,11 +4,12 @@ import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRol
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
 import { db, auth } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
+import { CREATOR_USER } from './constants';
 
 
 // --- APP CONFIGURATION ---
@@ -224,17 +225,8 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
 export async function getUserById(id: string): Promise<User | null> {
     if (!id) return null;
-    if (id === 'user-creator') {
-        const creatorUser: User = { 
-          id: 'user-creator', 
-          name: 'Creator', 
-          email: 'creator@mannatic.com', 
-          role: 'Creator', 
-          avatarUrl: 'https://i.pravatar.cc/150?u=creator', 
-          companyId: 'none',
-          password: 'creatorpassword'
-        };
-        return Promise.resolve(creatorUser);
+    if (id === CREATOR_USER.id) {
+        return Promise.resolve(CREATOR_USER);
     }
     try {
         const userDocRef = doc(db, 'users', id);

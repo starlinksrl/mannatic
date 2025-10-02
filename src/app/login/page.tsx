@@ -12,6 +12,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
+import { getUserByEmail } from '@/lib/data';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { User } from '@/lib/types';
+import { CREATOR_USER } from '@/lib/constants';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -21,15 +26,39 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   const handleLogin = async () => {
-    const success = await login(email, password);
-    if (success) {
-      router.push('/dashboard');
-      toast({
-        title: 'Accesso effettuato',
-        description: 'Bentornato!',
-      });
-    } else {
-      toast({
+    try {
+        let userToLogin: User | null;
+        
+        if (email.toLowerCase() === CREATOR_USER.email.toLowerCase()) {
+            if (password === CREATOR_USER.password) {
+                 userToLogin = CREATOR_USER;
+            } else {
+                throw new Error("Invalid credentials");
+            }
+        } else {
+            // For regular users, we authenticate against Firebase Auth
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            userToLogin = await getUserByEmail(email);
+
+            if (!userToLogin || userToLogin.id !== userCredential.user.uid) {
+                // This case handles if a user exists in Auth but not Firestore, or if there's a mismatch.
+                throw new Error("User record not found or mismatched.");
+            }
+        }
+        
+        if (userToLogin) {
+            login(userToLogin); // This now only sets the state
+            router.push('/dashboard');
+            toast({
+                title: 'Accesso effettuato',
+                description: `Bentornato, ${userToLogin.name}!`,
+            });
+        } else {
+            throw new Error("Invalid credentials");
+        }
+
+    } catch (error) {
+       toast({
         variant: 'destructive',
         title: 'Accesso fallito',
         description: 'Credenziali non valide. Riprova.',
@@ -38,15 +67,18 @@ export default function LoginPage() {
   };
   
   const handleCreatorLogin = async () => {
-    const success = await login('creator@mannatic.com', 'creatorpassword');
-    if (success) {
-      router.push('/dashboard');
-      toast({
-        title: 'Accesso effettuato come Creator',
-        description: 'Bentornato!',
-      });
-    } else {
-       toast({
+    setEmail(CREATOR_USER.email);
+    setPassword(CREATOR_USER.password);
+    
+    try {
+        login(CREATOR_USER);
+        router.push('/dashboard/companies');
+        toast({
+            title: 'Accesso effettuato come Creator',
+            description: 'Bentornato!',
+        });
+    } catch(e) {
+         toast({
         variant: 'destructive',
         title: 'Accesso Creator fallito',
         description: 'Credenziali di sviluppo non corrette.',
