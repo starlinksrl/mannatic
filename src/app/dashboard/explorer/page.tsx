@@ -102,7 +102,7 @@ function ImageEditDialog({ isOpen, setIsOpen, imageUrl, onSave }: ImageEditDialo
 }
 
 
-const JsonCell = ({ data, onSave }: { data: any; onSave: () => void }) => {
+const JsonCell = ({ data, onSave }: { data: any; onSave: (newValue: any) => void }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState('');
