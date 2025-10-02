@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
@@ -96,6 +95,21 @@ export interface Attachment {
   uploadedBy: string;
 }
 
+export interface GeolocationPosition {
+  latitude: number;
+  longitude: number;
+}
+
+export interface WorkLog {
+  id: string;
+  operatorId: string;
+  operatorName: string;
+  startTime: string;
+  endTime?: string | null;
+  startPosition: GeolocationPosition;
+  endPosition?: GeolocationPosition | null;
+}
+
 
 export interface Intervention {
   id: string;
@@ -116,6 +130,7 @@ export interface Intervention {
   clientSignature?: string;
   updates?: InterventionUpdate[];
   attachments?: Attachment[];
+  workLogs?: WorkLog[];
   companyId: string;
   isMaintenance?: boolean;
 }

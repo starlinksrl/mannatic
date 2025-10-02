@@ -29,11 +29,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader } from 'lucide-react';
-import { format, formatDistanceToNow, setHours, setMinutes } from 'date-fns';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin } from 'lucide-react';
+import { format, formatDistanceToNow, setHours, setMinutes, differenceInMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Intervention, Client, User, InterventionPriority, InterventionStatus, InterventionType, Attachment, AppConfiguration } from '@/lib/types';
+import { Intervention, Client, User, InterventionPriority, InterventionStatus, InterventionType, Attachment, AppConfiguration, WorkLog, GeolocationPosition } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateIntervention, getUserById, getAppConfiguration } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
@@ -61,6 +61,7 @@ const formSchema = z.object({
   timeSpent: z.coerce.number().positive({ message: 'Le ore impiegate devono essere un numero positivo.' }).optional(),
   materialsUsed: z.string().optional(),
   attachments: z.array(z.any()).optional(),
+  workLogs: z.array(z.any()).optional(),
 }).superRefine((data, ctx) => {
     if (data.status === 'Completato') {
         if (!data.timeSpent) {
@@ -98,6 +99,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const [selectedClient, setSelectedClient] = useState<User | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isProcessingGeo, setIsProcessingGeo] = useState(false);
   const [attachmentToView, setAttachmentToView] = useState<Attachment | null>(null);
   const [isFetchingAttachment, setIsFetchingAttachment] = useState(false);
   const [attachmentDataUri, setAttachmentDataUri] = useState<string | null>(null);
@@ -110,6 +112,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
       type: 'standard',
       dueTime: '',
       attachments: [],
+      workLogs: [],
     }
   });
 
@@ -134,11 +137,14 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         timeSpent: intervention.timeSpent || undefined,
         materialsUsed: intervention.materialsUsed || '',
         attachments: intervention.attachments || [],
+        workLogs: intervention.workLogs || [],
       });
     }
   }, [intervention, form]);
   
   const attachments = form.watch('attachments');
+  const workLogs = form.watch('workLogs') as WorkLog[] | undefined;
+  const activeWorkLog = workLogs?.find(log => log.operatorId === currentUser.id && !log.endTime);
 
 
   const handleOpenClientEdit = async () => {
@@ -194,6 +200,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         materialsUsed: values.materialsUsed || null,
         completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt || null,
         attachments: values.attachments,
+        workLogs: values.workLogs,
     };
     
     const updated = await updateIntervention(intervention!.id, updatedInterventionData, currentUser);
@@ -287,7 +294,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   }
 
   const handleViewAttachment = async (attachment: Attachment) => {
-    if (!appConfig || !appConfig.gcsBucketName) {
+    if (!appConfig || !appConfig.gcsBucketName || !appConfig.gcsProjectId || !appConfig.gcsClientEmail || !appConfig.gcsPrivateKey) {
         toast({ variant: 'destructive', title: 'Errore Configurazione', description: 'La configurazione GCS non è stata caricata o è incompleta.' });
         return;
     }
@@ -315,7 +322,63 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     setIsFetchingAttachment(false);
   }
   
+  const handleWorkLogToggle = () => {
+    setIsProcessingGeo(true);
+    if (!navigator.geolocation) {
+        toast({ variant: 'destructive', title: 'Geolocalizzazione non supportata', description: 'Il tuo browser non supporta la geolocalizzazione.' });
+        setIsProcessingGeo(false);
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const coords: GeolocationPosition = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+            };
+            const now = new Date().toISOString();
+            
+            const currentLogs = form.getValues('workLogs') || [];
+
+            if (activeWorkLog) {
+                // Clocking out
+                const updatedLogs = currentLogs.map(log => 
+                    log.id === activeWorkLog.id 
+                        ? { ...log, endTime: now, endPosition: coords } 
+                        : log
+                );
+                form.setValue('workLogs', updatedLogs);
+
+                // Recalculate total time spent
+                const totalMinutes = updatedLogs
+                    .filter(log => log.endTime)
+                    .reduce((acc, log) => acc + differenceInMinutes(new Date(log.endTime!), new Date(log.startTime)), 0);
+                form.setValue('timeSpent', parseFloat((totalMinutes / 60).toFixed(2)));
+
+                toast({ title: 'Uscita registrata', description: 'Hai terminato il lavoro per questo intervento.' });
+            } else {
+                // Clocking in
+                const newLog: WorkLog = {
+                    id: uuidv4(),
+                    operatorId: currentUser.id,
+                    operatorName: currentUser.name,
+                    startTime: now,
+                    startPosition: coords,
+                };
+                form.setValue('workLogs', [...currentLogs, newLog]);
+                toast({ title: 'Entrata registrata', description: 'Hai iniziato il lavoro per questo intervento.' });
+            }
+            setIsProcessingGeo(false);
+        },
+        () => {
+            toast({ variant: 'destructive', title: 'Errore Geolocalizzazione', description: 'Impossibile ottenere la tua posizione. Assicurati di aver dato i permessi.' });
+            setIsProcessingGeo(false);
+        }
+    );
+  };
+  
   const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+  const isOperatorAssigned = currentUser.role === 'Operator' && intervention.assignedOperatorId === currentUser.id;
   
   const AttachmentPreview = ({ att }: { att: Attachment }) => {
     if (att.type.startsWith('image/')) {
@@ -339,6 +402,17 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             <div className="p-6">
                 <Form {...form}>
                 <form id="edit-intervention-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    
+                    {isOperatorAssigned && (
+                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                            <Button type="button" onClick={handleWorkLogToggle} disabled={isProcessingGeo} className={cn(activeWorkLog ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600', 'w-full')}>
+                                {isProcessingGeo && <Loader className="mr-2 animate-spin" />}
+                                {activeWorkLog ? <StopCircle className="mr-2"/> : <Play className="mr-2" />}
+                                {activeWorkLog ? 'Termina Lavoro' : 'Avvia Lavoro'}
+                            </Button>
+                        </div>
+                    )}
+
                     <FormField
                     control={form.control}
                     name="title"
@@ -560,7 +634,31 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
 
                     <Separator />
                     
-                    <h4 className="text-sm font-medium">Dettagli Completamento</h4>
+                    <h4 className="text-sm font-medium">Log Lavoro e Dettagli Completamento</h4>
+                     <div className="space-y-2">
+                        {workLogs && workLogs.length > 0 ? (
+                            workLogs.map(log => (
+                                <div key={log.id} className="text-xs p-2 border rounded-md">
+                                    <p><b>{log.operatorName}</b></p>
+                                    <p>Inizio: {format(new Date(log.startTime), 'dd/MM/yy HH:mm', { locale: it })}</p>
+                                    {log.endTime && <p>Fine: {format(new Date(log.endTime), 'dd/MM/yy HH:mm', { locale: it })}</p>}
+                                    <div className="flex gap-4 mt-1">
+                                        <a href={`https://www.google.com/maps?q=${log.startPosition.latitude},${log.startPosition.longitude}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline">
+                                            <MapPin className="h-3 w-3" /> Pos. Inizio
+                                        </a>
+                                        {log.endPosition && (
+                                            <a href={`https://www.google.com/maps?q=${log.endPosition.latitude},${log.endPosition.longitude}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline">
+                                                <MapPin className="h-3 w-3" /> Pos. Fine
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                             <p className="text-xs text-muted-foreground text-center py-2">Nessun log di lavoro registrato.</p>
+                        )}
+                     </div>
+
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                             control={form.control}
