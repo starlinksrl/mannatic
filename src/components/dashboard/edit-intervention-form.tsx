@@ -400,7 +400,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
+      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-screen md:max-h-[90vh] md:h-auto h-screen w-screen max-w-full md:w-full rounded-none md:rounded-lg">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>Modifica intervento #{intervention.id}</DialogTitle>
         </DialogHeader>
@@ -499,7 +499,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                     )}
                     />
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormField
                         control={form.control}
                         name="status"
@@ -553,7 +553,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                             </FormItem>
                         )}
                         />
-                         <div className="grid grid-cols-2 gap-2 md:col-span-2">
+                         <div className="grid grid-cols-2 gap-2 sm:col-span-2">
                             <FormField
                                 control={form.control}
                                 name="dueDate"
@@ -845,4 +845,5 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
 

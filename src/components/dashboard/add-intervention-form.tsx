@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -144,7 +145,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
         }
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
+      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-screen md:max-h-[90vh] md:h-auto h-screen w-screen max-w-full md:w-full rounded-none md:rounded-lg">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>Crea nuovo intervento</DialogTitle>
         </DialogHeader>
