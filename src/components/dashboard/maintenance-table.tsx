@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, formatDistanceToNow, isBefore, addDays } from 'date-fns';
+import { format, formatDistanceToNow, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getClient, getOperator, deleteScheduledMaintenance } from '@/lib/data';
 import { Button } from '../ui/button';
@@ -107,7 +107,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
   }
 
   const isTaskOverdue = (task: ScheduledMaintenance) => {
-      return isBefore(new Date(task.nextDueDate), new Date()) && task.status !== 'Completato' && task.status !== 'Annullato';
+      return isBefore(new Date(task.nextDueDate), startOfToday()) && task.status !== 'Completato' && task.status !== 'Annullato';
   }
 
   const filteredTasks = useMemo(() => {
