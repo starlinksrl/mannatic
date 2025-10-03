@@ -6,7 +6,7 @@ import React, { createContext, useContext, ReactNode, useEffect, useState } from
 import { useRouter } from 'next/navigation';
 import { User, getUserByEmail, getUserById, getCompanies, Company, getUsers } from '@/lib/data';
 import { CREATOR_USER } from '@/lib/constants';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 interface UserContextType {
@@ -34,41 +34,35 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const router = useRouter();
-  
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-            const userProfile = await getUserById(firebaseUser.uid);
-            if (userProfile) {
-                // If there's a stored session user, we respect that for simulation purposes
-                const savedSessionUserJson = localStorage.getItem('sessionUser');
-                const sessionUserProfile = savedSessionUserJson ? JSON.parse(savedSessionUserJson) : userProfile;
-                setSessionUser(sessionUserProfile);
 
-                // If a different user was being simulated, keep them as the active user
-                const savedUserJson = localStorage.getItem('user');
-                const activeUser = savedUserJson ? JSON.parse(savedUserJson) : userProfile;
-                
-                login(activeUser); // Use login function to set all states correctly
+  const handleUserSession = async (firebaseUser: FirebaseUser | null) => {
+    if (firebaseUser) {
+        const userProfile = await getUserById(firebaseUser.uid);
+        if (userProfile) {
+            login(userProfile, userProfile); // On initial load, user and sessionUser are the same
+        } else {
+            console.error(`User with UID ${firebaseUser.uid} found in Auth, but not in Firestore.`);
+            logout();
+        }
+    } else {
+        // No Firebase user, check for dev creator session
+        const savedUserJson = localStorage.getItem('user');
+        if (savedUserJson) {
+            const savedUser = JSON.parse(savedUserJson);
+            if (savedUser.id === CREATOR_USER.id) {
+                login(CREATOR_USER, CREATOR_USER);
             } else {
-                 logout(); // User in auth but not in our DB
+                 logout(); // Clear any invalid local state
             }
         } else {
-            // Check for Creator session in local storage (dev only)
-            const savedUserJson = localStorage.getItem('user');
-            if (savedUserJson) {
-                const savedUser = JSON.parse(savedUserJson);
-                if (savedUser.id === CREATOR_USER.id) {
-                    login(CREATOR_USER);
-                } else {
-                    logout();
-                }
-            } else {
-                setIsLoading(false);
-            }
+            setIsLoading(false); // No user, not loading anymore
         }
-    });
-
+    }
+  };
+  
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, handleUserSession);
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
   
@@ -80,46 +74,30 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     fetchCompanies();
   }, []);
 
-  const login = (loggedInUser: User) => {
+  const login = async (loggedInUser: User, sessionUser: User) => {
+    setIsLoading(true);
     setUser(loggedInUser);
-    localStorage.setItem('user', JSON.stringify(loggedInUser));
+    setSessionUser(sessionUser);
+    
+    // Persist only for dev creator, as Firebase handles auth persistence
+    if (loggedInUser.id === CREATOR_USER.id) {
+        localStorage.setItem('user', JSON.stringify(loggedInUser));
+    } else {
+        localStorage.removeItem('user');
+    }
 
-    if (loggedInUser.role === 'Creator') {
-        setSessionUser(CREATOR_USER);
-        localStorage.setItem('sessionUser', JSON.stringify(CREATOR_USER));
+    if (sessionUser.role === 'Creator') {
         const companyId = localStorage.getItem('companyId');
-        if(companyId) {
-           switchCompany(companyId);
+        if (companyId) {
+            await switchCompany(companyId);
         } else {
-           setCurrentCompany(null);
-           setAvailableUsers([CREATOR_USER]);
+            await switchCompany(null);
         }
     } else {
-        // If the loggedInUser is not the Creator, the session user must be them
-        const sessionUserFromStorage = localStorage.getItem('sessionUser');
-        if(sessionUserFromStorage) {
-            const parsed = JSON.parse(sessionUserFromStorage);
-            if(parsed.id !== loggedInUser.id) {
-                setSessionUser(parsed)
-            } else {
-                 setSessionUser(loggedInUser);
-                 localStorage.setItem('sessionUser', JSON.stringify(loggedInUser));
-            }
-        } else {
-            setSessionUser(loggedInUser);
-            localStorage.setItem('sessionUser', JSON.stringify(loggedInUser));
-        }
-
-        const company = companies.find(c => c.id === loggedInUser.companyId);
-        if (company) {
-            setCurrentCompany(company);
-            localStorage.setItem('companyId', company.id);
-            getUsers(company.id).then(companyUsers => {
-                setAvailableUsers([CREATOR_USER, ...companyUsers]);
-            });
-        }
+        await switchCompany(loggedInUser.companyId);
     }
-     setIsLoading(false);
+
+    setIsLoading(false);
   };
 
   const logout = () => {
@@ -127,28 +105,25 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setSessionUser(null);
     setCurrentCompany(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('sessionUser');
+    setAvailableUsers([]);
+    localStorage.removeItem('user'); // For creator
     localStorage.removeItem('companyId');
     router.push('/login');
   };
   
   const switchUser = async (userId: string) => {
+    if (sessionUser?.role !== 'Creator') return; // Only creator can switch
+
     const selectedUser = await getUserById(userId);
     
     if (selectedUser) {
       setUser(selectedUser);
-      localStorage.setItem('user', JSON.stringify(selectedUser));
-
-      if(selectedUser.id === CREATOR_USER.id) {
+      if (selectedUser.id === CREATOR_USER.id) {
         await switchCompany(null);
-        router.push('/dashboard/companies');
-        return;
+      } else if (selectedUser.companyId !== currentCompany?.id) {
+        await switchCompany(selectedUser.companyId);
       }
-
-      if (selectedUser.companyId !== currentCompany?.id) {
-          await switchCompany(selectedUser.companyId);
-      }
+      router.push('/dashboard');
     }
   }
 
@@ -156,29 +131,28 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (companyId === null) {
           setCurrentCompany(null);
           localStorage.removeItem('companyId');
-          setAvailableUsers([CREATOR_USER]);
           setUser(CREATOR_USER);
-          localStorage.setItem('user', JSON.stringify(CREATOR_USER));
+          setAvailableUsers([CREATOR_USER]);
           return;
       }
       
       const company = companies.find(c => c.id === companyId);
-      if (company && (sessionUser?.role === 'Creator')) {
+      if (company) {
           setCurrentCompany(company);
           localStorage.setItem('companyId', companyId);
           const companyUsers = await getUsers(companyId);
           setAvailableUsers([CREATOR_USER, ...companyUsers]);
           // When creator switches company, they become the active user for that context
-          setUser(CREATOR_USER);
-          localStorage.setItem('user', JSON.stringify(CREATOR_USER));
-          router.push('/dashboard');
+          if (user?.id !== CREATOR_USER.id) {
+            setUser(CREATOR_USER);
+          }
       }
   }
 
   const value = { 
     user, 
     sessionUser,
-    login, 
+    login: (userToLogin) => login(userToLogin, userToLogin), // Simplified for external calls
     logout, 
     isLoading, 
     switchUser, 

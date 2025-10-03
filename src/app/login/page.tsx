@@ -31,17 +31,14 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-        let userToLogin: User | null;
-        
         // Handle special Creator login
         if (email.toLowerCase() === CREATOR_USER.email.toLowerCase()) {
             if (password === CREATOR_USER.password) {
-                 userToLogin = CREATOR_USER;
-                 login(userToLogin);
+                 login(CREATOR_USER);
                  router.push('/dashboard');
                  toast({
                     title: 'Accesso effettuato',
-                    description: `Bentornato, ${userToLogin.name}!`,
+                    description: `Bentornato, ${CREATOR_USER.name}!`,
                 });
             } else {
                 throw new Error("Credenziali non valide.");
@@ -49,10 +46,11 @@ export default function LoginPage() {
         } else {
             // For regular users, use Firebase Auth
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            userToLogin = await getUserByEmail(email);
+            const userToLogin = await getUserByEmail(email);
 
             if (userToLogin) {
-                login(userToLogin);
+                // The onAuthStateChanged listener in the context will handle the rest.
+                // We just need to wait for it to kick in.
                 router.push('/dashboard');
                  toast({
                     title: 'Accesso effettuato',
