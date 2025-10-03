@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -31,7 +32,7 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
     router.push('/dashboard/companies');
   };
 
-  const canCreateIntervention = user && ['Admin', 'Client', 'Creator'].includes(user.role);
+  const canCreateIntervention = user && ['Admin', 'Client', 'Creator', 'Operator'].includes(user.role);
 
   return (
     <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 sticky top-0 z-30">
