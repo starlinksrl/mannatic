@@ -9,7 +9,7 @@ import { isAfter } from 'date-fns';
 import { KpiDashboard } from '@/components/dashboard/kpi-dashboard';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState } from 'react';
-import { Loader } from 'lucide-react';
+import { Loader, PlusCircle } from 'lucide-react';
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -17,6 +17,8 @@ import { ActivityFeed } from '@/components/dashboard/activity-feed';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
+import { Button } from '@/components/ui/button';
 
 
 export type EnrichedUpdate = InterventionUpdate & { 
@@ -164,13 +166,28 @@ export default function DashboardPage() {
               <Loader className="h-8 w-8 animate-spin" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1 flex flex-col gap-6">
-                <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
-              </div>
-              <div className="lg:col-span-2">
-                <KpiDashboard kpiData={kpiData} currentUser={user} />
-              </div>
+            <div className="flex flex-col gap-6">
+                {user.role === 'Operator' && (
+                    <AddInterventionForm
+                        clients={clients}
+                        operators={operators}
+                        onInterventionAdded={fetchKpiData}
+                        currentUser={user}
+                    >
+                        <Button size="lg" className="w-full">
+                            <PlusCircle className="mr-2" />
+                            Crea Intervento
+                        </Button>
+                    </AddInterventionForm>
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-1 flex flex-col gap-6">
+                    <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <KpiDashboard kpiData={kpiData} currentUser={user} />
+                  </div>
+                </div>
             </div>
           )}
         </main>
