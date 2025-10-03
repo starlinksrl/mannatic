@@ -259,7 +259,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                                         </FormItem>
                                     )}
                                 />
-                                {!isEditing && 'password' in form.control.getValues() && (
+                                {!isEditing && (
                                     <FormField
                                         control={form.control}
                                         name="password"
