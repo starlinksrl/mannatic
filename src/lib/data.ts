@@ -9,7 +9,6 @@ import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
 import { CREATOR_USER } from './constants';
-import { deleteUser as deleteAuthUser } from 'firebase/auth';
 
 
 // --- APP CONFIGURATION ---
@@ -238,14 +237,14 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     try {
+        const existingUser = await getUserByEmail(userData.email!);
+        if (existingUser) {
+            throw new Error('Un utente con questa email esiste già.');
+        }
+
         let userId = userData.id || generateShortId(20);
         const passwordForDb = userData.password || 'starlink74';
         
-        const existingUser = await getUserByEmail(userData.email!);
-        if (existingUser) {
-           throw new Error('Un utente con questa email esiste già.');
-        }
-
         const newUserPayload: Partial<User> = {
             id: userId,
             name: userData.name!,
@@ -284,6 +283,10 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         const dataToUpdate: { [key: string]: any } = {...updatedData};
         
         if (dataToUpdate.email) {
+            const existingUser = await getUserByEmail(dataToUpdate.email);
+            if(existingUser && existingUser.id !== id) {
+                throw new Error("Un altro utente sta già utilizzando questa email.");
+            }
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
 
@@ -306,7 +309,10 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         return null;
     } catch (error) {
         console.error("Error updating user:", error);
-        return null;
+         if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error("Failed to update user.");
     }
 }
 
@@ -1159,6 +1165,7 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 
 
     
+
 
 
 

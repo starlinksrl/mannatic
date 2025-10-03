@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, UserRole, AllowedSector } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addUser, getUserByEmail } from '@/lib/data';
+import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
@@ -111,16 +111,10 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         setIsOpen(false);
         form.reset();
     } catch (error: any) {
-         let description = 'Si è verificato un errore durante la creazione dell\'utente.';
-        if (error.code === 'auth/email-already-in-use') {
-            description = 'Questa email è già in uso da un utente con password. Prova con un\'altra email.';
-        } else if (error.code === 'auth/weak-password') {
-            description = 'La password è troppo debole. Deve essere di almeno 6 caratteri.';
-        }
-        toast({
+         toast({
             variant: 'destructive',
             title: 'Errore',
-            description: description,
+            description: error.message || 'Si è verificato un errore durante la creazione dell\'utente.',
         });
     }
   }
@@ -353,3 +347,4 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
 }
 
     
+

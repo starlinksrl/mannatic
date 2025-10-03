@@ -101,30 +101,38 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   if(!user) return null;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const dataToUpdate: Partial<User> = {
-        name: values.name,
-        email: values.email,
-        role: values.role as UserRole,
-        avatarUrl: values.avatarUrl,
-        address: values.address,
-        phone: values.phone,
-        allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
-    };
+    try {
+        const dataToUpdate: Partial<User> = {
+            name: values.name,
+            email: values.email,
+            role: values.role as UserRole,
+            avatarUrl: values.avatarUrl,
+            address: values.address,
+            phone: values.phone,
+            allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
+        };
 
-    if (values.password && values.password.trim() !== '') {
-        dataToUpdate.password = values.password;
-    }
-    
-    const updatedUser = await updateUser(user!.id, dataToUpdate);
-    
-    if (updatedUser) {
-        onUserUpdated(updatedUser);
-        toast({
-          title: 'Utente aggiornato',
-          description: `L'utente ${values.name} è stato aggiornato con successo.`,
+        if (values.password && values.password.trim() !== '') {
+            dataToUpdate.password = values.password;
+        }
+        
+        const updatedUser = await updateUser(user!.id, dataToUpdate);
+        
+        if (updatedUser) {
+            onUserUpdated(updatedUser);
+            toast({
+            title: 'Utente aggiornato',
+            description: `L'utente ${values.name} è stato aggiornato con successo.`,
+            });
+             setIsOpen(false);
+        }
+    } catch (error: any) {
+         toast({
+            variant: 'destructive',
+            title: 'Errore',
+            description: error.message || 'Si è verificato un errore durante l\'aggiornamento dell\'utente.',
         });
     }
-    setIsOpen(false);
   }
 
   const handleAvatarClick = () => {
@@ -377,6 +385,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
+
 
 
 
