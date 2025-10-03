@@ -33,8 +33,6 @@ import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
-import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
@@ -94,42 +92,16 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     }
     
     try {
-        let userId: string;
-        if (values.role === 'Client') {
-            const existingClient = await getUserByEmail(values.email);
-            if (existingClient) {
-                toast({ variant: 'destructive', title: 'Errore', description: 'Un cliente con questa email esiste già.' });
-                return;
-            }
-            // For clients, we just add them to our DB without creating an Auth user
-            await addUser({
-                name: values.name,
-                email: values.email,
-                role: 'Client',
-                companyId: currentCompany.id,
-                address: values.address,
-                phone: values.phone
-            });
-        } else {
-             // For Admin/Operator, create user in Firebase Auth
-            const password = values.password || 'starlink74';
-            if (password.length < 8) {
-                form.setError('password', { message: 'La password deve contenere almeno 8 caratteri.' });
-                return;
-            }
-            const userCredential = await createUserWithEmailAndPassword(auth, values.email, password);
-            userId = userCredential.user.uid;
-            await addUser({
-                id: userId,
-                name: values.name,
-                email: values.email,
-                role: values.role as UserRole,
-                companyId: currentCompany.id,
-                address: values.address,
-                phone: values.phone,
-                allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
-            });
-        }
+        await addUser({
+            name: values.name,
+            email: values.email,
+            role: values.role as UserRole,
+            companyId: currentCompany.id,
+            address: values.address,
+            phone: values.phone,
+            password: values.password || 'starlink74',
+            allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
+        });
         
         onUserAdded();
         toast({

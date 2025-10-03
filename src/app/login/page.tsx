@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -15,50 +16,64 @@ import { Separator } from '@/components/ui/separator';
 import { getUserByEmail } from '@/lib/data';
 import { User } from '@/lib/types';
 import { CREATOR_USER } from '@/lib/constants';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { Loader } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
   const handleLogin = async () => {
+    setIsLoading(true);
     try {
         let userToLogin: User | null;
         
+        // Handle special Creator login
         if (email.toLowerCase() === CREATOR_USER.email.toLowerCase()) {
             if (password === CREATOR_USER.password) {
                  userToLogin = CREATOR_USER;
+                 login(userToLogin);
+                 router.push('/dashboard');
+                 toast({
+                    title: 'Accesso effettuato',
+                    description: `Bentornato, ${userToLogin.name}!`,
+                });
             } else {
-                throw new Error("Invalid credentials");
+                throw new Error("Credenziali non valide.");
             }
         } else {
-            // For regular users, we check against firestore
+            // For regular users, use Firebase Auth
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
             userToLogin = await getUserByEmail(email);
-            if (!userToLogin || userToLogin.password !== password) {
-                 throw new Error("Invalid credentials");
+
+            if (userToLogin) {
+                login(userToLogin);
+                router.push('/dashboard');
+                 toast({
+                    title: 'Accesso effettuato',
+                    description: `Bentornato, ${userToLogin.name}!`,
+                });
+            } else {
+                 throw new Error("Profilo utente non trovato in Firestore.");
             }
         }
-        
-        if (userToLogin) {
-            login(userToLogin); // This now only sets the state
-            router.push('/dashboard');
-            toast({
-                title: 'Accesso effettuato',
-                description: `Bentornato, ${userToLogin.name}!`,
-            });
-        } else {
-            throw new Error("Invalid credentials");
-        }
-
-    } catch (error) {
+    } catch (error: any) {
+       let description = 'Credenziali non valide. Riprova.';
+       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+           description = 'Email o password non corretti.';
+       }
        toast({
         variant: 'destructive',
         title: 'Accesso fallito',
-        description: 'Credenziali non valide. Riprova.',
+        description: description,
       });
     }
+    setIsLoading(false);
   };
   
   const handleCreatorLogin = () => {
@@ -86,6 +101,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
             />
           </div>
           <div className="grid gap-2">
@@ -105,11 +121,13 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+               disabled={isLoading}
             />
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-4">
-          <Button className="w-full" onClick={handleLogin}>
+          <Button className="w-full" onClick={handleLogin} disabled={isLoading}>
+             {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
             Accedi
           </Button>
           <div className="relative w-full">

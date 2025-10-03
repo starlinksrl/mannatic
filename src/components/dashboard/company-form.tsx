@@ -20,9 +20,6 @@ import { Input } from '@/components/ui/input';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Company } from '@/lib/types';
-import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { addUser } from '@/lib/data';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
@@ -262,7 +259,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                                         </FormItem>
                                     )}
                                 />
-                                {!isEditing && (
+                                {!isEditing && 'password' in form.control.getValues() && (
                                     <FormField
                                         control={form.control}
                                         name="password"

@@ -9,7 +9,7 @@ import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
 import { CREATOR_USER } from './constants';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, deleteUser as deleteAuthUser } from 'firebase/auth';
 
 
 // --- APP CONFIGURATION ---
@@ -125,11 +125,7 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
 
         const docRef = await addDoc(collection(db, 'companies'), companyPayload);
         
-        // Create an admin user for the new company in Firestore
-        const userCredential = await createUserWithEmailAndPassword(auth, companyData.email!, companyData.password!);
-        
         await addUser({
-            id: userCredential.user.uid,
             name: `Admin ${companyData.name}`,
             email: companyData.email!,
             password: companyData.password!,
@@ -242,7 +238,19 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     try {
-        const userId = userData.id || generateShortId(20);
+        let userId = userData.id;
+
+        if (userData.role !== 'Client') {
+            const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, userData.password!);
+            userId = userCredential.user.uid;
+        } else {
+            // For clients, we just create a Firestore document, not an Auth user.
+             const existingClient = await getUserByEmail(userData.email!);
+             if (existingClient) {
+                throw new Error('Un cliente con questa email esiste già.');
+            }
+            userId = userId || generateShortId(20);
+        }
 
         const newUserPayload: Partial<User> = {
             id: userId,
@@ -253,6 +261,7 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             avatarUrl: `https://i.pravatar.cc/150?u=${userId}`,
             address: userData.address || '',
             phone: userData.phone || '',
+            password: userData.password, // Storing password for credential email feature
         };
         
         if (newUserPayload.role === 'Operator') {
@@ -261,15 +270,15 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             delete newUserPayload.allowedSectors;
         }
         
-        await setDoc(doc(db, 'users', userId), newUserPayload);
+        await setDoc(doc(db, 'users', userId!), newUserPayload);
         
-        return { ...newUserPayload, id: userId } as User;
+        return { ...newUserPayload, id: userId! } as User;
     } catch (error) {
         console.error("Error adding user to Firestore:", error);
         if (error instanceof Error) {
             throw error;
         }
-        throw new Error("Failed to add user to Firestore.");
+        throw new Error("Failed to add user.");
     }
 }
 
@@ -284,10 +293,10 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
 
-        // In a real app, you would have a backend function to update the password securely.
-        // For this demo, if a password is provided, we'll store it (insecurely).
-        // If not provided, we remove it from the update object.
-        if (!dataToUpdate.password || dataToUpdate.password.trim() === '') {
+        if (dataToUpdate.password && dataToUpdate.password.trim() !== '') {
+            // In a real app, this should trigger a Firebase Function to update Auth password.
+            console.warn("Updating password in Firestore. This won't update Firebase Auth password without a backend function.");
+        } else {
             delete dataToUpdate.password;
         }
         
@@ -310,8 +319,17 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
 
 export async function deleteUser(id: string): Promise<boolean> {
     try {
-        // In a real app, you would also need to delete the user from Firebase Auth
-        // using the Admin SDK on a backend. This is a client-side only deletion.
+        const user = await getUserById(id);
+        if (!user) return false;
+
+        // Note: Deleting from Firebase Auth should ideally be done from a secure backend.
+        // This is a simplified client-side approach. Re-authentication might be required.
+        if (auth.currentUser && auth.currentUser.uid === id) {
+            await deleteAuthUser(auth.currentUser);
+        } else {
+            console.warn(`Attempting to delete user ${id} without being logged in as them. Firestore record will be deleted, but Auth user may remain.`);
+        }
+        
         await deleteDoc(doc(db, 'users', id));
         return true;
     } catch (error) {
@@ -1165,6 +1183,7 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 
 
     
+
 
 
 

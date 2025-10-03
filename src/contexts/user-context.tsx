@@ -6,6 +6,8 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import { useRouter } from 'next/navigation';
 import { User, getUserByEmail, getUserById, getCompanies, Company, getUsers } from '@/lib/data';
 import { CREATOR_USER } from '@/lib/constants';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 interface UserContextType {
   user: User | null; // The currently active user (can be the original or a simulated one)
@@ -34,88 +36,94 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   
   useEffect(() => {
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+            const userProfile = await getUserById(firebaseUser.uid);
+            if (userProfile) {
+                // If there's a stored session user, we respect that for simulation purposes
+                const savedSessionUserJson = localStorage.getItem('sessionUser');
+                const sessionUserProfile = savedSessionUserJson ? JSON.parse(savedSessionUserJson) : userProfile;
+                setSessionUser(sessionUserProfile);
+
+                // If a different user was being simulated, keep them as the active user
+                const savedUserJson = localStorage.getItem('user');
+                const activeUser = savedUserJson ? JSON.parse(savedUserJson) : userProfile;
+                
+                login(activeUser); // Use login function to set all states correctly
+            } else {
+                 logout(); // User in auth but not in our DB
+            }
+        } else {
+            // Check for Creator session in local storage (dev only)
+            const savedUserJson = localStorage.getItem('user');
+            if (savedUserJson) {
+                const savedUser = JSON.parse(savedUserJson);
+                if (savedUser.id === CREATOR_USER.id) {
+                    login(CREATOR_USER);
+                } else {
+                    logout();
+                }
+            } else {
+                setIsLoading(false);
+            }
+        }
+    });
+
+    return () => unsubscribe();
+  }, []);
+  
+  useEffect(() => {
+    const fetchCompanies = async () => {
       const allCompanies = await getCompanies();
       setCompanies(allCompanies);
-
-      const savedUserJson = localStorage.getItem('user');
-      const savedSessionUserJson = localStorage.getItem('sessionUser');
-
-      let savedUser: User | null = null;
-      let savedSessionUser: User | null = null;
-      
-      if (savedSessionUserJson) {
-        savedSessionUser = JSON.parse(savedSessionUserJson);
-        const freshSessionUser = await getUserById(savedSessionUser.id);
-        setSessionUser(freshSessionUser);
-      }
-
-      if (savedUserJson) {
-        savedUser = JSON.parse(savedUserJson);
-        const freshUser = await getUserById(savedUser.id);
-        setUser(freshUser);
-
-        // If no session user, the logged in user is the session user
-        if (!savedSessionUser) {
-          setSessionUser(freshUser);
-          localStorage.setItem('sessionUser', JSON.stringify(freshUser));
-        }
-
-        if (freshUser?.role === 'Creator') {
-           const savedCompanyId = localStorage.getItem('companyId');
-           if (savedCompanyId) {
-             const company = allCompanies.find(c => c.id === savedCompanyId);
-             if (company) {
-                setCurrentCompany(company);
-                const companyUsers = await getUsers(company.id);
-                setAvailableUsers([CREATOR_USER, ...companyUsers]);
-             } else {
-                setAvailableUsers([CREATOR_USER]);
-             }
-           } else {
-             setAvailableUsers([CREATOR_USER]);
-           }
-        } else if (freshUser) {
-           const company = allCompanies.find(c => c.id === freshUser.companyId);
-           setCurrentCompany(company || null);
-           if (company) {
-             const companyUsers = await getUsers(company.id);
-             setAvailableUsers([CREATOR_USER, ...companyUsers]);
-           }
-        }
-
-      }
-      setIsLoading(false);
     };
-
-    loadInitialData();
+    fetchCompanies();
   }, []);
 
   const login = (loggedInUser: User) => {
     setUser(loggedInUser);
-    setSessionUser(loggedInUser);
     localStorage.setItem('user', JSON.stringify(loggedInUser));
-    localStorage.setItem('sessionUser', JSON.stringify(loggedInUser));
-    
+
     if (loggedInUser.role === 'Creator') {
-      setCurrentCompany(null);
-      localStorage.removeItem('companyId');
-      setAvailableUsers([CREATOR_USER]);
+        setSessionUser(CREATOR_USER);
+        localStorage.setItem('sessionUser', JSON.stringify(CREATOR_USER));
+        const companyId = localStorage.getItem('companyId');
+        if(companyId) {
+           switchCompany(companyId);
+        } else {
+           setCurrentCompany(null);
+           setAvailableUsers([CREATOR_USER]);
+        }
     } else {
-      const company = companies.find(c => c.id === loggedInUser.companyId);
-      if (company) {
-        setCurrentCompany(company);
-        localStorage.setItem('companyId', company.id);
-        getUsers(company.id).then(companyUsers => {
-            setAvailableUsers([CREATOR_USER, ...companyUsers]);
-        });
-      }
+        // If the loggedInUser is not the Creator, the session user must be them
+        const sessionUserFromStorage = localStorage.getItem('sessionUser');
+        if(sessionUserFromStorage) {
+            const parsed = JSON.parse(sessionUserFromStorage);
+            if(parsed.id !== loggedInUser.id) {
+                setSessionUser(parsed)
+            } else {
+                 setSessionUser(loggedInUser);
+                 localStorage.setItem('sessionUser', JSON.stringify(loggedInUser));
+            }
+        } else {
+            setSessionUser(loggedInUser);
+            localStorage.setItem('sessionUser', JSON.stringify(loggedInUser));
+        }
+
+        const company = companies.find(c => c.id === loggedInUser.companyId);
+        if (company) {
+            setCurrentCompany(company);
+            localStorage.setItem('companyId', company.id);
+            getUsers(company.id).then(companyUsers => {
+                setAvailableUsers([CREATOR_USER, ...companyUsers]);
+            });
+        }
     }
+     setIsLoading(false);
   };
 
   const logout = () => {
+    signOut(auth);
     setUser(null);
     setSessionUser(null);
     setCurrentCompany(null);
