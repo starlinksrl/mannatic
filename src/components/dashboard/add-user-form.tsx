@@ -182,33 +182,31 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 </FormItem>
               )}
             />
-            {role !== 'Client' && (
-                <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Password (default: starlink74)</FormLabel>
-                    <div className="relative">
-                        <FormControl>
-                        <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
-                        </FormControl>
-                        <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                        onClick={() => setShowPassword(prev => !prev)}
-                        tabIndex={-1}
-                        >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                    </div>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            )}
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Password (default: starlink74)</FormLabel>
+                  <div className="relative">
+                      <FormControl>
+                      <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                      </FormControl>
+                      <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                      onClick={() => setShowPassword(prev => !prev)}
+                      tabIndex={-1}
+                      >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                  </div>
+                  <FormMessage />
+                  </FormItem>
+              )}
+            />
              {isClientForm ? (
                 <input type="hidden" {...form.register("role")} value="Client" />
             ) : (
@@ -349,3 +347,6 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     
 
 
+
+
+    

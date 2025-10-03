@@ -14,13 +14,14 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound } from 'lucide-react';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { EditUserForm } from './edit-user-form';
 import { useUser } from '@/contexts/user-context';
 import { deleteUser } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
+import { sendCredentialsEmailAction } from '@/app/actions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +45,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     const [selectedClient, setSelectedClient] = useState<User | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [clientToDelete, setClientToDelete] = useState<User | null>(null);
+    const [isSendingCredentials, setIsSendingCredentials] = useState<string | null>(null);
 
     const handleEditClick = (client: User) => {
         setSelectedClient(client);
@@ -54,6 +56,25 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
         setClientToDelete(client);
         setIsDeleteDialogOpen(true);
     }
+    
+    const handleSendCredentials = async (user: User) => {
+        setIsSendingCredentials(user.id);
+        const result = await sendCredentialsEmailAction(user.id);
+        if (result.success) {
+            toast({
+                title: 'Email inviata',
+                description: `Le credenziali sono state inviate a ${user.email}.`,
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Errore',
+                description: result.error || 'Impossibile inviare l\'email.',
+            });
+        }
+        setIsSendingCredentials(null);
+    }
+
 
     const confirmDelete = async () => {
         if (!clientToDelete) return;
@@ -117,6 +138,12 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                         <DropdownMenuItem onSelect={() => handleEditClick(client)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
+                        {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
+                           <DropdownMenuItem onSelect={() => handleSendCredentials(client)} disabled={isSendingCredentials === client.id}>
+                                <KeyRound className="mr-2" />
+                                {isSendingCredentials === client.id ? 'Invio...' : 'Invia Credenziali'}
+                           </DropdownMenuItem>
+                        )}
                         {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
                             <>
                                 <DropdownMenuSeparator />
@@ -191,6 +218,12 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
                         {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
+                           <DropdownMenuItem onSelect={() => handleSendCredentials(client)} disabled={isSendingCredentials === client.id}>
+                                <KeyRound className="mr-2" />
+                                {isSendingCredentials === client.id ? 'Invio...' : 'Invia Credenziali'}
+                           </DropdownMenuItem>
+                        )}
+                        {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
                             <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
@@ -232,4 +265,5 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
   );
 }
 
+    
     

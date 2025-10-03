@@ -249,10 +249,6 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
         return { success: false, error: 'User not found.' };
     }
     
-    if (user.role === 'Client') {
-        return { success: false, error: 'Cannot send credentials to a client user.' };
-    }
-    
     const company = await getCompanyByUserId(userId);
     if (!company || !company.smtpHost || !company.senderEmail) {
         return { success: false, error: 'La configurazione SMTP per questa azienda è incompleta.' };
@@ -286,3 +282,5 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }
+
+    

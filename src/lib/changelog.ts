@@ -1,11 +1,24 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound } from 'lucide-react';
 
 export const changelog = [
+     {
+        version: "0.16",
+        date: format(new Date(), 'yyyy-MM-dd'),
+        title: "Gestione Credenziali Clienti",
+        icon: KeyRound,
+        iconClass: "text-yellow-500",
+        changes: [
+            { type: KeyRound, description: "Aggiunta la possibilità per gli Admin di impostare e modificare la password per gli account Cliente." },
+            { type: Mail, description: "Implementata la funzionalità 'Invia Credenziali' anche per i clienti, per notificare loro le informazioni di accesso." },
+            { type: Wrench, description: "Rimosso il blocco che impediva l'invio delle credenziali agli utenti con ruolo 'Cliente'." },
+            { type: GitMerge, description: "Aggiornato il changelog con le nuove funzionalità." },
+        ]
+    },
     {
         version: "0.15",
-        date: format(new Date(), 'yyyy-MM-dd'),
+        date: "2024-10-01",
         title: "Accessibilità Changelog e Refactoring",
         icon: GitMerge,
         iconClass: "text-blue-500",
@@ -146,3 +159,5 @@ export const changelog = [
         ]
     }
 ];
+
+    
