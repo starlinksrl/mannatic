@@ -44,7 +44,7 @@ export function ActivityFeed({ interventions, latestUpdates, onUpdate }: Activit
         <Card>
             <CardHeader>
                 <CardTitle>Attività Recenti</CardTitle>
-                <CardDescription>Ultimi aggiornamenti dagli interventi. Clicca su un elemento per vederne i dettagli.</CardDescription>
+                <CardDescription>Ultimi aggiornamenti dagli interventi.</CardDescription>
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-72">
