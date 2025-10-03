@@ -4,10 +4,8 @@
 
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, getUserByEmail, getUserById, getCompanies, Company, getUsers } from '@/lib/data';
+import { User, getUserByEmail, getUserById, getCompanies, Company, getUsers, getCompanyById } from '@/lib/data';
 import { CREATOR_USER } from '@/lib/constants';
-import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
 interface UserContextType {
   user: User | null; // The currently active user (can be the original or a simulated one)
