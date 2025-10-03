@@ -4,7 +4,7 @@ import { Header } from '@/components/dashboard/header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Users, User, UserCog, Wrench, ShieldCheck, ClipboardCheck, Calendar, Settings, Database, PlusCircle, Eye } from 'lucide-react';
+import { Users, User, UserCog, Wrench, ShieldCheck, ClipboardCheck, Calendar, Settings, Database, PlusCircle, Eye, LayoutDashboard } from 'lucide-react';
 
 const adminGuide = [
     {
