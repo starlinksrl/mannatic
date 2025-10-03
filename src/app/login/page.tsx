@@ -16,8 +16,6 @@ import { Separator } from '@/components/ui/separator';
 import { getUserByEmail } from '@/lib/data';
 import { User } from '@/lib/types';
 import { CREATOR_USER } from '@/lib/constants';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { Loader } from 'lucide-react';
 
 export default function LoginPage() {
@@ -44,20 +42,25 @@ export default function LoginPage() {
                 throw new Error("Credenziali non valide.");
             }
         } else {
-            // For regular users, use Firebase Auth
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            // The onAuthStateChanged listener in UserProvider will handle the rest.
-            // We just need to wait for it to kick in.
-             toast({
-                title: 'Accesso effettuato',
-                description: `Login in corso...`,
-            });
-            router.push('/dashboard');
+            // For regular users, check credentials against Firestore
+            const userProfile = await getUserByEmail(email);
+            if (userProfile && userProfile.password === password) {
+                login(userProfile, userProfile);
+                toast({
+                    title: 'Accesso effettuato',
+                    description: `Login in corso...`,
+                });
+                router.push('/dashboard');
+            } else {
+                throw new Error("Credenziali non valide.");
+            }
         }
     } catch (error: any) {
        let description = 'Credenziali non valide. Riprova.';
        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
            description = 'Email o password non corretti.';
+       } else if (error.message) {
+           description = error.message;
        }
        toast({
         variant: 'destructive',

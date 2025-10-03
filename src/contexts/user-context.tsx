@@ -35,35 +35,33 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const router = useRouter();
 
-  const handleUserSession = async (firebaseUser: FirebaseUser | null) => {
-    if (firebaseUser) {
-        const userProfile = await getUserById(firebaseUser.uid);
-        if (userProfile) {
-            login(userProfile, userProfile); // On initial load, user and sessionUser are the same
-        } else {
-            console.error(`User with UID ${firebaseUser.uid} found in Auth, but not in Firestore.`);
-            logout();
-        }
-    } else {
-        // No Firebase user, check for dev creator session
-        const savedUserJson = localStorage.getItem('user');
-        if (savedUserJson) {
-            const savedUser = JSON.parse(savedUserJson);
-            if (savedUser.id === CREATOR_USER.id) {
-                login(CREATOR_USER, CREATOR_USER);
-            } else {
-                 logout(); // Clear any invalid local state
-            }
-        } else {
-            setIsLoading(false); // No user, not loading anymore
-        }
-    }
-  };
-  
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, handleUserSession);
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
+    const initializeSession = async () => {
+        setIsLoading(true);
+        try {
+            const savedUserJson = localStorage.getItem('user');
+            const savedSessionUserJson = localStorage.getItem('sessionUser');
+
+            if (savedUserJson && savedSessionUserJson) {
+                const savedUser = JSON.parse(savedUserJson);
+                const savedSessionUser = JSON.parse(savedSessionUserJson);
+                
+                // Re-validate user from DB
+                const freshUser = await getUserById(savedUser.id);
+                if (freshUser) {
+                    await login(freshUser, savedSessionUser);
+                } else {
+                    logout();
+                }
+            }
+        } catch (error) {
+            console.error("Failed to initialize session:", error);
+            logout();
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    initializeSession();
   }, []);
   
   useEffect(() => {
@@ -79,12 +77,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setUser(loggedInUser);
     setSessionUser(sessionUser);
     
-    // Persist only for dev creator, as Firebase handles auth persistence
-    if (loggedInUser.id === CREATOR_USER.id) {
-        localStorage.setItem('user', JSON.stringify(loggedInUser));
-    } else {
-        localStorage.removeItem('user');
-    }
+    localStorage.setItem('user', JSON.stringify(loggedInUser));
+    localStorage.setItem('sessionUser', JSON.stringify(sessionUser));
 
     if (sessionUser.role === 'Creator') {
         const companyId = localStorage.getItem('companyId');
@@ -101,12 +95,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    signOut(auth);
     setUser(null);
     setSessionUser(null);
     setCurrentCompany(null);
     setAvailableUsers([]);
-    localStorage.removeItem('user'); // For creator
+    localStorage.removeItem('user');
+    localStorage.removeItem('sessionUser');
     localStorage.removeItem('companyId');
     router.push('/login');
   };
@@ -118,6 +112,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     
     if (selectedUser) {
       setUser(selectedUser);
+      localStorage.setItem('user', JSON.stringify(selectedUser));
+
       if (selectedUser.id === CREATOR_USER.id) {
         await switchCompany(null);
       } else if (selectedUser.companyId !== currentCompany?.id) {
@@ -132,11 +128,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           setCurrentCompany(null);
           localStorage.removeItem('companyId');
           setUser(CREATOR_USER);
+          localStorage.setItem('user', JSON.stringify(CREATOR_USER));
           setAvailableUsers([CREATOR_USER]);
           return;
       }
       
-      const company = companies.find(c => c.id === companyId);
+      const company = companies.find(c => c.id === companyId) || await getCompanyById(companyId);
+
       if (company) {
           setCurrentCompany(company);
           localStorage.setItem('companyId', companyId);
@@ -145,6 +143,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           // When creator switches company, they become the active user for that context
           if (user?.id !== CREATOR_USER.id) {
             setUser(CREATOR_USER);
+            localStorage.setItem('user', JSON.stringify(CREATOR_USER));
           }
       }
   }

@@ -9,7 +9,7 @@ import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
 import { CREATOR_USER } from './constants';
-import { createUserWithEmailAndPassword, deleteUser as deleteAuthUser } from 'firebase/auth';
+import { deleteUser as deleteAuthUser } from 'firebase/auth';
 
 
 // --- APP CONFIGURATION ---
@@ -238,19 +238,12 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     try {
-        let userId = userData.id;
-        const passwordForAuth = userData.password || 'starlink74';
-
-        if (userData.role !== 'Client') {
-            const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, passwordForAuth);
-            userId = userCredential.user.uid;
-        } else {
-            // For clients, we just create a Firestore document, not an Auth user.
-             const existingClient = await getUserByEmail(userData.email!);
-             if (existingClient) {
-                throw new Error('Un cliente con questa email esiste già.');
-            }
-            userId = userId || generateShortId(20);
+        let userId = userData.id || generateShortId(20);
+        const passwordForDb = userData.password || 'starlink74';
+        
+        const existingUser = await getUserByEmail(userData.email!);
+        if (existingUser) {
+           throw new Error('Un utente con questa email esiste già.');
         }
 
         const newUserPayload: Partial<User> = {
@@ -262,7 +255,7 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             avatarUrl: `https://i.pravatar.cc/150?u=${userId}`,
             address: userData.address || '',
             phone: userData.phone || '',
-            password: passwordForAuth, // Storing password for credential email feature
+            password: passwordForDb,
         };
         
         if (newUserPayload.role === 'Operator') {
@@ -295,8 +288,7 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         }
 
         if (dataToUpdate.password && dataToUpdate.password.trim() !== '') {
-            // In a real app, this should trigger a Firebase Function to update Auth password.
-            console.warn("Updating password in Firestore. This won't update Firebase Auth password without a backend function.");
+            // This is where the password gets updated in the database
         } else {
             delete dataToUpdate.password;
         }
@@ -320,17 +312,6 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
 
 export async function deleteUser(id: string): Promise<boolean> {
     try {
-        const user = await getUserById(id);
-        if (!user) return false;
-
-        // Note: Deleting from Firebase Auth should ideally be done from a secure backend.
-        // This is a simplified client-side approach. Re-authentication might be required.
-        if (auth.currentUser && auth.currentUser.uid === id) {
-            await deleteAuthUser(auth.currentUser);
-        } else {
-            console.warn(`Attempting to delete user ${id} without being logged in as them. Firestore record will be deleted, but Auth user may remain.`);
-        }
-        
         await deleteDoc(doc(db, 'users', id));
         return true;
     } catch (error) {
@@ -374,12 +355,6 @@ export async function resetUserPassword(token: string, newPassword: string):Prom
          return { success: false, message: "Token di reset scaduto." };
     }
     
-    // This is highly insecure and for demo purposes only.
-    // A real application must use a backend with the Firebase Admin SDK to update passwords.
-    // Here, we just update the field in Firestore, which has no effect on actual login.
-    // The login flow needs to be adapted to check this field if we want to simulate this.
-    // For now, we just log a warning and proceed.
-    console.warn("INSECURE OPERATION: Password is being 'updated' in Firestore only. This does not affect Firebase Auth.");
     await updateUser(tokenData.userId, { password: newPassword });
 
     await deleteDoc(tokenDoc.ref);
@@ -1184,6 +1159,7 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 
 
     
+
 
 
 
