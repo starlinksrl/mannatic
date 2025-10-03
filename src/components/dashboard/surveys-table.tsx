@@ -208,7 +208,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[30%]">Titolo</TableHead>
+              <TableHead>Titolo</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Indirizzo</TableHead>
               <TableHead>Data</TableHead>
@@ -299,5 +299,3 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
     </div>
   );
 }
-
-    

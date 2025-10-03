@@ -346,7 +346,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
         </CardContent>
       </Card>
       <Card className="hidden lg:block">
-        <Table className="table-fixed">
+        <Table>
           <TableHeader>
             <TableRow>
               {tableHeaders.filter(h => h.visible).map(header => (
@@ -459,5 +459,3 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     </div>
   );
 }
-
-    
