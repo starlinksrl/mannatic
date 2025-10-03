@@ -1,7 +1,7 @@
 
 
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration, Attachment, InterventionType } from './types';
-import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter } from 'date-fns';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration, Attachment, InterventionType, WorkLog } from './types';
+import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter, differenceInMinutes, addHours } from 'date-fns';
 import { db, auth } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
 import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
@@ -480,7 +480,6 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
 }
 
 
-
 export async function getInterventions(companyId: string): Promise<(Intervention | ScheduledMaintenance)[]> {
     if (!companyId) return [];
     
@@ -491,7 +490,55 @@ export async function getInterventions(companyId: string): Promise<(Intervention
     const snapshot = await getDocs(q);
     const allCompanyInterventions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Intervention | ScheduledMaintenance)));
     
-    return allCompanyInterventions;
+    const now = new Date();
+    const autoClosedInterventions: Intervention[] = [];
+    
+    for (const intervention of allCompanyInterventions) {
+        if ('workLogs' in intervention && intervention.workLogs) {
+            let needsUpdate = false;
+            const updatedLogs = intervention.workLogs.map(log => {
+                // Check if the log is active and has been running for more than 12 hours
+                if (log.startTime && !log.endTime && differenceInHours(now, new Date(log.startTime)) > 12) {
+                    needsUpdate = true;
+                    // Auto-close the log after 1 hour from start time, using the same location
+                    return {
+                        ...log,
+                        endTime: addHours(new Date(log.startTime), 1).toISOString(),
+                        endPosition: log.startPosition,
+                    };
+                }
+                return log;
+            });
+
+            if (needsUpdate) {
+                const updatedIntervention = { ...intervention, workLogs: updatedLogs };
+                
+                // Recalculate total time spent
+                const totalMinutes = updatedLogs
+                    .filter(log => log.endTime)
+                    .reduce((acc, log) => acc + differenceInMinutes(new Date(log.endTime!), new Date(log.startTime)), 0);
+                updatedIntervention.timeSpent = parseFloat((totalMinutes / 60).toFixed(2));
+                
+                // Add a system note
+                const systemUpdate: InterventionUpdate = {
+                    date: new Date().toISOString(),
+                    description: "Sessione di lavoro terminata automaticamente dal sistema per superamento del tempo massimo.",
+                    userName: "Sistema",
+                };
+                updatedIntervention.updates = [...(updatedIntervention.updates || []), systemUpdate];
+                
+                // Update Firestore document
+                await updateDoc(doc(db, 'interventions', intervention.id), updatedIntervention);
+                autoClosedInterventions.push(updatedIntervention as Intervention);
+            }
+        }
+    }
+    
+    // Replace the modified interventions in the list to be returned
+    return allCompanyInterventions.map(i => {
+        const updatedVersion = autoClosedInterventions.find(aci => aci.id === i.id);
+        return updatedVersion || i;
+    });
 }
 
 export async function getAllInterventions(): Promise<(Intervention | ScheduledMaintenance)[]> {
@@ -1088,5 +1135,6 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 }
     
     
+
 
 
