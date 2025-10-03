@@ -48,13 +48,10 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
   role: z.enum(['Admin', 'Operator', 'Client'], { required_error: 'Il ruolo è obbligatorio.' }),
-  password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}).optional(),
+  password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}).optional().or(z.literal('')),
   address: z.string().optional(),
   phone: z.string().optional(),
   allowedSectors: z.array(z.string()).optional(),
-}).refine(data => data.role === 'Client' || (data.password && data.password.length >= 8), {
-    message: 'La password è obbligatoria per Admin e Operator e deve contenere almeno 8 caratteri.',
-    path: ['password'],
 });
 
 interface AddUserFormProps {
@@ -115,7 +112,12 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             });
         } else {
              // For Admin/Operator, create user in Firebase Auth
-            const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
+            const password = values.password || 'starlink74';
+            if (password.length < 8) {
+                form.setError('password', { message: 'La password deve contenere almeno 8 caratteri.' });
+                return;
+            }
+            const userCredential = await createUserWithEmailAndPassword(auth, values.email, password);
             userId = userCredential.user.uid;
             await addUser({
                 id: userId,
@@ -220,7 +222,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 name="password"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Password (default: starlink74)</FormLabel>
                     <div className="relative">
                         <FormControl>
                         <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
