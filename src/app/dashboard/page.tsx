@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { ActivityFeed } from '@/components/dashboard/activity-feed';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 export type EnrichedUpdate = InterventionUpdate & { 
@@ -156,18 +157,20 @@ export default function DashboardPage() {
   return (
     <>
       <Header title="Dashboard" onInterventionAdded={fetchKpiData} clients={clients} operators={operators} />
-      <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-        {loading || !kpiData || !user ? (
-          <div className="flex items-center justify-center flex-1 h-full">
-            <Loader className="h-8 w-8 animate-spin" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6">
-             <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
-            <KpiDashboard kpiData={kpiData} currentUser={user} />
-          </div>
-        )}
-      </main>
+      <ScrollArea className="flex-1">
+        <main className="p-4 md:p-6 lg:p-8">
+          {loading || !kpiData || !user ? (
+            <div className="flex items-center justify-center flex-1 h-full">
+              <Loader className="h-8 w-8 animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
+              <KpiDashboard kpiData={kpiData} currentUser={user} />
+            </div>
+          )}
+        </main>
+      </ScrollArea>
       {interventionToEdit && user && (
         <EditInterventionForm
             intervention={interventionToEdit}
