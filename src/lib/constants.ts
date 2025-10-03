@@ -9,6 +9,6 @@ export const CREATOR_USER: User = {
   email: 'creator@mannatic.com', 
   role: 'Creator', 
   avatarUrl: 'https://i.pravatar.cc/150?u=creator', 
-  password: 'creatorpassword',
+  password: 'Acidosbi74!',
   companyId: 'none'
 };
