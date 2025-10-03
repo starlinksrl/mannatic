@@ -115,6 +115,7 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
             phone: companyData.phone || '',
             uniqueCode: companyData.uniqueCode || '',
             email: companyData.email || '',
+            platformUrl: companyData.platformUrl || 'https://work.mannatec.it',
             smtpHost: appConfig?.defaultSmtpHost,
             smtpPort: appConfig?.defaultSmtpPort,
             smtpUser: appConfig?.defaultSmtpUser,
@@ -1164,5 +1165,6 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 
 
     
+
 
 

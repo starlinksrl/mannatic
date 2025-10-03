@@ -29,6 +29,7 @@ export interface Company {
   phone?: string;
   uniqueCode?: string;
   email?: string;
+  platformUrl?: string;
   // SMTP settings
   smtpHost?: string;
   smtpPort?: number;

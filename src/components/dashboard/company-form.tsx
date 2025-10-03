@@ -33,6 +33,7 @@ const createFormSchema = z.object({
     taxCode: z.string().optional(),
     phone: z.string().optional(),
     uniqueCode: z.string().optional(),
+    platformUrl: z.string().url({ message: 'URL non valido' }).optional().or(z.literal('')),
     email: z.string().email({ message: 'Email non valida' }),
     password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri' })
 });
@@ -44,6 +45,7 @@ const editFormSchema = z.object({
     taxCode: z.string().optional(),
     phone: z.string().optional(),
     uniqueCode: z.string().optional(),
+    platformUrl: z.string().url({ message: 'URL non valido' }).optional().or(z.literal('')),
     email: z.string().email({ message: 'Email non valida' }),
 });
 
@@ -74,6 +76,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
             taxCode: '',
             phone: '',
             uniqueCode: '',
+            platformUrl: '',
             email: '',
             password: ''
         },
@@ -88,6 +91,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                 taxCode: company.taxCode || '',
                 phone: company.phone || '',
                 uniqueCode: company.uniqueCode || '',
+                platformUrl: company.platformUrl || '',
                 email: company.email || '',
             });
         } else {
@@ -98,6 +102,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                 taxCode: '',
                 phone: '',
                 uniqueCode: '',
+                platformUrl: '',
                 email: '',
                 password: ''
             });
@@ -230,6 +235,19 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                                     )}
                                 />
                             </div>
+                             <FormField
+                                control={form.control}
+                                name="platformUrl"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Link Piattaforma</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="https://work.azienda.com" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}

@@ -47,6 +47,7 @@ const profileFormSchema = z.object({
   phone: z.string().optional(),
   uniqueCode: z.string().optional(),
   email: z.string().email({ message: 'Email non valida' }).optional(),
+  platformUrl: z.string().url({ message: "L'URL non è valido" }).optional().or(z.literal('')),
 });
 
 
@@ -71,6 +72,7 @@ function CompanyProfileForm({ company, onSave }: { company: Company, onSave: (da
       phone: company.phone || '',
       uniqueCode: company.uniqueCode || '',
       email: company.email || '',
+      platformUrl: company.platformUrl || '',
     }
   });
 
@@ -245,6 +247,19 @@ function CompanyProfileForm({ company, onSave }: { company: Company, onSave: (da
                     <FormLabel>Email Contatto</FormLabel>
                     <FormControl>
                         <Input type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+             <FormField
+                control={form.control}
+                name="platformUrl"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Link Piattaforma</FormLabel>
+                    <FormControl>
+                        <Input type="url" placeholder="https://work.azienda.com" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>

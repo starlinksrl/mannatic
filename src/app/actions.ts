@@ -268,7 +268,7 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
             userName: user.name,
             userEmail: user.email,
             userPassword: user.password,
-            loginLink: 'https://work.mannatec.it',
+            loginLink: company.platformUrl || 'https://work.mannatec.it',
             companyId: company.id,
             smtpConfig: {
                 host: company.smtpHost,
