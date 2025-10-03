@@ -582,16 +582,10 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
     if (!finalClientId) {
         clientName = clientId; 
-        const companyDoc = await getDoc(doc(db, 'companies', companyId));
-        if (!companyDoc.exists()) {
-            throw new Error(`Company with id ${companyId} not found`);
-        }
         
-        const company = companyDoc.data() as Company;
-        const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
         
-        const clientEmail = `${clientNameNormalized}@${companyName}.com`;
+        const clientEmail = `${clientNameNormalized}@mannatec.it`;
 
         const newClient = await addUser({
             name: clientId,
@@ -1037,14 +1031,10 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
 
     if (!finalClientId) {
         console.log(`Client "${clientId}" not found by ID. Creating new client.`);
-        const companyDoc = await getDoc(doc(db, 'companies', companyId));
-        if (!companyDoc.exists()) throw new Error(`Company with id ${companyId} not found`);
 
-        const company = companyDoc.data() as Company;
-        const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
 
-        const clientEmail = `${clientNameNormalized}@${companyName}.com`;
+        const clientEmail = `${clientNameNormalized}@mannatec.it`;
 
         const newClient = await addUser({
             name: clientId,
