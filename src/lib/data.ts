@@ -239,9 +239,10 @@ export async function getUserById(id: string): Promise<User | null> {
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     try {
         let userId = userData.id;
+        const passwordForAuth = userData.password || 'starlink74';
 
         if (userData.role !== 'Client') {
-            const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, userData.password!);
+            const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, passwordForAuth);
             userId = userCredential.user.uid;
         } else {
             // For clients, we just create a Firestore document, not an Auth user.
@@ -261,7 +262,7 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             avatarUrl: `https://i.pravatar.cc/150?u=${userId}`,
             address: userData.address || '',
             phone: userData.phone || '',
-            password: userData.password, // Storing password for credential email feature
+            password: passwordForAuth, // Storing password for credential email feature
         };
         
         if (newUserPayload.role === 'Operator') {
@@ -1183,6 +1184,7 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 
 
     
+
 
 
 
