@@ -47,6 +47,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
   role: z.enum(['Admin', 'Operator', 'Client', 'Creator'], { required_error: 'Il ruolo è obbligatorio.' }),
+  password: z.string().min(8, { message: "La nuova password deve contenere almeno 8 caratteri." }).optional().or(z.literal('')),
   avatarUrl: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
@@ -66,6 +67,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showPassword, setShowPassword] = useState(false);
   
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -87,6 +89,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             name: user.name,
             email: user.email,
             role: user.role,
+            password: '',
             avatarUrl: user.avatarUrl,
             address: user.address || '',
             phone: user.phone || '',
@@ -98,11 +101,19 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   if(!user) return null;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const dataToUpdate = {
-        ...values,
+    const dataToUpdate: Partial<User> = {
+        name: values.name,
+        email: values.email,
         role: values.role as UserRole,
+        avatarUrl: values.avatarUrl,
+        address: values.address,
+        phone: values.phone,
         allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
     };
+
+    if (values.password && values.password.trim() !== '') {
+        dataToUpdate.password = values.password;
+    }
     
     const updatedUser = await updateUser(user!.id, dataToUpdate);
     
@@ -133,6 +144,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   
   const canEditRole = currentUser?.role === 'Admin' || currentUser?.role === 'Creator';
   const canEditEmail = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator');
+  const canEditPassword = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && user.role !== 'Client';
 
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -201,6 +213,35 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 </FormItem>
               )}
             />
+            
+            {canEditPassword && (
+                 <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Nuova Password (lascia vuoto per non modificare)</FormLabel>
+                        <div className="relative">
+                            <FormControl>
+                            <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" {...field} />
+                            </FormControl>
+                            <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                            onClick={() => setShowPassword(prev => !prev)}
+                            tabIndex={-1}
+                            >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            )}
+
             <FormField
               control={form.control}
               name="role"
@@ -336,5 +377,6 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
+
 
 

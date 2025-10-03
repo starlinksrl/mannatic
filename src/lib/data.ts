@@ -283,8 +283,12 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
 
-        // Do not store password in firestore for updates
-        delete dataToUpdate.password;
+        // In a real app, you would have a backend function to update the password securely.
+        // For this demo, if a password is provided, we'll store it (insecurely).
+        // If not provided, we remove it from the update object.
+        if (!dataToUpdate.password || dataToUpdate.password.trim() === '') {
+            delete dataToUpdate.password;
+        }
         
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
             dataToUpdate.allowedSectors = deleteField();
@@ -1160,4 +1164,5 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 
 
     
+
 
