@@ -10,7 +10,7 @@ import { CREATOR_USER } from '@/lib/constants';
 interface UserContextType {
   user: User | null; // The currently active user (can be the original or a simulated one)
   sessionUser: User | null; // The user who originally logged in
-  login: (user: User, sessionUser: User) => void;
+  login: (user: User) => void;
   logout: () => void;
   isLoading: boolean;
   switchUser: (userId: string) => void;
@@ -38,16 +38,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(true);
         try {
             const savedUserJson = localStorage.getItem('user');
-            const savedSessionUserJson = localStorage.getItem('sessionUser');
-
-            if (savedUserJson && savedSessionUserJson) {
+            
+            if (savedUserJson) {
                 const savedUser = JSON.parse(savedUserJson);
-                const savedSessionUser = JSON.parse(savedSessionUserJson);
                 
                 // Re-validate user from DB
                 const freshUser = await getUserById(savedUser.id);
                 if (freshUser) {
-                    await login(freshUser, savedSessionUser);
+                    await login(freshUser);
                 } else {
                     logout();
                 }
@@ -70,15 +68,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     fetchCompanies();
   }, []);
 
-  const login = async (loggedInUser: User, sessionUser: User) => {
+  const login = async (loggedInUser: User) => {
     setIsLoading(true);
     setUser(loggedInUser);
-    setSessionUser(sessionUser);
+    setSessionUser(loggedInUser);
     
     localStorage.setItem('user', JSON.stringify(loggedInUser));
-    localStorage.setItem('sessionUser', JSON.stringify(sessionUser));
 
-    if (sessionUser.role === 'Creator') {
+    if (loggedInUser.role === 'Creator') {
         const companyId = localStorage.getItem('companyId');
         if (companyId) {
             await switchCompany(companyId);
@@ -125,9 +122,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (companyId === null) {
           setCurrentCompany(null);
           localStorage.removeItem('companyId');
-          setUser(CREATOR_USER);
-          localStorage.setItem('user', JSON.stringify(CREATOR_USER));
           setAvailableUsers([CREATOR_USER]);
+          // When no company, the active user MUST be the creator.
+          if (user?.id !== CREATOR_USER.id) {
+              setUser(CREATOR_USER);
+              localStorage.setItem('user', JSON.stringify(CREATOR_USER));
+          }
           return;
       }
       
@@ -138,11 +138,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem('companyId', companyId);
           const companyUsers = await getUsers(companyId);
           setAvailableUsers([CREATOR_USER, ...companyUsers]);
-          // When creator switches company, they become the active user for that context
-          if (user?.id !== CREATOR_USER.id) {
-            setUser(CREATOR_USER);
-            localStorage.setItem('user', JSON.stringify(CREATOR_USER));
-          }
       }
   }
 
