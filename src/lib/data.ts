@@ -573,7 +573,7 @@ export async function getScheduledMaintenance(companyId: string): Promise<Schedu
 type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string };
 
 export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
-    const { creatorName, clientId, companyId, ...restOfData } = interventionData;
+    const { creatorName, clientId, companyId, attachments, ...restOfData } = interventionData;
     
     const existingUser = await getUserById(clientId);
     let finalClientId = existingUser ? existingUser.id : null;
@@ -616,6 +616,42 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     }
     
     const newId = generateShortId();
+    
+    // Handle attachments upload
+    const appConfig = await getAppConfiguration();
+    const finalAttachments: Attachment[] = [];
+    if (appConfig && appConfig.gcsBucketName && attachments) {
+        for (const attachment of attachments) {
+            try {
+                const uploadResult = await uploadFileToGcs({
+                    fileDataUri: attachment.url,
+                    fileName: `${newId}/${attachment.id}-${attachment.name}`,
+                    config: {
+                        projectId: appConfig.gcsProjectId!,
+                        clientEmail: appConfig.gcsClientEmail!,
+                        privateKey: appConfig.gcsPrivateKey!,
+                        bucketName: appConfig.gcsBucketName!,
+                    }
+                });
+
+                if (uploadResult.success && uploadResult.fileUrl) {
+                    finalAttachments.push({
+                        ...attachment,
+                        url: uploadResult.fileUrl,
+                    });
+                } else {
+                   console.error(`Failed to upload attachment ${attachment.name}: ${uploadResult.error}`);
+                   // Optionally add it with the data URI as a fallback
+                   finalAttachments.push(attachment);
+                }
+            } catch(uploadError) {
+                console.error(`Failed to upload attachment ${attachment.name}:`, uploadError);
+                finalAttachments.push(attachment);
+            }
+        }
+    }
+
+
     const newInterventionData: Intervention = {
         ...dataForDb,
         id: newId,
@@ -628,6 +664,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         dueDate: restOfData.dueDate || null,
         isMaintenance: false,
         type: restOfData.type || 'standard',
+        attachments: finalAttachments,
     };
 
     await setDoc(doc(db, 'interventions', newId), newInterventionData);
@@ -1135,6 +1172,7 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 }
     
     
+
 
 
 

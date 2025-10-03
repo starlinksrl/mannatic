@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -29,16 +29,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown, UploadCloud, File as FileIcon, Trash2, Image as ImageIcon, FileText } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Intervention, Client, User, InterventionPriority, InterventionType } from '@/lib/types';
+import { Intervention, Client, User, InterventionPriority, InterventionType, Attachment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addIntervention } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ScrollArea } from '../ui/scroll-area';
+import { v4 as uuidv4 } from 'uuid';
+import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
+import { AlertCircle } from 'lucide-react';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -49,6 +54,7 @@ const formSchema = z.object({
   dueDate: z.date().optional(),
   dueTime: z.string().optional(),
   assignedOperatorId: z.string().nullable(),
+  attachments: z.array(z.any()).optional(),
 }).refine(data => (data.dueDate && data.dueTime) || !data.dueDate, {
     message: "L'ora è obbligatoria se la data è specificata.",
     path: ["dueTime"],
@@ -67,6 +73,8 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -78,8 +86,11 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       priority: 'Bassa',
       clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
       dueTime: '',
+      attachments: [],
     },
   });
+  
+  const attachments = form.watch('attachments');
   
   useEffect(() => {
     if (currentUser.role === 'Client') {
@@ -116,7 +127,8 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
         priority: values.priority as InterventionPriority,
         dueDate: finalDueDate,
         companyId: currentCompany.id,
-        creatorName: currentUser.name
+        creatorName: currentUser.name,
+        attachments: values.attachments,
     });
     
     onInterventionAdded(newIntervention);
@@ -128,6 +140,88 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     setIsOpen(false);
     form.reset();
   }
+  
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    let newAttachments: Attachment[] = [];
+    let hadError = false;
+
+    for (const file of Array.from(files)) {
+        if (file.size > MAX_FILE_SIZE) {
+            toast({
+                variant: 'destructive',
+                title: 'File troppo grande',
+                description: `Il file "${file.name}" supera il limite di 5MB.`,
+            });
+            hadError = true;
+            continue;
+        }
+
+        const reader = new FileReader();
+        const promise = new Promise<Attachment>((resolve, reject) => {
+            reader.onloadend = () => {
+                resolve({
+                    id: uuidv4(),
+                    name: file.name,
+                    url: reader.result as string, // This will be a temporary data URI
+                    type: file.type,
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: currentUser.name,
+                });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        try {
+            const newAttachment = await promise;
+            newAttachments.push(newAttachment);
+        } catch (error) {
+            console.error("File read failed", error);
+            toast({
+                variant: 'destructive',
+                title: 'Lettura file fallita',
+                description: `Impossibile leggere il file "${file.name}".`,
+            });
+            hadError = true;
+        }
+    }
+
+    if (newAttachments.length > 0) {
+        form.setValue('attachments', [
+            ...(form.getValues('attachments') || []),
+            ...newAttachments,
+        ]);
+    }
+    setIsUploading(false);
+    if (!hadError) {
+        toast({
+            title: 'File aggiunti',
+            description: 'Ricorda di creare l\'intervento per salvare gli allegati.',
+        });
+    }
+  };
+
+  const handleRemoveAttachment = async (attachmentToRemove: Attachment) => {
+    form.setValue('attachments', (form.getValues('attachments') || []).filter(att => att.id !== attachmentToRemove.id));
+    toast({
+        title: 'Allegato rimosso',
+        description: `Il file "${attachmentToRemove.name}" è stato rimosso dalla lista.`,
+    });
+  }
+  
+   const AttachmentPreview = ({ att }: { att: Attachment }) => {
+    if (att.type.startsWith('image/')) {
+        return <ImageIcon className="h-5 w-5" />;
+    }
+    if (att.type === 'application/pdf') {
+        return <FileText className="h-5 w-5" />;
+    }
+    return <FileIcon className="h-5 w-5" />;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -141,6 +235,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                 priority: 'Bassa',
                 clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
                 dueTime: '',
+                attachments: [],
             });
         }
     }}>
@@ -277,6 +372,40 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                         </FormItem>
                     )}
                     />
+
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Allegati</h4>
+                       <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Attenzione</AlertTitle>
+                        <AlertDescription>
+                           La dimensione totale degli allegati non deve superare 5MB per non rallentare l'applicazione.
+                        </AlertDescription>
+                      </Alert>
+                       <div className="space-y-2">
+                        {(attachments || []).map((att) => (
+                           <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
+                               <div className="flex items-center gap-2 text-sm truncate">
+                                    <AttachmentPreview att={att} />
+                                    <span className="truncate">{att.name}</span>
+                                </div>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveAttachment(att)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                           </div>
+                        ))}
+                        {(!attachments || attachments.length === 0) && (
+                            <p className="text-sm text-muted-foreground text-center py-2">Nessun allegato.</p>
+                        )}
+                       </div>
+                       <div>
+                          <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple className="hidden" disabled={isUploading} />
+                          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                              <UploadCloud className="mr-2" />
+                              {isUploading ? 'Caricamento...' : 'Aggiungi File'}
+                          </Button>
+                       </div>
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <FormField
