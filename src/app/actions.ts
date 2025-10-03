@@ -8,11 +8,12 @@ import { sendNotificationEmail } from '@/ai/flows/send-notification-email';
 import { sendExpiryNotification } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail } from '@/ai/flows/send-password-reset-email';
+import { sendCredentialsEmail } from '@/ai/flows/send-credentials-email';
 import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
-import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword } from '@/lib/data';
-import { Company, EmailLog } from '@/lib/types';
+import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword, getUserById } from '@/lib/data';
+import { Company, EmailLog, User } from '@/lib/types';
 import nodemailer from 'nodemailer';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -20,6 +21,7 @@ import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/
 import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
+import type { SendCredentialsEmailInput, SendCredentialsEmailOutput } from '@/ai/flows/send-credentials-email';
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
@@ -241,3 +243,46 @@ export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {
     }
 }
     
+export async function sendCredentialsEmailAction(userId: string): Promise<SendCredentialsEmailOutput> {
+    const user = await getUserById(userId);
+    if (!user) {
+        return { success: false, error: 'User not found.' };
+    }
+    
+    if (user.role === 'Client') {
+        return { success: false, error: 'Cannot send credentials to a client user.' };
+    }
+    
+    const company = await getCompanyByUserId(userId);
+    if (!company || !company.smtpHost || !company.senderEmail) {
+        return { success: false, error: 'La configurazione SMTP per questa azienda è incompleta.' };
+    }
+    
+    if (!user.password) {
+         return { success: false, error: 'Nessuna password impostata per questo utente. Modificare il profilo utente per impostarne una.' };
+    }
+
+    try {
+        const input: SendCredentialsEmailInput = {
+            recipientEmail: user.email,
+            userName: user.name,
+            userEmail: user.email,
+            userPassword: user.password,
+            loginLink: 'https://work.mannatec.it',
+            companyId: company.id,
+            smtpConfig: {
+                host: company.smtpHost,
+                port: company.smtpPort!,
+                user: company.smtpUser!,
+                pass: company.smtpPass!,
+                from: company.senderEmail!,
+            }
+        };
+
+        return await sendCredentialsEmail(input);
+
+    } catch (error: any) {
+        console.error("Error sending credentials email:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
