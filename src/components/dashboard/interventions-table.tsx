@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -286,7 +287,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 )}
             </div>
       </div>
-      <Card className="xl:hidden">
+      <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
             {sortedInterventions.map((intervention) => {
               const client = clientsMap.get(intervention.clientId);
@@ -344,7 +345,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             })}
         </CardContent>
       </Card>
-      <Card className="hidden xl:block">
+      <Card className="hidden lg:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
@@ -458,3 +459,5 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     </div>
   );
 }
+
+    

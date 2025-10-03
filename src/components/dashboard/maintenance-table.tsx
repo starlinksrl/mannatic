@@ -267,7 +267,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                 </div>
             }
       </div>
-      <Card className="xl:hidden">
+      <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
             {sortedTasks.map((task) => {
               const clientName = clientsMap.get(task.clientId);
@@ -307,7 +307,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
             })}
         </CardContent>
       </Card>
-      <Card className="hidden xl:block">
+      <Card className="hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -407,3 +407,5 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     </div>
   );
 }
+
+    

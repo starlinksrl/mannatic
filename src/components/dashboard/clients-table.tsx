@@ -77,7 +77,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
 
   return (
     <>
-    <Card className="xl:hidden">
+    <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
           {clients.map((client) => (
             <div key={client.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
@@ -133,7 +133,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
           ))}
         </CardContent>
       </Card>
-    <Card className="hidden xl:block">
+    <Card className="hidden lg:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -231,3 +231,5 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     </>
   );
 }
+
+    

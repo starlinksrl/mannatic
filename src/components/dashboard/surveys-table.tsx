@@ -164,7 +164,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                 </div>
             }
       </div>
-      <Card className="xl:hidden">
+      <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
             {filteredSurveys.map((survey) => {
               const client = clientsMap.get(survey.clientId);
@@ -204,7 +204,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
             })}
         </CardContent>
       </Card>
-      <Card className="hidden xl:block">
+      <Card className="hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -299,3 +299,5 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
     </div>
   );
 }
+
+    
