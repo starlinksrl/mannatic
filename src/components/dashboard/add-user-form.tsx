@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, UserRole, AllowedSector } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addUser } from '@/lib/data';
+import { addUser, getUserByEmail } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
@@ -48,10 +48,13 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
   role: z.enum(['Admin', 'Operator', 'Client'], { required_error: 'Il ruolo è obbligatorio.' }),
-  password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}),
+  password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}).optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
   allowedSectors: z.array(z.string()).optional(),
+}).refine(data => data.role === 'Client' || (data.password && data.password.length >= 8), {
+    message: 'La password è obbligatoria per Admin e Operator e deve contenere almeno 8 caratteri.',
+    path: ['password'],
 });
 
 interface AddUserFormProps {
@@ -94,19 +97,37 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     }
     
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-        const firebaseUser = userCredential.user;
-
-        await addUser({
-            id: firebaseUser.uid,
-            name: values.name,
-            email: values.email,
-            role: values.role as UserRole,
-            companyId: currentCompany.id,
-            address: values.address,
-            phone: values.phone,
-            allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
-        });
+        let userId: string;
+        if (values.role === 'Client') {
+            const existingClient = await getUserByEmail(values.email);
+            if (existingClient) {
+                toast({ variant: 'destructive', title: 'Errore', description: 'Un cliente con questa email esiste già.' });
+                return;
+            }
+            // For clients, we just add them to our DB without creating an Auth user
+            await addUser({
+                name: values.name,
+                email: values.email,
+                role: 'Client',
+                companyId: currentCompany.id,
+                address: values.address,
+                phone: values.phone
+            });
+        } else {
+             // For Admin/Operator, create user in Firebase Auth
+            const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
+            userId = userCredential.user.uid;
+            await addUser({
+                id: userId,
+                name: values.name,
+                email: values.email,
+                role: values.role as UserRole,
+                companyId: currentCompany.id,
+                address: values.address,
+                phone: values.phone,
+                allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
+            });
+        }
         
         onUserAdded();
         toast({
@@ -118,7 +139,9 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     } catch (error: any) {
          let description = 'Si è verificato un errore durante la creazione dell\'utente.';
         if (error.code === 'auth/email-already-in-use') {
-            description = 'Questa email è già in uso. Prova con un\'altra email.';
+            description = 'Questa email è già in uso da un utente con password. Prova con un\'altra email.';
+        } else if (error.code === 'auth/weak-password') {
+            description = 'La password è troppo debole. Deve essere di almeno 6 caratteri.';
         }
         toast({
             variant: 'destructive',
@@ -129,6 +152,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   }
   
   const title = isClientForm ? 'Crea nuovo cliente' : 'Crea nuovo utente';
+  const role = form.watch('role');
 
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -139,8 +163,6 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         }
     }
   };
-  
-  const role = form.watch('role');
 
 
   return (
@@ -192,31 +214,33 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
-                    </FormControl>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                      onClick={() => setShowPassword(prev => !prev)}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {role !== 'Client' && (
+                <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <div className="relative">
+                        <FormControl>
+                        <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                        </FormControl>
+                        <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                        onClick={() => setShowPassword(prev => !prev)}
+                        tabIndex={-1}
+                        >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                    </div>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            )}
              {isClientForm ? (
                 <input type="hidden" {...form.register("role")} value="Client" />
             ) : (
@@ -353,3 +377,5 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     </Dialog>
   );
 }
+
+    

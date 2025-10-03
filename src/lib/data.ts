@@ -241,7 +241,7 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     try {
-        const userId = userData.id!;
+        const userId = userData.id || generateShortId(20);
 
         const newUserPayload: Partial<User> = {
             id: userId,
@@ -586,20 +586,16 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         if (!companyDoc.exists()) {
             throw new Error(`Company with id ${companyId} not found`);
         }
+        
         const company = companyDoc.data() as Company;
         const companyName = company.name?.toLowerCase().replace(/[^a-z0-9]/gi, '') || 'company';
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
         
         const clientEmail = `${clientNameNormalized}@${companyName}.com`;
-        const clientPassword = 'password';
-
-        const userCredential = await createUserWithEmailAndPassword(auth, clientEmail, clientPassword);
-        const firebaseUserId = userCredential.user.uid;
 
         const newClient = await addUser({
-            id: firebaseUserId,
             name: clientId,
-            email: clientEmail,
+            email: clientEmail, // The email is now just for data, not auth
             role: 'Client',
             companyId: companyId,
             address: 'Indirizzo da definire',
@@ -1049,13 +1045,8 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
         const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
 
         const clientEmail = `${clientNameNormalized}@${companyName}.com`;
-        const clientPassword = 'password';
-
-        const userCredential = await createUserWithEmailAndPassword(auth, clientEmail, clientPassword);
-        const firebaseUserId = userCredential.user.uid;
 
         const newClient = await addUser({
-            id: firebaseUserId,
             name: clientId,
             email: clientEmail,
             role: 'Client',
@@ -1176,3 +1167,6 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
 
 
 
+
+
+    
