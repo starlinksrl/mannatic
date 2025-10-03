@@ -162,7 +162,7 @@ export default function DashboardPage() {
             <Loader className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid grid-cols-1 gap-6">
              <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
             <KpiDashboard kpiData={kpiData} currentUser={user} />
           </div>
