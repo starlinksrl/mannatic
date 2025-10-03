@@ -132,6 +132,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   };
   
   const canEditRole = currentUser?.role === 'Admin' || currentUser?.role === 'Creator';
+  const canEditEmail = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && user.role === 'Client';
 
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -194,7 +195,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="mario.rossi@example.com" {...field} disabled />
+                    <Input placeholder="mario.rossi@example.com" {...field} disabled={!canEditEmail} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -335,3 +336,4 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
+
