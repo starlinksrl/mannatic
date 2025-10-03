@@ -152,7 +152,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   
   const canEditRole = currentUser?.role === 'Admin' || currentUser?.role === 'Creator';
   const canEditEmail = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator');
-  const canEditPassword = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator');
+  const canEditPassword = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator' || user?.role === 'Client');
 
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
