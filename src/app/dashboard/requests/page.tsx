@@ -70,14 +70,14 @@ export default function ClientRequestsPage() {
   return (
     <>
       <Header title="Le mie Richieste" />
-      <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto space-y-6">
+      <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
         {clients.map(client => (
             <Card key={client.id}>
                 <CardHeader>
                     <CardTitle>Informazioni di Contatto</CardTitle>
                     <CardDescription>Dettagli per {client.name}</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-2">
+                <CardContent className="grid gap-4 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
                     {client.address && (
                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 group">
                             <MapPin className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors"/>
