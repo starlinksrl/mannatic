@@ -132,7 +132,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   };
   
   const canEditRole = currentUser?.role === 'Admin' || currentUser?.role === 'Creator';
-  const canEditEmail = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && user.role === 'Client';
+  const canEditEmail = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator');
 
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -336,4 +336,5 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
+
 
