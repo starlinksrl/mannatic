@@ -2,15 +2,14 @@
 'use server';
 import 'dotenv/config';
 /**
- * @fileOverview An AI agent for generating and sending user credential emails.
+ * @fileOverview An agent for sending user credential emails.
  *
- * - sendCredentialsEmail - A function that generates and sends a user credential email.
+ * - sendCredentialsEmail - A function that sends a user credential email.
  * - SendCredentialsEmailInput - The input type for this function.
  * - SendCredentialsEmailOutput - The return type for this function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { z } from 'zod';
 import nodemailer from 'nodemailer';
 import { db } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
@@ -40,97 +39,66 @@ const SendCredentialsEmailOutputSchema = z.object({
 });
 export type SendCredentialsEmailOutput = z.infer<typeof SendCredentialsEmailOutputSchema>;
 
-const prompt = ai.definePrompt({
-  name: 'sendCredentialsEmailPrompt',
-  input: {schema: z.object({
-      userName: SendCredentialsEmailInputSchema.shape.userName,
-      userEmail: SendCredentialsEmailInputSchema.shape.userEmail,
-      userPassword: SendCredentialsEmailInputSchema.shape.userPassword,
-      loginLink: SendCredentialsEmailInputSchema.shape.loginLink,
-  })},
-  output: {schema: z.object({ emailSubject: z.string(), emailBody: z.string() }) },
-  prompt: `You are an AI assistant for a business software called MannaTic. Your task is to generate an email containing login credentials for a user.
+export async function sendCredentialsEmail(input: SendCredentialsEmailInput): Promise<SendCredentialsEmailOutput> {
+  const { smtpConfig, recipientEmail, userName, userEmail, userPassword, loginLink, companyId } = input;
 
-Generate a professional and clear subject and body for the email. The email must be in **Italian**.
+  const emailSubject = "Le tue credenziali di accesso a MannaTic";
+  const emailBody = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h1 style="color: #333;">Credenziali di Accesso a MannaTic</h1>
+        <p>Ciao ${userName},</p>
+        <p>Ecco le tue credenziali per accedere alla piattaforma MannaTic:</p>
+        <ul style="list-style-type: none; padding: 0;">
+            <li style="margin-bottom: 10px;"><strong>Email:</strong> ${userEmail}</li>
+            <li style="margin-bottom: 10px;"><strong>Password:</strong> ${userPassword}</li>
+        </ul>
+        <p>Puoi accedere direttamente dal seguente link:</p>
+        <p><a href="${loginLink}" style="background-color: #64B5F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Accedi a MannaTic</a></p>
+        <br>
+        <p>Cordiali saluti,<br>Il Team di MannaTic</p>
+    </div>
+  `;
 
-User's Name: {{{userName}}}
-Login Email: {{{userEmail}}}
-Password: {{{userPassword}}}
-Login Link: {{{loginLink}}}
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.port === 465,
+      auth: {
+        user: smtpConfig.user,
+        pass: smtpConfig.pass,
+      },
+    });
 
-The email should:
-1. Have a clear subject line like "Le tue credenziali di accesso a MannaTic".
-2. Greet the user by name.
-3. Clearly state their login email and password.
-4. Provide the direct link to the login page.
-5. End with a professional closing, like "Il Team di MannaTic".
+    await transporter.sendMail({
+      from: smtpConfig.from,
+      to: recipientEmail,
+      subject: emailSubject,
+      html: emailBody,
+    });
 
-Output a JSON object with "emailSubject" and "emailBody" fields. The emailBody should be in HTML format.
-`,
-});
+    await addDoc(collection(db, 'emailLogs'), {
+      companyId: companyId,
+      timestamp: new Date().toISOString(),
+      recipient: recipientEmail,
+      subject: emailSubject,
+      status: 'success',
+    });
 
-const sendCredentialsEmailFlow = ai.defineFlow(
-  {
-    name: 'sendCredentialsEmailFlow',
-    inputSchema: SendCredentialsEmailInputSchema,
-    outputSchema: SendCredentialsEmailOutputSchema,
-  },
-  async (input) => {
-    const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
-    let emailSubject = `Credenziali di accesso per ${input.userName}`;
-    try {
-      const { output } = await prompt(promptInput);
+    return { success: true };
 
-      if (!output || !output.emailBody || !output.emailSubject) {
-          throw new Error('Failed to generate email content for credentials.');
-      }
-      
-      emailSubject = output.emailSubject;
+  } catch (error: any) {
+    console.error(`[sendCredentialsEmail] FAILED for ${recipientEmail}:`, error.message);
 
-      const transporter = nodemailer.createTransport({
-        host: smtpConfig.host,
-        port: smtpConfig.port,
-        secure: smtpConfig.port === 465,
-        auth: {
-          user: smtpConfig.user,
-          pass: smtpConfig.pass,
-        },
-      });
-
-      await transporter.sendMail({
-        from: smtpConfig.from,
-        to: recipientEmail,
-        subject: output.emailSubject,
-        html: output.emailBody,
-      });
-
-      await addDoc(collection(db, 'emailLogs'), {
+    await addDoc(collection(db, 'emailLogs'), {
         companyId: companyId,
         timestamp: new Date().toISOString(),
         recipient: recipientEmail,
-        subject: output.emailSubject,
-        status: 'success',
-      });
+        subject: emailSubject,
+        status: 'failure',
+        error: error.message || 'An unknown error occurred during email sending.',
+    });
 
-      return { success: true };
-
-    } catch (error: any) {
-        console.error(`[sendCredentialsEmailFlow] FAILED for ${recipientEmail}:`, error.message);
-
-        await addDoc(collection(db, 'emailLogs'), {
-            companyId: input.companyId,
-            timestamp: new Date().toISOString(),
-            recipient: input.recipientEmail,
-            subject: emailSubject,
-            status: 'failure',
-            error: error.message || 'An unknown error occurred during email sending.',
-        });
-
-        return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
-    }
+    return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
   }
-);
-
-export async function sendCredentialsEmail(input: SendCredentialsEmailInput): Promise<SendCredentialsEmailOutput> {
-    return sendCredentialsEmailFlow(input);
 }
