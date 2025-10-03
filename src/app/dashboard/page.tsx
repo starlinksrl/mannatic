@@ -167,7 +167,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-                {user.role === 'Operator' && (
+                {(user.role === 'Operator' || user.role === 'Admin') && (
                     <AddInterventionForm
                         clients={clients}
                         operators={operators}
