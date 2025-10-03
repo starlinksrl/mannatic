@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -5,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Users, User, UserCog, Wrench, ShieldCheck, ClipboardCheck, Calendar, Settings, Database, PlusCircle, Eye, LayoutDashboard } from 'lucide-react';
+import { useUser } from '@/contexts/user-context';
+import { Loader } from 'lucide-react';
 
 const adminGuide = [
     {
@@ -99,8 +102,9 @@ const clientGuide = [
     }
 ];
 
-const GuideSection = ({ guideData }: { guideData: typeof adminGuide }) => (
+const GuideSection = ({ title, guideData }: { title: string, guideData: typeof adminGuide }) => (
     <div className="space-y-6">
+        <h2 className="text-xl font-bold text-center">{title}</h2>
         {guideData.map((feature, index) => (
             <Card key={index}>
                 <CardHeader>
@@ -128,27 +132,57 @@ const GuideSection = ({ guideData }: { guideData: typeof adminGuide }) => (
 
 
 export default function ManualPage() {
+    const { user, isLoading } = useUser();
+
+    if (isLoading || !user) {
+        return (
+            <>
+                <Header title="Manuale Utente" />
+                <div className="flex items-center justify-center flex-1">
+                    <Loader className="h-8 w-8 animate-spin" />
+                </div>
+            </>
+        )
+    }
+
+    const isAdmin = user.role === 'Admin' || user.role === 'Creator';
+    const isOperator = user.role === 'Operator';
+    const isClient = user.role === 'Client';
+    
+    const getDefaultTab = () => {
+        if (isAdmin) return "admin";
+        if (isOperator) return "operator";
+        if (isClient) return "client";
+        return "admin";
+    }
+
     return (
         <>
             <Header title="Manuale Utente" />
             <ScrollArea className="flex-1">
                 <main className="p-4 md:p-6 lg:p-8">
-                     <Tabs defaultValue="admin" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="admin">Guida Admin</TabsTrigger>
-                            <TabsTrigger value="operator">Guida Operatore</TabsTrigger>
-                            <TabsTrigger value="client">Guida Cliente</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="admin" className="pt-6">
-                            <GuideSection guideData={adminGuide} />
-                        </TabsContent>
-                        <TabsContent value="operator" className="pt-6">
-                             <GuideSection guideData={operatorGuide} />
-                        </TabsContent>
-                        <TabsContent value="client" className="pt-6">
-                             <GuideSection guideData={clientGuide} />
-                        </TabsContent>
-                    </Tabs>
+                     {isAdmin ? (
+                        <Tabs defaultValue="admin" className="w-full">
+                            <TabsList className="grid w-full grid-cols-3">
+                                <TabsTrigger value="admin">Guida Admin</TabsTrigger>
+                                <TabsTrigger value="operator">Guida Operatore</TabsTrigger>
+                                <TabsTrigger value="client">Guida Cliente</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="admin" className="pt-6">
+                                <GuideSection title="Guida per Amministratori" guideData={adminGuide} />
+                            </TabsContent>
+                            <TabsContent value="operator" className="pt-6">
+                                 <GuideSection title="Guida per Operatori" guideData={operatorGuide} />
+                            </TabsContent>
+                            <TabsContent value="client" className="pt-6">
+                                 <GuideSection title="Guida per Clienti" guideData={clientGuide} />
+                            </TabsContent>
+                        </Tabs>
+                     ) : isOperator ? (
+                        <GuideSection title="Guida per Operatori" guideData={operatorGuide} />
+                     ) : isClient ? (
+                        <GuideSection title="Guida per Clienti" guideData={clientGuide} />
+                     ) : null}
                 </main>
             </ScrollArea>
         </>
