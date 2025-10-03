@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useUser } from '@/contexts/user-context';
@@ -19,6 +17,7 @@ import {
   Info,
   HardHat,
   GitMerge,
+  HelpCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -48,6 +47,7 @@ const navItems: {
   { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'] },
   { href: '/dashboard/admin-explorer', label: 'Explorer', icon: Database, roles: ['Admin'] },
   { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'] },
+  { href: '/dashboard/manual', label: 'Manuale', icon: HelpCircle, roles: ['Admin', 'Operator', 'Client'] },
   { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
   { href: '/dashboard/changelog', label: 'Changelog', icon: GitMerge, roles: ['Admin', 'Operator', 'Client', 'Creator'] },
 ];
@@ -110,5 +110,3 @@ export function SidebarNav() {
     </div>
   );
 }
-
-    
