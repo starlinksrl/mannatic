@@ -61,24 +61,8 @@ export default function LoginPage() {
     }
   };
   
-  const handleCreatorLogin = async () => {
+  const handleCreatorLogin = () => {
     setEmail(CREATOR_USER.email);
-    setPassword(CREATOR_USER.password);
-    
-    try {
-        login(CREATOR_USER);
-        router.push('/dashboard/companies');
-        toast({
-            title: 'Accesso effettuato come Creator',
-            description: 'Bentornato!',
-        });
-    } catch(e) {
-         toast({
-        variant: 'destructive',
-        title: 'Accesso Creator fallito',
-        description: 'Credenziali di sviluppo non corrette.',
-      });
-    }
   }
 
 
