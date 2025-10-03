@@ -12,7 +12,7 @@ import { auth } from '@/lib/firebase';
 interface UserContextType {
   user: User | null; // The currently active user (can be the original or a simulated one)
   sessionUser: User | null; // The user who originally logged in
-  login: (user: User) => void;
+  login: (user: User, sessionUser: User) => void;
   logout: () => void;
   isLoading: boolean;
   switchUser: (userId: string) => void;
@@ -152,7 +152,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const value = { 
     user, 
     sessionUser,
-    login: (userToLogin) => login(userToLogin, userToLogin), // Simplified for external calls
+    login,
     logout, 
     isLoading, 
     switchUser, 

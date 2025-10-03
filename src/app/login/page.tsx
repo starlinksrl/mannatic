@@ -34,7 +34,7 @@ export default function LoginPage() {
         // Handle special Creator login
         if (email.toLowerCase() === CREATOR_USER.email.toLowerCase()) {
             if (password === CREATOR_USER.password) {
-                 login(CREATOR_USER);
+                 login(CREATOR_USER, CREATOR_USER); // Client-side login for creator
                  router.push('/dashboard');
                  toast({
                     title: 'Accesso effettuato',
@@ -46,19 +46,13 @@ export default function LoginPage() {
         } else {
             // For regular users, use Firebase Auth
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const userToLogin = await getUserByEmail(email);
-
-            if (userToLogin) {
-                // The onAuthStateChanged listener in the context will handle the rest.
-                // We just need to wait for it to kick in.
-                router.push('/dashboard');
-                 toast({
-                    title: 'Accesso effettuato',
-                    description: `Bentornato, ${userToLogin.name}!`,
-                });
-            } else {
-                 throw new Error("Profilo utente non trovato in Firestore.");
-            }
+            // The onAuthStateChanged listener in UserProvider will handle the rest.
+            // We just need to wait for it to kick in.
+             toast({
+                title: 'Accesso effettuato',
+                description: `Login in corso...`,
+            });
+            router.push('/dashboard');
         }
     } catch (error: any) {
        let description = 'Credenziali non valide. Riprova.';
