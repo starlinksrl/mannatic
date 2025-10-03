@@ -275,23 +275,23 @@ export default function AdminExplorerPage() {
     return (
         <>
             <Header title="Data Explorer" />
-            <main className="flex-1 p-4 md:p-6 lg:p-8">
-                 <Tabs defaultValue="companies">
-                    <TabsList>
+            <ScrollArea className="flex-1">
+                <main className="p-4 md:p-6 lg:p-8">
+                    <Tabs defaultValue="companies">
+                        <TabsList>
+                            {collectionNames.map(name => (
+                                <TabsTrigger key={name} value={name}>{name.charAt(0).toUpperCase() + name.slice(1)}</TabsTrigger>
+                            ))}
+                        </TabsList>
                         {collectionNames.map(name => (
-                             <TabsTrigger key={name} value={name}>{name.charAt(0).toUpperCase() + name.slice(1)}</TabsTrigger>
+                            <TabsContent key={name} value={name} className="pt-4">
+                                <DataTable data={data[name] || []} collectionName={name} onDataChange={fetchData} />
+                            </TabsContent>
                         ))}
-                    </TabsList>
-                     {collectionNames.map(name => (
-                        <TabsContent key={name} value={name} className="pt-4">
-                            <DataTable data={data[name] || []} collectionName={name} onDataChange={fetchData} />
-                        </TabsContent>
-                     ))}
-                </Tabs>
-            </main>
+                    </Tabs>
+                </main>
+            </ScrollArea>
         </>
     );
 }
 
-
-    
