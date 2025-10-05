@@ -159,7 +159,7 @@ export async function updateCompany(id: string, updatedData: Partial<Company>): 
 }
 
 export async function deleteCompanyAndSubcollections(companyId: string): Promise<void> {
-    const collectionsToDelete = ['users', 'interventions', 'notifications', 'surveys', 'passwordResetTokens', 'emailLogs'];
+    const collectionsToDelete = ['users', 'interventions', 'notifications', 'surveys', 'passwordResetTokens'];
     const batch = writeBatch(db);
 
     for (const coll of collectionsToDelete) {
@@ -1104,30 +1104,5 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
     } catch (error) {
         console.error("Error marking notifications as read:", error);
         return false;
-    }
-}
-
-// --- EMAIL LOGS ---
-
-export async function getEmailLogs(companyId: string): Promise<EmailLog[]> {
-    if (!companyId) return [];
-    try {
-        const q = query(collection(db, 'emailLogs'), where("companyId", "==", companyId));
-        const snapshot = await getDocs(q);
-        const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailLog));
-        return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    } catch (error) {
-        console.error("Error fetching email logs:", error);
-        return [];
-    }
-}
-
-export async function getAllEmailLogs(): Promise<EmailLog[]> {
-    try {
-        const snapshot = await getDocs(query(collection(db, 'emailLogs'), orderBy('timestamp', 'desc')));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailLog));
-    } catch (error) {
-        console.error("Error fetching all email logs:", error);
-        return [];
     }
 }

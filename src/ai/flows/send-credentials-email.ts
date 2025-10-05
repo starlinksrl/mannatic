@@ -70,28 +70,10 @@ export async function sendCredentialsEmail(input: SendCredentialsEmailInput): Pr
       throw error;
     }
 
-    await addDoc(collection(db, 'emailLogs'), {
-      companyId: companyId,
-      timestamp: new Date().toISOString(),
-      recipient: recipientEmail,
-      subject: emailSubject,
-      status: 'success',
-    });
-
     return { success: true };
 
   } catch (error: any) {
     console.error(`[sendCredentialsEmail] FAILED for ${recipientEmail}:`, error.message);
-
-    await addDoc(collection(db, 'emailLogs'), {
-        companyId: companyId,
-        timestamp: new Date().toISOString(),
-        recipient: recipientEmail,
-        subject: emailSubject,
-        status: 'failure',
-        error: error.message || 'An unknown error occurred during email sending.',
-    });
-
     return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
   }
 }

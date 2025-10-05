@@ -11,8 +11,6 @@ import 'dotenv/config';
 
 import {z} from 'genkit';
 import { Resend } from 'resend';
-import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
 
 const ResendConfigSchema = z.object({
   apiKey: z.string().describe('Resend API key.'),
@@ -66,29 +64,11 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
     if (error) {
       throw error;
     }
-
-    await addDoc(collection(db, 'emailLogs'), {
-      companyId: companyId,
-      timestamp: new Date().toISOString(),
-      recipient: recipientEmail,
-      subject: emailSubject,
-      status: 'success',
-    });
     
     return { success: true, emailBody: emailBody };
 
   } catch (error: any) {
       console.error('[sendNotificationEmail] FAILED:', error.message);
-
-      await addDoc(collection(db, 'emailLogs'), {
-        companyId: input.companyId,
-        timestamp: new Date().toISOString(),
-        recipient: input.recipientEmail,
-        subject: emailSubject,
-        status: 'failure',
-        error: error.message || 'An unknown error occurred.',
-      });
-
       return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
   }
 }

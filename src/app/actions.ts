@@ -13,9 +13,7 @@ import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword, getUserById } from '@/lib/data';
-import { Company, EmailLog, User } from '@/lib/types';
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { Company, User } from '@/lib/types';
 import { Resend } from 'resend';
 import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
 import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
@@ -118,29 +116,10 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
         throw error;
     }
 
-    await addDoc(collection(db, 'emailLogs'), {
-      companyId: company.id,
-      timestamp: new Date().toISOString(),
-      recipient: recipientEmail,
-      subject: emailSubject,
-      status: 'success',
-    });
-
     return { success: true };
 
   } catch (error: any) {
     console.error(`[sendClientUpdateEmail] FAILED for ${recipientEmail}:`, error.message);
-    if (company.id) {
-        await addDoc(collection(db, 'emailLogs'), {
-            companyId: company.id,
-            timestamp: new Date().toISOString(),
-            recipient: recipientEmail,
-            subject: emailSubject,
-            status: 'failure',
-            error: error.message || 'An unknown error occurred.',
-        });
-    }
-
     return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
   }
 }
@@ -223,16 +202,6 @@ export async function handlePasswordReset(token: string, newPassword: string):Pr
     } catch (error: any) {
         console.error("Error resetting password:", error);
         return { success: false, message: "Si è verificato un errore." };
-    }
-}
-
-export async function fetchEmailLogs(companyId: string): Promise<EmailLog[]> {
-    try {
-        const logs = await getEmailLogs(companyId);
-        return logs;
-    } catch (error) {
-        console.error("Error fetching email logs:", error);
-        return [];
     }
 }
     

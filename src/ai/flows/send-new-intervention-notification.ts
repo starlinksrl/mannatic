@@ -13,8 +13,6 @@ import {z} from 'genkit';
 import { Resend } from 'resend';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
 
 const ResendConfigSchema = z.object({
   apiKey: z.string().describe('Resend API key.'),
@@ -108,28 +106,10 @@ export async function sendNewInterventionNotification(input: SendNewIntervention
         throw error;
       }
 
-      await addDoc(collection(db, 'emailLogs'), {
-        companyId: companyId,
-        timestamp: new Date().toISOString(),
-        recipient: recipientEmail,
-        subject: emailSubject,
-        status: 'success',
-      });
-
       return { success: true, emailBody: emailBody };
 
     } catch (error: any) {
         console.error('[sendNewInterventionNotification] FAILED:', error.message);
-
-        await addDoc(collection(db, 'emailLogs'), {
-            companyId: companyId,
-            timestamp: new Date().toISOString(),
-            recipient: recipientEmail,
-            subject: emailSubject,
-            status: 'failure',
-            error: error.message || 'An unknown error occurred.',
-        });
-
         return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
     }
 }
