@@ -2,8 +2,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/user-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
-import { getUserByEmail } from '@/lib/data';
+import { getUserByEmail, consumeAutologinToken } from '@/lib/data';
 import { User } from '@/lib/types';
 import { CREATOR_USER } from '@/lib/constants';
 import { Loader } from 'lucide-react';
@@ -24,7 +24,47 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const handleAutologin = async () => {
+      const token = searchParams.get('autologin_token');
+      if (token) {
+        setIsLoading(true);
+        try {
+          const user = await consumeAutologinToken(token);
+          if (user) {
+            await login(user);
+            toast({
+              title: 'Accesso effettuato',
+              description: `Login automatico in corso...`,
+            });
+            router.replace('/dashboard/requests');
+          } else {
+            toast({
+              variant: 'destructive',
+              title: 'Accesso fallito',
+              description: 'Il link di accesso non è valido o è scaduto.',
+            });
+            router.replace('/login');
+          }
+        } catch (error) {
+          console.error("Autologin failed:", error);
+          toast({
+            variant: 'destructive',
+            title: 'Accesso fallito',
+            description: 'Si è verificato un errore durante l\'accesso automatico.',
+          });
+          router.replace('/login');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    handleAutologin();
+  }, [searchParams, login, router, toast]);
+
 
   const handleLogin = async () => {
     setIsLoading(true);
@@ -32,7 +72,7 @@ export default function LoginPage() {
         // Handle special Creator login
         if (email.toLowerCase() === CREATOR_USER.email.toLowerCase()) {
             if (password === CREATOR_USER.password) {
-                 login(CREATOR_USER, CREATOR_USER); // Client-side login for creator
+                 await login(CREATOR_USER); // Client-side login for creator
                  router.push('/dashboard');
                  toast({
                     title: 'Accesso effettuato',
@@ -45,7 +85,7 @@ export default function LoginPage() {
             // For regular users, check credentials against Firestore
             const userProfile = await getUserByEmail(email);
             if (userProfile && userProfile.password === password) {
-                login(userProfile, userProfile);
+                await login(userProfile);
                 toast({
                     title: 'Accesso effettuato',
                     description: `Login in corso...`,
@@ -87,53 +127,67 @@ export default function LoginPage() {
           <CardDescription>Inserisci le tue credenziali per continuare</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="m@example.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-          <div className="grid gap-2">
-             <div className="flex items-center">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                href="/forgot-password"
-                className="ml-auto inline-block text-sm underline"
-              >
-                Password dimenticata?
-              </Link>
-            </div>
-            <Input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-               disabled={isLoading}
-            />
-          </div>
+          {isLoading && (
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <Loader className="h-8 w-8 animate-spin" />
+                <p className="text-sm text-muted-foreground">Accesso in corso...</p>
+              </div>
+          )}
+          {!isLoading && (
+            <>
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="grid gap-2">
+                 <div className="flex items-center">
+                  <Label htmlFor="password">Password</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="ml-auto inline-block text-sm underline"
+                  >
+                    Password dimenticata?
+                  </Link>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                   disabled={isLoading}
+                />
+              </div>
+            </>
+          )}
         </CardContent>
         <CardFooter className="flex-col gap-4">
-          <Button className="w-full" onClick={handleLogin} disabled={isLoading}>
-             {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-            Accedi
-          </Button>
-          <div className="relative w-full">
-            <Separator />
-            <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-background px-2 text-xs text-muted-foreground">
-                DEV
-            </span>
-          </div>
-           <Button variant="outline" className="w-full" onClick={handleCreatorLogin}>
-            Login as Creator (Dev)
-           </Button>
+           {!isLoading && (
+            <>
+              <Button className="w-full" onClick={handleLogin} disabled={isLoading}>
+                 {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                Accedi
+              </Button>
+              <div className="relative w-full">
+                <Separator />
+                <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-background px-2 text-xs text-muted-foreground">
+                    DEV
+                </span>
+              </div>
+               <Button variant="outline" className="w-full" onClick={handleCreatorLogin}>
+                Login as Creator (Dev)
+               </Button>
+            </>
+           )}
         </CardFooter>
       </Card>
     </div>

@@ -1,6 +1,6 @@
 
 
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration, Attachment, InterventionType, WorkLog } from './types';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, EmailLog, AppConfiguration, Attachment, InterventionType, WorkLog, AutologinToken } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter, differenceInMinutes, addHours } from 'date-fns';
 import { db, auth } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
@@ -239,12 +239,11 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User | null> {
+    const existingUser = await getUserByEmail(userData.email!);
+    if (existingUser) {
+        return null;
+    }
     try {
-        const existingUser = await getUserByEmail(userData.email!);
-        if (existingUser) {
-            return null; // Return null to indicate the email is taken
-        }
-
         let userId = userData.id || generateShortId(20);
         const passwordForDb = userData.password || 'starlink74';
         
@@ -326,7 +325,7 @@ export async function deleteUser(id: string): Promise<boolean> {
     }
 }
 
-// --- PASSWORD RESET ---
+// --- PASSWORD RESET & AUTOLOGIN ---
 export async function createPasswordResetToken(userId: string): Promise<string> {
     const token = uuidv4();
     const expiresAt = new Date();
@@ -366,6 +365,46 @@ export async function resetUserPassword(token: string, newPassword: string):Prom
     await deleteDoc(tokenDoc.ref);
 
     return { success: true, message: "Password aggiornata con successo." };
+}
+
+export async function createAutologinToken(userId: string): Promise<string> {
+    const token = uuidv4();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10); // Token expires in 10 minutes
+
+    const user = await getUserById(userId);
+    if (!user) throw new Error("User not found for autologin token");
+
+    await addDoc(collection(db, 'autologinTokens'), {
+        userId,
+        token,
+        expiresAt: expiresAt.toISOString(),
+        companyId: user.companyId
+    });
+
+    return token;
+}
+
+export async function consumeAutologinToken(token: string): Promise<User | null> {
+    const q = query(collection(db, "autologinTokens"), where("token", "==", token));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return null; // Token not found
+    }
+
+    const tokenDoc = querySnapshot.docs[0];
+    const tokenData = tokenDoc.data() as AutologinToken;
+
+    // Immediately delete the token to ensure it's single-use
+    await deleteDoc(tokenDoc.ref);
+    
+    if (new Date() > new Date(tokenData.expiresAt)) {
+        return null; // Token expired
+    }
+
+    const user = await getUserById(tokenData.userId);
+    return user;
 }
 
 
@@ -698,6 +737,8 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
             const client = await getUserById(newInterventionData.clientId);
             if (client && client.email) {
+                const autologinToken = await createAutologinToken(client.id);
+                
                 await sendClientUpdateEmail({
                     recipientEmail: client.email,
                     clientName: client.name,
@@ -706,7 +747,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                     interventionStatus: newInterventionData.status,
                     updateMessage: 'creato',
                     company: company,
-                    interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
+                    interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/login?autologin_token=${autologinToken}`,
                 });
             }
         }
@@ -849,6 +890,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             if (client && client.email && companyDoc.exists()) {
                 const company: Company = {id: companyDoc.id, ...companyDoc.data()};
                 if(company.resendApiKey && company.senderEmail) {
+                    const autologinToken = await createAutologinToken(client.id);
                      await sendClientUpdateEmail({
                         recipientEmail: client.email,
                         clientName: client.name,
@@ -857,7 +899,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                         interventionStatus: interventionForNotif.status,
                         updateMessage: latestUpdateMessage,
                         company: company,
-                        interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests`,
+                        interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/login?autologin_token=${autologinToken}`,
                     });
                 }
             }

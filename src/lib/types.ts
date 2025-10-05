@@ -1,4 +1,5 @@
 
+
 import { z } from 'zod';
 
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
@@ -54,6 +55,15 @@ export interface PasswordResetToken {
     expiresAt: string;
     companyId: string;
 }
+
+export interface AutologinToken {
+    id?: string;
+    userId: string;
+    token: string;
+    expiresAt: string;
+    companyId: string;
+}
+
 
 export interface Client {
   id: string;
