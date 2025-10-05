@@ -238,11 +238,11 @@ export async function getUserById(id: string): Promise<User | null> {
     }
 }
 
-export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
+export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User | null> {
     try {
         const existingUser = await getUserByEmail(userData.email!);
         if (existingUser) {
-            throw new Error('Un utente con questa email esiste già.');
+            return null; // Return null to indicate the email is taken
         }
 
         let userId = userData.id || generateShortId(20);
@@ -271,10 +271,7 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
         return { ...newUserPayload, id: userId! } as User;
     } catch (error) {
         console.error("Error adding user to Firestore:", error);
-        if (error instanceof Error) {
-            throw error;
-        }
-        throw new Error("Failed to add user.");
+        throw new Error("Si è verificato un errore imprevisto durante la creazione dell'utente.");
     }
 }
 
@@ -592,6 +589,9 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             address: 'Indirizzo da definire',
             phone: 'Telefono da definire',
         });
+        if (!newClient) {
+             throw new Error(`Non è stato possibile creare il cliente. L'email ${clientEmail} potrebbe essere già in uso.`);
+        }
         finalClientId = newClient.id;
     } else {
         clientName = existingUser!.name;
@@ -1025,6 +1025,9 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
             address: surveyData.address,
             phone: null,
         });
+        if (!newClient) {
+             throw new Error(`Non è stato possibile creare il cliente. L'email ${clientEmail} potrebbe essere già in uso.`);
+        }
         finalClientId = newClient.id;
     }
 

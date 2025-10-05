@@ -92,7 +92,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     }
     
     try {
-        await addUser({
+        const newUser = await addUser({
             name: values.name,
             email: values.email,
             role: values.role as UserRole,
@@ -103,13 +103,20 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
         });
         
-        onUserAdded();
-        toast({
-          title: `${isClientForm ? 'Cliente' : 'Utente'} creato`,
-          description: `${isClientForm ? 'Il cliente' : 'L\'utente'} ${values.name} è stato aggiunto con successo.`,
-        });
-        setIsOpen(false);
-        form.reset();
+        if (newUser) {
+            onUserAdded();
+            toast({
+            title: `${isClientForm ? 'Cliente' : 'Utente'} creato`,
+            description: `${isClientForm ? 'Il cliente' : 'L\'utente'} ${values.name} è stato aggiunto con successo.`,
+            });
+            setIsOpen(false);
+            form.reset();
+        } else {
+             form.setError('email', {
+                type: 'manual',
+                message: 'Un utente con questa email esiste già.',
+            });
+        }
     } catch (error: any) {
          toast({
             variant: 'destructive',
