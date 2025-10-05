@@ -7,9 +7,11 @@ import { getInterventions, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { User, Intervention, Client } from '@/lib/types';
 import { useEffect, useState } from 'react';
-import { Loader } from 'lucide-react';
+import { Loader, PlusCircle } from 'lucide-react';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
+import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
+import { Button } from '@/components/ui/button';
 
 
 export default function InterventionsPage() {
@@ -61,8 +63,23 @@ export default function InterventionsPage() {
 
   return (
     <>
-      <Header title="Tutti gli Interventi" onInterventionAdded={handleInterventionChange} clients={clients} operators={operators} />
+      <Header title="Tutti gli Interventi" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
+        <div className="flex justify-end mb-4">
+             {user && (user.role === 'Admin' || user.role === 'Operator' || user.role === 'Client') && (
+                <AddInterventionForm
+                    clients={clients}
+                    operators={operators}
+                    onInterventionAdded={handleInterventionChange}
+                    currentUser={user}
+                >
+                    <Button>
+                        <PlusCircle className="mr-2" />
+                        Crea Intervento
+                    </Button>
+                </AddInterventionForm>
+            )}
+        </div>
         <InterventionsTable 
             interventions={interventions} 
             currentUser={user} 
@@ -71,7 +88,7 @@ export default function InterventionsPage() {
             onInterventionChange={handleInterventionChange}
         />
       </main>
-      {interventionToEdit && (
+      {interventionToEdit && user && (
         <EditInterventionForm
             intervention={interventionToEdit}
             onInterventionUpdated={handleInterventionChange}
