@@ -12,8 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getCompanyById, getUsers, getInterventions, getSurveys, getNotifications, getEmailLogs, updateDocument } from '@/lib/data';
-import { Company, User, Intervention, ScheduledMaintenance, Survey, Notification, EmailLog } from '@/lib/types';
+import { getCompanyById, getUsers, getInterventions, getSurveys, getNotifications, updateDocument } from '@/lib/data';
+import { Company, User, Intervention, ScheduledMaintenance, Survey, Notification } from '@/lib/types';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,6 @@ type Data = {
     interventions: (Intervention | ScheduledMaintenance)[];
     surveys: Survey[];
     notifications: Notification[];
-    emailLogs: EmailLog[];
 }
 
 type CollectionName = keyof Data;
@@ -225,13 +224,12 @@ export default function AdminExplorerPage() {
     const fetchData = async () => {
         if (!currentCompany) return;
         setIsLoading(true);
-        const [company, users, interventions, surveys, notifications, emailLogs] = await Promise.all([
+        const [company, users, interventions, surveys, notifications] = await Promise.all([
             getCompanyById(currentCompany.id),
             getUsers(currentCompany.id),
             getInterventions(currentCompany.id),
             getSurveys(currentCompany.id),
             getNotifications(currentCompany.id),
-            getEmailLogs(currentCompany.id),
         ]);
         setData({ 
             companies: company ? [company] : [], 
@@ -239,7 +237,6 @@ export default function AdminExplorerPage() {
             interventions, 
             surveys, 
             notifications, 
-            emailLogs 
         });
         setIsLoading(false);
     }
@@ -270,7 +267,7 @@ export default function AdminExplorerPage() {
         return null;
     }
 
-    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'surveys', 'notifications', 'emailLogs'];
+    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'surveys', 'notifications'];
 
     return (
         <>
@@ -294,4 +291,3 @@ export default function AdminExplorerPage() {
         </>
     );
 }
-

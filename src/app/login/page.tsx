@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/user-context';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { User } from '@/lib/types';
 import { CREATOR_USER } from '@/lib/constants';
 import { Loader } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginFormComponent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -192,4 +192,12 @@ export default function LoginPage() {
       </Card>
     </div>
   );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div>}>
+      <LoginFormComponent />
+    </Suspense>
+  )
 }

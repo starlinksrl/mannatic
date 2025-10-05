@@ -12,7 +12,7 @@ import { sendCredentialsEmail } from '@/ai/flows/send-credentials-email';
 import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
-import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword, getUserById, createAutologinToken } from '@/lib/data';
+import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken } from '@/lib/data';
 import { Company, User } from '@/lib/types';
 import { Resend } from 'resend';
 import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';

@@ -178,16 +178,6 @@ export interface Notification {
   relatedInterventionId?: string;
   type: NotificationType;
 }
-
-export interface EmailLog {
-  id: string;
-  companyId: string;
-  timestamp: string;
-  recipient: string;
-  subject: string;
-  status: 'success' | 'failure';
-  error?: string;
-}
     
 export const ResendConfigSchema = z.object({
   apiKey: z.string().describe('Resend API Key.'),
