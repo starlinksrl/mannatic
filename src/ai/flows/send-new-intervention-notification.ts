@@ -2,28 +2,23 @@
 'use server';
 import 'dotenv/config';
 /**
- * @fileOverview An AI agent for generating and sending new intervention notification emails.
+ * @fileOverview An AI agent for generating and sending new intervention notification emails using Resend.
  *
  * - sendNewInterventionNotification - A function that generates and sends a notification email for a new intervention.
  * - SendNewInterventionNotificationInput - The input type for the sendNewInterventionNotification function.
  * - SendNewInterventionNotificationOutput - The return type for the sendNewInterventionNotification function.
  */
 
-
-import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { db } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
-const SmtpConfigSchema = z.object({
-  host: z.string().describe('SMTP server host.'),
-  port: z.number().describe('SMTP server port.'),
-  user: z.string().describe('SMTP username.'),
-  pass: z.string().describe('SMTP password.'),
-  from: z.string().email().describe('The sender\'s email address.'),
+const ResendConfigSchema = z.object({
+  apiKey: z.string().describe('Resend API key.'),
+  from: z.string().email().describe("The sender's email address."),
 });
 
 const SendNewInterventionNotificationInputSchema = z.object({
@@ -36,7 +31,7 @@ const SendNewInterventionNotificationInputSchema = z.object({
   clientName: z.string().describe('The name of the client for the intervention.'),
   creatorName: z.string().describe('The name of the user who created the intervention.'),
   assignedOperatorName: z.string().optional().describe('The name of the assigned operator.'),
-  smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+  resendConfig: ResendConfigSchema.describe('Resend configuration for sending the email.'),
   companyId: z.string().describe('The ID of the company.'),
 });
 export type SendNewInterventionNotificationInput = z.infer<typeof SendNewInterventionNotificationInputSchema>;
@@ -50,7 +45,7 @@ export type SendNewInterventionNotificationOutput = z.infer<typeof SendNewInterv
 
 
 export async function sendNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionNotificationOutput> {
-    const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
+    const { resendConfig, recipientEmail, companyId, ...promptInput } = input;
     const emailSubject = `Nuovo Intervento #${promptInput.interventionId} (${promptInput.creatorName} per ${promptInput.clientName})`;
     const formattedDueDate = promptInput.interventionDueDate 
       ? format(new Date(promptInput.interventionDueDate), 'dd/MM/yyyy', { locale: it }) 
@@ -100,22 +95,18 @@ export async function sendNewInterventionNotification(input: SendNewIntervention
     `;
 
     try {
-      const transporter = nodemailer.createTransport({
-        host: smtpConfig.host,
-        port: smtpConfig.port,
-        secure: smtpConfig.port === 465,
-        auth: {
-          user: smtpConfig.user,
-          pass: smtpConfig.pass,
-        },
-      });
+      const resend = new Resend(resendConfig.apiKey);
       
-      await transporter.sendMail({
-        from: smtpConfig.from,
-        to: recipientEmail,
+      const { data, error } = await resend.emails.send({
+        from: resendConfig.from,
+        to: [recipientEmail],
         subject: emailSubject,
         html: emailBody,
       });
+
+      if (error) {
+        throw error;
+      }
 
       await addDoc(collection(db, 'emailLogs'), {
         companyId: companyId,
@@ -142,5 +133,3 @@ export async function sendNewInterventionNotification(input: SendNewIntervention
         return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
     }
 }
-
-    

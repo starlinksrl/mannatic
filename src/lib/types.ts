@@ -7,10 +7,7 @@ export interface AppConfiguration {
   id: 'global';
   appName?: string;
   appLogoUrl?: string;
-  defaultSmtpHost?: string;
-  defaultSmtpPort?: number;
-  defaultSmtpUser?: string;
-  defaultSmtpPass?: string;
+  resendApiKey?: string;
   defaultSenderEmail?: string;
   gcsProjectId?: string;
   gcsClientEmail?: string;
@@ -30,11 +27,8 @@ export interface Company {
   uniqueCode?: string;
   email?: string;
   platformUrl?: string;
-  // SMTP settings
-  smtpHost?: string;
-  smtpPort?: number;
-  smtpUser?: string;
-  smtpPass?: string;
+  // Resend settings
+  resendApiKey?: string;
   senderEmail?: string;
 }
 
@@ -185,17 +179,14 @@ export interface EmailLog {
   error?: string;
 }
     
-export const SmtpConfigSchema = z.object({
-  host: z.string().describe('SMTP server host.'),
-  port: z.number().describe('SMTP server port.'),
-  user: z.string().describe('SMTP username.'),
-  pass: z.string().describe('SMTP password.'),
+export const ResendConfigSchema = z.object({
+  apiKey: z.string().describe('Resend API Key.'),
   from: z.string().email().describe("The sender's email address."),
 });
 
 export const SendTestEmailInputSchema = z.object({
   recipientEmail: z.string().email().describe('The email address of the recipient.'),
-  smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+  resendConfig: ResendConfigSchema.describe('Resend API configuration for sending the email.'),
 });
 export type SendTestEmailInput = z.infer<typeof SendTestEmailInputSchema>;
 

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm, useForm as useSmtpForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Header } from '@/components/dashboard/header';
@@ -14,26 +14,18 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { sendTestEmailAction, saveSmtpSettings, fetchEmailLogs } from '@/app/actions';
-import { Loader, AlertTriangle, Pencil, CheckCircle, MailWarning } from 'lucide-react';
-import { Company, EmailLog } from '@/lib/types';
+import { sendTestEmailAction, saveResendSettings } from '@/app/actions';
+import { Loader, AlertTriangle, Pencil } from 'lucide-react';
+import { Company } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { format } from 'date-fns';
-import { it } from 'date-fns/locale';
-import { Badge } from '@/components/ui/badge';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
-const smtpFormSchema = z.object({
-  smtpHost: z.string().min(1, { message: 'Host SMTP obbligatorio.' }),
-  smtpPort: z.coerce.number().min(1, { message: 'Porta SMTP obbligatoria.' }),
-  smtpUser: z.string().min(1, { message: 'Username obbligatorio.' }),
-  smtpPass: z.string().min(1, { message: 'Password obbligatoria.' }),
+const resendFormSchema = z.object({
+  resendApiKey: z.string().min(1, { message: 'API Key obbligatoria.' }),
   senderEmail: z.string().email({ message: 'Email mittente non valida.' }),
   recipientEmail: z.string().email({ message: 'Email destinatario non valida.' }),
 });
@@ -276,31 +268,31 @@ function CompanyProfileForm({ company, onSave }: { company: Company, onSave: (da
 }
 
 
-function SmtpSettingsForm({ company, onSave, onTest }: { company: Company, onSave: (data: Partial<Company>) => void, onTest: (data: any) => void }) {
+function ResendSettingsForm({ company, onSave, onTest }: { company: Company, onSave: (data: Partial<Company>) => void, onTest: (data: any) => void }) {
   const [isTesting, setIsTesting] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
+  const originalApiKey = useRef(company.resendApiKey);
 
-  const form = useSmtpForm<z.infer<typeof smtpFormSchema>>({
-    resolver: zodResolver(smtpFormSchema),
+  const form = useForm<z.infer<typeof resendFormSchema>>({
+    resolver: zodResolver(resendFormSchema),
     defaultValues: {
-      smtpHost: company.smtpHost || '',
-      smtpPort: company.smtpPort || 587,
-      smtpUser: company.smtpUser || '',
-      smtpPass: company.smtpPass || '',
+      resendApiKey: company.resendApiKey ? '••••••••' : '',
       senderEmail: company.senderEmail || '',
       recipientEmail: '',
     },
   });
 
-  async function onSubmit(values: z.infer<typeof smtpFormSchema>) {
+  async function onSubmit(values: z.infer<typeof resendFormSchema>) {
     setTestError(null);
     const settingsToSave: Partial<Company> = {
-      smtpHost: values.smtpHost,
-      smtpPort: values.smtpPort,
-      smtpUser: values.smtpUser,
-      smtpPass: values.smtpPass,
       senderEmail: values.senderEmail,
     };
+     if (values.resendApiKey !== '••••••••') {
+        settingsToSave.resendApiKey = values.resendApiKey;
+        originalApiKey.current = values.resendApiKey;
+    } else {
+        settingsToSave.resendApiKey = originalApiKey.current;
+    }
     onSave(settingsToSave);
   }
   
@@ -311,20 +303,24 @@ function SmtpSettingsForm({ company, onSave, onTest }: { company: Company, onSav
     setIsTesting(true);
     setTestError(null);
     const values = form.getValues();
+    const apiKey = values.resendApiKey === '••••••••' ? originalApiKey.current : values.resendApiKey;
     
+    if (!apiKey) {
+      setTestError('API Key di Resend non trovata. Salva prima le impostazioni.');
+      setIsTesting(false);
+      return;
+    }
+
     const result = await sendTestEmailAction({
         recipientEmail: values.recipientEmail,
-        smtpConfig: {
-            host: values.smtpHost,
-            port: values.smtpPort,
-            user: values.smtpUser,
-            pass: values.smtpPass,
+        resendConfig: {
+            apiKey: apiKey,
             from: values.senderEmail,
         }
     });
 
     if (!result.success) {
-      setTestError(result.error || 'Controlla le impostazioni SMTP e la connessione di rete.');
+      setTestError(result.error || 'Controlla la tua API Key e che il dominio sia verificato su Resend.');
     }
     onTest(result);
     setIsTesting(false);
@@ -335,99 +331,52 @@ function SmtpSettingsForm({ company, onSave, onTest }: { company: Company, onSav
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Configurazione Notifiche Email (SMTP)</CardTitle>
+            <CardTitle>Configurazione Notifiche Email (Resend)</CardTitle>
             <CardDescription>
-              Inserisci i dettagli del tuo provider SMTP. Le credenziali vengono salvate in modo sicuro.
+              Inserisci la tua API Key di Resend e l'email mittente verificata.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* SMTP Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                        control={form.control}
-                        name="smtpHost"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Host SMTP</FormLabel>
-                            <FormControl>
-                              <Input placeholder="smtp.example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="smtpPort"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Porta SMTP</FormLabel>
-                            <FormControl>
-                              <Input type="number" placeholder="587" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                  </div>
-                  <Separator />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                        control={form.control}
-                        name="smtpUser"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Username SMTP</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Il tuo username" {...field} autoComplete="username" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="smtpPass"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Password SMTP</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} autoComplete="new-password"/>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                  </div>
-                  <Separator />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                        control={form.control}
-                        name="senderEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email Mittente Notifiche</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="noreply@example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="recipientEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email Destinatario Test</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="test@example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                  </div>
+            <FormField
+              control={form.control}
+              name="resendApiKey"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Resend API Key</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="re_..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="senderEmail"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email Mittente</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="noreply@tuodominio.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Separator />
+             <FormField
+                control={form.control}
+                name="recipientEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Destinatario Test</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="test@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onTestConnection} disabled={isTesting}>
@@ -435,7 +384,7 @@ function SmtpSettingsForm({ company, onSave, onTest }: { company: Company, onSav
               Testa Notifica
             </Button>
             <Button type="submit" disabled={isTesting}>
-              Salva Impostazioni SMTP
+              Salva Impostazioni
             </Button>
           </CardFooter>
         </Card>
@@ -453,83 +402,12 @@ function SmtpSettingsForm({ company, onSave, onTest }: { company: Company, onSav
   )
 }
 
-function EmailLogsTab({ companyId, refreshTrigger }: { companyId: string, refreshTrigger: number }) {
-    const [logs, setLogs] = useState<EmailLog[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const loadLogs = async () => {
-            if (!companyId) return;
-            setIsLoading(true);
-            const fetchedLogs = await fetchEmailLogs(companyId);
-            setLogs(fetchedLogs);
-            setIsLoading(false);
-        }
-        loadLogs();
-    }, [companyId, refreshTrigger]);
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Log Email Inviate</CardTitle>
-                <CardDescription>Visualizza lo storico delle email inviate e le risposte del server.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 {isLoading ? (
-                    <div className="flex items-center justify-center p-8">
-                        <Loader className="h-8 w-8 animate-spin" />
-                    </div>
-                ) : (
-                    <ScrollArea className="h-[400px]">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Stato</TableHead>
-                                    <TableHead>Data</TableHead>
-                                    <TableHead>Destinatario</TableHead>
-                                    <TableHead>Oggetto</TableHead>
-                                    <TableHead className="hidden md:table-cell">Errore</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {logs.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-center">Nessun log trovato.</TableCell>
-                                    </TableRow>
-                                ) : (
-                                    logs.map(log => (
-                                        <TableRow key={log.id} className={log.status === 'failure' ? 'bg-destructive/10' : ''}>
-                                            <TableCell>
-                                                {log.status === 'success' ? (
-                                                    <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1"/>Success</Badge>
-                                                ) : (
-                                                    <Badge variant="destructive"><MailWarning className="h-3 w-3 mr-1"/>Failure</Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>{format(new Date(log.timestamp), 'dd/MM/yy HH:mm:ss', { locale: it })}</TableCell>
-                                            <TableCell>{log.recipient}</TableCell>
-                                            <TableCell className="max-w-[200px] truncate">{log.subject}</TableCell>
-                                            <TableCell className="hidden md:table-cell text-xs font-mono break-all">{log.error}</TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
-
 export default function SettingsPage() {
   const { user, currentCompany, setCurrentCompany } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (user && user.role !== 'Admin') {
@@ -545,7 +423,7 @@ export default function SettingsPage() {
     if (!currentCompany) return;
     setIsSaving(true);
     
-    const updatedCompany = await saveSmtpSettings(currentCompany.id, data);
+    const updatedCompany = await saveResendSettings(currentCompany.id, data);
 
     if (updatedCompany) {
         setCurrentCompany(updatedCompany);
@@ -567,10 +445,8 @@ export default function SettingsPage() {
      if (result.success) {
       toast({
         title: 'Test connessione riuscito!',
-        description: `Email di prova inviata con successo. Il log apparirà a breve.`,
+        description: `Email di prova inviata con successo.`,
       });
-      // Trigger a refresh of the log tab after a short delay
-      setTimeout(() => setRefreshTrigger(prev => prev + 1), 2000);
     }
   }
 
@@ -579,19 +455,15 @@ export default function SettingsPage() {
       <Header title="Impostazioni" />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="profile">Profilo Azienda</TabsTrigger>
-            <TabsTrigger value="smtp">Notifiche (SMTP)</TabsTrigger>
-            <TabsTrigger value="logs">Log Email</TabsTrigger>
+            <TabsTrigger value="resend">Notifiche (Resend)</TabsTrigger>
           </TabsList>
           <TabsContent value="profile">
             <CompanyProfileForm company={currentCompany} onSave={handleSave} />
           </TabsContent>
-          <TabsContent value="smtp">
-             <SmtpSettingsForm company={currentCompany} onSave={handleSave} onTest={handleTestResult} />
-          </TabsContent>
-          <TabsContent value="logs">
-             <EmailLogsTab companyId={currentCompany.id} refreshTrigger={refreshTrigger} />
+          <TabsContent value="resend">
+             <ResendSettingsForm company={currentCompany} onSave={handleSave} onTest={handleTestResult} />
           </TabsContent>
         </Tabs>
       </main>

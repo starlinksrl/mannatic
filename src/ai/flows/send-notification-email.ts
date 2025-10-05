@@ -2,33 +2,28 @@
 'use server';
 import 'dotenv/config';
 /**
- * @fileOverview An AI agent for generating and sending maintenance notification emails.
+ * @fileOverview An AI agent for generating and sending maintenance notification emails using Resend.
  *
  * - sendNotificationEmail - A function that generates and sends a notification email for scheduled maintenance.
  * - SendNotificationEmailInput - The input type for the sendNotificationEmail function.
  * - SendNotificationEmailOutput - The return type for the sendNotificationEmail function.
  */
 
-
-import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { db } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
-const SmtpConfigSchema = z.object({
-  host: z.string().describe('SMTP server host.'),
-  port: z.number().describe('SMTP server port.'),
-  user: z.string().describe('SMTP username.'),
-  pass: z.string().describe('SMTP password.'),
-  from: z.string().email().describe('The sender\'s email address.'),
+const ResendConfigSchema = z.object({
+  apiKey: z.string().describe('Resend API key.'),
+  from: z.string().email().describe("The sender's email address."),
 });
 
 const SendNotificationEmailInputSchema = z.object({
   recipientEmail: z.string().email().describe('The email address of the recipient.'),
   maintenanceDetails: z.string().describe('A brief description of the scheduled maintenance.'),
   nextDueDate: z.string().describe('The next due date for the maintenance.'),
-  smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+  resendConfig: ResendConfigSchema.describe('Resend configuration for sending the email.'),
   companyId: z.string().describe('The ID of the company.'),
 });
 export type SendNotificationEmailInput = z.infer<typeof SendNotificationEmailInputSchema>;
@@ -45,8 +40,8 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
   const emailSubject = 'Test Email da MannaTic';
   const emailBody = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h1 style="color: #333;">Email di Prova per Configurazione SMTP</h1>
-          <p>Questa è un'email di prova generata automaticamente da MannaTic per verificare la tua configurazione SMTP.</p>
+          <h1 style="color: #333;">Email di Prova per Configurazione Resend</h1>
+          <p>Questa è un'email di prova generata automaticamente da MannaTic per verificare la tua configurazione di Resend.</p>
           <p><b>Se stai leggendo questa email, le tue impostazioni sono corrette e il sistema è in grado di inviare notifiche.</b></p>
           <hr>
           <p style="font-size: 0.9em; color: #555;">I dati sottostanti sono solo a scopo di esempio e non corrispondono a dati reali:</p>
@@ -58,24 +53,19 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
   `;
 
   try {
-    const { smtpConfig, recipientEmail, companyId } = input;
+    const { resendConfig, recipientEmail, companyId } = input;
+    const resend = new Resend(resendConfig.apiKey);
 
-    const transporter = nodemailer.createTransport({
-      host: smtpConfig.host,
-      port: smtpConfig.port,
-      secure: smtpConfig.port === 465, // true for 465, false for other ports
-      auth: {
-        user: smtpConfig.user,
-        pass: smtpConfig.pass,
-      },
-    });
-
-    await transporter.sendMail({
-      from: smtpConfig.from,
-      to: recipientEmail,
+    const { data, error } = await resend.emails.send({
+      from: resendConfig.from,
+      to: [recipientEmail],
       subject: emailSubject,
       html: emailBody,
     });
+
+    if (error) {
+      throw error;
+    }
 
     await addDoc(collection(db, 'emailLogs'), {
       companyId: companyId,
@@ -102,5 +92,3 @@ export async function sendNotificationEmail(input: SendNotificationEmailInput): 
       return { success: false, error: error.message || 'An unknown error occurred during email sending.' };
   }
 }
-
-    

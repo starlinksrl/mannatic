@@ -14,9 +14,9 @@ import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, getEmailLogs, resetUserPassword, getUserById } from '@/lib/data';
 import { Company, EmailLog, User } from '@/lib/types';
-import nodemailer from 'nodemailer';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Resend } from 'resend';
 import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
 import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
@@ -101,26 +101,22 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
   `;
 
   try {
-    if (!company.smtpHost || !company.senderEmail) {
-      throw new Error('La configurazione SMTP per questa azienda è incompleta.');
+    if (!company.resendApiKey || !company.senderEmail) {
+      throw new Error('La configurazione di Resend per questa azienda è incompleta.');
     }
     
-    const transporter = nodemailer.createTransport({
-      host: company.smtpHost,
-      port: company.smtpPort,
-      secure: company.smtpPort === 465,
-      auth: {
-        user: company.smtpUser,
-        pass: company.smtpPass,
-      },
+    const resend = new Resend(company.resendApiKey);
+
+    const { data, error } = await resend.emails.send({
+        from: company.senderEmail,
+        to: recipientEmail,
+        subject: emailSubject,
+        html: emailBody,
     });
 
-    await transporter.sendMail({
-      from: company.senderEmail,
-      to: recipientEmail,
-      subject: emailSubject,
-      html: emailBody,
-    });
+    if (error) {
+        throw error;
+    }
 
     await addDoc(collection(db, 'emailLogs'), {
       companyId: company.id,
@@ -150,12 +146,12 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
 }
 
 
-export async function saveSmtpSettings(companyId: string, settings: Partial<Company>): Promise<Company | null> {
+export async function saveResendSettings(companyId: string, settings: Partial<Company>): Promise<Company | null> {
     try {
         const result = await updateCompany(companyId, settings);
         return result;
     } catch (error: any) {
-        console.error("Error saving SMTP settings:", error);
+        console.error("Error saving Resend settings:", error);
         return null;
     }
 }
@@ -188,8 +184,8 @@ export async function handlePasswordResetRequest(email: string): Promise<{ succe
     }
     
     const company = await getCompanyByUserId(user.id);
-    if (!company || !company.smtpHost) {
-        return { success: false, message: "Impossibile inviare email. La configurazione SMTP dell'azienda non è completa." };
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        return { success: false, message: "Impossibile inviare email. La configurazione di Resend per l'azienda non è completa." };
     }
 
     try {
@@ -201,12 +197,9 @@ export async function handlePasswordResetRequest(email: string): Promise<{ succe
             userName: user.name,
             resetLink,
             companyId: company.id,
-            smtpConfig: {
-                host: company.smtpHost,
-                port: company.smtpPort!,
-                user: company.smtpUser!,
-                pass: company.smtpPass!,
-                from: company.senderEmail!,
+            resendConfig: {
+                apiKey: company.resendApiKey,
+                from: company.senderEmail,
             }
         };
 
@@ -250,8 +243,8 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
     }
     
     const company = await getCompanyByUserId(userId);
-    if (!company || !company.smtpHost || !company.senderEmail) {
-        return { success: false, error: 'La configurazione SMTP per questa azienda è incompleta.' };
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        return { success: false, error: 'La configurazione di Resend per questa azienda è incompleta.' };
     }
     
     if (!user.password) {
@@ -266,12 +259,9 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
             userPassword: user.password,
             loginLink: company.platformUrl || 'https://work.mannatec.it',
             companyId: company.id,
-            smtpConfig: {
-                host: company.smtpHost,
-                port: company.smtpPort!,
-                user: company.smtpUser!,
-                pass: company.smtpPass!,
-                from: company.senderEmail!,
+            resendConfig: {
+                apiKey: company.resendApiKey,
+                from: company.senderEmail,
             }
         };
 
@@ -282,5 +272,3 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }
-
-    

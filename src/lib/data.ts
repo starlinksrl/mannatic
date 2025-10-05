@@ -30,9 +30,12 @@ export async function updateAppConfiguration(config: Partial<Omit<AppConfigurati
         
         const configToSave: Partial<AppConfiguration> = { ...config };
         
-        // If private key is provided and not empty, save it. Otherwise, don't update it.
         if (!config.gcsPrivateKey || config.gcsPrivateKey.trim() === '' || config.gcsPrivateKey === '••••••••') {
             delete configToSave.gcsPrivateKey;
+        }
+
+        if (!config.resendApiKey || config.resendApiKey.trim() === '' || config.resendApiKey === '••••••••') {
+            delete configToSave.resendApiKey;
         }
 
         await setDoc(docRef, configToSave, { merge: true });
@@ -115,10 +118,7 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
             uniqueCode: companyData.uniqueCode || '',
             email: companyData.email || '',
             platformUrl: companyData.platformUrl || 'https://work.mannatec.it',
-            smtpHost: appConfig?.defaultSmtpHost,
-            smtpPort: appConfig?.defaultSmtpPort,
-            smtpUser: appConfig?.defaultSmtpUser,
-            smtpPass: appConfig?.defaultSmtpPass,
+            resendApiKey: appConfig?.resendApiKey,
             senderEmail: appConfig?.defaultSenderEmail,
         };
 
@@ -146,6 +146,9 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
 export async function updateCompany(id: string, updatedData: Partial<Company>): Promise<Company | null> {
     try {
         const docRef = doc(db, 'companies', id);
+        if (updatedData.resendApiKey === '') {
+            delete updatedData.resendApiKey;
+        }
         await updateDoc(docRef, updatedData);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Company : null;
@@ -425,8 +428,8 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
     if (!companyDoc.exists()) return;
     const company = { id: companyDoc.id, ...companyDoc.data() } as Company;
 
-    if (!company.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPass || !company.senderEmail) {
-        console.log(`Skipping expiry notifications for company ${companyId}: SMTP not configured.`);
+    if (!company.resendApiKey || !company.senderEmail) {
+        console.log(`Skipping expiry notifications for company ${companyId}: Resend not configured.`);
         return;
     }
 
@@ -470,11 +473,8 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
                         clientName: client.name,
                         dueDate: dueDate.toLocaleDateString('it-IT'),
                         companyId: company.id,
-                        smtpConfig: {
-                            host: company.smtpHost,
-                            port: company.smtpPort,
-                            user: company.smtpUser,
-                            pass: company.smtpPass,
+                        resendConfig: {
+                            apiKey: company.resendApiKey,
                             from: company.senderEmail,
                         }
                     });
@@ -488,7 +488,6 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
 export async function getInterventions(companyId: string): Promise<(Intervention | ScheduledMaintenance)[]> {
     if (!companyId) return [];
     
-    // Check for expiring interventions (could be moved to a cron job in a real app)
     await checkAndNotifyExpiringInterventions(companyId);
 
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
@@ -502,10 +501,8 @@ export async function getInterventions(companyId: string): Promise<(Intervention
         if ('workLogs' in intervention && intervention.workLogs) {
             let needsUpdate = false;
             const updatedLogs = intervention.workLogs.map(log => {
-                // Check if the log is active and has been running for more than 12 hours
                 if (log.startTime && !log.endTime && differenceInHours(now, new Date(log.startTime)) > 12) {
                     needsUpdate = true;
-                    // Auto-close the log after 1 hour from start time, using the same location
                     return {
                         ...log,
                         endTime: addHours(new Date(log.startTime), 1).toISOString(),
@@ -518,13 +515,11 @@ export async function getInterventions(companyId: string): Promise<(Intervention
             if (needsUpdate) {
                 const updatedIntervention = { ...intervention, workLogs: updatedLogs };
                 
-                // Recalculate total time spent
                 const totalMinutes = updatedLogs
                     .filter(log => log.endTime)
                     .reduce((acc, log) => acc + differenceInMinutes(new Date(log.endTime!), new Date(log.startTime)), 0);
                 updatedIntervention.timeSpent = parseFloat((totalMinutes / 60).toFixed(2));
                 
-                // Add a system note
                 const systemUpdate: InterventionUpdate = {
                     date: new Date().toISOString(),
                     description: "Sessione di lavoro terminata automaticamente dal sistema per superamento del tempo massimo.",
@@ -532,14 +527,12 @@ export async function getInterventions(companyId: string): Promise<(Intervention
                 };
                 updatedIntervention.updates = [...(updatedIntervention.updates || []), systemUpdate];
                 
-                // Update Firestore document
                 await updateDoc(doc(db, 'interventions', intervention.id), updatedIntervention);
                 autoClosedInterventions.push(updatedIntervention as Intervention);
             }
         }
     }
     
-    // Replace the modified interventions in the list to be returned
     return allCompanyInterventions.map(i => {
         const updatedVersion = autoClosedInterventions.find(aci => aci.id === i.id);
         return updatedVersion || i;
@@ -563,7 +556,6 @@ export async function getInterventionTitles(companyId: string): Promise<string[]
     const snapshot = await getDocs(q);
     const titles = snapshot.docs.map(doc => doc.data().title as string);
     
-    // Return unique titles
     return [...new Set(titles)];
 }
 
@@ -594,7 +586,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
         const newClient = await addUser({
             name: clientId,
-            email: clientEmail, // The email is now just for data, not auth
+            email: clientEmail, 
             role: 'Client',
             companyId: companyId,
             address: 'Indirizzo da definire',
@@ -612,7 +604,6 @@ export async function addIntervention(interventionData: AddInterventionParams): 
     
     const newId = generateShortId();
     
-    // Handle attachments upload
     const appConfig = await getAppConfiguration();
     const finalAttachments: Attachment[] = [];
     if (appConfig && appConfig.gcsBucketName && attachments) {
@@ -636,7 +627,6 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                     });
                 } else {
                    console.error(`Failed to upload attachment ${attachment.name}: ${uploadResult.error}`);
-                   // Optionally add it with the data URI as a fallback
                    finalAttachments.push(attachment);
                 }
             } catch(uploadError) {
@@ -664,14 +654,12 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
     await setDoc(doc(db, 'interventions', newId), newInterventionData);
 
-    // --- NOTIFICATION LOGIC ---
     const companyDocRef = doc(db, 'companies', companyId);
     const companyDoc = await getDoc(companyDocRef);
     if (companyDoc.exists()) {
         const company: Company = { id: companyDoc.id, ...companyDoc.data() };
 
-        if (company.smtpHost) {
-            // Notify Admins
+        if (company.resendApiKey && company.senderEmail) {
             const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
             const adminsSnapshot = await getDocs(qAdmins);
             const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
@@ -694,8 +682,9 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                         creatorName: creatorName,
                         assignedOperatorName: operatorName,
                         companyId: company.id,
-                        smtpConfig: {
-                            host: company.smtpHost, port: company.smtpPort!, user: company.smtpUser!, pass: company.smtpPass!, from: company.senderEmail!,
+                        resendConfig: {
+                            apiKey: company.resendApiKey,
+                            from: company.senderEmail,
                         }
                     });
                      await addDoc(collection(db, 'notifications'), {
@@ -707,7 +696,6 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                 }
             }
 
-            // Notify Client
             const client = await getUserById(newInterventionData.clientId);
             if (client && client.email) {
                 await sendClientUpdateEmail({
@@ -759,7 +747,6 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         
         const dataToUpdate: { [key: string]: any } = { ...updatedData };
 
-        // Handle attachments upload
         const appConfig = await getAppConfiguration();
         if (appConfig && appConfig.gcsBucketName && dataToUpdate.attachments) {
             const newAttachments = (dataToUpdate.attachments as Attachment[]).filter(
@@ -782,7 +769,6 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                         });
 
                         if (uploadResult.success && uploadResult.fileUrl) {
-                            // Find the corresponding attachment in the main array and update its URL
                             const originalIndex = dataToUpdate.attachments.findIndex((att: Attachment) => att.id === attachment.id);
                             if (originalIndex > -1) {
                                 dataToUpdate.attachments[originalIndex].url = uploadResult.fileUrl;
@@ -826,7 +812,6 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
 
 
         if (statusChanged || commentAdded) {
-            // In-app notifications for internal team
             const internalRecipients: string[] = [];
             if (interventionForNotif.assignedOperatorId && interventionForNotif.assignedOperatorId !== updater.id) {
                 internalRecipients.push(interventionForNotif.assignedOperatorId);
@@ -857,14 +842,13 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                 });
             }
 
-            // Email notification for client
             const client = await getUserById(interventionForNotif.clientId);
             const companyDocRef = doc(db, 'companies', interventionForNotif.companyId);
             const companyDoc = await getDoc(companyDocRef);
 
             if (client && client.email && companyDoc.exists()) {
                 const company: Company = {id: companyDoc.id, ...companyDoc.data()};
-                if(company.smtpHost) {
+                if(company.resendApiKey && company.senderEmail) {
                      await sendClientUpdateEmail({
                         recipientEmail: client.email,
                         clientName: client.name,
@@ -900,7 +884,7 @@ export async function markInterventionUpdateAsRead(interventionId: string, updat
 
         const updateIndex = updates.findIndex(u => u.date === updateDate);
         if (updateIndex === -1) {
-            return false; // Update not found
+            return false;
         }
         
         const updateToModify = updates[updateIndex];
@@ -938,14 +922,10 @@ export async function updateScheduledMaintenance(id: string, updatedData: Partia
 
         if (isBeingCompleted) {
             const completionDate = new Date();
-            // Recalculate next due date from the completion date
             combinedData.nextDueDate = addMonths(completionDate, combinedData.recurrenceMonths!).toISOString();
-            // Set the execution date to today
             combinedData.dueDate = completionDate.toISOString();
-            // Reset status to 'Pianificato' for the next cycle
             combinedData.status = 'Pianificato';
         } else if (updatedData.recurrenceMonths || updatedData.dueDate) {
-            // Recalculate if recurrence or due date is manually changed for other reasons
             combinedData.nextDueDate = addMonths(new Date(combinedData.dueDate!), combinedData.recurrenceMonths!).toISOString();
         }
 
@@ -962,14 +942,12 @@ export async function deleteIntervention(id: string): Promise<boolean> {
     try {
         const batch = writeBatch(db);
 
-        // Delete associated notifications
         const notificationsQuery = query(collection(db, 'notifications'), where('relatedInterventionId', '==', id));
         const notificationsSnapshot = await getDocs(notificationsQuery);
         notificationsSnapshot.forEach(doc => {
             batch.delete(doc.ref);
         });
 
-        // Delete the intervention itself
         const interventionRef = doc(db, 'interventions', id);
         batch.delete(interventionRef);
         
@@ -985,14 +963,12 @@ export async function deleteScheduledMaintenance(id: string): Promise<boolean> {
      try {
         const batch = writeBatch(db);
 
-        // Delete associated notifications
         const notificationsQuery = query(collection(db, 'notifications'), where('relatedInterventionId', '==', id));
         const notificationsSnapshot = await getDocs(notificationsQuery);
         notificationsSnapshot.forEach(doc => {
             batch.delete(doc.ref);
         });
 
-        // Delete the maintenance task itself (it's in the 'interventions' collection)
         const maintenanceRef = doc(db, 'interventions', id);
         batch.delete(maintenanceRef);
         
@@ -1139,7 +1115,6 @@ export async function getEmailLogs(companyId: string): Promise<EmailLog[]> {
         const q = query(collection(db, 'emailLogs'), where("companyId", "==", companyId));
         const snapshot = await getDocs(q);
         const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailLog));
-        // Sort in code to avoid composite index requirement
         return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     } catch (error) {
         console.error("Error fetching email logs:", error);
@@ -1156,19 +1131,3 @@ export async function getAllEmailLogs(): Promise<EmailLog[]> {
         return [];
     }
 }
-    
-    
-
-
-
-
-
-
-    
-
-
-
-
-
-
-

@@ -25,10 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 const formSchema = z.object({
   appName: z.string().optional(),
   appLogoUrl: z.string().optional(),
-  defaultSmtpHost: z.string().optional(),
-  defaultSmtpPort: z.coerce.number().optional(),
-  defaultSmtpUser: z.string().optional(),
-  defaultSmtpPass: z.string().optional(),
+  resendApiKey: z.string().optional(),
   defaultSenderEmail: z.string().email({ message: "L'email del mittente non è valida." }).optional().or(z.literal('')),
   gcsProjectId: z.string().optional(),
   gcsClientEmail: z.string().optional(),
@@ -54,10 +51,7 @@ export default function CreatorSettingsPage() {
     defaultValues: {
       appName: '',
       appLogoUrl: '',
-      defaultSmtpHost: '',
-      defaultSmtpPort: 587,
-      defaultSmtpUser: '',
-      defaultSmtpPass: '',
+      resendApiKey: '',
       defaultSenderEmail: '',
       gcsProjectId: '',
       gcsClientEmail: '',
@@ -68,6 +62,7 @@ export default function CreatorSettingsPage() {
   });
   
   const originalPrivateKey = useRef('');
+  const originalResendKey = useRef('');
 
   useEffect(() => {
     if (user && user.role !== 'Creator') {
@@ -82,10 +77,7 @@ export default function CreatorSettingsPage() {
         form.reset({
           appName: config.appName ?? '',
           appLogoUrl: config.appLogoUrl ?? '',
-          defaultSmtpHost: config.defaultSmtpHost ?? '',
-          defaultSmtpPort: config.defaultSmtpPort ?? 587,
-          defaultSmtpUser: config.defaultSmtpUser ?? '',
-          defaultSmtpPass: config.defaultSmtpPass ?? '',
+          resendApiKey: config.resendApiKey ? '••••••••' : '',
           defaultSenderEmail: config.defaultSenderEmail ?? '',
           gcsProjectId: config.gcsProjectId ?? '',
           gcsClientEmail: config.gcsClientEmail ?? '',
@@ -94,6 +86,7 @@ export default function CreatorSettingsPage() {
           testRecipientEmail: '', // This should not be persisted
         });
         originalPrivateKey.current = config.gcsPrivateKey || '';
+        originalResendKey.current = config.resendApiKey || '';
       }
       setIsLoading(false);
     }
@@ -114,6 +107,12 @@ export default function CreatorSettingsPage() {
     } else {
        originalPrivateKey.current = values.gcsPrivateKey || '';
     }
+
+    if (values.resendApiKey === '••••••••') {
+      configToSave.resendApiKey = originalResendKey.current;
+    } else {
+       originalResendKey.current = values.resendApiKey || '';
+    }
     
     const { testRecipientEmail, ...finalConfig } = configToSave;
 
@@ -125,6 +124,9 @@ export default function CreatorSettingsPage() {
       });
        if (result.gcsPrivateKey) {
          form.setValue('gcsPrivateKey', '••••••••');
+       }
+       if (result.resendApiKey) {
+         form.setValue('resendApiKey', '••••••••');
        }
     } else {
       toast({
@@ -147,20 +149,19 @@ export default function CreatorSettingsPage() {
     }
   };
 
-  const handleSmtpTest = async () => {
+  const handleResendTest = async () => {
     const values = form.getValues();
-    if (!values.testRecipientEmail || !values.defaultSmtpHost || !values.defaultSenderEmail) {
-        toast({ variant: 'destructive', title: 'Campi Mancanti', description: 'Per inviare un test, inserisci Host, Email Mittente e Email Destinatario Test.' });
+    const apiKey = values.resendApiKey === '••••••••' ? originalResendKey.current : values.resendApiKey;
+
+    if (!values.testRecipientEmail || !apiKey || !values.defaultSenderEmail) {
+        toast({ variant: 'destructive', title: 'Campi Mancanti', description: 'Per inviare un test, inserisci API Key, Email Mittente e Email Destinatario Test.' });
         return;
     }
     setIsTestingSmtp(true);
     const result = await sendTestEmailAction({
         recipientEmail: values.testRecipientEmail,
-        smtpConfig: {
-            host: values.defaultSmtpHost,
-            port: values.defaultSmtpPort || 587,
-            user: values.defaultSmtpUser || '',
-            pass: values.defaultSmtpPass || '',
+        resendConfig: {
+            apiKey: apiKey,
             from: values.defaultSenderEmail,
         }
     });
@@ -259,81 +260,38 @@ export default function CreatorSettingsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>SMTP di Default</CardTitle>
+                <CardTitle>Invio Email (Resend)</CardTitle>
                 <CardDescription>
-                  Queste impostazioni SMTP verranno usate come predefinite per ogni nuova azienda creata.
+                  Queste impostazioni verranno usate come predefinite per ogni nuova azienda creata.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                        control={form.control}
-                        name="defaultSmtpHost"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Host SMTP</FormLabel>
-                            <FormControl>
-                              <Input placeholder="smtp.example.com" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="defaultSmtpPort"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Porta SMTP</FormLabel>
-                            <FormControl>
-                              <Input type="number" placeholder="587" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                        control={form.control}
-                        name="defaultSmtpUser"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Username SMTP</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Username" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="defaultSmtpPass"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Password SMTP</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                  </div>
-                    <FormField
-                        control={form.control}
-                        name="defaultSenderEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email Mittente di Default</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="noreply@example.com" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                 <FormField
+                    control={form.control}
+                    name="resendApiKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Resend API Key</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="re_..." {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                      control={form.control}
+                      name="defaultSenderEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Mittente di Default</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="noreply@example.com" {...field} value={field.value ?? ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                 <Separator />
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                      <FormField
@@ -349,7 +307,7 @@ export default function CreatorSettingsPage() {
                           </FormItem>
                         )}
                       />
-                    <Button type="button" variant="outline" onClick={handleSmtpTest} disabled={isTestingSmtp}>
+                    <Button type="button" variant="outline" onClick={handleResendTest} disabled={isTestingSmtp}>
                         {isTestingSmtp ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
                         Invia Email di Prova
                     </Button>

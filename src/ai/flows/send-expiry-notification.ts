@@ -2,7 +2,7 @@
 'use server';
 import 'dotenv/config';
 /**
- * @fileOverview An AI agent for generating and sending intervention expiry notification emails.
+ * @fileOverview An AI agent for generating and sending intervention expiry notification emails using Resend.
  *
  * - sendExpiryNotification - A function that generates and sends a notification email for an expiring intervention.
  * - SendExpiryNotificationInput - The input type for the sendExpiryNotification function.
@@ -12,16 +12,13 @@ import 'dotenv/config';
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { db } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
-const SmtpConfigSchema = z.object({
-  host: z.string().describe('SMTP server host.'),
-  port: z.number().describe('SMTP server port.'),
-  user: z.string().describe('SMTP username.'),
-  pass: z.string().describe('SMTP password.'),
-  from: z.string().email().describe('The sender\'s email address.'),
+const ResendConfigSchema = z.object({
+  apiKey: z.string().describe('Resend API key.'),
+  from: z.string().email().describe("The sender's email address."),
 });
 
 const SendExpiryNotificationInputSchema = z.object({
@@ -30,7 +27,7 @@ const SendExpiryNotificationInputSchema = z.object({
   interventionTitle: z.string().describe('The title of the expiring intervention.'),
   clientName: z.string().describe('The name of the client for the intervention.'),
   dueDate: z.string().describe('The due date of the intervention.'),
-  smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+  resendConfig: ResendConfigSchema.describe('Resend configuration for sending the email.'),
   companyId: z.string().describe('The ID of the company.'),
 });
 export type SendExpiryNotificationInput = z.infer<typeof SendExpiryNotificationInputSchema>;
@@ -81,7 +78,7 @@ const sendExpiryNotificationFlow = ai.defineFlow(
     outputSchema: SendExpiryNotificationOutputSchema,
   },
   async (input) => {
-    const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
+    const { resendConfig, recipientEmail, companyId, ...promptInput } = input;
     let emailSubject = `Expiry for intervention #${input.interventionId}`;
     try {
       const { output } = await prompt(promptInput);
@@ -92,22 +89,18 @@ const sendExpiryNotificationFlow = ai.defineFlow(
       
       emailSubject = output.emailSubject;
 
-      const transporter = nodemailer.createTransport({
-        host: smtpConfig.host,
-        port: smtpConfig.port,
-        secure: smtpConfig.port === 465,
-        auth: {
-          user: smtpConfig.user,
-          pass: smtpConfig.pass,
-        },
-      });
+      const resend = new Resend(resendConfig.apiKey);
 
-      await transporter.sendMail({
-        from: smtpConfig.from,
-        to: recipientEmail,
+      const { data, error } = await resend.emails.send({
+        from: resendConfig.from,
+        to: [recipientEmail],
         subject: output.emailSubject,
         html: output.emailBody,
       });
+
+      if (error) {
+        throw error;
+      }
 
       await addDoc(collection(db, 'emailLogs'), {
         companyId: companyId,
@@ -140,5 +133,3 @@ const sendExpiryNotificationFlow = ai.defineFlow(
 export async function sendExpiryNotification(input: SendExpiryNotificationInput): Promise<SendExpiryNotificationOutput> {
     return sendExpiryNotificationFlow(input);
 }
-
-    

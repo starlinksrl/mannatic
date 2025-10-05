@@ -2,7 +2,7 @@
 'use server';
 import 'dotenv/config';
 /**
- * @fileOverview An AI agent for generating and sending password reset emails.
+ * @fileOverview An AI agent for generating and sending password reset emails using Resend.
  *
  * - sendPasswordResetEmail - A function that generates and sends a password reset email.
  * - SendPasswordResetEmailInput - The input type for this function.
@@ -11,23 +11,20 @@ import 'dotenv/config';
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { db } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
-const SmtpConfigSchema = z.object({
-  host: z.string().describe('SMTP server host.'),
-  port: z.number().describe('SMTP server port.'),
-  user: z.string().describe('SMTP username.'),
-  pass: z.string().describe('SMTP password.'),
-  from: z.string().email().describe('The sender\'s email address.'),
+const ResendConfigSchema = z.object({
+  apiKey: z.string().describe('Resend API key.'),
+  from: z.string().email().describe("The sender's email address."),
 });
 
 const SendPasswordResetEmailInputSchema = z.object({
   recipientEmail: z.string().email().describe('The email address of the user.'),
   userName: z.string().describe('The name of the user.'),
   resetLink: z.string().url().describe('The password reset link.'),
-  smtpConfig: SmtpConfigSchema.describe('SMTP server configuration for sending the email.'),
+  resendConfig: ResendConfigSchema.describe('Resend configuration for sending the email.'),
   companyId: z.string().describe('The ID of the company.'),
 });
 export type SendPasswordResetEmailInput = z.infer<typeof SendPasswordResetEmailInputSchema>;
@@ -71,7 +68,7 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
     outputSchema: SendPasswordResetEmailOutputSchema,
   },
   async (input) => {
-    const { smtpConfig, recipientEmail, companyId, ...promptInput } = input;
+    const { resendConfig, recipientEmail, companyId, ...promptInput } = input;
     let emailSubject = `Password Reset for ${input.userName}`;
     try {
       const { output } = await prompt(promptInput);
@@ -82,22 +79,18 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
       
       emailSubject = output.emailSubject;
 
-      const transporter = nodemailer.createTransport({
-        host: smtpConfig.host,
-        port: smtpConfig.port,
-        secure: smtpConfig.port === 465,
-        auth: {
-          user: smtpConfig.user,
-          pass: smtpConfig.pass,
-        },
-      });
+      const resend = new Resend(resendConfig.apiKey);
 
-      await transporter.sendMail({
-        from: smtpConfig.from,
-        to: recipientEmail,
+      const { data, error } = await resend.emails.send({
+        from: resendConfig.from,
+        to: [recipientEmail],
         subject: output.emailSubject,
         html: output.emailBody,
       });
+
+      if (error) {
+        throw error;
+      }
 
       await addDoc(collection(db, 'emailLogs'), {
         companyId: companyId,
@@ -129,5 +122,3 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
 export async function sendPasswordResetEmail(input: SendPasswordResetEmailInput): Promise<SendPasswordResetEmailOutput> {
     return sendPasswordResetEmailFlow(input);
 }
-
-    
