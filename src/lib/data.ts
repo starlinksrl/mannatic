@@ -117,7 +117,7 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
             phone: companyData.phone || '',
             uniqueCode: companyData.uniqueCode || '',
             email: companyData.email || '',
-            platformUrl: companyData.platformUrl || 'https://work.mannatec.it',
+            platformUrl: companyData.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it',
             resendApiKey: appConfig?.resendApiKey,
             senderEmail: appConfig?.defaultSenderEmail,
         };
@@ -738,6 +738,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             const client = await getUserById(newInterventionData.clientId);
             if (client && client.email) {
                 const autologinToken = await createAutologinToken(client.id);
+                const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
                 
                 await sendClientUpdateEmail({
                     recipientEmail: client.email,
@@ -747,7 +748,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                     interventionStatus: newInterventionData.status,
                     updateMessage: 'creato',
                     company: company,
-                    interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/login?autologin_token=${autologinToken}`,
+                    interventionLink: `${baseUrl}/login?autologin_token=${autologinToken}`,
                 });
             }
         }
@@ -891,6 +892,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                 const company: Company = {id: companyDoc.id, ...companyDoc.data()};
                 if(company.resendApiKey && company.senderEmail) {
                     const autologinToken = await createAutologinToken(client.id);
+                    const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
                      await sendClientUpdateEmail({
                         recipientEmail: client.email,
                         clientName: client.name,
@@ -899,7 +901,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                         interventionStatus: interventionForNotif.status,
                         updateMessage: latestUpdateMessage,
                         company: company,
-                        interventionLink: `${process.env.NEXT_PUBLIC_APP_URL}/login?autologin_token=${autologinToken}`,
+                        interventionLink: `${baseUrl}/login?autologin_token=${autologinToken}`,
                     });
                 }
             }

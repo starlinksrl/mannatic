@@ -169,7 +169,8 @@ export async function handlePasswordResetRequest(email: string): Promise<{ succe
 
     try {
         const token = await createPasswordResetToken(user.id);
-        const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
+        const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
+        const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
         const input: SendPasswordResetEmailInput = {
             recipientEmail: user.email,
@@ -221,12 +222,13 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
     }
 
     try {
+        const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
         const input: SendCredentialsEmailInput = {
             recipientEmail: user.email,
             userName: user.name,
             userEmail: user.email,
             userPassword: user.password,
-            loginLink: company.platformUrl || 'https://work.mannatec.it',
+            loginLink: baseUrl,
             companyId: company.id,
             resendConfig: {
                 apiKey: company.resendApiKey,
