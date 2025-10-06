@@ -58,7 +58,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [operatorFilter, setOperatorFilter] = useState('all');
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'dueDate', direction: 'ascending' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'createdAt', direction: 'ascending' });
   
   const [clientsMap, setClientsMap] = useState<Map<string, Client>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
@@ -236,6 +236,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     { key: 'address', label: 'Indirizzo', visible: currentUser.role === 'Admin', className: 'hidden xl:table-cell' },
     { key: 'status', label: 'Stato', visible: true },
     { key: 'priority', label: 'Priorità', visible: true, className: 'hidden sm:table-cell' },
+    { key: 'createdAt', label: 'Creazione', visible: true, className: 'hidden md:table-cell' },
     { key: 'dueDate', label: 'Scadenza', visible: true, className: 'hidden md:table-cell' },
     { key: 'operator', label: 'Operatore', visible: currentUser.role !== 'Operator', className: 'hidden lg:table-cell' },
     { key: 'actions', label: 'Azioni', visible: true, className: 'w-12' },
@@ -315,7 +316,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                           </div>
                         )}
                         <p className="text-muted-foreground break-words">{intervention.title}</p>
-                        {intervention.dueDate && <p className="text-sm text-muted-foreground break-words">{format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
+                        {intervention.createdAt && <p className="text-sm text-muted-foreground break-words">Creato: {format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>}
+                        {intervention.dueDate && <p className="text-sm text-muted-foreground break-words">Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                         <div className="flex items-center gap-2 pt-1">
                             {getPriorityBadge(intervention.priority)}
                             {getStatusBadge(intervention.status)}
@@ -418,6 +420,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                    )}
                   <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getStatusBadge(intervention.status)}</TableCell>
                   <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getPriorityBadge(intervention.priority)}</TableCell>
+                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.createdAt ? format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
                   <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
                   {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{operatorName || 'Non assegnato'}</TableCell>}
                   <TableCell className="text-right">
