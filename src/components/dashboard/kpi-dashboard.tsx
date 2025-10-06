@@ -14,7 +14,11 @@ import { Intervention, ScheduledMaintenance, User } from '@/lib/types';
 import { Badge } from '../ui/badge';
 
 interface KpiDashboardProps {
-  kpiData: GenerateKpiDashboardInput & { 
+  kpiData: GenerateKpiDashboardInput & {
+      openInterventions: number;
+      closedInterventions: number;
+      slaAdherencePercentage: number;
+      overdueMaintenanceTasks: number; 
       operatorWorkloadData: { name: string, workload: number }[],
       highPriorityInterventions: (Intervention | ScheduledMaintenance)[],
     };
@@ -39,7 +43,7 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
     
     const fetchDescription = async () => {
       setIsLoading(true);
-      const result = await getKpiDashboardDescription(kpiData);
+      const result = await getKpiDashboardDescription({openInterventionsWithLocation: kpiData.openInterventionsWithLocation});
       setDescription(result.dashboardDescription);
       setIsLoading(false);
     };

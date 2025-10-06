@@ -28,6 +28,10 @@ export type EnrichedUpdate = InterventionUpdate & {
 };
 
 type KpiData = GenerateKpiDashboardInput & { 
+  openInterventions: number;
+  closedInterventions: number;
+  slaAdherencePercentage: number;
+  overdueMaintenanceTasks: number;
   operatorWorkloadData: { name: string, workload: number }[],
   highPriorityInterventions: (Intervention | ScheduledMaintenance)[],
   latestUpdates: EnrichedUpdate[],
@@ -116,7 +120,7 @@ export default function DashboardPage() {
               id: i.id,
               title: i.title,
               clientName: client?.name || 'Sconosciuto',
-              clientAddress: client?.address || null, // Ensure it's null, not undefined
+              clientAddress: client?.address,
           };
       })
       .filter(i => i.clientAddress); // Filter out interventions where client address is null
@@ -126,12 +130,11 @@ export default function DashboardPage() {
       closedInterventions: closedInterventions.length,
       slaAdherencePercentage,
       overdueMaintenanceTasks,
-      operatorWorkload,
       operatorWorkloadData,
       highPriorityInterventions,
       latestUpdates,
       allInterventions: relevantInterventions,
-      openInterventionsWithLocation,
+      openInterventionsWithLocation: openInterventionsWithLocation as { id: string; title: string; clientName: string; clientAddress: string; }[],
     });
     setLoading(false);
   }
