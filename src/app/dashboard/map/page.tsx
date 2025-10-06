@@ -6,8 +6,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { GoogleMap, MarkerF, InfoWindow, Circle } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
-import { getClients, getInterventions, geocodeAddress } from '@/lib/data';
-import { Client, Intervention } from '@/lib/types';
+import { getClients, getInterventions, geocodeAddress, getUsers } from '@/lib/data';
+import { Client, Intervention, User } from '@/lib/types';
 import { Loader, MapPin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ const center = {
   lng: 12.5674,
 };
 
-type ClientWithLocation = Client & {
+type ClientWithLocation = User & {
   location: { lat: number; lng: number };
   interventionsCount: number;
 };
@@ -51,10 +51,12 @@ export default function MapPage() {
       if (!currentCompany || !isLoaded) return;
       setLoading(true);
 
-      const [clients, allInterventions] = await Promise.all([
-        getClients(currentCompany.id),
+      const [allUsers, allInterventions] = await Promise.all([
+        getUsers(currentCompany.id),
         getInterventions(currentCompany.id),
       ]);
+      
+      const clients = allUsers.filter(u => u.role === 'Client');
       
       const openInterventionStatuses = ['Nuovo', 'In corso', 'In attesa'];
       
@@ -101,7 +103,10 @@ export default function MapPage() {
   }, [selectedClient, clientsWithLocation, distance, isLoaded]);
 
 
-  if (loadError) return <div>Error loading maps</div>;
+  if (loadError) {
+    console.error("Map Load Error:", loadError)
+    return <div>Error loading maps. Check console for details.</div>;
+  }
   if (!isLoaded || loading) {
     return (
         <>
