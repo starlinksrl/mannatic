@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Check, ChevronsUpDown, UploadCloud, File as FileIcon, Trash2, Image as ImageIcon, FileText } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown, UploadCloud, File as FileIcon, Trash2, Image as ImageIcon, FileText, Loader } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -71,6 +71,7 @@ interface AddInterventionFormProps {
 
 export function AddInterventionForm({ children, onInterventionAdded, clients, operators, currentUser, defaultType = 'standard' }: AddInterventionFormProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
@@ -115,6 +116,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany || !currentUser) return;
     
+    setIsSubmitting(true);
     let finalDueDate: string | null = null;
     if (values.dueDate && values.dueTime) {
       const [hours, minutes] = values.dueTime.split(':').map(Number);
@@ -147,6 +149,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       title: 'Intervento creato',
       description: `L'intervento "${values.title}" è stato creato con successo.`,
     });
+    setIsSubmitting(false);
     setIsOpen(false);
     form.reset();
   }
@@ -517,9 +520,12 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
         </ScrollArea>
         <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
             <DialogClose asChild>
-                <Button variant="outline">Annulla</Button>
+                <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>
-            <Button type="submit" form="add-intervention-form">Crea intervento</Button>
+            <Button type="submit" form="add-intervention-form" disabled={isSubmitting}>
+                {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                Crea intervento
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

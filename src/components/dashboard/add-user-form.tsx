@@ -30,7 +30,7 @@ import { User, UserRole, AllowedSector } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader } from 'lucide-react';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
 
@@ -61,6 +61,7 @@ interface AddUserFormProps {
 
 export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm = false }: AddUserFormProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [showPassword, setShowPassword] = useState(false);
@@ -91,6 +92,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         return;
     }
     
+    setIsSubmitting(true);
     try {
         const newUser = await addUser({
             name: values.name,
@@ -123,6 +125,8 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             title: 'Errore',
             description: error.message || 'Si è verificato un errore durante la creazione dell\'utente.',
         });
+    } finally {
+        setIsSubmitting(false);
     }
   }
   
@@ -340,9 +344,12 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             />
             <DialogFooter className="flex-col-reverse sm:flex-row pt-4">
                 <DialogClose asChild>
-                    <Button variant="outline">Annulla</Button>
+                    <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
                 </DialogClose>
-                <Button type="submit">Crea {isClientForm ? 'cliente' : 'utente'}</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                    Crea {isClientForm ? 'cliente' : 'utente'}
+                </Button>
             </DialogFooter>
           </form>
         </Form>

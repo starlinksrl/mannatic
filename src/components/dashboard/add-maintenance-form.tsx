@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -28,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Loader } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -57,6 +58,7 @@ interface AddMaintenanceFormProps {
 
 export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, operators }: AddMaintenanceFormProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
 
@@ -74,6 +76,7 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany) return;
     
+    setIsSubmitting(true);
     const newMaintenance = await addScheduledMaintenance({
         ...values,
         priority: values.priority as InterventionPriority,
@@ -89,6 +92,7 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
       title: 'Manutenzione creata',
       description: `La manutenzione "${values.title}" è stata creata con successo.`,
     });
+    setIsSubmitting(false);
     setIsOpen(false);
     form.reset();
   }
@@ -271,9 +275,12 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
         </ScrollArea>
         <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
             <DialogClose asChild>
-                <Button variant="outline">Annulla</Button>
+                <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>
-            <Button type="submit" form="add-maintenance-form">Crea manutenzione</Button>
+            <Button type="submit" form="add-maintenance-form" disabled={isSubmitting}>
+                {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                Crea manutenzione
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

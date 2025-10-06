@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Company } from '@/lib/types';
+import { Loader } from 'lucide-react';
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
@@ -58,6 +59,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
     const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const isEditing = !!company;
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
     const { isLoaded, loadError } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -108,10 +110,12 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
 
 
     const handleFormSubmit = async (values: z.infer<typeof createFormSchema | typeof editFormSchema>) => {
+        setIsSubmitting(true);
         const success = await onSubmit(values);
         if (success) {
             setIsOpen(false);
         }
+        setIsSubmitting(false);
     };
     
     const handlePlaceChanged = () => {
@@ -281,9 +285,12 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
                 </ScrollArea>
                 <DialogFooter className="p-6 pt-0">
                     <DialogClose asChild>
-                        <Button variant="outline">Annulla</Button>
+                        <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
                     </DialogClose>
-                    <Button type="submit" form="company-form">{isEditing ? 'Salva Modifiche' : 'Crea Azienda'}</Button>
+                    <Button type="submit" form="company-form" disabled={isSubmitting}>
+                        {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                        {isEditing ? 'Salva Modifiche' : 'Crea Azienda'}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

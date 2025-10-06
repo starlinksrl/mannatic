@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown, Loader } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -62,6 +62,7 @@ interface AddSurveyFormProps {
 
 export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: AddSurveyFormProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
@@ -92,6 +93,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany || !values.date || !values.time) return;
     
+    setIsSubmitting(true);
     const [hours, minutes] = values.time.split(':').map(Number);
     let date = values.date;
     date = setHours(date, hours);
@@ -123,6 +125,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
       title: 'Sopralluogo creato',
       description: `Il sopralluogo "${values.title}" è stato creato con successo.`,
     });
+    setIsSubmitting(false);
     setIsOpen(false);
     form.reset();
   }
@@ -275,7 +278,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                       )}
                     />
                     
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="grid grid-cols-2 gap-2">
                              <FormField
                                 control={form.control}
@@ -378,9 +381,12 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
         </ScrollArea>
         <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
             <DialogClose asChild>
-                <Button variant="outline">Annulla</Button>
+                <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>
-            <Button type="submit" form="add-survey-form">Crea Sopralluogo</Button>
+            <Button type="submit" form="add-survey-form" disabled={isSubmitting}>
+                {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                Crea Sopralluogo
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
