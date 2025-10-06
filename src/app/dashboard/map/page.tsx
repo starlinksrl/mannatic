@@ -9,7 +9,7 @@ import { useUser } from '@/contexts/user-context';
 import { getClients, getInterventions, geocodeAddress } from '@/lib/data';
 import { Client, Intervention } from '@/lib/types';
 import { Loader, MapPin } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useMaps } from '@/contexts/maps-context';
+import { Label } from '@/components/ui/label';
 
 const mapContainerStyle = {
   width: '100%',
@@ -32,7 +33,7 @@ const center = {
 
 type ClientWithLocation = Client & {
   location: { lat: number; lng: number };
-  openInterventionsCount: number;
+  interventionsCount: number;
 };
 
 export default function MapPage() {
@@ -43,27 +44,31 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<ClientWithLocation | null>(null);
   const [distance, setDistance] = useState(30); // Default distance in km
+  const [interventionFilter, setInterventionFilter] = useState('open'); // 'open' or 'all'
 
   useEffect(() => {
     async function fetchData() {
       if (!currentCompany || !isLoaded) return;
       setLoading(true);
 
-      const [clients, interventions] = await Promise.all([
+      const [clients, allInterventions] = await Promise.all([
         getClients(currentCompany.id),
         getInterventions(currentCompany.id),
       ]);
       
       const openInterventionStatuses = ['Nuovo', 'In corso', 'In attesa'];
-      const openInterventions = interventions.filter(i => openInterventionStatuses.includes(i.status));
+      
+      const interventionsToConsider = interventionFilter === 'open' 
+        ? allInterventions.filter(i => openInterventionStatuses.includes(i.status))
+        : allInterventions;
 
-      const clientsWithOpenInterventions = clients.map(client => {
-        const count = openInterventions.filter(i => i.clientId === client.id).length;
-        return { ...client, openInterventionsCount: count };
-      }).filter(c => c.openInterventionsCount > 0 && c.address);
+      const clientsWithInterventions = clients.map(client => {
+        const count = interventionsToConsider.filter(i => i.clientId === client.id).length;
+        return { ...client, interventionsCount: count };
+      }).filter(c => c.interventionsCount > 0 && c.address);
 
       const geocodedClients = await Promise.all(
-        clientsWithOpenInterventions.map(async client => {
+        clientsWithInterventions.map(async client => {
           try {
             const location = await geocodeAddress(client.address!);
             return { ...client, location };
@@ -78,7 +83,7 @@ export default function MapPage() {
       setLoading(false);
     }
     fetchData();
-  }, [currentCompany, isLoaded]);
+  }, [currentCompany, isLoaded, interventionFilter]);
 
   const nearbyClients = useMemo(() => {
     if (!selectedClient || !isLoaded) return [];
@@ -130,7 +135,7 @@ export default function MapPage() {
                 <div>
                   <h3 className="font-bold">{selectedClient.name}</h3>
                   <p>{selectedClient.address}</p>
-                  <p>{selectedClient.openInterventionsCount} intervent{selectedClient.openInterventionsCount > 1 ? 'i' : 'o'} aperti</p>
+                   <p>{selectedClient.interventionsCount} intervent{selectedClient.interventionsCount > 1 ? 'i' : 'o'} {interventionFilter === 'open' ? 'aperti' : 'totali'}</p>
                 </div>
               </InfoWindow>
               <Circle
@@ -161,18 +166,34 @@ export default function MapPage() {
             </>
           )}
         </GoogleMap>
-         <Card className="absolute top-4 left-4 p-4 space-y-2">
-            <h4 className="font-semibold">Raggio di vicinanza</h4>
-             <Select value={String(distance)} onValueChange={(val) => setDistance(Number(val))}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Seleziona distanza" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="10">10 km</SelectItem>
-                    <SelectItem value="30">30 km</SelectItem>
-                    <SelectItem value="100">100 km</SelectItem>
-                </SelectContent>
-            </Select>
+         <Card className="absolute top-4 left-4 p-4">
+            <CardContent className="p-0 space-y-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="intervention-filter">Filtro Interventi</Label>
+                    <Select value={interventionFilter} onValueChange={setInterventionFilter}>
+                        <SelectTrigger id="intervention-filter" className="w-[180px]">
+                            <SelectValue placeholder="Seleziona filtro" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="open">Interventi Aperti</SelectItem>
+                            <SelectItem value="all">Tutti gli Interventi</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="distance-filter">Raggio di vicinanza</Label>
+                     <Select value={String(distance)} onValueChange={(val) => setDistance(Number(val))}>
+                        <SelectTrigger id="distance-filter" className="w-[180px]">
+                            <SelectValue placeholder="Seleziona distanza" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10">10 km</SelectItem>
+                            <SelectItem value="30">30 km</SelectItem>
+                            <SelectItem value="100">100 km</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
+            </CardContent>
          </Card>
       </main>
     </>
