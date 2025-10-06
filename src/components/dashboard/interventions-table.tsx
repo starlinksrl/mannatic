@@ -230,8 +230,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   };
 
   const tableHeaders = [
-    { key: 'title', label: 'Titolo', visible: true, className: 'w-[30%]' },
-    { key: 'client', label: 'Cliente', visible: currentUser.role !== 'Client' },
+    { key: 'client', label: 'Cliente / Titolo', visible: currentUser.role !== 'Client', className: 'w-[30%]' },
+    { key: 'title', label: 'Titolo', visible: currentUser.role === 'Client' },
     { key: 'contact', label: 'Contatti Cliente', visible: currentUser.role === 'Admin', className: 'hidden lg:table-cell' },
     { key: 'address', label: 'Indirizzo', visible: currentUser.role === 'Admin', className: 'hidden xl:table-cell' },
     { key: 'status', label: 'Stato', visible: true },
@@ -294,11 +294,10 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               return (
                  <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
                     <div className="flex-1 space-y-2 pr-4 break-words cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                        <p className="font-medium break-words">{intervention.title}</p>
                         {currentUser.role !== 'Client' && client && (
-                          <div className="space-y-1 text-sm text-muted-foreground">
-                            <p>{client.name}</p>
-                             <div className="flex flex-col gap-1 text-xs">
+                          <div className="space-y-1 text-sm">
+                            <p className="font-medium break-words">{client.name}</p>
+                             <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                                 {client.phone && (
                                     <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
                                         <Phone className="h-4 w-4 text-muted-foreground" />
@@ -314,6 +313,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                              </div>
                           </div>
                         )}
+                        <p className="text-muted-foreground break-words">{intervention.title}</p>
                         {intervention.dueDate && <p className="text-sm text-muted-foreground break-words">{format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                         <div className="flex items-center gap-2 pt-1">
                             {getPriorityBadge(intervention.priority)}
@@ -369,17 +369,22 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
               return (
                 <TableRow key={intervention.id}>
+                  {currentUser.role !== 'Client' ? (
                     <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
+                        <div className="flex flex-col break-words">
+                            <span className="break-words font-semibold">{client ? client.name : '-'}</span>
+                            <span className="text-xs text-muted-foreground">{intervention.title}</span>
+                            <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
+                        </div>
+                    </TableCell>
+                  ) : (
+                     <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                         <div className="flex flex-col break-words">
                             <span className="break-words">{intervention.title}</span>
                             <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
                         </div>
                     </TableCell>
-                  {(currentUser.role !== 'Client') && 
-                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                        <span className="break-words">{client ? client.name : '-'}</span>
-                    </TableCell>
-                   }
+                  )}
                    {currentUser.role === 'Admin' && (
                     <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                       {client && (
