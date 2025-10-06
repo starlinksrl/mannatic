@@ -17,12 +17,12 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import { Autocomplete } from '@react-google-maps/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Company } from '@/lib/types';
 import { Loader } from 'lucide-react';
+import { useMaps } from '@/contexts/maps-context';
 
-const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
 
 const createFormSchema = z.object({
     name: z.string().min(1, { message: 'Il nome è obbligatorio' }),
@@ -61,10 +61,7 @@ export function CompanyForm({ isOpen, setIsOpen, onSubmit, company }: CompanyFor
     const isEditing = !!company;
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    const { isLoaded, loadError } = useLoadScript({
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-        libraries,
-    });
+    const { isLoaded } = useMaps();
 
     const form = useForm<z.infer<typeof createFormSchema | typeof editFormSchema>>({
         resolver: zodResolver(isEditing ? editFormSchema : createFormSchema),

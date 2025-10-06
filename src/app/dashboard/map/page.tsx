@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { GoogleMap, useLoadScript, MarkerF, InfoWindow, Circle } from '@react-google-maps/api';
+import { GoogleMap, MarkerF, InfoWindow, Circle } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
 import { getClients, getInterventions, geocodeAddress } from '@/lib/data';
@@ -17,8 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places', 'geometry'];
+import { useMaps } from '@/contexts/maps-context';
 
 const mapContainerStyle = {
   width: '100%',
@@ -36,10 +36,7 @@ type ClientWithLocation = Client & {
 };
 
 export default function MapPage() {
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries,
-  });
+  const { isLoaded, loadError } = useMaps();
 
   const { currentCompany } = useUser();
   const [clientsWithLocation, setClientsWithLocation] = useState<ClientWithLocation[]>([]);

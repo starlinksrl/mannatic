@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -20,9 +21,8 @@ import { Company } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useLoadScript, Autocomplete } from '@react-google-maps/api';
-
-const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
+import { Autocomplete } from '@react-google-maps/api';
+import { useMaps } from '@/contexts/maps-context';
 
 const resendFormSchema = z.object({
   resendApiKey: z.string().min(1, { message: 'API Key obbligatoria.' }),
@@ -48,10 +48,7 @@ function CompanyProfileForm({ company, onSave }: { company: Company, onSave: (da
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
-  const { isLoaded, loadError } = useLoadScript({
-      googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-      libraries,
-  });
+  const { isLoaded } = useMaps();
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),

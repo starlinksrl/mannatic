@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
@@ -35,9 +36,8 @@ import { Survey, Client, User, SurveyStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateSurvey } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
-import { useLoadScript, Autocomplete } from '@react-google-maps/api';
-
-const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
+import { Autocomplete } from '@react-google-maps/api';
+import { useMaps } from '@/contexts/maps-context';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -64,10 +64,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries,
-  });
+  const { isLoaded } = useMaps();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

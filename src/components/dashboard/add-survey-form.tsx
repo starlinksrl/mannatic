@@ -39,9 +39,8 @@ import { addSurvey } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { ScrollArea } from '../ui/scroll-area';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
-import { useLoadScript, Autocomplete } from '@react-google-maps/api';
-
-const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places'];
+import { Autocomplete } from '@react-google-maps/api';
+import { useMaps } from '@/contexts/maps-context';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -69,10 +68,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries,
-  });
+  const { isLoaded } = useMaps();
 
 
   const form = useForm<z.infer<typeof formSchema>>({
