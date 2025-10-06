@@ -54,7 +54,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [interventions, setInterventions] = useState(initialInterventions);
   const [clients, setClients] = useState(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [operatorFilter, setOperatorFilter] = useState('all');
@@ -134,13 +134,13 @@ export function InterventionsTable({ interventions: initialInterventions, curren
         i.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(i => i.status === statusFilter);
-    } else {
-        // Default filter: show only active interventions
+    if (statusFilter === 'active') {
         const activeStatuses = ['Nuovo', 'In corso', 'In attesa'];
         filtered = filtered.filter(i => activeStatuses.includes(i.status));
+    } else if (statusFilter !== 'all') {
+      filtered = filtered.filter(i => i.status === statusFilter);
     }
+
     if (priorityFilter !== 'all') {
         filtered = filtered.filter(i => i.priority === priorityFilter);
     }
@@ -256,7 +256,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">Tutti gli attivi</SelectItem>
+                    <SelectItem value="active">Tutti gli attivi</SelectItem>
+                    <SelectItem value="all">Tutti</SelectItem>
                     <SelectItem value="Nuovo">Nuovo</SelectItem>
                     <SelectItem value="In corso">In corso</SelectItem>
                     <SelectItem value="In attesa">In attesa</SelectItem>
