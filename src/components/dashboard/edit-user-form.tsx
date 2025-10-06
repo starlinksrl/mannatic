@@ -164,7 +164,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
         if (place && place.formatted_address) {
             form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
         }
-        if (place.geometry?.location) {
+        if (place && place.geometry && place.geometry.location) {
           form.setValue('latitude', place.geometry.location.lat());
           form.setValue('longitude', place.geometry.location.lng());
         }
@@ -420,4 +420,5 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
+
 

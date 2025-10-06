@@ -139,7 +139,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         if (place && place.formatted_address) {
             form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
         }
-         if (place.geometry?.location) {
+         if (place && place.geometry && place.geometry.location) {
           form.setValue('latitude', place.geometry.location.lat());
           form.setValue('longitude', place.geometry.location.lng());
         }
