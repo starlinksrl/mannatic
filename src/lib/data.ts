@@ -455,9 +455,13 @@ export async function getOperator(operatorId: string) {
     }
 }
 
-export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number }> {
+export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`);
   const data = await response.json();
+  if (data.status === 'REQUEST_DENIED') {
+    console.warn(`Geocoding failed: ${data.status}. This may be due to API key restrictions or billing issues.`);
+    return null;
+  }
   if (data.status !== 'OK') {
     throw new Error(`Geocoding failed: ${data.status}`);
   }
