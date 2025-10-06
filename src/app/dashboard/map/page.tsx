@@ -3,27 +3,19 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { GoogleMap, MarkerF, InfoWindow, Circle } from '@react-google-maps/api';
+import { GoogleMap, MarkerF, InfoWindow } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
-import { getUsers } from '@/lib/data';
+import { getUsers, geocodeAddress, updateUser } from '@/lib/data';
 import { User } from '@/lib/types';
 import { Loader } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useMaps } from '@/contexts/maps-context';
-import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const mapContainerStyle = {
   width: '100%',
-  height: '70vh', // Adjusted height to make space for the list
+  height: '70vh',
 };
 
 const center = {
@@ -35,9 +27,8 @@ type ClientWithLocation = User;
 
 export default function MapPage() {
   const { isLoaded, loadError } = useMaps();
-
   const { currentCompany } = useUser();
-  const [clientsWithLocation, setClientsWithLocation] = useState<ClientWithLocation[]>([]);
+  const [clients, setClients] = useState<ClientWithLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<ClientWithLocation | null>(null);
 
@@ -47,10 +38,26 @@ export default function MapPage() {
       setLoading(true);
 
       const allUsers = await getUsers(currentCompany.id);
+      const allClients = allUsers.filter(u => u.role === 'Client');
       
-      const allClients = allUsers.filter(u => u.role === 'Client' && u.latitude && u.longitude);
+      const clientsWithCoords = allClients.filter(c => c.latitude && c.longitude);
+      const clientsWithoutCoords = allClients.filter(c => c.address && (!c.latitude || !c.longitude));
+
+      const geocodedClients: ClientWithLocation[] = [];
+
+      for (const client of clientsWithoutCoords) {
+        if (client.address) {
+          const location = await geocodeAddress(client.address);
+          if (location) {
+            const updatedClient = { ...client, latitude: location.lat, longitude: location.lng };
+            geocodedClients.push(updatedClient);
+            // Save back to DB, but don't wait for it to complete to show the map
+            updateUser(client.id, { latitude: location.lat, longitude: location.lng });
+          }
+        }
+      }
       
-      setClientsWithLocation(allClients as ClientWithLocation[]);
+      setClients([...clientsWithCoords, ...geocodedClients]);
       setLoading(false);
     }
     fetchData();
@@ -77,10 +84,11 @@ export default function MapPage() {
       <main className="flex-1 flex flex-col">
         <div className="relative" style={{ height: mapContainerStyle.height }}>
           <GoogleMap mapContainerStyle={{width: '100%', height: '100%'}} zoom={6} center={center}>
-            {clientsWithLocation.map(client => (
+            {clients.map(client => (
+              client.latitude && client.longitude &&
               <MarkerF
                 key={client.id}
-                position={{ lat: client.latitude!, lng: client.longitude! }}
+                position={{ lat: client.latitude, lng: client.longitude }}
                 onClick={() => setSelectedClient(client)}
               />
             ))}
@@ -105,11 +113,11 @@ export default function MapPage() {
                 </CardHeader>
                 <CardContent>
                     <ScrollArea className="h-48">
-                        {clientsWithLocation.length > 0 ? (
+                        {clients.length > 0 ? (
                             <ul>
-                                {clientsWithLocation.map(client => (
+                                {clients.map(client => (
                                     <li key={client.id} className="text-sm p-1">
-                                        {client.name} - (Lat: {client.latitude}, Lng: {client.longitude})
+                                        {client.name} - (Lat: {client.latitude?.toFixed(4)}, Lng: {client.longitude?.toFixed(4)})
                                     </li>
                                 ))}
                             </ul>
