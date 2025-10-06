@@ -31,7 +31,7 @@ export type GenerateKpiDashboardOutput = z.infer<typeof GenerateKpiDashboardOutp
 
 export async function generateKpiDashboard(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
   // If there are no interventions with addresses, no need to call the AI.
-  if (!input.openInterventionsWithLocation || input.openInterventionsWithLocation.length < 2) {
+  if (!input.openInterventionsWithLocation || input.openInterventionsWithLocation.length === 0) {
     return { dashboardDescription: "Nessun raggruppamento di interventi possibile in base agli indirizzi disponibili." };
   }
   return generateKpiDashboardFlow(input);
