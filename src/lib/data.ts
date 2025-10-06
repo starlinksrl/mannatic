@@ -259,6 +259,14 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             password: passwordForDb,
         };
         
+        if (newUserPayload.address) {
+            const location = await geocodeAddress(newUserPayload.address);
+            if (location) {
+                newUserPayload.latitude = location.lat;
+                newUserPayload.longitude = location.lng;
+            }
+        }
+        
         if (newUserPayload.role === 'Operator') {
              newUserPayload.allowedSectors = userData.allowedSectors || ['interventions', 'surveys', 'maintenance'];
         } else {
@@ -278,6 +286,9 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
 export async function updateUser(id: string, updatedData: Partial<User>): Promise<User | null> {
     try {
         const userDocRef = doc(db, 'users', id);
+        const originalDoc = await getDoc(userDocRef);
+        if (!originalDoc.exists()) throw new Error('User not found.');
+        const originalUser = originalDoc.data() as User;
         
         const dataToUpdate: { [key: string]: any } = {...updatedData};
         
@@ -293,6 +304,18 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             // This is where the password gets updated in the database
         } else {
             delete dataToUpdate.password;
+        }
+
+        // If address has changed, geocode it
+        if (dataToUpdate.address && dataToUpdate.address !== originalUser.address) {
+            const location = await geocodeAddress(dataToUpdate.address);
+            if (location) {
+                dataToUpdate.latitude = location.lat;
+                dataToUpdate.longitude = location.lng;
+            } else {
+                dataToUpdate.latitude = null;
+                dataToUpdate.longitude = null;
+            }
         }
         
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
@@ -415,7 +438,7 @@ export async function getClients(companyId: string): Promise<User[]> {
   try {
     const q = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Client"));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as User);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
   } catch (error) {
     console.error("Error fetching clients:", error);
     return [];
@@ -448,7 +471,8 @@ export async function geocodeAddress(address: string): Promise<{ lat: number; ln
     return null;
   }
   if (data.status !== 'OK') {
-    throw new Error(`Geocoding failed: ${data.status}`);
+    console.error(`Geocoding failed: ${data.status} for address: ${address}`);
+    return null;
   }
   return data.results[0].geometry.location;
 }

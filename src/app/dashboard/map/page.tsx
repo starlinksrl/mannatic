@@ -6,11 +6,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { GoogleMap, MarkerF, InfoWindow, Circle } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
-import { getClients, getInterventions, geocodeAddress } from '@/lib/data';
+import { getUsers, getInterventions } from '@/lib/data';
 import { User, Intervention } from '@/lib/types';
-import { Loader, MapPin } from 'lucide-react';
+import { Loader } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -32,7 +31,6 @@ const center = {
 };
 
 type ClientWithLocation = User & {
-  location: { lat: number; lng: number };
   interventionsCount: number;
 };
 
@@ -51,53 +49,40 @@ export default function MapPage() {
       if (!currentCompany || !isLoaded) return;
       setLoading(true);
 
-      const [allClients, allInterventions] = await Promise.all([
-        getClients(currentCompany.id),
+      const [allUsers, allInterventions] = await Promise.all([
+        getUsers(currentCompany.id),
         getInterventions(currentCompany.id),
       ]);
+      
+      const allClients = allUsers.filter(u => u.role === 'Client' && u.latitude && u.longitude);
       
       const openInterventionStatuses = ['Nuovo', 'In corso', 'In attesa'];
       
       const interventionsToConsider = interventionFilter === 'open' 
         ? allInterventions.filter(i => openInterventionStatuses.includes(i.status))
         : allInterventions;
-
+      
       const clientsWithInterventions = allClients.map(client => {
         const count = interventionsToConsider.filter(i => i.clientId === client.id).length;
         return { ...client, interventionsCount: count };
-      }).filter(c => c.interventionsCount > 0 && c.address);
+      }).filter(c => c.interventionsCount > 0);
 
-      const geocodedClients = await Promise.all(
-        clientsWithInterventions.map(async client => {
-          if (!client.address) return null;
-          try {
-            const location = await geocodeAddress(client.address);
-            if (location) {
-              return { ...client, location };
-            }
-            return null;
-          } catch (error) {
-            console.error(`Geocoding failed for ${client.address}:`, error);
-            return null;
-          }
-        })
-      );
 
-      setClientsWithLocation(geocodedClients.filter(c => c !== null) as ClientWithLocation[]);
+      setClientsWithLocation(clientsWithInterventions as ClientWithLocation[]);
       setLoading(false);
     }
     fetchData();
   }, [currentCompany, isLoaded, interventionFilter]);
 
   const nearbyClients = useMemo(() => {
-    if (!selectedClient || !isLoaded) return [];
+    if (!selectedClient || !isLoaded || !selectedClient.latitude || !selectedClient.longitude) return [];
     
     return clientsWithLocation.filter(client => {
-      if (client.id === selectedClient.id) return false;
+      if (client.id === selectedClient.id || !client.latitude || !client.longitude) return false;
       
       const distanceInMeters = google.maps.geometry.spherical.computeDistanceBetween(
-        new google.maps.LatLng(selectedClient.location),
-        new google.maps.LatLng(client.location)
+        new google.maps.LatLng(selectedClient.latitude!, selectedClient.longitude!),
+        new google.maps.LatLng(client.latitude, client.longitude)
       );
 
       return distanceInMeters <= distance * 1000;
@@ -128,15 +113,15 @@ export default function MapPage() {
           {clientsWithLocation.map(client => (
             <MarkerF
               key={client.id}
-              position={client.location}
+              position={{ lat: client.latitude!, lng: client.longitude! }}
               onClick={() => setSelectedClient(client)}
             />
           ))}
 
-          {selectedClient && (
+          {selectedClient && selectedClient.latitude && selectedClient.longitude && (
             <>
               <InfoWindow
-                position={selectedClient.location}
+                position={{ lat: selectedClient.latitude, lng: selectedClient.longitude }}
                 onCloseClick={() => setSelectedClient(null)}
               >
                 <div>
@@ -146,7 +131,7 @@ export default function MapPage() {
                 </div>
               </InfoWindow>
               <Circle
-                center={selectedClient.location}
+                center={{ lat: selectedClient.latitude, lng: selectedClient.longitude }}
                 radius={distance * 1000}
                 options={{
                     strokeColor: '#FF0000',
@@ -159,7 +144,7 @@ export default function MapPage() {
                {nearbyClients.map(client => (
                 <MarkerF
                     key={`nearby-${client.id}`}
-                    position={client.location}
+                    position={{ lat: client.latitude!, lng: client.longitude! }}
                     icon={{
                         path: window.google.maps.SymbolPath.CIRCLE,
                         scale: 8,
