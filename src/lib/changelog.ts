@@ -1,11 +1,27 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search } from 'lucide-react';
 
 export const changelog = [
+    {
+        version: "0.17",
+        date: format(new Date(), 'yyyy-MM-dd'),
+        title: "Miglioramenti Mappa, AI Logistica e Gestione Clienti",
+        icon: Rocket,
+        iconClass: "text-green-500",
+        changes: [
+            { type: MapPin, description: "Aggiunto pulsante 'Localizza' nei moduli cliente per inserire automaticamente le coordinate geografiche." },
+            { type: Eye, description: "La mappa ora si centra e zooma automaticamente per mostrare tutti i clienti filtrati." },
+            { type: Bot, description: "L'analisi AI sulla dashboard ora suggerisce raggruppamenti logistici per interventi in zone vicine." },
+            { type: Paperclip, description: "Aggiunto un campo 'Appunti Cliente' con editor completo per note dettagliate." },
+            { type: Search, description: "Implementata una barra di ricerca universale nella tabella dei clienti per filtrare su qualsiasi campo." },
+            { type: Wrench, description: "Migliorato il filtro 'interventi aperti' sulla mappa per includere nuovi impianti e manutenzioni imminenti." },
+            { type: MapPin, description: "I puntatori sulla mappa per i 'Nuovi Impianti' sono ora di colore blu per una migliore distinzione visiva." },
+        ]
+    },
      {
         version: "0.16",
-        date: format(new Date(), 'yyyy-MM-dd'),
+        date: "2024-10-02",
         title: "Gestione Credenziali Clienti",
         icon: KeyRound,
         iconClass: "text-yellow-500",
