@@ -42,15 +42,17 @@ export default function MapPage() {
       if (!currentCompany || !isLoaded) return;
       setLoading(true);
 
-      const [allUsers, allInterventions] = await Promise.all([
+      const [allUsers, allInterventions, allMaintenance] = await Promise.all([
         getUsers(currentCompany.id),
         getInterventions(currentCompany.id),
+        getScheduledMaintenance(currentCompany.id),
       ]);
       
       const clientsWithCoords = allUsers.filter(u => u.role === 'Client');
       
       setAllClients(clientsWithCoords);
-      setInterventions(allInterventions);
+      // Combine all work types into one array for filtering
+      setInterventions([...allInterventions, ...allMaintenance]);
       setLoading(false);
     }
     fetchData();
@@ -69,7 +71,7 @@ export default function MapPage() {
       interventions
         .filter(i => {
             // Standard open interventions
-            if (!i.isMaintenance && openInterventionStatuses.includes(i.status)) {
+            if (!i.isMaintenance && i.type !== 'new_installation' && openInterventionStatuses.includes(i.status)) {
                 return true;
             }
             // New installations that are not completed or cancelled
