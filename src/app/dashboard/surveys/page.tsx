@@ -5,7 +5,7 @@ import { Header } from '@/components/dashboard/header';
 import { SurveysTable } from '@/components/dashboard/surveys-table';
 import { getSurveys, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User, Survey, Client } from '@/lib/types';
+import { User, Survey } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 
@@ -13,7 +13,7 @@ import { Loader } from 'lucide-react';
 export default function SurveysPage() {
     const { user, currentCompany } = useUser();
     const [operators, setOperators] = useState<User[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
+    const [clients, setClients] = useState<User[]>([]);
     const [surveys, setSurveys] = useState<Survey[]>([]);
     const [loading, setLoading] = useState(true);
 

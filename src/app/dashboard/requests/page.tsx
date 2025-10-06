@@ -5,7 +5,7 @@ import { Header } from '@/components/dashboard/header';
 import { InterventionsTable } from '@/components/dashboard/interventions-table';
 import { getInterventions, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User, Intervention, Client } from '@/lib/types';
+import { User, Intervention } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader, Mail, Phone, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -18,7 +18,7 @@ export default function ClientRequestsPage() {
     const { user, currentCompany } = useUser();
     const router = useRouter();
     const [operators, setOperators] = useState<User[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
+    const [clients, setClients] = useState<User[]>([]);
     const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [loading, setLoading] = useState(true);
 

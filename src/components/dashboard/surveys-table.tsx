@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Survey, User, Client, SurveyStatus } from '@/lib/types';
+import { Survey, User, SurveyStatus } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -39,7 +39,7 @@ import { EditSurveyForm } from './edit-survey-form';
 interface SurveysTableProps {
   surveys: Survey[];
   currentUser: User;
-  clients: Client[];
+  clients: User[];
   operators: User[];
   onSurveyChange: () => void;
 }
@@ -50,7 +50,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   
-  const [clientsMap, setClientsMap] = useState<Map<string, Client>>(new Map());
+  const [clientsMap, setClientsMap] = useState<Map<string, User>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -68,7 +68,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
     operators.forEach(op => opMap.set(op.id, op.name));
     setOperatorsMap(opMap);
 
-    const cliMap = new Map<string, Client>();
+    const cliMap = new Map<string, User>();
     clients.forEach(c => cliMap.set(c.id, c));
     setClientsMap(cliMap);
   }, [operators, clients]);

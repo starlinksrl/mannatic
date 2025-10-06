@@ -5,7 +5,7 @@ import { Header } from '@/components/dashboard/header';
 import { InterventionsTable } from '@/components/dashboard/interventions-table';
 import { getInterventions, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User, Intervention, Client } from '@/lib/types';
+import { User, Intervention } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader, PlusCircle } from 'lucide-react';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 export default function InterventionsPage() {
     const { user, currentCompany } = useUser();
     const [operators, setOperators] = useState<User[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
+    const [clients, setClients] = useState<User[]>([]);
     const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [loading, setLoading] = useState(true);
     const { intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
@@ -46,7 +46,7 @@ export default function InterventionsPage() {
         fetchData();
     }
     
-    const handleClientUpdated = (updatedClient: Client) => {
+    const handleClientUpdated = (updatedClient: User) => {
         setClients(prevClients => prevClients.map(c => c.id === updatedClient.id ? updatedClient : c));
     }
 

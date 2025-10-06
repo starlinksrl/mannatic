@@ -3,7 +3,7 @@
 import { Header } from '@/components/dashboard/header';
 import { getScheduledMaintenance, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User, ScheduledMaintenance, Client } from '@/lib/types';
+import { User, ScheduledMaintenance } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { MaintenanceTable } from '@/components/dashboard/maintenance-table';
@@ -12,7 +12,7 @@ import { MaintenanceTable } from '@/components/dashboard/maintenance-table';
 export default function MaintenancePage() {
     const { user, currentCompany } = useUser();
     const [operators, setOperators] = useState<User[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
+    const [clients, setClients] = useState<User[]>([]);
     const [maintenanceTasks, setMaintenanceTasks] = useState<ScheduledMaintenance[]>([]);
     const [loading, setLoading] = useState(true);
 

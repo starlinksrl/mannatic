@@ -33,7 +33,7 @@ import { CalendarIcon, Loader } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ScheduledMaintenance, Client, User, InterventionPriority } from '@/lib/types';
+import { ScheduledMaintenance, User, InterventionPriority } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addScheduledMaintenance } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
@@ -52,7 +52,7 @@ const formSchema = z.object({
 interface AddMaintenanceFormProps {
   children: React.ReactNode;
   onMaintenanceAdded: (maintenance: ScheduledMaintenance) => void;
-  clients: Client[];
+  clients: User[];
   operators: User[];
 }
 

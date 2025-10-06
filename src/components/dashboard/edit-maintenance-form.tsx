@@ -31,7 +31,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ScheduledMaintenance, Client, User, InterventionPriority, ScheduledMaintenanceStatus } from '@/lib/types';
+import { ScheduledMaintenance, User, InterventionPriority, ScheduledMaintenanceStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateScheduledMaintenance } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
@@ -51,7 +51,7 @@ const formSchema = z.object({
 interface EditMaintenanceFormProps {
   maintenance: ScheduledMaintenance | null;
   onMaintenanceUpdated: (maintenance: ScheduledMaintenance) => void;
-  clients: Client[];
+  clients: User[];
   operators: User[];
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;

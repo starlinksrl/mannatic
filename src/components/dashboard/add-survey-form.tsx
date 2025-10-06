@@ -33,7 +33,7 @@ import { CalendarIcon, Check, ChevronsUpDown, Loader } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Survey, Client, User } from '@/lib/types';
+import { Survey, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addSurvey } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
@@ -55,7 +55,7 @@ const formSchema = z.object({
 interface AddSurveyFormProps {
   children: React.ReactNode;
   onSurveyAdded: (survey: Survey) => void;
-  clients: Client[];
+  clients: User[];
   operators: User[];
 }
 
@@ -113,7 +113,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
             name: values.clientId,
             companyId: currentCompany.id,
             address: values.address
-        }
+        } as User;
         setClientList(prev => [...prev, client]);
     }
     

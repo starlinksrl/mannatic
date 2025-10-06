@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ScheduledMaintenance, User, Client } from '@/lib/types';
+import { ScheduledMaintenance, User } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -39,7 +39,7 @@ import {
 interface MaintenanceTableProps {
   maintenanceTasks: ScheduledMaintenance[];
   currentUser: User;
-  clients: Client[];
+  clients: User[];
   operators: User[];
   onMaintenanceChange: () => void;
 }

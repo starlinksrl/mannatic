@@ -33,7 +33,7 @@ import { CalendarIcon, Check, ChevronsUpDown, UploadCloud, File as FileIcon, Tra
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Intervention, Client, User, InterventionPriority, InterventionType, Attachment } from '@/lib/types';
+import { Intervention, User, InterventionPriority, InterventionType, Attachment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addIntervention } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
@@ -63,7 +63,7 @@ const formSchema = z.object({
 interface AddInterventionFormProps {
   children: React.ReactNode;
   onInterventionAdded: (intervention: Intervention) => void;
-  clients: Client[];
+  clients: User[];
   operators: User[];
   currentUser: User;
   defaultType?: InterventionType;

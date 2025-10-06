@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Intervention, UserRole, User, Client } from '@/lib/types';
+import { Intervention, UserRole, User } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -40,7 +40,7 @@ import { useInterventionModal } from '@/contexts/intervention-modal-context';
 interface InterventionsTableProps {
   interventions: Intervention[];
   currentUser: User;
-  clients: Client[];
+  clients: User[];
   operators: User[];
   onInterventionChange: () => void;
 }
@@ -60,7 +60,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [operatorFilter, setOperatorFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator' | 'default'; direction: 'ascending' | 'descending' } | null>({ key: 'default', direction: 'ascending' });
   
-  const [clientsMap, setClientsMap] = useState<Map<string, Client>>(new Map());
+  const [clientsMap, setClientsMap] = useState<Map<string, User>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -79,7 +79,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     operators.forEach(op => opMap.set(op.id, op.name));
     setOperatorsMap(opMap);
 
-    const cliMap = new Map<string, Client>();
+    const cliMap = new Map<string, User>();
     clients.forEach(c => cliMap.set(c.id, c));
     setClientsMap(cliMap);
   }, [operators, clients]);
@@ -481,4 +481,3 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     </div>
   );
 }
-

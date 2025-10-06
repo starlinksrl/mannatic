@@ -410,37 +410,22 @@ export async function consumeAutologinToken(token: string): Promise<User | null>
 
 // --- CLIENT & EQUIPMENT MANAGEMENT ---
 
-export async function getClients(companyId: string): Promise<Client[]> {
+export async function getClients(companyId: string): Promise<User[]> {
   if (!companyId) return [];
   try {
     const q = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Client"));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            name: data.name,
-            companyId: data.companyId,
-            address: data.address || '',
-            phone: data.phone || ''
-        } as Client
-    });
+    return querySnapshot.docs.map(doc => doc.data() as User);
   } catch (error) {
     console.error("Error fetching clients:", error);
     return [];
   }
 }
 
-export async function getClient(clientId: string): Promise<Client | null> {
+export async function getClient(clientId: string): Promise<User | null> {
     const user = await getUserById(clientId);
     if (user && user.role === 'Client') {
-        return { 
-            id: user.id, 
-            name: user.name, 
-            companyId: user.companyId,
-            address: user.address,
-            phone: user.phone
-        };
+        return user;
     }
     return null;
 }

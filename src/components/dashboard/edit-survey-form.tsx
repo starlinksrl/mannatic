@@ -32,7 +32,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Survey, Client, User, SurveyStatus } from '@/lib/types';
+import { Survey, User, SurveyStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateSurvey } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
@@ -53,7 +53,7 @@ const formSchema = z.object({
 interface EditSurveyFormProps {
   survey: Survey | null;
   onSurveyUpdated: (survey: Survey) => void;
-  clients: Client[];
+  clients: User[];
   operators: User[];
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;

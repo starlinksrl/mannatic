@@ -6,8 +6,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { GoogleMap, MarkerF, InfoWindow, Circle } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
-import { getClients, getInterventions, geocodeAddress, getUsers } from '@/lib/data';
-import { Client, Intervention, User } from '@/lib/types';
+import { getClients, getInterventions, geocodeAddress } from '@/lib/data';
+import { User, Intervention } from '@/lib/types';
 import { Loader, MapPin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,12 +51,10 @@ export default function MapPage() {
       if (!currentCompany || !isLoaded) return;
       setLoading(true);
 
-      const [allUsers, allInterventions] = await Promise.all([
-        getUsers(currentCompany.id),
+      const [allClients, allInterventions] = await Promise.all([
+        getClients(currentCompany.id),
         getInterventions(currentCompany.id),
       ]);
-      
-      const clients = allUsers.filter(u => u.role === 'Client');
       
       const openInterventionStatuses = ['Nuovo', 'In corso', 'In attesa'];
       
@@ -64,16 +62,20 @@ export default function MapPage() {
         ? allInterventions.filter(i => openInterventionStatuses.includes(i.status))
         : allInterventions;
 
-      const clientsWithInterventions = clients.map(client => {
+      const clientsWithInterventions = allClients.map(client => {
         const count = interventionsToConsider.filter(i => i.clientId === client.id).length;
         return { ...client, interventionsCount: count };
       }).filter(c => c.interventionsCount > 0 && c.address);
 
       const geocodedClients = await Promise.all(
         clientsWithInterventions.map(async client => {
+          if (!client.address) return null;
           try {
-            const location = await geocodeAddress(client.address!);
-            return { ...client, location };
+            const location = await geocodeAddress(client.address);
+            if (location) {
+              return { ...client, location };
+            }
+            return null;
           } catch (error) {
             console.error(`Geocoding failed for ${client.address}:`, error);
             return null;

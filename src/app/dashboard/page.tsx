@@ -4,7 +4,7 @@
 
 import { Header } from '@/components/dashboard/header';
 import { getInterventions, getUsers, getClients } from '@/lib/data';
-import { Intervention, ScheduledMaintenance, Client, User, InterventionUpdate } from '@/lib/types';
+import { Intervention, ScheduledMaintenance, User, InterventionUpdate } from '@/lib/types';
 import { isAfter } from 'date-fns';
 import { KpiDashboard } from '@/components/dashboard/kpi-dashboard';
 import { useUser } from '@/contexts/user-context';
@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [operators, setOperators] = useState<User[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<User[]>([]);
   const { intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
 
 
@@ -151,7 +151,7 @@ export default function DashboardPage() {
       )
   }
   
-    const handleClientUpdated = (updatedClient: Client) => {
+    const handleClientUpdated = (updatedClient: User) => {
         setClients(prevClients => prevClients.map(c => c.id === updatedClient.id ? updatedClient : c));
     }
 
