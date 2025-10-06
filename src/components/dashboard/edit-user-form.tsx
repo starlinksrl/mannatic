@@ -32,7 +32,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Pencil, Eye, EyeOff } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
-import { Autocomplete } from '@react-google-maps/api';
+import { Autocomplete, useLoadScript } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
 import { useMaps } from '@/contexts/maps-context';
 
@@ -51,6 +51,8 @@ const formSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   allowedSectors: z.array(z.string()).optional(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
 });
 
 interface EditUserFormProps {
@@ -76,6 +78,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   
   const avatarUrl = form.watch('avatarUrl');
   const role = form.watch('role');
+  const latitude = form.watch('latitude');
+  const longitude = form.watch('longitude');
   
   const isEditingOwnProfile = currentUser?.id === user?.id;
 
@@ -89,7 +93,9 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             avatarUrl: user.avatarUrl,
             address: user.address || '',
             phone: user.phone || '',
-            allowedSectors: user.allowedSectors || []
+            allowedSectors: user.allowedSectors || [],
+            latitude: user.latitude || null,
+            longitude: user.longitude || null,
         })
     }
   }, [user, form]);
@@ -105,7 +111,9 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             avatarUrl: values.avatarUrl,
             address: values.address,
             phone: values.phone,
-            allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
+            allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined,
+            latitude: values.latitude,
+            longitude: values.longitude,
         };
 
         if (values.password && values.password.trim() !== '') {
@@ -155,7 +163,10 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
         const place = autocompleteRef.current.getPlace();
         if (place && place.formatted_address) {
             form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
-            inputRef.current?.focus();
+        }
+        if (place.geometry?.location) {
+          form.setValue('latitude', place.geometry.location.lat());
+          form.setValue('longitude', place.geometry.location.lng());
         }
     }
   };
@@ -343,7 +354,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                                     autocompleteRef.current = autocomplete;
                                 }}
                                 onPlaceChanged={handlePlaceChanged}
-                                fields={['formatted_address']}
+                                fields={['formatted_address', 'geometry.location']}
                             >
                                 <Input
                                     {...field}
@@ -368,19 +379,33 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
               )}
             />
              <div className="grid grid-cols-2 gap-4">
-                <FormItem>
-                    <FormLabel>Latitudine</FormLabel>
-                    <FormControl>
-                        <Input value={user.latitude?.toFixed(6) ?? 'N/D'} disabled />
-                    </FormControl>
-                </FormItem>
-                <FormItem>
-                    <FormLabel>Longitudine</FormLabel>
-                    <FormControl>
-                         <Input value={user.longitude?.toFixed(6) ?? 'N/D'} disabled />
-                    </FormControl>
-                </FormItem>
-            </div>
+                <FormField
+                  control={form.control}
+                  name="latitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Latitudine</FormLabel>
+                      <FormControl>
+                        <Input {...field} disabled value={field.value?.toFixed(6) ?? 'N/D'} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="longitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Longitudine</FormLabel>
+                      <FormControl>
+                        <Input {...field} disabled value={field.value?.toFixed(6) ?? 'N/D'} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
           </form>
         </Form>
         </div>
@@ -395,3 +420,4 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
+

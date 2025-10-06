@@ -49,6 +49,8 @@ const formSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   allowedSectors: z.array(z.string()).optional(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
 });
 
 interface AddUserFormProps {
@@ -98,7 +100,9 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             address: values.address,
             phone: values.phone,
             password: values.password || 'starlink74',
-            allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined
+            allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined,
+            latitude: values.latitude,
+            longitude: values.longitude,
         });
         
         if (newUser) {
@@ -134,7 +138,10 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         const place = autocompleteRef.current.getPlace();
         if (place && place.formatted_address) {
             form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
-            inputRef.current?.focus();
+        }
+         if (place.geometry?.location) {
+          form.setValue('latitude', place.geometry.location.lat());
+          form.setValue('longitude', place.geometry.location.lng());
         }
     }
   };
@@ -316,7 +323,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                                     autocompleteRef.current = autocomplete;
                                 }}
                                 onPlaceChanged={handlePlaceChanged}
-                                fields={['formatted_address']}
+                                fields={['formatted_address', 'geometry.location']}
                             >
                                 <Input
                                     {...field}
@@ -353,3 +360,4 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     </Dialog>
   );
 }
+

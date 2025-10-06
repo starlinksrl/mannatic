@@ -257,15 +257,9 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             address: userData.address || '',
             phone: userData.phone || '',
             password: passwordForDb,
+            latitude: userData.latitude,
+            longitude: userData.longitude,
         };
-        
-        if (newUserPayload.address) {
-            const location = await geocodeAddress(newUserPayload.address);
-            if (location) {
-                newUserPayload.latitude = location.lat;
-                newUserPayload.longitude = location.lng;
-            }
-        }
         
         if (newUserPayload.role === 'Operator') {
              newUserPayload.allowedSectors = userData.allowedSectors || ['interventions', 'surveys', 'maintenance'];
@@ -304,18 +298,6 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             // This is where the password gets updated in the database
         } else {
             delete dataToUpdate.password;
-        }
-
-        // If address has changed, geocode it
-        if (dataToUpdate.address && dataToUpdate.address !== originalUser.address) {
-            const location = await geocodeAddress(dataToUpdate.address);
-            if (location) {
-                dataToUpdate.latitude = location.lat;
-                dataToUpdate.longitude = location.lng;
-            } else {
-                dataToUpdate.latitude = null;
-                dataToUpdate.longitude = null;
-            }
         }
         
         if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
@@ -463,19 +445,6 @@ export async function getOperator(operatorId: string) {
     }
 }
 
-export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
-  const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`);
-  const data = await response.json();
-  if (data.status === 'REQUEST_DENIED') {
-    console.warn(`Geocoding failed: ${data.status}. This may be due to API key restrictions or billing issues.`);
-    return null;
-  }
-  if (data.status !== 'OK') {
-    console.error(`Geocoding failed: ${data.status} for address: ${address}`);
-    return null;
-  }
-  return data.results[0].geometry.location;
-}
 
 // --- INTERVENTION & MAINTENANCE MANAGEMENT ---
 
@@ -1175,3 +1144,4 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
