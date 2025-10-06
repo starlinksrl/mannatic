@@ -66,9 +66,10 @@ interface AddInterventionFormProps {
   clients: Client[];
   operators: User[];
   currentUser: User;
+  defaultType?: InterventionType;
 }
 
-export function AddInterventionForm({ children, onInterventionAdded, clients, operators, currentUser }: AddInterventionFormProps) {
+export function AddInterventionForm({ children, onInterventionAdded, clients, operators, currentUser, defaultType = 'standard' }: AddInterventionFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
@@ -81,7 +82,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     defaultValues: {
       title: '',
       description: '',
-      type: 'standard',
+      type: defaultType,
       assignedOperatorId: null,
       priority: 'Bassa',
       clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
@@ -93,11 +94,20 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   const attachments = form.watch('attachments');
   
   useEffect(() => {
-    if (currentUser.role === 'Client') {
-        form.setValue('clientId', currentUser.id);
+    if (isOpen) {
+        form.reset({
+            title: '',
+            description: '',
+            type: defaultType,
+            assignedOperatorId: null,
+            priority: 'Bassa',
+            clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
+            dueTime: '',
+            attachments: [],
+        });
     }
-  }, [currentUser, clients, form])
-  
+  }, [isOpen, defaultType, currentUser, form]);
+
   useEffect(() => {
     setClientList(clients);
   }, [clients])
@@ -224,21 +234,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) {
-            form.reset({
-                title: '',
-                description: '',
-                type: 'standard',
-                assignedOperatorId: null,
-                priority: 'Bassa',
-                clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
-                dueTime: '',
-                attachments: [],
-            });
-        }
-    }}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-screen md:max-h-[90vh] md:h-auto h-screen w-screen max-w-full md:w-full rounded-none md:rounded-lg">
         <DialogHeader className="p-6 pb-0">

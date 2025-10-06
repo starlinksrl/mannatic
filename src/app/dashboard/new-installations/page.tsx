@@ -7,9 +7,11 @@ import { getInterventions, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { User, Intervention, Client } from '@/lib/types';
 import { useEffect, useState } from 'react';
-import { Loader } from 'lucide-react';
+import { Loader, PlusCircle } from 'lucide-react';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
+import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
+import { Button } from '@/components/ui/button';
 
 
 export default function NewInstallationsPage() {
@@ -62,8 +64,24 @@ export default function NewInstallationsPage() {
 
   return (
     <>
-      <Header title="Nuovi Impianti" onInterventionAdded={handleInterventionChange} clients={clients} operators={operators} />
+      <Header title="Nuovi Impianti" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
+        <div className="flex justify-end mb-4">
+             {user && (user.role === 'Admin' || user.role === 'Operator' || user.role === 'Client') && (
+                <AddInterventionForm
+                    clients={clients}
+                    operators={operators}
+                    onInterventionAdded={handleInterventionChange}
+                    currentUser={user}
+                    defaultType="new_installation"
+                >
+                    <Button>
+                        <PlusCircle className="mr-2" />
+                        Crea Intervento
+                    </Button>
+                </AddInterventionForm>
+            )}
+        </div>
         <InterventionsTable 
             interventions={interventions} 
             currentUser={user} 
