@@ -109,15 +109,17 @@ export default function DashboardPage() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
       
-    const openInterventionsWithLocation = openInterventions.map(i => {
-        const client = clientsMap.get(i.clientId);
-        return {
-            id: i.id,
-            title: i.title,
-            clientName: client?.name || 'Sconosciuto',
-            clientAddress: client?.address || undefined
-        };
-    });
+    const openInterventionsWithLocation = openInterventions
+      .map(i => {
+          const client = clientsMap.get(i.clientId);
+          return {
+              id: i.id,
+              title: i.title,
+              clientName: client?.name || 'Sconosciuto',
+              clientAddress: client?.address || null, // Ensure it's null, not undefined
+          };
+      })
+      .filter(i => i.clientAddress); // Filter out interventions where client address is null
 
     setKpiData({
       openInterventions: openInterventions.length,
