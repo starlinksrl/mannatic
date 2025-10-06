@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { GoogleMap, MarkerF, InfoWindow } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
@@ -17,7 +18,7 @@ const mapContainerStyle = {
   height: '70vh',
 };
 
-const center = {
+const defaultCenter = {
   lat: 41.8719,
   lng: 12.5674,
 };
@@ -27,6 +28,7 @@ type ClientWithLocation = User;
 export default function MapPage() {
   const { isLoaded, loadError } = useMaps();
   const { currentCompany } = useUser();
+  const [map, setMap] = useState<google.maps.Map | null>(null);
   const [allClients, setAllClients] = useState<ClientWithLocation[]>([]);
   const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,9 +45,7 @@ export default function MapPage() {
         getInterventions(currentCompany.id),
       ]);
       
-      const clientsWithCoords = allUsers.filter(
-        u => u.role === 'Client' && u.latitude && u.longitude
-      );
+      const clientsWithCoords = allUsers.filter(u => u.role === 'Client' && u.latitude && u.longitude);
       
       setAllClients(clientsWithCoords);
       setInterventions(allInterventions);
@@ -59,7 +59,6 @@ export default function MapPage() {
       return allClients;
     }
 
-    // Filter for 'open' interventions
     const openInterventionStatuses = ['Nuovo', 'In corso', 'In attesa'];
     const clientIdsWithOpenInterventions = new Set(
       interventions
@@ -69,6 +68,34 @@ export default function MapPage() {
     
     return allClients.filter(client => clientIdsWithOpenInterventions.has(client.id));
   }, [filter, allClients, interventions]);
+  
+  const onLoad = useCallback(function callback(mapInstance: google.maps.Map) {
+    setMap(mapInstance);
+  }, []);
+
+  const onUnmount = useCallback(function callback(map: google.maps.Map) {
+    setMap(null);
+  }, []);
+  
+  useEffect(() => {
+    if (map && clientsToDisplay.length > 0) {
+      const bounds = new window.google.maps.LatLngBounds();
+      clientsToDisplay.forEach(client => {
+        if(client.latitude && client.longitude) {
+           bounds.extend(new window.google.maps.LatLng(client.latitude, client.longitude));
+        }
+      });
+      if (clientsToDisplay.length > 1) {
+        map.fitBounds(bounds);
+      } else if (clientsToDisplay.length === 1 && clientsToDisplay[0].latitude && clientsToDisplay[0].longitude) {
+        map.setCenter({ lat: clientsToDisplay[0].latitude, lng: clientsToDisplay[0].longitude });
+        map.setZoom(14);
+      }
+    } else if (map) {
+       map.setCenter(defaultCenter);
+       map.setZoom(6);
+    }
+  }, [map, clientsToDisplay]);
 
   if (loadError) {
     console.error("Map Load Error:", loadError)
@@ -90,7 +117,13 @@ export default function MapPage() {
       <Header title="Mappa Clienti" />
       <main className="flex-1 flex flex-col">
         <div className="relative" style={{ height: mapContainerStyle.height }}>
-          <GoogleMap mapContainerStyle={{width: '100%', height: '100%'}} zoom={6} center={center}>
+          <GoogleMap 
+            mapContainerStyle={{width: '100%', height: '100%'}} 
+            center={defaultCenter}
+            zoom={6}
+            onLoad={onLoad}
+            onUnmount={onUnmount}
+          >
             {clientsToDisplay.map(client => (
               client.latitude && client.longitude &&
               <MarkerF
@@ -118,7 +151,7 @@ export default function MapPage() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle>Clienti Visualizzati</CardTitle>
-                     <div className="w-[200px]">
+                     <div className="w-[250px]">
                         <Select value={filter} onValueChange={(value) => setFilter(value as 'open' | 'all')}>
                           <SelectTrigger>
                             <SelectValue placeholder="Filtra clienti..." />
