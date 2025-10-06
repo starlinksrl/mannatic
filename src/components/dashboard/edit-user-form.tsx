@@ -367,6 +367,20 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 </FormItem>
               )}
             />
+             <div className="grid grid-cols-2 gap-4">
+                <FormItem>
+                    <FormLabel>Latitudine</FormLabel>
+                    <FormControl>
+                        <Input value={user.latitude?.toFixed(6) ?? 'N/D'} disabled />
+                    </FormControl>
+                </FormItem>
+                <FormItem>
+                    <FormLabel>Longitudine</FormLabel>
+                    <FormControl>
+                         <Input value={user.longitude?.toFixed(6) ?? 'N/D'} disabled />
+                    </FormControl>
+                </FormItem>
+            </div>
           </form>
         </Form>
         </div>
