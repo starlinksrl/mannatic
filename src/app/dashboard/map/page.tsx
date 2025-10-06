@@ -1,12 +1,10 @@
-
-
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { GoogleMap, MarkerF, InfoWindow } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
-import { getUsers, geocodeAddress, updateUser } from '@/lib/data';
+import { getUsers } from '@/lib/data';
 import { User } from '@/lib/types';
 import { Loader } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,26 +36,12 @@ export default function MapPage() {
       setLoading(true);
 
       const allUsers = await getUsers(currentCompany.id);
-      const allClients = allUsers.filter(u => u.role === 'Client');
       
-      const clientsWithCoords = allClients.filter(c => c.latitude && c.longitude);
-      const clientsWithoutCoords = allClients.filter(c => c.address && (!c.latitude || !c.longitude));
-
-      const geocodedClients: ClientWithLocation[] = [];
-
-      for (const client of clientsWithoutCoords) {
-        if (client.address) {
-          const location = await geocodeAddress(client.address);
-          if (location) {
-            const updatedClient = { ...client, latitude: location.lat, longitude: location.lng };
-            geocodedClients.push(updatedClient);
-            // Save back to DB, but don't wait for it to complete to show the map
-            updateUser(client.id, { latitude: location.lat, longitude: location.lng });
-          }
-        }
-      }
+      const clientsWithCoords = allUsers.filter(
+        u => u.role === 'Client' && u.latitude && u.longitude
+      );
       
-      setClients([...clientsWithCoords, ...geocodedClients]);
+      setClients(clientsWithCoords);
       setLoading(false);
     }
     fetchData();
@@ -109,7 +93,7 @@ export default function MapPage() {
         <div className="p-4 flex-grow">
             <Card>
                 <CardHeader>
-                    <CardTitle>Clienti da Visualizzare sulla Mappa</CardTitle>
+                    <CardTitle>Clienti Visualizzati sulla Mappa</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ScrollArea className="h-48">
@@ -122,7 +106,7 @@ export default function MapPage() {
                                 ))}
                             </ul>
                         ) : (
-                            <p className="text-sm text-muted-foreground">Nessun cliente con coordinate valide trovato in questa azienda.</p>
+                            <p className="text-sm text-muted-foreground">Nessun cliente con coordinate valide trovato in questa azienda. Prova a modificare la scheda di un cliente per aggiornare il suo indirizzo.</p>
                         )}
                     </ScrollArea>
                 </CardContent>
