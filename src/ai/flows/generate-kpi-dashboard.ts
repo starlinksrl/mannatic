@@ -16,7 +16,7 @@ const OpenInterventionWithLocationSchema = z.object({
   id: z.string(),
   title: z.string(),
   clientName: z.string(),
-  clientAddress: z.string().optional(),
+  clientAddress: z.string().optional().nullable(),
 });
 
 const GenerateKpiDashboardInputSchema = z.object({
@@ -59,7 +59,7 @@ const prompt = ai.definePrompt({
   You also have a list of open interventions with their client addresses. Analyze these locations to see if there are opportunities for route optimization.
   - Open Interventions with Locations:
   {{#each openInterventionsWithLocation}}
-    - ID: {{id}}, Title: "{{title}}", Client: {{clientName}}, Address: {{clientAddress}}
+    - ID: {{id}}, Title: "{{title}}", Client: {{clientName}}, Address: {{#if clientAddress}}{{clientAddress}}{{else}}N/D{{/if}}
   {{/each}}
   
   **Your Task:**
