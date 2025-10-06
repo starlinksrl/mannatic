@@ -30,7 +30,7 @@ import { User, UserRole, AllowedSector } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { Eye, EyeOff, Loader } from 'lucide-react';
+import { Eye, EyeOff, Loader, MapPin } from 'lucide-react';
 import { Autocomplete } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
 import { useMaps } from '@/contexts/maps-context';
@@ -67,7 +67,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const { currentCompany } = useUser();
   const [showPassword, setShowPassword] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded } = useMaps();
 
@@ -144,6 +144,38 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
           form.setValue('longitude', place.geometry.location.lng());
         }
     }
+  };
+
+  const handleGeolocate = () => {
+    if (!navigator.geolocation) {
+        toast({
+            variant: 'destructive',
+            title: 'Geolocalizzazione non supportata',
+            description: 'Il tuo browser non supporta questa funzionalità.',
+        });
+        return;
+    }
+
+    setIsSubmitting(true);
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            form.setValue('latitude', position.coords.latitude, { shouldDirty: true });
+            form.setValue('longitude', position.coords.longitude, { shouldDirty: true });
+            toast({
+                title: 'Posizione acquisita',
+                description: 'Le coordinate sono state inserite.',
+            });
+            setIsSubmitting(false);
+        },
+        () => {
+            toast({
+                variant: 'destructive',
+                title: 'Errore di geolocalizzazione',
+                description: 'Impossibile ottenere la posizione. Assicurati di aver dato i permessi.',
+            });
+            setIsSubmitting(false);
+        }
+    );
   };
 
 
@@ -315,7 +347,13 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Indirizzo</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Indirizzo</FormLabel>
+                    <Button type="button" variant="ghost" size="sm" onClick={handleGeolocate} disabled={isSubmitting}>
+                        <MapPin className="mr-2 h-4 w-4" />
+                        Localizza
+                    </Button>
+                  </div>
                     <FormControl>
                         {isLoaded ? (
                              <Autocomplete
@@ -361,3 +399,6 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   );
 }
 
+
+
+    

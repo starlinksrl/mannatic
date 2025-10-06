@@ -29,7 +29,7 @@ import { User, UserRole, AllowedSector } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateUser } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { Pencil, Eye, EyeOff } from 'lucide-react';
+import { Pencil, Eye, EyeOff, MapPin, Loader } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
 import { Autocomplete, useLoadScript } from '@react-google-maps/api';
@@ -67,8 +67,9 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const { user: currentUser } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { isLoaded } = useMaps();
 
@@ -103,6 +104,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   if(!user) return null;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
     try {
         const dataToUpdate: Partial<User> = {
             name: values.name,
@@ -136,6 +138,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             title: 'Errore',
             description: error.message || 'Si è verificato un errore durante l\'aggiornamento dell\'utente.',
         });
+    } finally {
+        setIsSubmitting(false);
     }
   }
 
@@ -169,6 +173,38 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
           form.setValue('longitude', place.geometry.location.lng());
         }
     }
+  };
+
+  const handleGeolocate = () => {
+    if (!navigator.geolocation) {
+        toast({
+            variant: 'destructive',
+            title: 'Geolocalizzazione non supportata',
+            description: 'Il tuo browser non supporta questa funzionalità.',
+        });
+        return;
+    }
+
+    setIsSubmitting(true);
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            form.setValue('latitude', position.coords.latitude, { shouldDirty: true });
+            form.setValue('longitude', position.coords.longitude, { shouldDirty: true });
+            toast({
+                title: 'Posizione acquisita',
+                description: 'Le coordinate sono state inserite.',
+            });
+            setIsSubmitting(false);
+        },
+        () => {
+            toast({
+                variant: 'destructive',
+                title: 'Errore di geolocalizzazione',
+                description: 'Impossibile ottenere la posizione. Assicurati di aver dato i permessi.',
+            });
+            setIsSubmitting(false);
+        }
+    );
   };
 
 
@@ -346,7 +382,13 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Indirizzo</FormLabel>
+                   <div className="flex items-center justify-between">
+                    <FormLabel>Indirizzo</FormLabel>
+                    <Button type="button" variant="ghost" size="sm" onClick={handleGeolocate} disabled={isSubmitting}>
+                        <MapPin className="mr-2 h-4 w-4" />
+                        Localizza
+                    </Button>
+                  </div>
                     <FormControl>
                         {isLoaded ? (
                             <Autocomplete
@@ -414,7 +456,10 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             <DialogClose asChild>
                 <Button variant="outline">Annulla</Button>
             </DialogClose>
-            <Button type="submit" form="edit-user-form">Salva modifiche</Button>
+            <Button type="submit" form="edit-user-form" disabled={isSubmitting}>
+               {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+               Salva modifiche
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -422,3 +467,6 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
 }
 
 
+
+
+    
