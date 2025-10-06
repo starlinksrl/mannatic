@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { changelog } from '@/lib/changelog';
 import { MapsProvider } from '@/contexts/maps-context';
+import { ChangelogModal } from '@/components/dashboard/changelog-modal';
 
 export default function DashboardLayout({
   children,
@@ -48,6 +49,7 @@ export default function DashboardLayout({
   return (
     <MapsProvider>
       <InterventionModalProvider>
+        <ChangelogModal />
         <div className="grid min-h-screen w-full md:grid-cols-[280px_1fr]">
           <div className="hidden border-r bg-card md:block">
             <SidebarNav />
