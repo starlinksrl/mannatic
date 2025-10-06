@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
@@ -34,6 +33,7 @@ import { Eye, EyeOff, Loader, MapPin } from 'lucide-react';
 import { Autocomplete } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
 import { useMaps } from '@/contexts/maps-context';
+import { Textarea } from '../ui/textarea';
 
 const allowedSectors: { id: AllowedSector; label: string }[] = [
     { id: 'interventions', label: 'Interventi' },
@@ -51,6 +51,7 @@ const formSchema = z.object({
   allowedSectors: z.array(z.string()).optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
+  clientNotes: z.string().optional(),
 });
 
 interface AddUserFormProps {
@@ -81,6 +82,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       phone: '',
       role: defaultRole,
       allowedSectors: ['interventions', 'surveys', 'maintenance'], // Default to all for new operators
+      clientNotes: '',
     },
   });
 
@@ -103,6 +105,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined,
             latitude: values.latitude,
             longitude: values.longitude,
+            clientNotes: values.role === 'Client' ? values.clientNotes : undefined,
         });
         
         if (newUser) {
@@ -191,6 +194,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
               phone: '',
               role: defaultRole,
               allowedSectors: ['interventions', 'surveys', 'maintenance'],
+              clientNotes: '',
             });
             setShowPassword(false);
         }
@@ -383,6 +387,21 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 </FormItem>
               )}
             />
+             {isClientForm && (
+              <FormField
+                control={form.control}
+                name="clientNotes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Appunti Cliente</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Aggiungi note sul cliente..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter className="flex-col-reverse sm:flex-row pt-4">
                 <DialogClose asChild>
                     <Button variant="outline" disabled={isSubmitting}>Annulla</Button>

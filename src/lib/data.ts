@@ -259,6 +259,7 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             password: passwordForDb,
             latitude: userData.latitude,
             longitude: userData.longitude,
+            clientNotes: userData.clientNotes || '',
         };
         
         if (newUserPayload.role === 'Operator') {
@@ -1144,4 +1145,5 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
 

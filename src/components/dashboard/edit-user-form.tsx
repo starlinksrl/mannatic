@@ -35,6 +35,7 @@ import { useUser } from '@/contexts/user-context';
 import { Autocomplete, useLoadScript } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
 import { useMaps } from '@/contexts/maps-context';
+import { Textarea } from '../ui/textarea';
 
 const allowedSectors: { id: AllowedSector; label: string }[] = [
     { id: 'interventions', label: 'Interventi' },
@@ -53,6 +54,7 @@ const formSchema = z.object({
   allowedSectors: z.array(z.string()).optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
+  clientNotes: z.string().optional(),
 });
 
 interface EditUserFormProps {
@@ -97,6 +99,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             allowedSectors: user.allowedSectors || [],
             latitude: user.latitude || null,
             longitude: user.longitude || null,
+            clientNotes: user.clientNotes || '',
         })
     }
   }, [user, form]);
@@ -116,6 +119,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined,
             latitude: values.latitude,
             longitude: values.longitude,
+            clientNotes: values.role === 'Client' ? values.clientNotes : undefined,
         };
 
         if (values.password && values.password.trim() !== '') {
@@ -448,6 +452,21 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                   )}
                 />
               </div>
+               {role === 'Client' && (
+                  <FormField
+                    control={form.control}
+                    name="clientNotes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Appunti Cliente</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Note varie sul cliente..." {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
           </form>
         </Form>
         </div>

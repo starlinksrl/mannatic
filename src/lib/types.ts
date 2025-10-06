@@ -48,6 +48,7 @@ export interface User {
   allowedSectors?: AllowedSector[];
   latitude?: number | null;
   longitude?: number | null;
+  clientNotes?: string;
 }
 
 export interface PasswordResetToken {
