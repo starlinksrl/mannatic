@@ -59,7 +59,7 @@ export default function DashboardPage() {
       getClients(currentCompany.id),
     ]);
 
-    const clientsMap = new Map(allClients.map(c => [c.id, c.name]));
+    const clientsMap = new Map(allClients.map(c => [c.id, c]));
     setClients(allClients);
     setOperators(users.filter(u => u.role === 'Operator'));
     
@@ -104,10 +104,20 @@ export default function DashboardPage() {
           ...u, 
           interventionTitle: i.title,
           interventionId: i.id,
-          clientName: clientsMap.get(i.clientId) || 'Cliente non trovato'
+          clientName: clientsMap.get(i.clientId)?.name || 'Cliente non trovato'
       })))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
+      
+    const openInterventionsWithLocation = openInterventions.map(i => {
+        const client = clientsMap.get(i.clientId);
+        return {
+            id: i.id,
+            title: i.title,
+            clientName: client?.name || 'Sconosciuto',
+            clientAddress: client?.address || undefined
+        };
+    });
 
     setKpiData({
       openInterventions: openInterventions.length,
@@ -119,6 +129,7 @@ export default function DashboardPage() {
       highPriorityInterventions,
       latestUpdates,
       allInterventions: relevantInterventions,
+      openInterventionsWithLocation,
     });
     setLoading(false);
   }
