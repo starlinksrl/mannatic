@@ -58,7 +58,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [operatorFilter, setOperatorFilter] = useState('all');
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'createdAt', direction: 'ascending' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator' | 'default'; direction: 'ascending' | 'descending' } | null>({ key: 'default', direction: 'ascending' });
   
   const [clientsMap, setClientsMap] = useState<Map<string, Client>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
@@ -156,41 +156,54 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   
   const sortedInterventions = useMemo(() => {
     let sortableItems = [...filteredInterventions];
-    if (sortConfig !== null) {
-      sortableItems.sort((a, b) => {
-        let aValue, bValue;
-        
-        switch(sortConfig.key) {
-            case 'priority':
-                aValue = priorityOrder[a.priority];
-                bValue = priorityOrder[b.priority];
-                break;
-            case 'status':
-                aValue = statusOrder[a.status];
-                bValue = statusOrder[b.status];
-                break;
-            case 'client':
-                aValue = clientsMap.get(a.clientId)?.name || '';
-                bValue = clientsMap.get(b.clientId)?.name || '';
-                break;
-             case 'operator':
-                aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
-                bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
-                break;
-            default:
-                aValue = a[sortConfig.key as keyof Intervention];
-                bValue = b[sortConfig.key as keyof Intervention];
-        }
-
-        if (aValue < bValue) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
-        return 0;
-      });
+    
+    // Default sort: by priority descending, then by creation date ascending
+    if (sortConfig === null || sortConfig.key === 'default') {
+        sortableItems.sort((a, b) => {
+            const priorityComparison = priorityOrder[b.priority] - priorityOrder[a.priority];
+            if (priorityComparison !== 0) {
+                return priorityComparison;
+            }
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
+        return sortableItems;
     }
+
+    // User-defined sort
+    sortableItems.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch(sortConfig.key) {
+          case 'priority':
+              aValue = priorityOrder[a.priority];
+              bValue = priorityOrder[b.priority];
+              break;
+          case 'status':
+              aValue = statusOrder[a.status];
+              bValue = statusOrder[b.status];
+              break;
+          case 'client':
+              aValue = clientsMap.get(a.clientId)?.name || '';
+              bValue = clientsMap.get(b.clientId)?.name || '';
+              break;
+           case 'operator':
+              aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
+              bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
+              break;
+          default:
+              aValue = a[sortConfig.key as keyof Intervention];
+              bValue = b[sortConfig.key as keyof Intervention];
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
+      return 0;
+    });
+    
     return sortableItems;
   }, [filteredInterventions, sortConfig, operatorsMap, clientsMap]);
 
@@ -315,7 +328,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                              </div>
                           </div>
                         )}
-                        <p className="text-muted-foreground break-words">{intervention.title}</p>
+                        <p className="font-semibold break-words">{intervention.title}</p>
                         {intervention.createdAt && <p className="text-sm text-muted-foreground break-words">Creato: {format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                         {intervention.dueDate && <p className="text-sm text-muted-foreground break-words">Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                         <div className="flex items-center gap-2 pt-1">
@@ -468,3 +481,4 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     </div>
   );
 }
+
