@@ -58,6 +58,15 @@ export default function MapPage() {
     fetchData();
   }, [currentCompany, isLoaded]);
 
+  const clientsWithNewInstallation = useMemo(() => {
+    const clientIds = new Set(
+      interventions
+        .filter(i => i.type === 'new_installation' && i.status !== 'Completato' && i.status !== 'Annullato')
+        .map(i => i.clientId)
+    );
+    return clientIds;
+  }, [interventions]);
+
   const clientsToDisplay = useMemo(() => {
     if (filter === 'all') {
       return allClients.filter(client => client.latitude && client.longitude);
@@ -71,7 +80,7 @@ export default function MapPage() {
       interventions
         .filter(i => {
             // Standard open interventions
-            if (!i.isMaintenance && i.type !== 'new_installation' && openInterventionStatuses.includes(i.status)) {
+            if (i.isMaintenance === false && i.type === 'standard' && openInterventionStatuses.includes(i.status)) {
                 return true;
             }
             // New installations that are not completed or cancelled
@@ -147,14 +156,26 @@ export default function MapPage() {
             onLoad={onLoad}
             onUnmount={onUnmount}
           >
-            {clientsToDisplay.map(client => (
-              client.latitude && client.longitude &&
-              <MarkerF
-                key={client.id}
-                position={{ lat: client.latitude, lng: client.longitude }}
-                onClick={() => setSelectedClient(client)}
-              />
-            ))}
+            {clientsToDisplay.map(client => {
+              const isNewInstallation = clientsWithNewInstallation.has(client.id);
+              const markerIcon = isNewInstallation ? {
+                  path: window.google.maps.SymbolPath.CIRCLE,
+                  fillColor: '#4285F4', // Blue color
+                  fillOpacity: 1,
+                  strokeWeight: 0,
+                  scale: 8,
+              } : undefined;
+
+              return (
+                client.latitude && client.longitude &&
+                <MarkerF
+                  key={client.id}
+                  position={{ lat: client.latitude, lng: client.longitude }}
+                  onClick={() => setSelectedClient(client)}
+                  icon={markerIcon}
+                />
+              )
+            })}
 
             {selectedClient && selectedClient.latitude && selectedClient.longitude && (
               <InfoWindow
