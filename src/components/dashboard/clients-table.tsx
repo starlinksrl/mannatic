@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User } from '@/lib/types';
 import {
   Table,
@@ -31,7 +31,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Input } from '../ui/input';
 
 interface ClientsTableProps {
   clients: User[];
@@ -46,6 +47,17 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [clientToDelete, setClientToDelete] = useState<User | null>(null);
     const [isSendingCredentials, setIsSendingCredentials] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    
+    const filteredClients = useMemo(() => {
+        if (!searchTerm) {
+            return clients;
+        }
+        return clients.filter(client =>
+            JSON.stringify(client).toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [clients, searchTerm]);
+
 
     const handleEditClick = (client: User) => {
         setSelectedClient(client);
@@ -98,9 +110,17 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
 
   return (
     <>
+    <div className="mb-4">
+        <Input
+            placeholder="Cerca in tutti i campi..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+        />
+    </div>
     <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
-          {clients.map((client) => (
+          {filteredClients.map((client) => (
             <div key={client.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
                 <div className="flex items-start gap-4 flex-1 cursor-pointer" onClick={() => handleEditClick(client)}>
                     <Avatar className="h-10 w-10 border">
@@ -171,7 +191,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {clients.map((client) => (
+          {filteredClients.map((client) => (
             <TableRow key={client.id}>
               <TableCell onClick={() => handleEditClick(client)} className="cursor-pointer">
                 <div className="flex items-center gap-3">
