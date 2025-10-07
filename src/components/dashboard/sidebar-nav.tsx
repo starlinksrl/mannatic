@@ -113,7 +113,7 @@ export function SidebarNav() {
       <div className="mt-auto p-4 space-y-2">
         <Separator />
         <p className="text-xs text-muted-foreground text-center">
-            realizzato da Francesco mannarini su piattaforma Google Cloud
+            Created by F. Mannarini on Google Cloud
         </p>
          {latestVersion && (
             <div className="text-center">
