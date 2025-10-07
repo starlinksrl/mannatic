@@ -1,6 +1,6 @@
 
 
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, AppConfiguration, Attachment, InterventionType, WorkLog, AutologinToken } from './types';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, AppConfiguration, Attachment, InterventionType, WorkLog, AutologinToken, SupportTicket, SupportMessage, SupportTicketStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter, differenceInMinutes, addHours } from 'date-fns';
 import { db, auth } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
@@ -1151,7 +1151,84 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 }
 
 
+// --- SUPPORT TICKETS ---
 
+export async function getSupportTickets(companyId: string, clientId?: string): Promise<SupportTicket[]> {
+    if (!companyId) return [];
+    try {
+        let q: Query;
+        if (clientId) {
+            q = query(collection(db, 'supportTickets'), where("companyId", "==", companyId), where("clientId", "==", clientId));
+        } else {
+            q = query(collection(db, 'supportTickets'), where("companyId", "==", companyId));
+        }
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportTicket));
+    } catch (error) {
+        console.error("Error fetching support tickets:", error);
+        return [];
+    }
+}
 
+export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'messages'> & { initialMessage: string, sender: User }): Promise<SupportTicket> {
+    const newId = generateShortId();
+    const now = new Date().toISOString();
 
+    const initialMessage: SupportMessage = {
+        id: uuidv4(),
+        senderId: ticketData.sender.id,
+        senderName: ticketData.sender.name,
+        text: ticketData.initialMessage,
+        createdAt: now,
+    };
 
+    const newTicket: SupportTicket = {
+        id: newId,
+        clientId: ticketData.clientId,
+        clientName: ticketData.clientName,
+        companyId: ticketData.companyId,
+        subject: ticketData.subject,
+        createdAt: now,
+        updatedAt: now,
+        status: 'Aperto',
+        messages: [initialMessage],
+    };
+
+    await setDoc(doc(db, 'supportTickets', newId), newTicket);
+    return newTicket;
+}
+
+export async function addSupportMessage(ticketId: string, message: { senderId: string, senderName: string, text: string }): Promise<void> {
+    const ticketRef = doc(db, 'supportTickets', ticketId);
+    const ticketSnap = await getDoc(ticketRef);
+    if (!ticketSnap.exists()) {
+        throw new Error("Ticket not found");
+    }
+
+    const ticket = ticketSnap.data() as SupportTicket;
+    const now = new Date().toISOString();
+
+    const newMessage: SupportMessage = {
+        id: uuidv4(),
+        senderId: message.senderId,
+        senderName: message.senderName,
+        text: message.text,
+        createdAt: now,
+    };
+
+    const updatedMessages = [...ticket.messages, newMessage];
+
+    await updateDoc(ticketRef, {
+        messages: updatedMessages,
+        updatedAt: now,
+        status: 'Aperto', // Re-open ticket on new message
+    });
+}
+
+export async function updateSupportTicketStatus(ticketId: string, status: SupportTicketStatus): Promise<void> {
+    const ticketRef = doc(db, 'supportTickets', ticketId);
+    await updateDoc(ticketRef, {
+        status: status,
+        updatedAt: new Date().toISOString(),
+    });
+}
