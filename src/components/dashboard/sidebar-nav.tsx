@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser } from '@/contexts/user-context';
@@ -26,6 +27,8 @@ import { Logo } from '../icons/logo';
 import Image from 'next/image';
 import { AllowedSector } from '@/lib/types';
 import { Separator } from '../ui/separator';
+import { changelog } from '@/lib/changelog';
+import { Badge } from '../ui/badge';
 
 const navItems: {
     href: string;
@@ -73,6 +76,8 @@ export function SidebarNav() {
     // For non-operators or non-sector items, role-based access is enough
     return true;
   }
+  
+  const latestVersion = changelog[0]?.version;
 
   return (
     <div className="flex h-full flex-col">
@@ -103,11 +108,23 @@ export function SidebarNav() {
           ) : null
         )}
       </nav>
-      <div className="mt-auto p-4">
-        <Separator className="mb-2" />
+      <div className="mt-auto p-4 space-y-2">
+        <Separator />
         <p className="text-xs text-muted-foreground text-center">
-            creato da Francesco Mannarini con Firebase e Google AI
+            realizzato da Francesco mannarini su piattaforma Google Cloud
         </p>
+         {latestVersion && (
+            <div className="text-center">
+                <Link href="/dashboard/changelog">
+                    <Badge 
+                        variant="secondary" 
+                        className="cursor-pointer hover:ring-1 hover:ring-ring"
+                    >
+                        v{latestVersion}
+                    </Badge>
+                </Link>
+            </div>
+        )}
       </div>
     </div>
   );

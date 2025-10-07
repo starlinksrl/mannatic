@@ -6,9 +6,6 @@ import { useRouter } from 'next/navigation';
 import React, { useEffect } from 'react';
 import { Loader } from 'lucide-react';
 import { InterventionModalProvider } from '@/contexts/intervention-modal-context';
-import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
-import { changelog } from '@/lib/changelog';
 import { MapsProvider } from '@/contexts/maps-context';
 import { ChangelogModal } from '@/components/dashboard/changelog-modal';
 
@@ -44,8 +41,6 @@ export default function DashboardLayout({
     )
   }
 
-  const latestVersion = changelog[0]?.version;
-
   return (
     <MapsProvider>
       <InterventionModalProvider>
@@ -58,16 +53,6 @@ export default function DashboardLayout({
             {children}
           </div>
         </div>
-        {latestVersion && (
-            <Link href="/dashboard/changelog">
-              <Badge 
-                variant="secondary" 
-                className="fixed bottom-4 right-4 z-50 cursor-pointer hover:ring-2 hover:ring-ring"
-              >
-                v{latestVersion}
-              </Badge>
-            </Link>
-        )}
       </InterventionModalProvider>
     </MapsProvider>
   );
