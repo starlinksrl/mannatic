@@ -5,17 +5,27 @@ import { useState } from 'react';
 import { SupportTicket, User } from '@/lib/types';
 import { Header } from './header';
 import { Button } from '../ui/button';
-import { ArrowLeft, Loader, Send } from 'lucide-react';
+import { ArrowLeft, Loader, Send, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Textarea } from '../ui/textarea';
 import { useUser } from '@/contexts/user-context';
-import { addSupportMessage, updateSupportTicketStatus } from '@/lib/data';
+import { addSupportMessage, updateSupportTicketStatus, deleteSupportTicket } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SupportTicketConversationProps {
   ticket: SupportTicket;
@@ -28,6 +38,8 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
 
   if (!user) return null;
 
@@ -64,14 +76,36 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
     }
   }
 
+  const confirmDelete = async () => {
+    setIsSubmitting(true);
+    const success = await deleteSupportTicket(ticket.id);
+    if (success) {
+        onTicketUpdated();
+        onBack();
+        toast({ title: "Ticket eliminato", description: `Il ticket di supporto è stato eliminato.` });
+    } else {
+        toast({ variant: 'destructive', title: "Errore", description: "Impossibile eliminare il ticket." });
+    }
+    setIsSubmitting(false);
+    setIsDeleteDialogOpen(false);
+  }
+
   return (
     <>
       <Header title="Conversazione Supporto" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
-        <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="mr-2" />
-          Torna ai ticket
-        </Button>
+        <div className="flex justify-between items-center">
+            <Button variant="outline" onClick={onBack}>
+            <ArrowLeft className="mr-2" />
+            Torna ai ticket
+            </Button>
+             {user.role === 'Admin' && (
+                <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
+                    <Trash2 className="mr-2" />
+                    Elimina Conversazione
+                </Button>
+            )}
+        </div>
 
         <Card>
           <CardHeader>
@@ -136,7 +170,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
               />
               <div className="flex justify-end">
                 <Button onClick={handleSendMessage} disabled={isSubmitting || newMessage.trim() === '' || ticket.status === 'Chiuso'}>
-                  {isSubmitting ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                  {isSubmitting && !isDeleteDialogOpen ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
                   Invia
                 </Button>
               </div>
@@ -144,6 +178,23 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
           </CardContent>
         </Card>
       </main>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Sei assolutamente sicuro?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Questa azione non può essere annullata. Verrà eliminato permanentemente il ticket e tutta la sua cronologia.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90" disabled={isSubmitting}>
+                 {isSubmitting && <Loader className="mr-2 animate-spin" />}
+                Elimina
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
