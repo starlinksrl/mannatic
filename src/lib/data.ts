@@ -257,8 +257,8 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             address: userData.address || '',
             phone: userData.phone || '',
             password: passwordForDb,
-            latitude: userData.latitude,
-            longitude: userData.longitude,
+            latitude: userData.latitude || null,
+            longitude: userData.longitude || null,
             clientNotes: userData.clientNotes || '',
         };
         
@@ -1145,6 +1145,7 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
 
 
 
