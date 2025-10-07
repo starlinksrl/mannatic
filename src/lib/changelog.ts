@@ -1,14 +1,27 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy } from 'lucide-react';
 
 export const changelog = [
     {
-        version: "0.17",
+        version: "0.18",
         date: format(new Date(), 'yyyy-MM-dd'),
+        title: "Modulo Supporto Tecnico e Controllo Notifiche",
+        icon: LifeBuoy,
+        iconClass: "bg-indigo-500",
+        changes: [
+            { type: LifeBuoy, description: "Introdotto un nuovo modulo 'Supporto' che permette ai clienti di aprire ticket di assistenza e agli admin di rispondere, centralizzando la comunicazione." },
+            { type: Wrench, description: "Semplificata la navigazione per i clienti rimuovendo la voce di menu 'Le mie Richieste' e integrando tutto nella vista 'Interventi'." },
+            { type: MailCheck, description: "Aggiunto un checkbox nei moduli di creazione e modifica intervento per dare all'operatore il pieno controllo sull'invio delle notifiche email al cliente." },
+            { type: Trash2, description: "Implementata la funzionalità di eliminazione completa per i ticket di supporto da parte degli amministratori." },
+        ]
+    },
+    {
+        version: "0.17",
+        date: "2024-10-03",
         title: "Miglioramenti Mappa, AI Logistica e Gestione Clienti",
         icon: Rocket,
-        iconClass: "text-green-500",
+        iconClass: "bg-green-500",
         changes: [
             { type: MapPin, description: "Aggiunto pulsante 'Localizza' nei moduli cliente per inserire automaticamente le coordinate geografiche." },
             { type: Eye, description: "La mappa ora si centra e zooma automaticamente per mostrare tutti i clienti filtrati." },
@@ -24,7 +37,7 @@ export const changelog = [
         date: "2024-10-02",
         title: "Gestione Credenziali Clienti",
         icon: KeyRound,
-        iconClass: "text-yellow-500",
+        iconClass: "bg-yellow-500",
         changes: [
             { type: KeyRound, description: "Aggiunta la possibilità per gli Admin di impostare e modificare la password per gli account Cliente." },
             { type: Mail, description: "Implementata la funzionalità 'Invia Credenziali' anche per i clienti, per notificare loro le informazioni di accesso." },
@@ -37,7 +50,7 @@ export const changelog = [
         date: "2024-10-01",
         title: "Accessibilità Changelog e Refactoring",
         icon: GitMerge,
-        iconClass: "text-blue-500",
+        iconClass: "bg-blue-500",
         changes: [
             { type: GitMerge, description: "Aggiunta una pagina 'Changelog' accessibile a tutti gli utenti per visualizzare le novità." },
             { type: Eye, description: "Inserito un badge con la versione attuale in basso a destra, cliccabile per aprire il changelog." },
@@ -49,7 +62,7 @@ export const changelog = [
         date: "2024-09-30",
         title: "Ottimizzazione Mobile e Qualità della Vita",
         icon: Smartphone,
-        iconClass: "text-green-500",
+        iconClass: "bg-green-500",
         changes: [
             { type: Smartphone, description: "Migliorata drasticamente la reattività della scheda 'Modifica Intervento' per una visualizzazione ottimale su schermi verticali stretti (smartphone)." },
             { type: Tablet, description: "Ottimizzata la visualizzazione della Dashboard e dell'elenco interventi su dispositivi mobili e tablet, con stacking automatico degli elementi." },
@@ -62,7 +75,7 @@ export const changelog = [
         date: "2024-09-27",
         title: "Visualizzazione Allegati e Ottimizzazione UI",
         icon: Monitor,
-        iconClass: "text-purple-500",
+        iconClass: "bg-purple-500",
         changes: [
             { type: Eye, description: "Implementata una nuova visualizzazione popup per gli allegati, che mostra anteprime per immagini e PDF e offre un download sicuro per gli altri file, risolvendo i problemi di accesso diretto." },
             { type: Paperclip, description: "Aumentato il limite di dimensione per il caricamento degli allegati a 5MB." },
@@ -76,7 +89,7 @@ export const changelog = [
         date: "2024-09-26",
         title: "Allegati, Explorer per Admin e Stabilità",
         icon: Paperclip,
-        iconClass: "text-blue-500",
+        iconClass: "bg-blue-500",
         changes: [
             { type: Paperclip, description: "Aggiunta la possibilità di caricare e gestire file allegati direttamente negli interventi." },
             { type: Database, description: "Implementato un Data Explorer per gli Admin, con visibilità limitata ai soli dati della propria azienda." },
@@ -90,7 +103,7 @@ export const changelog = [
         date: "2024-09-25",
         title: "Comunicazioni Clienti e Miglioramenti Stabilità",
         icon: Mail,
-        iconClass: "text-green-500",
+        iconClass: "bg-green-500",
         changes: [
             { type: MailCheck, description: "I clienti ora ricevono un'email di conferma immediata alla creazione di un nuovo intervento." },
             { type: Mail, description: "Invio automatico di email ai clienti per ogni aggiornamento di stato o commento su un intervento." },
@@ -105,7 +118,7 @@ export const changelog = [
         date: "2024-09-24",
         title: "Privacy, UX e Gestione Avanzata",
         icon: Shield,
-        iconClass: "text-purple-500",
+        iconClass: "bg-purple-500",
         changes: [
             { type: Eye, description: "La dashboard del cliente ora mostra solo ed esclusivamente i dati relativi ai propri interventi, garantendo la privacy." },
             { type: Building, description: "Implementata la gestione completa delle aziende, con possibilità di modifica e cancellazione sicura." },
@@ -121,7 +134,7 @@ export const changelog = [
         date: "2024-09-23",
         title: "Miglioramenti UI e Correzioni Funzionali",
         icon: Wrench,
-        iconClass: "text-green-500",
+        iconClass: "bg-green-500",
         changes: [
             { type: Wrench, description: "Migliorata la reattività di tutti gli elenchi per una visualizzazione ottimale su dispositivi mobili e tablet." },
             { type: Wrench, description: "Impostato il filtro predefinito 'In scadenza (30gg)' per la tabella delle manutenzioni." },
@@ -138,7 +151,7 @@ export const changelog = [
         date: "2024-09-22",
         title: "Riorganizzazione Utenti e Dettagli Contatto",
         icon: UsersIcon,
-        iconClass: "text-blue-500",
+        iconClass: "bg-blue-500",
         changes: [
             { type: UsersIcon, description: "Separata la gestione dei Clienti da quella degli Utenti interni per maggiore chiarezza." },
             { type: Contact, description: "Aggiunti campi 'Telefono' e 'Indirizzo' ai dati dei clienti e utenti." },
@@ -152,7 +165,7 @@ export const changelog = [
         date: "2024-09-21",
         title: "Miglioramenti UX e Affidabilità Notifiche",
         icon: Rocket,
-        iconClass: "text-green-500",
+        iconClass: "bg-green-500",
         changes: [
             { type: LayoutDashboard, description: "Aggiunto pulsante 'Crea Intervento' direttamente nella dashboard per un accesso più rapido." },
             { type: MailCheck, description: "Risolto definitivamente il problema delle notifiche email per i new interventi, adottando un sistema di invio diretto più robusto." },
@@ -166,7 +179,7 @@ export const changelog = [
         date: "2024-09-20",
         title: "Intelligenza Artificiale e Notifiche Avanzate",
         icon: ShieldCheck,
-        iconClass: "text-blue-500",
+        iconClass: "bg-blue-500",
         changes: [
             { type: ClipboardCheck, description: "Implementata la dashboard AI generativa che analizza i KPI e fornisce insights." },
             { type: Mail, description: "Aggiunta la configurazione SMTP per l'invio di email di notifica personalizzate." },
