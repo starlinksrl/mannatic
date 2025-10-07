@@ -71,6 +71,7 @@ export default function SupportPage() {
           tickets={tickets}
           onTicketSelect={setSelectedTicket}
           currentUser={user}
+          onTicketDeleted={fetchData}
         />
       </main>
     </>

@@ -1281,3 +1281,26 @@ export async function updateSupportTicketStatus(ticketId: string, status: Suppor
         updatedAt: new Date().toISOString(),
     });
 }
+
+export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
+    try {
+        const batch = writeBatch(db);
+
+        // Delete notifications related to this ticket
+        const notificationsQuery = query(collection(db, 'notifications'), where('relatedInterventionId', '==', ticketId));
+        const notificationsSnapshot = await getDocs(notificationsQuery);
+        notificationsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        // Delete the ticket itself
+        const ticketRef = doc(db, 'supportTickets', ticketId);
+        batch.delete(ticketRef);
+        
+        await batch.commit();
+        return true;
+    } catch (error) {
+        console.error("Error deleting support ticket:", error);
+        return false;
+    }
+}
