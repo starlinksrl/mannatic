@@ -49,7 +49,7 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
     }
   };
 
-  const handleDeleteClick = (e: React.MouseEvent, ticket: SupportTicket) => {
+  const handleDeleteClick = (e: React.MouseEvent | Event, ticket: SupportTicket) => {
     e.stopPropagation();
     setTicketToDelete(ticket);
     setIsDeleteDialogOpen(true);
