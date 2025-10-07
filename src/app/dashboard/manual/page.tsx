@@ -5,7 +5,7 @@ import { Header } from '@/components/dashboard/header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Users, User, UserCog, Wrench, ShieldCheck, ClipboardCheck, Calendar, Settings, Database, PlusCircle, Eye, LayoutDashboard } from 'lucide-react';
+import { Users, User, UserCog, Wrench, ShieldCheck, ClipboardCheck, Calendar, Settings, Database, PlusCircle, Eye, LayoutDashboard, LifeBuoy } from 'lucide-react';
 import { useUser } from '@/contexts/user-context';
 import { Loader } from 'lucide-react';
 
@@ -80,8 +80,16 @@ const clientGuide = [
         category: "La Tua Area Riservata",
         icon: LayoutDashboard,
         items: [
-            { title: "Crea una Richiesta", description: "Dal pulsante 'Crea Intervento', puoi aprire una nuova richiesta di assistenza in modo semplice e veloce." },
-            { title: "Visualizza le Tue Richieste", description: "La sezione 'Le mie Richieste' elenca tutti i tuoi interventi, passati e presenti. Clicca su un intervento per vederne i dettagli." },
+            { title: "Crea una Richiesta di Intervento", description: "Dal pulsante 'Crea Intervento' nella sezione Interventi, puoi aprire una nuova richiesta di assistenza in modo semplice e veloce." },
+            { title: "Visualizza i Tuoi Interventi", description: "La sezione 'Interventi' elenca tutti i tuoi interventi, passati e presenti. Clicca su un intervento per vederne i dettagli." },
+        ]
+    },
+    {
+        category: "Assistenza e Supporto",
+        icon: LifeBuoy,
+        items: [
+            { title: "Apri un Ticket di Supporto", description: "Nella sezione 'Supporto', puoi creare un ticket per porre domande o richiedere assistenza non legata a un intervento specifico." },
+            { title: "Comunica con l'Assistenza", description: "Visualizza le risposte ai tuoi ticket e invia ulteriori messaggi direttamente dalla piattaforma." },
         ]
     },
     {
@@ -90,7 +98,7 @@ const clientGuide = [
         items: [
             { title: "Stato in Tempo Reale", description: "Controlla lo stato di avanzamento di ogni tua richiesta (Nuovo, In corso, Completato, etc.)." },
             { title: "Cronologia Aggiornamenti", description: "All'interno del dettaglio di un intervento, puoi leggere tutti gli aggiornamenti e i commenti lasciati dai tecnici." },
-            { title: "Notifiche Email", description: "Riceverai notifiche via email per la creazione di un intervento e per ogni aggiornamento significativo." },
+            { title: "Notifiche Email e In-App", description: "Riceverai notifiche via email e all'interno dell'app per ogni aggiornamento significativo." },
         ]
     },
      {
