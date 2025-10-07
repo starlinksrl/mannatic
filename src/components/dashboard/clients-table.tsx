@@ -14,14 +14,14 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound, LogIn } from 'lucide-react';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { EditUserForm } from './edit-user-form';
 import { useUser } from '@/contexts/user-context';
 import { deleteUser } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { sendCredentialsEmailAction } from '@/app/actions';
+import { sendCredentialsEmailAction, createClientAutologinUrl } from '@/app/actions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +48,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     const [clientToDelete, setClientToDelete] = useState<User | null>(null);
     const [isSendingCredentials, setIsSendingCredentials] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isLoggingInAs, setIsLoggingInAs] = useState<string | null>(null);
     
     const filteredClients = useMemo(() => {
         if (!searchTerm) {
@@ -86,6 +87,21 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
         }
         setIsSendingCredentials(null);
     }
+    
+    const handleLoginAsClient = async (client: User) => {
+        setIsLoggingInAs(client.id);
+        const result = await createClientAutologinUrl(client.id);
+        if (result.success && result.url) {
+            window.open(result.url, '_blank');
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Accesso Fallito',
+                description: result.error || 'Impossibile generare il link di accesso per il cliente.',
+            });
+        }
+        setIsLoggingInAs(null);
+    };
 
 
     const confirmDelete = async () => {
@@ -155,6 +171,9 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => handleLoginAsClient(client)} disabled={isLoggingInAs === client.id}>
+                           <LogIn className="mr-2" /> {isLoggingInAs === client.id ? 'Accesso...' : 'Entra come Cliente'}
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleEditClick(client)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
@@ -168,7 +187,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                             <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
-                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    className="text-destructive focus:text-destructive"
                                     onSelect={() => handleDeleteClick(client)}>
                                     <Trash2 className="mr-2" /> Elimina
                                 </DropdownMenuItem>
@@ -234,6 +253,9 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => handleLoginAsClient(client)} disabled={isLoggingInAs === client.id}>
+                           <LogIn className="mr-2" /> {isLoggingInAs === client.id ? 'Accesso...' : 'Entra come Cliente'}
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleEditClick(client)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
@@ -247,7 +269,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                             <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
-                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    className="text-destructive focus:text-destructive"
                                     onSelect={() => handleDeleteClick(client)}>
                                     <Trash2 className="mr-2" /> Elimina
                                 </DropdownMenuItem>
@@ -284,6 +306,3 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     </>
   );
 }
-
-    
-    

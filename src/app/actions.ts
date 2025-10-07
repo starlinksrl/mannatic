@@ -243,3 +243,25 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }
+
+export async function createClientAutologinUrl(clientId: string): Promise<{ success: boolean; url?: string; error?: string }> {
+    const client = await getUserById(clientId);
+    if (!client || client.role !== 'Client') {
+        return { success: false, error: 'Utente non trovato o non è un cliente.' };
+    }
+
+    const company = await getCompanyByUserId(clientId);
+    if (!company) {
+        return { success: false, error: 'Impossibile trovare l\'azienda associata.' };
+    }
+
+    try {
+        const token = await createAutologinToken(clientId);
+        const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
+        const url = `${baseUrl}/login?autologin_token=${token}`;
+        return { success: true, url };
+    } catch (error: any) {
+        console.error("Error creating autologin URL:", error);
+        return { success: false, error: 'Errore durante la creazione del link di accesso.' };
+    }
+}
