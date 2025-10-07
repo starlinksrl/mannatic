@@ -137,7 +137,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           setCurrentCompany(company);
           localStorage.setItem('companyId', companyId);
           const companyUsers = await getUsers(companyId);
-          setAvailableUsers([CREATOR_USER, ...companyUsers]);
+          const adminUser = companyUsers.find(u => u.role === 'Admin');
+          const usersToShow: User[] = [CREATOR_USER];
+          if(adminUser) {
+            usersToShow.push(adminUser);
+          }
+          setAvailableUsers(usersToShow);
       }
   }
 
