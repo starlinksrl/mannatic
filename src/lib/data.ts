@@ -257,8 +257,8 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             address: userData.address || '',
             phone: userData.phone || '',
             password: passwordForDb,
-            latitude: userData.latitude || null,
-            longitude: userData.longitude || null,
+            latitude: userData.latitude ?? null,
+            longitude: userData.longitude ?? null,
             clientNotes: userData.clientNotes || '',
         };
         
@@ -1195,6 +1195,24 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
     };
 
     await setDoc(doc(db, 'supportTickets', newId), newTicket);
+    
+    // Notify all admins of the new ticket
+    const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticketData.companyId), where("role", "==", "Admin"));
+    const adminsSnapshot = await getDocs(adminsQuery);
+    const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
+
+    for (const admin of admins) {
+        await addDoc(collection(db, 'notifications'), {
+            userId: admin.id,
+            companyId: ticketData.companyId,
+            message: `Nuovo ticket da ${ticketData.clientName}: "${ticketData.subject}"`,
+            read: false, 
+            createdAt: now, 
+            relatedInterventionId: newId, // Using interventionId to link to ticket for now
+            type: 'generic'
+        });
+    }
+
     return newTicket;
 }
 
@@ -1223,6 +1241,37 @@ export async function addSupportMessage(ticketId: string, message: { senderId: s
         updatedAt: now,
         status: 'Aperto', // Re-open ticket on new message
     });
+    
+    const sender = await getUserById(message.senderId);
+    if (!sender) return;
+
+    if (sender.role === 'Client') {
+        // Notify all admins
+        const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticket.companyId), where("role", "==", "Admin"));
+        const adminsSnapshot = await getDocs(adminsQuery);
+        for (const adminDoc of adminsSnapshot.docs) {
+             await addDoc(collection(db, 'notifications'), {
+                userId: adminDoc.id,
+                companyId: ticket.companyId,
+                message: `Nuova risposta da ${message.senderName} sul ticket: "${ticket.subject}"`,
+                read: false, 
+                createdAt: now, 
+                relatedInterventionId: ticketId,
+                type: 'generic'
+            });
+        }
+    } else if (sender.role === 'Admin' || sender.role === 'Creator') {
+        // Notify the client
+        await addDoc(collection(db, 'notifications'), {
+            userId: ticket.clientId,
+            companyId: ticket.companyId,
+            message: `Hai una nuova risposta da ${message.senderName} sul ticket: "${ticket.subject}"`,
+            read: false, 
+            createdAt: now, 
+            relatedInterventionId: ticketId,
+            type: 'generic'
+        });
+    }
 }
 
 export async function updateSupportTicketStatus(ticketId: string, status: SupportTicketStatus): Promise<void> {
