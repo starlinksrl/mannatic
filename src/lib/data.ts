@@ -595,10 +595,10 @@ export async function getScheduledMaintenance(companyId: string): Promise<Schedu
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduledMaintenance));
 }
 
-type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string };
+type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string, notifyClient: boolean };
 
 export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
-    const { creatorName, clientId, companyId, attachments, ...restOfData } = interventionData;
+    const { creatorName, clientId, companyId, attachments, notifyClient, ...restOfData } = interventionData;
     
     const existingUser = await getUserById(clientId);
     let finalClientId = existingUser ? existingUser.id : null;
@@ -728,7 +728,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             }
 
             const client = await getUserById(newInterventionData.clientId);
-            if (client && client.email) {
+            if (client && client.email && notifyClient) {
                 const autologinToken = await createAutologinToken(client.id);
                 const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
                 
@@ -1149,6 +1149,7 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
 
 
 

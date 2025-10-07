@@ -42,6 +42,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { v4 as uuidv4 } from 'uuid';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { Checkbox } from '../ui/checkbox';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -55,6 +56,7 @@ const formSchema = z.object({
   dueTime: z.string().optional(),
   assignedOperatorId: z.string().nullable(),
   attachments: z.array(z.any()).optional(),
+  notifyClient: z.boolean().default(false).optional(),
 }).refine(data => (data.dueDate && data.dueTime) || !data.dueDate, {
     message: "L'ora è obbligatoria se la data è specificata.",
     path: ["dueTime"],
@@ -89,6 +91,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
       dueTime: '',
       attachments: [],
+      notifyClient: false,
     },
   });
   
@@ -105,6 +108,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
             clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
             dueTime: '',
             attachments: [],
+            notifyClient: false,
         });
     }
   }, [isOpen, defaultType, currentUser, form]);
@@ -141,6 +145,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
         companyId: currentCompany.id,
         creatorName: currentUser.name,
         attachments: values.attachments,
+        notifyClient: values.notifyClient || false,
     });
     
     onInterventionAdded(newIntervention);
@@ -510,6 +515,29 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
+
+                    {currentUser.role !== 'Client' && (
+                         <FormField
+                            control={form.control}
+                            name="notifyClient"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>
+                                            Notifica il cliente via email
+                                        </FormLabel>
+                                        <FormMessage />
+                                    </div>
                                 </FormItem>
                             )}
                         />
