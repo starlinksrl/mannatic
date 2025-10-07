@@ -741,6 +741,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                     updateMessage: 'creato',
                     company: company,
                     interventionLink: `${baseUrl}/login?autologin_token=${autologinToken}`,
+                    notifyClient: true,
                 });
             }
         }
@@ -772,14 +773,14 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
 }
 
 
-export async function updateIntervention(id: string, updatedData: Partial<Intervention>, updater: User): Promise<Intervention | null> {
+export async function updateIntervention(id: string, updatedData: Partial<Intervention> & { notifyClient?: boolean }, updater: User): Promise<Intervention | null> {
     try {
         const docRef = doc(db, 'interventions', id);
         const originalDocSnap = await getDoc(docRef);
         if (!originalDocSnap.exists()) return null;
         const originalIntervention = originalDocSnap.data() as Intervention;
         
-        const dataToUpdate: { [key: string]: any } = { ...updatedData };
+        const { notifyClient, ...dataToUpdate } = { ...updatedData };
 
         const appConfig = await getAppConfiguration();
         if (appConfig && appConfig.gcsBucketName && dataToUpdate.attachments) {
@@ -817,9 +818,9 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             }
         }
         
-        if (dataToUpdate.dueDate === undefined) dataToUpdate.dueDate = null;
-        if (dataToUpdate.completedAt === undefined) delete dataToUpdate.completedAt;
-        else if (dataToUpdate.completedAt === null) dataToUpdate.completedAt = null;
+        if ('dueDate' in dataToUpdate && dataToUpdate.dueDate === undefined) dataToUpdate.dueDate = null;
+        if ('completedAt' in dataToUpdate && dataToUpdate.completedAt === undefined) delete dataToUpdate.completedAt;
+        else if ('completedAt' in dataToUpdate && dataToUpdate.completedAt === null) dataToUpdate.completedAt = null;
 
         const statusChanged = originalIntervention.status !== dataToUpdate.status;
         
@@ -830,7 +831,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
         let latestUpdateMessage = '';
         if (commentAdded) {
             const newUpdate = newUpdatesProvided[0];
-             dataToUpdate.updates[0] = {
+             dataToUpdate.updates![0] = {
                 ...newUpdate,
                 readBy: [updater.id],
             };
@@ -841,7 +842,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             latestUpdateMessage = `Lo stato è stato aggiornato a: ${dataToUpdate.status}`;
         }
         
-        await updateDoc(docRef, dataToUpdate);
+        await updateDoc(docRef, dataToUpdate as any);
         const interventionForNotif = { ...originalIntervention, ...dataToUpdate } as Intervention;
 
 
@@ -876,25 +877,28 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                 });
             }
 
-            const client = await getUserById(interventionForNotif.clientId);
-            const companyDocRef = doc(db, 'companies', interventionForNotif.companyId);
-            const companyDoc = await getDoc(companyDocRef);
+            if (notifyClient) {
+                const client = await getUserById(interventionForNotif.clientId);
+                const companyDocRef = doc(db, 'companies', interventionForNotif.companyId);
+                const companyDoc = await getDoc(companyDocRef);
 
-            if (client && client.email && companyDoc.exists()) {
-                const company: Company = {id: companyDoc.id, ...companyDoc.data()};
-                if(company.resendApiKey && company.senderEmail) {
-                    const autologinToken = await createAutologinToken(client.id);
-                    const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
-                     await sendClientUpdateEmail({
-                        recipientEmail: client.email,
-                        clientName: client.name,
-                        interventionId: id,
-                        interventionTitle: interventionForNotif.title,
-                        interventionStatus: interventionForNotif.status,
-                        updateMessage: latestUpdateMessage,
-                        company: company,
-                        interventionLink: `${baseUrl}/login?autologin_token=${autologinToken}`,
-                    });
+                if (client && client.email && companyDoc.exists()) {
+                    const company: Company = {id: companyDoc.id, ...companyDoc.data()};
+                    if(company.resendApiKey && company.senderEmail) {
+                        const autologinToken = await createAutologinToken(client.id);
+                        const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
+                         await sendClientUpdateEmail({
+                            recipientEmail: client.email,
+                            clientName: client.name,
+                            interventionId: id,
+                            interventionTitle: interventionForNotif.title,
+                            interventionStatus: interventionForNotif.status,
+                            updateMessage: latestUpdateMessage,
+                            company: company,
+                            interventionLink: `${baseUrl}/login?autologin_token=${autologinToken}`,
+                            notifyClient: true
+                        });
+                    }
                 }
             }
         }
@@ -1145,6 +1149,7 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
 
 
 

@@ -72,10 +72,15 @@ interface SendClientUpdateEmailInput {
   updateMessage: string;
   interventionLink: string;
   company: Company;
+  notifyClient: boolean;
 }
 
 export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): Promise<{ success: boolean; error?: string }> {
-  const { recipientEmail, clientName, interventionId, interventionTitle, interventionStatus, updateMessage, interventionLink, company } = input;
+  const { recipientEmail, clientName, interventionId, interventionTitle, interventionStatus, updateMessage, interventionLink, company, notifyClient } = input;
+  
+  if (!notifyClient) {
+      return { success: true };
+  }
 
   const isCreation = updateMessage === 'creato';
   const emailSubject = isCreation

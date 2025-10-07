@@ -44,6 +44,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Image from 'next/image';
 import { fetchAttachmentAction } from '@/app/actions';
+import { Checkbox } from '../ui/checkbox';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -62,6 +63,7 @@ const formSchema = z.object({
   materialsUsed: z.string().optional(),
   attachments: z.array(z.any()).optional(),
   workLogs: z.array(z.any()).optional(),
+  notifyClient: z.boolean().default(false),
 }).superRefine((data, ctx) => {
     if (data.status === 'Completato') {
         if (!data.timeSpent) {
@@ -113,6 +115,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
       dueTime: '',
       attachments: [],
       workLogs: [],
+      notifyClient: false,
     }
   });
 
@@ -138,6 +141,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         materialsUsed: intervention.materialsUsed ?? '',
         attachments: intervention.attachments || [],
         workLogs: intervention.workLogs || [],
+        notifyClient: false,
       });
     }
   }, [intervention, form]);
@@ -145,6 +149,9 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const attachments = form.watch('attachments');
   const workLogs = form.watch('workLogs') as WorkLog[] | undefined;
   const activeWorkLog = workLogs?.find(log => log.operatorId === currentUser.id && !log.endTime);
+  const newUpdateValue = form.watch('newUpdate');
+  const statusValue = form.watch('status');
+  const showNotifyClient = (newUpdateValue && newUpdateValue.trim() !== '') || (intervention && statusValue !== intervention.status);
 
 
   const handleOpenClientEdit = async () => {
@@ -747,6 +754,30 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                 </FormItem>
                             )}
                         />
+                        
+                        {showNotifyClient && (
+                            <FormField
+                                control={form.control}
+                                name="notifyClient"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                         <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>
+                                                Notifica il cliente via email
+                                            </FormLabel>
+                                            <FormMessage />
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+
 
                         <div className="space-y-4 max-h-48 overflow-y-auto pr-2">
                             {intervention.updates && intervention.updates.length > 0 ? (
@@ -845,5 +876,6 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
 
 
