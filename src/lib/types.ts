@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
@@ -180,6 +179,28 @@ export interface Notification {
   createdAt: string;
   relatedInterventionId?: string;
   type: NotificationType;
+}
+
+export type SupportTicketStatus = 'Aperto' | 'Chiuso';
+
+export interface SupportMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  clientId: string;
+  clientName: string;
+  companyId: string;
+  subject: string;
+  createdAt: string;
+  updatedAt: string;
+  status: SupportTicketStatus;
+  messages: SupportMessage[];
 }
     
 export const ResendConfigSchema = z.object({
