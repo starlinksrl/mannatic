@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
+import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
+import { cn } from '@/lib/utils';
 
 
 interface InterventionsTableProps {
@@ -47,6 +48,15 @@ interface InterventionsTableProps {
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
 const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'In attesa': 3, 'Completato': 4, 'Da Fatturare': 5, 'Fatturato': 6, 'Annullato': 7 };
+
+const isDueSoon = (dueDate: string | null | undefined): boolean => {
+    if (!dueDate) return false;
+    const now = new Date();
+    const dueDateObj = new Date(dueDate);
+    const twoDaysFromNow = addDays(now, 2);
+    // is due soon if it's before 2 days from now AND it's after or on today
+    return isBefore(dueDateObj, twoDaysFromNow) && isBefore(startOfToday(), addDays(dueDateObj, 1));
+};
 
 export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onInterventionChange }: InterventionsTableProps) {
   const { toast } = useToast();
@@ -157,54 +167,52 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const sortedInterventions = useMemo(() => {
     let sortableItems = [...filteredInterventions];
     
-    // Default sort: by priority descending, then by creation date ascending
-    if (sortConfig === null || sortConfig.key === 'default') {
-        sortableItems.sort((a, b) => {
-            const priorityComparison = priorityOrder[b.priority] - priorityOrder[a.priority];
-            if (priorityComparison !== 0) {
-                return priorityComparison;
-            }
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        });
-        return sortableItems;
-    }
+    // Custom sort function
+    const customSort = (a: Intervention, b: Intervention) => {
+      if (sortConfig) {
+          let aValue, bValue;
+          switch(sortConfig.key) {
+              case 'priority':
+                  aValue = priorityOrder[a.priority];
+                  bValue = priorityOrder[b.priority];
+                  break;
+              case 'status':
+                  aValue = statusOrder[a.status];
+                  bValue = statusOrder[b.status];
+                  break;
+              case 'client':
+                  aValue = clientsMap.get(a.clientId)?.name || '';
+                  bValue = clientsMap.get(b.clientId)?.name || '';
+                  break;
+               case 'operator':
+                  aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
+                  bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
+                  break;
+               case 'default':
+                   const priorityComparison = priorityOrder[b.priority] - priorityOrder[a.priority];
+                   if (priorityComparison !== 0) return priorityComparison;
+                   return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+              default:
+                  aValue = a[sortConfig.key as keyof Intervention];
+                  bValue = b[sortConfig.key as keyof Intervention];
+          }
 
-    // User-defined sort
-    sortableItems.sort((a, b) => {
-      let aValue, bValue;
-      
-      switch(sortConfig.key) {
-          case 'priority':
-              aValue = priorityOrder[a.priority];
-              bValue = priorityOrder[b.priority];
-              break;
-          case 'status':
-              aValue = statusOrder[a.status];
-              bValue = statusOrder[b.status];
-              break;
-          case 'client':
-              aValue = clientsMap.get(a.clientId)?.name || '';
-              bValue = clientsMap.get(b.clientId)?.name || '';
-              break;
-           case 'operator':
-              aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
-              bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
-              break;
-          default:
-              aValue = a[sortConfig.key as keyof Intervention];
-              bValue = b[sortConfig.key as keyof Intervention];
-      }
-
-      if (aValue < bValue) {
-        return sortConfig.direction === 'ascending' ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === 'ascending' ? 1 : -1;
+          if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+          if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
       }
       return 0;
-    });
+    };
     
-    return sortableItems;
+    // Separate urgent interventions
+    const dueSoonItems = sortableItems.filter(i => isDueSoon(i.dueDate));
+    const otherItems = sortableItems.filter(i => !isDueSoon(i.dueDate));
+    
+    // Sort each group individually
+    dueSoonItems.sort(customSort);
+    otherItems.sort(customSort);
+
+    // Combine them
+    return [...dueSoonItems, ...otherItems];
   }, [filteredInterventions, sortConfig, operatorsMap, clientsMap]);
 
   const requestSort = (key: keyof Intervention | 'client' | 'operator') => {
@@ -306,8 +314,9 @@ export function InterventionsTable({ interventions: initialInterventions, curren
         <CardContent className="p-2 space-y-2">
             {sortedInterventions.map((intervention) => {
               const client = clientsMap.get(intervention.clientId);
+              const urgent = isDueSoon(intervention.dueDate);
               return (
-                 <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
+                 <div key={intervention.id} className={cn("p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start", urgent && "bg-amber-100 dark:bg-amber-900/50")}>
                     <div className="flex-1 space-y-2 pr-4 break-words cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                         {currentUser.role !== 'Client' && client && (
                           <div className="space-y-1 text-sm">
@@ -330,7 +339,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                         )}
                         <p className="font-semibold break-words">{intervention.title}</p>
                         {intervention.createdAt && <p className="text-sm text-muted-foreground break-words">Creato: {format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>}
-                        {intervention.dueDate && <p className="text-sm text-muted-foreground break-words">Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
+                        {intervention.dueDate && <p className={cn("text-sm text-muted-foreground break-words", urgent && "font-bold text-amber-700 dark:text-amber-300")}>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                         <div className="flex items-center gap-2 pt-1">
                             {getPriorityBadge(intervention.priority)}
                             {getStatusBadge(intervention.status)}
@@ -383,8 +392,9 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             {sortedInterventions.map((intervention) => {
               const client = clientsMap.get(intervention.clientId);
               const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
+              const urgent = isDueSoon(intervention.dueDate);
               return (
-                <TableRow key={intervention.id}>
+                <TableRow key={intervention.id} className={cn(urgent && "bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/60")}>
                   {currentUser.role !== 'Client' ? (
                     <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                         <div className="flex flex-col break-words">
@@ -434,7 +444,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                   <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getStatusBadge(intervention.status)}</TableCell>
                   <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getPriorityBadge(intervention.priority)}</TableCell>
                   <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.createdAt ? format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
-                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
+                  <TableCell className={cn("hidden md:table-cell cursor-pointer", urgent && "font-bold")} onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
                   {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{operatorName || 'Non assegnato'}</TableCell>}
                   <TableCell className="text-right">
                     <DropdownMenu>
