@@ -238,10 +238,10 @@ export async function getUserById(id: string): Promise<User | null> {
     }
 }
 
-export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User | null> {
+export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     const existingUser = await getUserByEmail(userData.email!);
     if (existingUser) {
-        return null;
+        throw new Error('Un utente con questa email esiste già.');
     }
     try {
         let userId = userData.id || generateShortId(20);
@@ -1145,5 +1145,6 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
         return false;
     }
 }
+
 
 

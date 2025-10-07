@@ -109,26 +109,27 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             clientNotes: values.role === 'Client' ? values.clientNotes : undefined,
         });
         
-        if (newUser) {
-            onUserAdded();
-            toast({
-            title: `${isClientForm ? 'Cliente' : 'Utente'} creato`,
-            description: `${isClientForm ? 'Il cliente' : 'L\'utente'} ${values.name} è stato aggiunto con successo.`,
-            });
-            setIsOpen(false);
-            form.reset();
-        } else {
-             form.setError('email', {
-                type: 'manual',
-                message: 'Un utente con questa email esiste già.',
-            });
-        }
-    } catch (error: any) {
-         toast({
-            variant: 'destructive',
-            title: 'Errore',
-            description: error.message || 'Si è verificato un errore durante la creazione dell\'utente.',
+        onUserAdded();
+        toast({
+        title: `${isClientForm ? 'Cliente' : 'Utente'} creato`,
+        description: `${isClientForm ? 'Il cliente' : 'L\'utente'} ${values.name} è stato aggiunto con successo.`,
         });
+        setIsOpen(false);
+        form.reset();
+
+    } catch (error: any) {
+         if (error.message.includes('email esiste già')) {
+            form.setError('email', {
+                type: 'manual',
+                message: error.message,
+            });
+         } else {
+            toast({
+                variant: 'destructive',
+                title: 'Errore',
+                description: error.message || 'Si è verificato un errore durante la creazione dell\'utente.',
+            });
+         }
     } finally {
         setIsSubmitting(false);
     }
