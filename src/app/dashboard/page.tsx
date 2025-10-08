@@ -3,7 +3,7 @@
 'use client';
 
 import { Header } from '@/components/dashboard/header';
-import { getInterventions, getUsers, getClients } from '@/lib/data';
+import { getInterventions, getUsers, getClients, updateUser } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate } from '@/lib/types';
 import { isAfter, addDays } from 'date-fns';
 import { KpiDashboard } from '@/components/dashboard/kpi-dashboard';
@@ -20,7 +20,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
 import { Button } from '@/components/ui/button';
 import { UpcomingTasks } from '@/components/dashboard/upcoming-tasks';
+import { Responsive, WidthProvider, Layout } from "react-grid-layout";
+import { useToast } from '@/hooks/use-toast';
 
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export type EnrichedUpdate = InterventionUpdate & { 
   interventionTitle: string; 
@@ -42,15 +45,27 @@ type KpiData = GenerateKpiDashboardInput & {
   openNewInstallations: number,
 };
 
+const defaultLayouts = {
+    lg: [
+        { i: "activity-feed", x: 0, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
+        { i: "upcoming-tasks", x: 4, y: 0, w: 8, h: 1, minW: 6, minH: 1 },
+        { i: "kpi-dashboard", x: 4, y: 1, w: 8, h: 1, minW: 6, minH: 1 },
+    ],
+};
+
+
 export default function DashboardPage() {
-  const { user, currentCompany } = useUser();
+  const { user, setUser, currentCompany } = useUser();
   const router = useRouter();
+  const { toast } = useToast();
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [operators, setOperators] = useState<User[]>([]);
   const [clients, setClients] = useState<User[]>([]);
   const { intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
 
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [layouts, setLayouts] = useState(user?.dashboardLayout || defaultLayouts);
 
   const fetchKpiData = async () => {
     if (!currentCompany || !user) {
@@ -169,8 +184,28 @@ export default function DashboardPage() {
     
     if (user) {
       fetchKpiData();
+       if (user.dashboardLayout) {
+        setLayouts(user.dashboardLayout);
+      }
     }
   }, [user, currentCompany, router]);
+
+  const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
+    setLayouts(allLayouts);
+  };
+
+  const handleSaveLayout = async () => {
+    if (!user) return;
+    const updatedUser = await updateUser(user.id, { dashboardLayout: layouts });
+    if (updatedUser) {
+        setUser(updatedUser);
+        toast({ title: "Layout salvato", description: "La tua configurazione della dashboard è stata salvata." });
+    } else {
+        toast({ variant: 'destructive', title: "Errore", description: "Impossibile salvare il layout." });
+    }
+    setIsEditMode(false);
+  };
+
 
   const NoCompanySelected = () => (
     <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -196,7 +231,15 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Header title="Dashboard" onInterventionAdded={fetchKpiData} clients={clients} operators={operators} />
+      <Header 
+        title="Dashboard" 
+        onInterventionAdded={fetchKpiData} 
+        clients={clients} 
+        operators={operators}
+        isEditMode={isEditMode}
+        onEditToggle={() => setIsEditMode(!isEditMode)}
+        onSaveLayout={handleSaveLayout}
+        />
       <ScrollArea className="flex-1">
         <main className="p-4 md:p-6 lg:p-8">
           {loading || !kpiData || !user ? (
@@ -204,34 +247,30 @@ export default function DashboardPage() {
               <Loader className="h-8 w-8 animate-spin" />
             </div>
           ) : (
-            <div className="flex flex-col gap-6">
-                {(user.role === 'Operator' || user.role === 'Admin') && (
-                    <AddInterventionForm
-                        clients={clients}
-                        operators={operators}
-                        onInterventionAdded={fetchKpiData}
-                        currentUser={user}
-                    >
-                        <Button size="lg" className="w-full">
-                            <PlusCircle className="mr-2" />
-                            Crea Intervento
-                        </Button>
-                    </AddInterventionForm>
-                )}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-1 flex flex-col gap-6">
+             <ResponsiveGridLayout
+                className="layout"
+                layouts={layouts}
+                breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+                cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+                rowHeight={100}
+                onLayoutChange={onLayoutChange}
+                isDraggable={isEditMode}
+                isResizable={isEditMode}
+              >
+                <div key="activity-feed">
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
-                  </div>
-                  <div className="lg:col-span-2 space-y-6">
-                    <UpcomingTasks 
+                </div>
+                <div key="upcoming-tasks">
+                     <UpcomingTasks 
                       interventions={kpiData.dueSoonInterventions}
                       installations={kpiData.dueSoonNewInstallations}
                       clients={clients}
                     />
-                    <KpiDashboard kpiData={kpiData} currentUser={user} />
-                  </div>
                 </div>
-            </div>
+                <div key="kpi-dashboard">
+                    <KpiDashboard kpiData={kpiData} currentUser={user} />
+                </div>
+              </ResponsiveGridLayout>
           )}
         </main>
       </ScrollArea>

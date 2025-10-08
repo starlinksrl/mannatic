@@ -9,6 +9,7 @@ import { CREATOR_USER } from '@/lib/constants';
 
 interface UserContextType {
   user: User | null; // The currently active user (can be the original or a simulated one)
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   sessionUser: User | null; // The user who originally logged in
   login: (user: User) => void;
   logout: () => void;
@@ -148,6 +149,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const value = { 
     user, 
+    setUser,
     sessionUser,
     login,
     logout, 

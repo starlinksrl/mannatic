@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
@@ -48,6 +47,7 @@ export interface User {
   latitude?: number | null;
   longitude?: number | null;
   clientNotes?: string;
+  dashboardLayout?: { [key: string]: any };
 }
 
 export interface PasswordResetToken {
