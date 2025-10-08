@@ -6,9 +6,8 @@ import { Header } from '@/components/dashboard/header';
 import { getInterventions, getUsers, getClients, updateUser } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate } from '@/lib/types';
 import { isAfter, addDays } from 'date-fns';
-import { KpiDashboard } from '@/components/dashboard/kpi-dashboard';
 import { useUser } from '@/contexts/user-context';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity } from 'lucide-react';
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
@@ -19,7 +18,6 @@ import { EditInterventionForm } from '@/components/dashboard/edit-intervention-f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
 import { Button } from '@/components/ui/button';
-import { UpcomingTasks } from '@/components/dashboard/upcoming-tasks';
 import { Responsive, WidthProvider, Layout } from "react-grid-layout";
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,6 +76,10 @@ export default function DashboardPage() {
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [layouts, setLayouts] = useState(user?.dashboardLayout || defaultLayouts);
+  
+  const clientsMap = useMemo(() => {
+    return new Map(clients.map(c => [c.id, c]));
+  }, [clients]);
 
   const fetchKpiData = async () => {
     if (!currentCompany || !user) {
@@ -94,7 +96,7 @@ export default function DashboardPage() {
       getClients(currentCompany.id),
     ]);
 
-    const clientsMap = new Map(allClients.map(c => [c.id, c]));
+    const localClientsMap = new Map(allClients.map(c => [c.id, c]));
     setClients(allClients);
     setOperators(users.filter(u => u.role === 'Operator'));
     
@@ -141,14 +143,14 @@ export default function DashboardPage() {
           ...u, 
           interventionTitle: i.title,
           interventionId: i.id,
-          clientName: clientsMap.get(i.clientId)?.name || 'Cliente non trovato'
+          clientName: localClientsMap.get(i.clientId)?.name || 'Cliente non trovato'
       })))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
       
     const openInterventionsWithLocation = openInterventions
       .map(i => {
-          const client = clientsMap.get(i.clientId);
+          const client = localClientsMap.get(i.clientId);
           return {
               id: i.id,
               title: i.title,
