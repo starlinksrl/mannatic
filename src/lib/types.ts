@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
+export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'matrix';
 
 export interface AppConfiguration {
   id: 'global';
@@ -26,6 +27,7 @@ export interface Company {
   uniqueCode?: string;
   email?: string;
   platformUrl?: string;
+  theme?: Theme;
   // Resend settings
   resendApiKey?: string;
   senderEmail?: string;

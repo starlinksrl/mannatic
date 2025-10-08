@@ -25,12 +25,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn('min-h-screen bg-background font-body antialiased', inter.variable, spaceGrotesk.variable)}>
-        <ThemeProvider>
-          <UserProvider>
+        <UserProvider>
+          <ThemeProvider>
             {children}
             <Toaster />
-          </UserProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </UserProvider>
       </body>
     </html>
   );

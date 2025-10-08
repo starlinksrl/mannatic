@@ -130,12 +130,12 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
 }
 
 
-export async function saveResendSettings(companyId: string, settings: Partial<Company>): Promise<Company | null> {
+export async function updateCompanySettings(companyId: string, settings: Partial<Company>): Promise<Company | null> {
     try {
         const result = await updateCompany(companyId, settings);
         return result;
     } catch (error: any) {
-        console.error("Error saving Resend settings:", error);
+        console.error("Error saving company settings:", error);
         return null;
     }
 }

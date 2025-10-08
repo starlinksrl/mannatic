@@ -1,9 +1,10 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-
-type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'matrix';
+import React, { createContext, useContext, useEffect, ReactNode, useCallback } from 'react';
+import { useUser } from './user-context';
+import { type Theme } from '@/lib/types';
+import { updateCompanySettings } from '@/app/actions';
 
 interface ThemeContextType {
   theme: Theme;
@@ -13,20 +14,16 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setThemeState] = useState<Theme>('default');
+  const { currentCompany, setCurrentCompany } = useUser();
 
-  useEffect(() => {
-    const storedTheme = localStorage.getItem('app-theme') as Theme | null;
-    if (storedTheme) {
-      setThemeState(storedTheme);
+  const theme = currentCompany?.theme || 'default';
+
+  const setTheme = useCallback(async (newTheme: Theme) => {
+    if (currentCompany) {
+      setCurrentCompany(prev => prev ? { ...prev, theme: newTheme } : null);
+      await updateCompanySettings(currentCompany.id, { theme: newTheme });
     }
-  }, []);
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem('app-theme', newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-  };
+  }, [currentCompany, setCurrentCompany]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

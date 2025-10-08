@@ -15,7 +15,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { sendTestEmailAction, saveResendSettings } from '@/app/actions';
+import { sendTestEmailAction, updateCompanySettings } from '@/app/actions';
 import { Loader, AlertTriangle, Pencil } from 'lucide-react';
 import { Company } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -421,7 +421,7 @@ export default function SettingsPage() {
     if (!currentCompany) return;
     setIsSaving(true);
     
-    const updatedCompany = await saveResendSettings(currentCompany.id, data);
+    const updatedCompany = await updateCompanySettings(currentCompany.id, data);
 
     if (updatedCompany) {
         setCurrentCompany(updatedCompany);
