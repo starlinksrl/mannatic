@@ -52,14 +52,14 @@ type KpiData = GenerateKpiDashboardInput & {
 
 const defaultLayouts = {
     lg: [
-        { i: "activity-feed", x: 0, y: 0, w: 12, h: 2, minW: 4, minH: 2 },
-        { i: "upcoming-interventions", x: 0, y: 2, w: 12, h: 2, minW: 4, minH: 2 },
-        { i: "upcoming-installations", x: 0, y: 4, w: 12, h: 2, minW: 4, minH: 2 },
-        { i: "sla-adherence", x: 0, y: 6, w: 3, h: 1, minW: 2, minH: 1 },
-        { i: "overdue-maintenance", x: 3, y: 6, w: 3, h: 1, minW: 2, minH: 1 },
-        { i: "closed-interventions", x: 6, y: 6, w: 3, h: 1, minW: 2, minH: 1 },
-        { i: "open-new-installations", x: 9, y: 6, w: 3, h: 1, minW: 2, minH: 1 },
-        { i: "operator-workload", x: 0, y: 7, w: 12, h: 2, minW: 6, minH: 2 },
+      { i: "activity-feed", x: 0, y: 0, w: 12, h: 2, minW: 4, minH: 2 },
+      { i: "upcoming-interventions", x: 0, y: 2, w: 12, h: 2, minW: 4, minH: 2 },
+      { i: "upcoming-installations", x: 0, y: 4, w: 12, h: 2, minW: 4, minH: 2 },
+      { i: "sla-adherence", x: 0, y: 6, w: 12, h: 1, minW: 2, minH: 1 },
+      { i: "overdue-maintenance", x: 0, y: 7, w: 12, h: 1, minW: 2, minH: 1 },
+      { i: "closed-interventions", x: 0, y: 8, w: 12, h: 1, minW: 2, minH: 1 },
+      { i: "open-new-installations", x: 0, y: 9, w: 12, h: 1, minW: 2, minH: 1 },
+      { i: "operator-workload", x: 0, y: 10, w: 12, h: 2, minW: 6, minH: 2 },
     ],
 };
 
@@ -210,7 +210,24 @@ export default function DashboardPage() {
 
   const handleSaveLayout = async () => {
     if (!user) return;
-    const updatedUser = await updateUser(user.id, { dashboardLayout: layouts });
+
+    // Deep clone and clean the layout object to prevent saving undefined values
+    const cleanedLayouts = JSON.parse(JSON.stringify(layouts), (key, value) => {
+        if (value === null || value === undefined) {
+            return undefined;
+        }
+        if (typeof value === 'object' && !Array.isArray(value)) {
+            Object.keys(value).forEach(k => {
+                if (value[k] === undefined) {
+                    delete value[k];
+                }
+            });
+        }
+        return value;
+    });
+    
+    const updatedUser = await updateUser(user.id, { dashboardLayout: cleanedLayouts });
+
     if (updatedUser) {
         setUser(updatedUser);
         toast({ title: "Layout salvato", description: "La tua configurazione della dashboard è stata salvata." });
@@ -409,3 +426,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
