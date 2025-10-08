@@ -2,22 +2,24 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { GoogleMap, MarkerF, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, MarkerF } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
 import { getUsers, getInterventions, getScheduledMaintenance } from '@/lib/data';
 import { User, Intervention, ScheduledMaintenance } from '@/lib/types';
-import { Loader } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader, MapPin } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMaps } from '@/contexts/maps-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { isBefore, addDays, startOfToday } from 'date-fns';
-
+import { isBefore, addDays, startOfToday, format } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { Button } from '@/components/ui/button';
+import { useInterventionModal } from '@/contexts/intervention-modal-context';
 
 const mapContainerStyle = {
   width: '100%',
-  height: '70vh',
+  height: '60vh',
 };
 
 const defaultCenter = {
@@ -36,6 +38,7 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<ClientWithLocation | null>(null);
   const [filter, setFilter] = useState<'open' | 'all'>('open');
+  const { openModal } = useInterventionModal();
 
   useEffect(() => {
     async function fetchData() {
@@ -51,7 +54,6 @@ export default function MapPage() {
       const clientsWithCoords = allUsers.filter(u => u.role === 'Client');
       
       setAllClients(clientsWithCoords);
-      // Combine all work types into one array for filtering
       setInterventions([...allInterventions, ...allMaintenance]);
       setLoading(false);
     }
@@ -79,15 +81,12 @@ export default function MapPage() {
     const clientIdsWithOpenWork = new Set(
       interventions
         .filter(i => {
-            // Standard open interventions
             if (i.isMaintenance === false && i.type === 'standard' && openInterventionStatuses.includes(i.status)) {
                 return true;
             }
-            // New installations that are not completed or cancelled
             if (i.type === 'new_installation' && i.status !== 'Completato' && i.status !== 'Annullato') {
                 return true;
             }
-            // Scheduled maintenance due in the next 30 days
             if (i.isMaintenance) {
                 const maintenanceTask = i as ScheduledMaintenance;
                 const nextDueDate = new Date(maintenanceTask.nextDueDate);
@@ -101,6 +100,12 @@ export default function MapPage() {
     return allClients.filter(client => client.latitude && client.longitude && clientIdsWithOpenWork.has(client.id));
   }, [filter, allClients, interventions]);
   
+  const selectedClientInterventions = useMemo(() => {
+    if (!selectedClient) return [];
+    return interventions.filter(i => i.clientId === selectedClient.id && i.status !== 'Completato' && i.status !== 'Annullato');
+  }, [selectedClient, interventions]);
+
+
   const onLoad = useCallback(function callback(mapInstance: google.maps.Map) {
     setMap(mapInstance);
   }, []);
@@ -110,7 +115,7 @@ export default function MapPage() {
   }, []);
   
   useEffect(() => {
-    if (map && clientsToDisplay.length > 0) {
+    if (map && clientsToDisplay.length > 0 && !selectedClient) {
       const bounds = new window.google.maps.LatLngBounds();
       clientsToDisplay.forEach(client => {
         if(client.latitude && client.longitude) {
@@ -123,11 +128,20 @@ export default function MapPage() {
         map.setCenter({ lat: clientsToDisplay[0].latitude, lng: clientsToDisplay[0].longitude });
         map.setZoom(14);
       }
-    } else if (map) {
-       map.setCenter(defaultCenter);
-       map.setZoom(6);
+    } else if (map && selectedClient) {
+        map.panTo({ lat: selectedClient.latitude!, lng: selectedClient.longitude! });
+        map.setZoom(15);
     }
-  }, [map, clientsToDisplay]);
+  }, [map, clientsToDisplay, selectedClient]);
+  
+  const handleMarkerClick = (client: ClientWithLocation) => {
+    setSelectedClient(client);
+  };
+  
+  const handleOpenInterventionModal = (intervention: Intervention | ScheduledMaintenance) => {
+    openModal(intervention as Intervention);
+  }
+
 
   if (loadError) {
     console.error("Map Load Error:", loadError)
@@ -148,83 +162,100 @@ export default function MapPage() {
     <>
       <Header title="Mappa Clienti" />
       <main className="flex-1 flex flex-col">
-        <div className="relative" style={{ height: mapContainerStyle.height }}>
-          <GoogleMap 
-            mapContainerStyle={{width: '100%', height: '100%'}} 
-            center={defaultCenter}
-            zoom={6}
-            onLoad={onLoad}
-            onUnmount={onUnmount}
-          >
-            {clientsToDisplay.map(client => {
-              const isNewInstallation = clientsWithNewInstallation.has(client.id);
-              const markerIcon = isNewInstallation ? {
-                  path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
-                  fillColor: '#4285F4', // Blue color
-                  fillOpacity: 1,
-                  strokeWeight: 0,
-                  anchor: new google.maps.Point(12, 24),
-                  scale: 1.5,
-              } : undefined;
-
-              return (
-                client.latitude && client.longitude &&
-                <MarkerF
-                  key={client.id}
-                  position={{ lat: client.latitude, lng: client.longitude }}
-                  onClick={() => setSelectedClient(client)}
-                  icon={markerIcon}
-                />
-              )
-            })}
-
-            {selectedClient && selectedClient.latitude && selectedClient.longitude && (
-              <InfoWindow
-                position={{ lat: selectedClient.latitude, lng: selectedClient.longitude }}
-                onCloseClick={() => setSelectedClient(null)}
-              >
-                <div>
-                  <h3 className="font-bold">{selectedClient.name}</h3>
-                  <p>{selectedClient.address}</p>
-                </div>
-              </InfoWindow>
-            )}
-          </GoogleMap>
+        <div className="p-4 bg-card border-b">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Select value={filter} onValueChange={(value) => {
+                    setFilter(value as 'open' | 'all');
+                    setSelectedClient(null);
+                }}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Filtra clienti..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="open">Clienti con interventi aperti</SelectItem>
+                        <SelectItem value="all">Tutti i clienti con coordinate</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
-        <div className="p-4 flex-grow">
-            <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle>Clienti Visualizzati</CardTitle>
-                     <div className="w-[250px]">
-                        <Select value={filter} onValueChange={(value) => setFilter(value as 'open' | 'all')}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Filtra clienti..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="open">Clienti con interventi aperti</SelectItem>
-                            <SelectItem value="all">Tutti i clienti</SelectItem>
-                          </SelectContent>
-                        </Select>
-                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-48">
-                        {clientsToDisplay.length > 0 ? (
-                            <ul>
-                                {clientsToDisplay.map(client => (
-                                    <li key={client.id} className="text-sm p-1">
-                                        {client.name} - (Lat: {client.latitude?.toFixed(4)}, Lng: {client.longitude?.toFixed(4)})
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">Nessun cliente da visualizzare con i filtri correnti.</p>
-                        )}
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-0">
+          <div className="lg:col-span-2 relative h-full min-h-[50vh] lg:min-h-0">
+            <GoogleMap 
+              mapContainerStyle={{width: '100%', height: '100%'}} 
+              center={defaultCenter}
+              zoom={6}
+              onLoad={onLoad}
+              onUnmount={onUnmount}
+              options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
+            >
+              {clientsToDisplay.map(client => {
+                const isNewInstallation = clientsWithNewInstallation.has(client.id);
+                const markerIcon = isNewInstallation ? {
+                    path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+                    fillColor: '#4285F4',
+                    fillOpacity: 1,
+                    strokeWeight: 0,
+                    anchor: new google.maps.Point(12, 24),
+                    scale: 1.5,
+                } : undefined;
+
+                return (
+                  client.latitude && client.longitude &&
+                  <MarkerF
+                    key={client.id}
+                    position={{ lat: client.latitude, lng: client.longitude }}
+                    onClick={() => handleMarkerClick(client)}
+                    icon={markerIcon}
+                  />
+                )
+              })}
+            </GoogleMap>
+          </div>
+          <div className="lg:col-span-1 bg-background border-l">
+            <ScrollArea className="h-full max-h-[calc(100vh-10rem)]">
+               {selectedClient ? (
+                    <div className="p-4">
+                        <Card>
+                             <CardHeader>
+                                <CardTitle>{selectedClient.name}</CardTitle>
+                                <CardDescription>{selectedClient.address}</CardDescription>
+                                <a
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${selectedClient.latitude},${selectedClient.longitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <Button variant="outline" size="sm" className="mt-2">
+                                        <MapPin className="mr-2 h-4 w-4" />
+                                        Ottieni Indicazioni
+                                    </Button>
+                                </a>
+                            </CardHeader>
+                            <CardContent>
+                                <h4 className="font-semibold mb-2">Interventi Attivi</h4>
+                                {selectedClientInterventions.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {selectedClientInterventions.map(i => (
+                                            <div key={i.id} onClick={() => handleOpenInterventionModal(i)} className="p-2 border rounded-md cursor-pointer hover:bg-muted">
+                                                <p className="font-semibold text-sm">{i.title}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Stato: {i.status} - Scadenza: {i.dueDate ? format(new Date(i.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">Nessun intervento attivo per questo cliente.</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+               ) : (
+                 <div className="p-4 text-center text-muted-foreground h-full flex items-center justify-center">
+                    <p>Seleziona un cliente sulla mappa per vedere i dettagli.</p>
+                </div>
+               )}
+            </ScrollArea>
+          </div>
         </div>
       </main>
     </>
