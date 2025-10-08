@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import React from 'react';
 
@@ -8,9 +9,10 @@ interface KpiCardProps {
   icon: React.ReactNode;
   description?: string;
   isLoading?: boolean;
+  onClick?: () => void;
 }
 
-export function KpiCard({ title, value, icon, description, isLoading }: KpiCardProps) {
+export function KpiCard({ title, value, icon, description, isLoading, onClick }: KpiCardProps) {
   if (isLoading) {
     return (
       <Card>
@@ -27,7 +29,10 @@ export function KpiCard({ title, value, icon, description, isLoading }: KpiCardP
   }
 
   return (
-    <Card>
+    <Card
+      onClick={onClick}
+      className={cn(onClick && 'cursor-pointer hover:bg-muted/50 transition-colors')}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {icon}

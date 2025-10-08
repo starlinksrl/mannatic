@@ -9,6 +9,7 @@ import React from 'react';
 import { KpiCard } from './kpi-card';
 import { Activity, AlertOctagon, Check, Clock } from 'lucide-react';
 import { Intervention, ScheduledMaintenance, User } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 
 interface KpiDashboardProps {
   kpiData: GenerateKpiDashboardInput & {
@@ -25,6 +26,11 @@ interface KpiDashboardProps {
 export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
   const isClient = currentUser.role === 'Client';
   const isOperator = currentUser.role === 'Operator';
+  const router = useRouter();
+
+  const handleOpenInterventionsClick = () => {
+    router.push('/dashboard/map');
+  };
 
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -34,6 +40,7 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
           value={kpiData.openInterventions}
           icon={<Activity className="h-4 w-4 text-muted-foreground" />}
           description="Interventi che richiedono azione"
+          onClick={handleOpenInterventionsClick}
         />
         <KpiCard
           title="Adesione SLA"
