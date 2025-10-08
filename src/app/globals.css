@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root, .theme-default {
+  :root, [data-theme="default"] {
     --background: 207 100% 95%;
     --foreground: 224 71% 4%;
     --card: 207 100% 99%;
@@ -30,7 +30,7 @@
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
   }
-  .dark:root, .dark .theme-default {
+  .dark:root, .dark[data-theme="default"] {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
     --card: 222 47% 11%;
@@ -57,7 +57,7 @@
     --chart-5: 27 87% 67%;
   }
 
-  .theme-ocean {
+  [data-theme="ocean"] {
     --background: 200 100% 95%;
     --foreground: 210 50% 10%;
     --card: 200 100% 99%;
@@ -74,7 +74,7 @@
     --accent-foreground: 200 100% 98%;
     --ring: 190 70% 50%;
   }
-  .dark .theme-ocean {
+  .dark[data-theme="ocean"] {
     --background: 210 40% 8%;
     --foreground: 200 30% 95%;
     --card: 210 40% 12%;
@@ -92,7 +92,7 @@
     --ring: 190 70% 50%;
   }
 
-  .theme-forest {
+  [data-theme="forest"] {
     --background: 100 20% 95%;
     --foreground: 120 60% 10%;
     --card: 100 20% 99%;
@@ -109,7 +109,7 @@
     --accent-foreground: 100 20% 98%;
     --ring: 130 60% 40%;
   }
-  .dark .theme-forest {
+  .dark[data-theme="forest"] {
     --background: 120 20% 5%;
     --foreground: 100 15% 95%;
     --card: 120 20% 9%;
@@ -127,7 +127,7 @@
     --ring: 130 60% 40%;
   }
 
-  .theme-sunset {
+  [data-theme="sunset"] {
     --background: 20 50% 95%;
     --foreground: 15 60% 10%;
     --card: 20 50% 99%;
@@ -144,7 +144,7 @@
     --accent-foreground: 15 60% 98%;
     --ring: 30 90% 55%;
   }
-  .dark .theme-sunset {
+  .dark[data-theme="sunset"] {
     --background: 20 20% 8%;
     --foreground: 30 30% 95%;
     --card: 20 20% 12%;
@@ -162,7 +162,7 @@
     --ring: 30 90% 55%;
   }
 
-  .theme-matrix {
+  [data-theme="matrix"] {
     --background: 150 50% 5%;
     --foreground: 140 80% 80%;
     --card: 150 40% 8%;
@@ -179,7 +179,7 @@
     --accent-foreground: 150 50% 5%;
     --ring: 140 100% 50%;
   }
-  .dark .theme-matrix {
+  .dark[data-theme="matrix"] {
     --background: 150 50% 5%;
     --foreground: 140 80% 80%;
     --card: 150 40% 8%;

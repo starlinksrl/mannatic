@@ -13,21 +13,23 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>('default');
+  const [theme, setThemeState] = useState<Theme>('default');
 
   useEffect(() => {
     const storedTheme = localStorage.getItem('app-theme') as Theme | null;
     if (storedTheme) {
-      setTheme(storedTheme);
+      setThemeState(storedTheme);
     }
   }, []);
 
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+    localStorage.setItem('app-theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
+
   useEffect(() => {
-    // Remove all theme classes
-    document.body.classList.remove('theme-default', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-matrix');
-    // Add the current theme class
-    document.body.classList.add(`theme-${theme}`);
-    localStorage.setItem('app-theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
   return (
