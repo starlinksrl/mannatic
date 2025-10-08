@@ -162,9 +162,9 @@ export async function triggerNewInterventionNotification(input: SendNewIntervent
 
 export async function handlePasswordResetRequest(email: string): Promise<{ success: boolean, message: string }> {
     const user = await getUserByEmail(email);
-    if (!user) {
-        // Don't reveal if user exists, for security.
-        return { success: true, message: "Se un account con questa email esiste, un link di reset verrà inviato." };
+    if (!user || user.email.endsWith('@mannatec.it')) {
+        // Don't reveal if user exists or is a system user, for security.
+        return { success: true, message: "Se un account valido con questa email esiste, un link di reset verrà inviato." };
     }
     
     const company = await getCompanyByUserId(user.id);
@@ -191,7 +191,7 @@ export async function handlePasswordResetRequest(email: string): Promise<{ succe
         const result = await sendPasswordResetEmail(input);
 
         if (result.success) {
-            return { success: true, message: "Se un account con questa email esiste, un link di reset verrà inviato." };
+            return { success: true, message: "Se un account valido con questa email esiste, un link di reset verrà inviato." };
         } else {
             return { success: false, message: result.error || "Impossibile inviare l'email di reset password." };
         }
