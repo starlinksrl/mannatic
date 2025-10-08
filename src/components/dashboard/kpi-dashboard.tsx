@@ -27,33 +27,10 @@ interface KpiDashboardProps {
 export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
   const isClient = currentUser.role === 'Client';
   const isOperator = currentUser.role === 'Operator';
-  const router = useRouter();
-
-  const handleOpenInterventionsClick = () => {
-    router.push('/dashboard/interventions');
-  };
-  
-  const handleNewInstallationsClick = () => {
-    router.push('/dashboard/new-installations');
-  };
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard
-          title="Interventi Aperti"
-          value={kpiData.openInterventions}
-          icon={<Activity className="h-4 w-4 text-muted-foreground" />}
-          description="Interventi che richiedono azione"
-          onClick={handleOpenInterventionsClick}
-        />
-         <KpiCard
-          title="Nuovi Impianti Aperti"
-          value={kpiData.openNewInstallations}
-          icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
-          description="Installazioni da completare"
-          onClick={handleNewInstallationsClick}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <KpiCard
           title="Adesione SLA"
           value={`${kpiData.slaAdherencePercentage}%`}

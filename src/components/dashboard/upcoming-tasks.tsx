@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +6,8 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Wrench, HardHat } from 'lucide-react';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
+import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 interface UpcomingTasksProps {
   interventions: Intervention[];
@@ -16,6 +17,7 @@ interface UpcomingTasksProps {
 
 export function UpcomingTasks({ interventions, installations, clients }: UpcomingTasksProps) {
   const { openModal } = useInterventionModal();
+  const router = useRouter();
 
   const getClientName = (clientId: string) => {
     return clients.find(c => c.id === clientId)?.name || 'Cliente Sconosciuto';
@@ -24,7 +26,10 @@ export function UpcomingTasks({ interventions, installations, clients }: Upcomin
   const TaskItem = ({ task, icon }: { task: Intervention, icon: React.ReactNode }) => (
     <div 
         className="flex items-center gap-4 group cursor-pointer"
-        onClick={() => openModal(task)}
+        onClick={(e) => {
+            e.stopPropagation();
+            openModal(task);
+        }}
     >
       {icon}
       <div className="grid gap-1">
@@ -39,7 +44,10 @@ export function UpcomingTasks({ interventions, installations, clients }: Upcomin
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card>
+      <Card 
+        onClick={() => router.push('/dashboard/interventions')}
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+      >
         <CardHeader>
           <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
           <CardDescription>
@@ -54,7 +62,10 @@ export function UpcomingTasks({ interventions, installations, clients }: Upcomin
           )}
         </CardContent>
       </Card>
-      <Card>
+      <Card 
+        onClick={() => router.push('/dashboard/new-installations')}
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+      >
         <CardHeader>
           <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
           <CardDescription>
