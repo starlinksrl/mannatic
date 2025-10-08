@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root, .theme-default {
     --background: 207 100% 95%;
     --foreground: 224 71% 4%;
     --card: 207 100% 99%;
@@ -30,7 +30,7 @@
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
   }
-  .dark {
+  .dark:root, .dark .theme-default {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
     --card: 222 47% 11%;
@@ -55,6 +55,146 @@
     --chart-3: 173 58% 39%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+  }
+
+  .theme-ocean {
+    --background: 200 100% 95%;
+    --foreground: 210 50% 10%;
+    --card: 200 100% 99%;
+    --card-foreground: 210 50% 10%;
+    --popover: 200 100% 99%;
+    --popover-foreground: 210 50% 10%;
+    --primary: 190 70% 50%;
+    --primary-foreground: 200 100% 98%;
+    --secondary: 200 40% 92%;
+    --secondary-foreground: 210 50% 10%;
+    --muted: 200 40% 92%;
+    --muted-foreground: 210 40% 30%;
+    --accent: 210 80% 60%;
+    --accent-foreground: 200 100% 98%;
+    --ring: 190 70% 50%;
+  }
+  .dark .theme-ocean {
+    --background: 210 40% 8%;
+    --foreground: 200 30% 95%;
+    --card: 210 40% 12%;
+    --card-foreground: 200 30% 95%;
+    --popover: 210 40% 8%;
+    --popover-foreground: 200 30% 95%;
+    --primary: 190 70% 50%;
+    --primary-foreground: 210 30% 98%;
+    --secondary: 210 30% 18%;
+    --secondary-foreground: 200 30% 95%;
+    --muted: 210 30% 18%;
+    --muted-foreground: 200 20% 60%;
+    --accent: 210 80% 60%;
+    --accent-foreground: 210 30% 98%;
+    --ring: 190 70% 50%;
+  }
+
+  .theme-forest {
+    --background: 100 20% 95%;
+    --foreground: 120 60% 10%;
+    --card: 100 20% 99%;
+    --card-foreground: 120 60% 10%;
+    --popover: 100 20% 99%;
+    --popover-foreground: 120 60% 10%;
+    --primary: 130 60% 40%;
+    --primary-foreground: 100 20% 98%;
+    --secondary: 100 15% 92%;
+    --secondary-foreground: 120 60% 10%;
+    --muted: 100 15% 92%;
+    --muted-foreground: 120 30% 30%;
+    --accent: 140 70% 50%;
+    --accent-foreground: 100 20% 98%;
+    --ring: 130 60% 40%;
+  }
+  .dark .theme-forest {
+    --background: 120 20% 5%;
+    --foreground: 100 15% 95%;
+    --card: 120 20% 9%;
+    --card-foreground: 100 15% 95%;
+    --popover: 120 20% 5%;
+    --popover-foreground: 100 15% 95%;
+    --primary: 130 60% 40%;
+    --primary-foreground: 100 15% 98%;
+    --secondary: 120 15% 12%;
+    --secondary-foreground: 100 15% 95%;
+    --muted: 120 15% 12%;
+    --muted-foreground: 100 10% 60%;
+    --accent: 140 70% 50%;
+    --accent-foreground: 100 15% 98%;
+    --ring: 130 60% 40%;
+  }
+
+  .theme-sunset {
+    --background: 20 50% 95%;
+    --foreground: 15 60% 10%;
+    --card: 20 50% 99%;
+    --card-foreground: 15 60% 10%;
+    --popover: 20 50% 99%;
+    --popover-foreground: 15 60% 10%;
+    --primary: 30 90% 55%;
+    --primary-foreground: 15 60% 10%;
+    --secondary: 20 30% 92%;
+    --secondary-foreground: 15 60% 10%;
+    --muted: 20 30% 92%;
+    --muted-foreground: 15 30% 40%;
+    --accent: 10 80% 60%;
+    --accent-foreground: 15 60% 98%;
+    --ring: 30 90% 55%;
+  }
+  .dark .theme-sunset {
+    --background: 20 20% 8%;
+    --foreground: 30 30% 95%;
+    --card: 20 20% 12%;
+    --card-foreground: 30 30% 95%;
+    --popover: 20 20% 8%;
+    --popover-foreground: 30 30% 95%;
+    --primary: 30 90% 55%;
+    --primary-foreground: 15 30% 5%;
+    --secondary: 20 15% 15%;
+    --secondary-foreground: 30 30% 95%;
+    --muted: 20 15% 15%;
+    --muted-foreground: 30 20% 60%;
+    --accent: 10 80% 60%;
+    --accent-foreground: 15 30% 98%;
+    --ring: 30 90% 55%;
+  }
+
+  .theme-matrix {
+    --background: 150 50% 5%;
+    --foreground: 140 80% 80%;
+    --card: 150 40% 8%;
+    --card-foreground: 140 80% 80%;
+    --popover: 150 50% 5%;
+    --popover-foreground: 140 80% 80%;
+    --primary: 140 100% 50%;
+    --primary-foreground: 150 50% 5%;
+    --secondary: 150 30% 12%;
+    --secondary-foreground: 140 80% 80%;
+    --muted: 150 30% 12%;
+    --muted-foreground: 140 50% 60%;
+    --accent: 140 90% 70%;
+    --accent-foreground: 150 50% 5%;
+    --ring: 140 100% 50%;
+  }
+  .dark .theme-matrix {
+    --background: 150 50% 5%;
+    --foreground: 140 80% 80%;
+    --card: 150 40% 8%;
+    --card-foreground: 140 80% 80%;
+    --popover: 150 50% 5%;
+    --popover-foreground: 140 80% 80%;
+    --primary: 140 100% 50%;
+    --primary-foreground: 150 50% 5%;
+    --secondary: 150 30% 12%;
+    --secondary-foreground: 140 80% 80%;
+    --muted: 150 30% 12%;
+    --muted-foreground: 140 50% 60%;
+    --accent: 140 90% 70%;
+    --accent-foreground: 150 50% 5%;
+    --ring: 140 100% 50%;
   }
 }
 
