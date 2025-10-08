@@ -24,6 +24,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Autocomplete } from '@react-google-maps/api';
 import { useMaps } from '@/contexts/maps-context';
 import { ThemeSwitcher } from '@/components/dashboard/theme-switcher';
+import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const resendFormSchema = z.object({
   resendApiKey: z.string().min(1, { message: 'API Key obbligatoria.' }),
@@ -453,10 +455,11 @@ export default function SettingsPage() {
       <Header title="Impostazioni" />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile">Profilo Azienda</TabsTrigger>
             <TabsTrigger value="resend">Notifiche (Resend)</TabsTrigger>
             <TabsTrigger value="appearance">Aspetto</TabsTrigger>
+            <TabsTrigger value="changelog">Changelog</TabsTrigger>
           </TabsList>
           <TabsContent value="profile">
             <CompanyProfileForm company={currentCompany} onSave={handleSave} />
@@ -474,6 +477,11 @@ export default function SettingsPage() {
                 <ThemeSwitcher />
               </CardContent>
             </Card>
+          </TabsContent>
+          <TabsContent value="changelog">
+             <ScrollArea className="h-[calc(100vh-250px)]">
+                <ChangelogDisplay />
+             </ScrollArea>
           </TabsContent>
         </Tabs>
       </main>
