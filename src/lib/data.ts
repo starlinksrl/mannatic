@@ -281,9 +281,6 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
 export async function updateUser(id: string, updatedData: Partial<User>): Promise<User | null> {
     try {
         const userDocRef = doc(db, 'users', id);
-        const originalDoc = await getDoc(userDocRef);
-        if (!originalDoc.exists()) throw new Error('User not found.');
-        const originalUser = originalDoc.data() as User;
         
         const dataToUpdate: { [key: string]: any } = {...updatedData};
         
@@ -295,9 +292,7 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             dataToUpdate.email = dataToUpdate.email.toLowerCase();
         }
 
-        if (dataToUpdate.password && dataToUpdate.password.trim() !== '') {
-            // This is where the password gets updated in the database
-        } else {
+        if (!dataToUpdate.password || dataToUpdate.password.trim() === '') {
             delete dataToUpdate.password;
         }
         
@@ -306,6 +301,13 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
         } else {
             dataToUpdate.allowedSectors = deleteField();
         }
+
+        // Clean up any undefined fields before sending to Firestore
+        Object.keys(dataToUpdate).forEach(key => {
+            if (dataToUpdate[key] === undefined) {
+                delete dataToUpdate[key];
+            }
+        });
         
         await updateDoc(userDocRef, dataToUpdate);
         
