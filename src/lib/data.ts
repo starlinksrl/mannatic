@@ -301,7 +301,9 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             delete dataToUpdate.password;
         }
         
-        if (dataToUpdate.role && dataToUpdate.role !== 'Operator') {
+        if (dataToUpdate.role === 'Operator') {
+            dataToUpdate.allowedSectors = dataToUpdate.allowedSectors || [];
+        } else {
             dataToUpdate.allowedSectors = deleteField();
         }
         
