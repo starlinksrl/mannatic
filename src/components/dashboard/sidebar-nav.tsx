@@ -53,7 +53,7 @@ const navItems: {
   { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'] },
   { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'] },
   { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'] },
-  { href: '/dashboard/manual', label: 'Manuale', icon: HelpCircle, roles: ['Admin', 'Operator', 'Client'] },
+  { href: '/dashboard/manual', label: 'Manuale', icon: HelpCircle, roles: ['Operator', 'Client'] },
   { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
   { href: '/dashboard/changelog', label: 'Changelog', icon: GitMerge, roles: ['Operator', 'Client', 'Creator'] },
 ];

@@ -26,6 +26,8 @@ import { useMaps } from '@/contexts/maps-context';
 import { ThemeSwitcher } from '@/components/dashboard/theme-switcher';
 import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import ManualPageContent from '@/components/dashboard/manual-page-content';
+
 
 const resendFormSchema = z.object({
   resendApiKey: z.string().min(1, { message: 'API Key obbligatoria.' }),
@@ -455,11 +457,12 @@ export default function SettingsPage() {
       <Header title="Impostazioni" />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile">Profilo Azienda</TabsTrigger>
             <TabsTrigger value="resend">Notifiche (Resend)</TabsTrigger>
             <TabsTrigger value="appearance">Aspetto</TabsTrigger>
             <TabsTrigger value="changelog">Changelog</TabsTrigger>
+            <TabsTrigger value="manual">Manuale</TabsTrigger>
           </TabsList>
           <TabsContent value="profile">
             <CompanyProfileForm company={currentCompany} onSave={handleSave} />
@@ -481,6 +484,11 @@ export default function SettingsPage() {
           <TabsContent value="changelog">
              <ScrollArea className="h-[calc(100vh-250px)]">
                 <ChangelogDisplay />
+             </ScrollArea>
+          </TabsContent>
+          <TabsContent value="manual">
+             <ScrollArea className="h-[calc(100vh-250px)]">
+                <ManualPageContent />
              </ScrollArea>
           </TabsContent>
         </Tabs>
