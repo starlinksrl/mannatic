@@ -146,10 +146,13 @@ export async function addCompany(companyData: Partial<Company>): Promise<Company
 export async function updateCompany(id: string, updatedData: Partial<Company>): Promise<Company | null> {
     try {
         const docRef = doc(db, 'companies', id);
-        if (updatedData.resendApiKey === '') {
-            delete updatedData.resendApiKey;
+        
+        const dataToSave = { ...updatedData };
+        if (dataToSave.resendApiKey === '') {
+            delete dataToSave.resendApiKey;
         }
-        await updateDoc(docRef, updatedData);
+
+        await updateDoc(docRef, dataToSave);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Company : null;
     } catch (error) {
@@ -296,9 +299,7 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             delete dataToUpdate.password;
         }
         
-        if (dataToUpdate.role === 'Operator') {
-            dataToUpdate.allowedSectors = dataToUpdate.allowedSectors || [];
-        } else {
+        if (dataToUpdate.role !== 'Operator') {
             dataToUpdate.allowedSectors = deleteField();
         }
 
