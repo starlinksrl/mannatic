@@ -220,12 +220,12 @@ export default function DashboardPage() {
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                   </div>
                   <div className="lg:col-span-2 space-y-6">
-                    <KpiDashboard kpiData={kpiData} currentUser={user} />
                     <UpcomingTasks 
                       interventions={kpiData.dueSoonInterventions}
                       installations={kpiData.dueSoonNewInstallations}
                       clients={clients}
                     />
+                    <KpiDashboard kpiData={kpiData} currentUser={user} />
                   </div>
                 </div>
             </div>
