@@ -51,7 +51,6 @@ const navItems: {
   { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
   { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'] },
   { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'] },
-  { href: '/dashboard/admin-explorer', label: 'Explorer', icon: Database, roles: ['Admin'] },
   { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'] },
   { href: '/dashboard/manual', label: 'Manuale', icon: HelpCircle, roles: ['Admin', 'Operator', 'Client'] },
   { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
