@@ -5,7 +5,7 @@
 import { Header } from '@/components/dashboard/header';
 import { getInterventions, getUsers, getClients } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate } from '@/lib/types';
-import { isAfter } from 'date-fns';
+import { isAfter, addDays } from 'date-fns';
 import { KpiDashboard } from '@/components/dashboard/kpi-dashboard';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState } from 'react';
@@ -19,6 +19,7 @@ import { EditInterventionForm } from '@/components/dashboard/edit-intervention-f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
 import { Button } from '@/components/ui/button';
+import { UpcomingTasks } from '@/components/dashboard/upcoming-tasks';
 
 
 export type EnrichedUpdate = InterventionUpdate & { 
@@ -36,6 +37,8 @@ type KpiData = GenerateKpiDashboardInput & {
   highPriorityInterventions: (Intervention | ScheduledMaintenance)[],
   latestUpdates: EnrichedUpdate[],
   allInterventions: (Intervention | ScheduledMaintenance)[],
+  dueSoonInterventions: Intervention[],
+  dueSoonNewInstallations: Intervention[],
 };
 
 export default function DashboardPage() {
@@ -76,6 +79,8 @@ export default function DashboardPage() {
         relevantInterventions = allInterventions;
     }
 
+    const standardInterventions = relevantInterventions.filter(i => !i.isMaintenance && i.type === 'standard') as Intervention[];
+    const newInstallations = relevantInterventions.filter(i => !i.isMaintenance && i.type === 'new_installation') as Intervention[];
 
     const openInterventions = relevantInterventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa');
     const closedInterventions = relevantInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato');
@@ -123,7 +128,19 @@ export default function DashboardPage() {
               clientAddress: client?.address,
           };
       })
-      .filter(i => i.clientAddress); // Filter out interventions where client address is null
+      .filter(i => i.clientAddress);
+
+    const twoDaysFromNow = addDays(now, 2);
+    const sevenDaysFromNow = addDays(now, 7);
+
+    const dueSoonInterventions = standardInterventions.filter(i => 
+        i.dueDate && new Date(i.dueDate) <= twoDaysFromNow && (i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa')
+    );
+
+    const dueSoonNewInstallations = newInstallations.filter(i => 
+        i.dueDate && new Date(i.dueDate) <= sevenDaysFromNow && (i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa')
+    );
+
 
     setKpiData({
       openInterventions: openInterventions.length,
@@ -135,6 +152,8 @@ export default function DashboardPage() {
       latestUpdates,
       allInterventions: relevantInterventions,
       openInterventionsWithLocation: openInterventionsWithLocation as { id: string; title: string; clientName: string; clientAddress: string; }[],
+      dueSoonInterventions,
+      dueSoonNewInstallations,
     });
     setLoading(false);
   }
@@ -200,8 +219,13 @@ export default function DashboardPage() {
                   <div className="lg:col-span-1 flex flex-col gap-6">
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                   </div>
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-2 space-y-6">
                     <KpiDashboard kpiData={kpiData} currentUser={user} />
+                    <UpcomingTasks 
+                      interventions={kpiData.dueSoonInterventions}
+                      installations={kpiData.dueSoonNewInstallations}
+                      clients={clients}
+                    />
                   </div>
                 </div>
             </div>

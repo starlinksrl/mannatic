@@ -131,26 +131,6 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
             </Card>
         )}
       </div>
-      
-        <Card>
-            <CardHeader>
-            <CardTitle className="font-headline">Interventi ad alta priorità</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    {kpiData.highPriorityInterventions.map(int => (
-                        <div key={int.id} className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium">{int.title}</p>
-                                <p className="text-sm text-muted-foreground">ID: {int.id}</p>
-                            </div>
-                            <Badge variant={int.priority === 'Critica' ? 'destructive' : 'secondary'} className="text-accent-foreground">{int.priority}</Badge>
-                        </div>
-                    ))}
-                    {kpiData.highPriorityInterventions.length === 0 && <p className="text-sm text-muted-foreground">Nessun intervento ad alta priorità.</p>}
-                </div>
-            </CardContent>
-        </Card>
     </div>
   );
 }
