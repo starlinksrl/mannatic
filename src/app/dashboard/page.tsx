@@ -9,7 +9,7 @@ import { isAfter, addDays } from 'date-fns';
 import { KpiDashboard } from '@/components/dashboard/kpi-dashboard';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState } from 'react';
-import { Loader, PlusCircle } from 'lucide-react';
+import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity } from 'lucide-react';
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -22,6 +22,13 @@ import { Button } from '@/components/ui/button';
 import { UpcomingTasks } from '@/components/dashboard/upcoming-tasks';
 import { Responsive, WidthProvider, Layout } from "react-grid-layout";
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { format, formatDistanceToNow } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { KpiCard } from '@/components/dashboard/kpi-card';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -48,8 +55,13 @@ type KpiData = GenerateKpiDashboardInput & {
 const defaultLayouts = {
     lg: [
         { i: "activity-feed", x: 0, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
-        { i: "upcoming-tasks", x: 4, y: 0, w: 8, h: 1, minW: 6, minH: 1 },
-        { i: "kpi-dashboard", x: 4, y: 1, w: 8, h: 1, minW: 6, minH: 1 },
+        { i: "upcoming-interventions", x: 4, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
+        { i: "upcoming-installations", x: 8, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
+        { i: "sla-adherence", x: 0, y: 2, w: 3, h: 1, minW: 2, minH: 1 },
+        { i: "overdue-maintenance", x: 3, y: 2, w: 3, h: 1, minW: 2, minH: 1 },
+        { i: "closed-interventions", x: 6, y: 2, w: 3, h: 1, minW: 2, minH: 1 },
+        { i: "open-new-installations", x: 9, y: 2, w: 3, h: 1, minW: 2, minH: 1 },
+        { i: "operator-workload", x: 0, y: 3, w: 12, h: 2, minW: 6, minH: 2 },
     ],
 };
 
@@ -62,7 +74,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [operators, setOperators] = useState<User[]>([]);
   const [clients, setClients] = useState<User[]>([]);
-  const { intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
+  const { intervention: interventionToEdit, isOpen, closeModal, openModal } = useInterventionModal();
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [layouts, setLayouts] = useState(user?.dashboardLayout || defaultLayouts);
@@ -229,6 +241,25 @@ export default function DashboardPage() {
     }
 
 
+    const TaskItem = ({ task, icon }: { task: Intervention, icon: React.ReactNode }) => (
+        <div 
+            className="flex items-center gap-4 group cursor-pointer"
+            onClick={(e) => {
+                e.stopPropagation();
+                openModal(task);
+            }}
+        >
+          {icon}
+          <div className="grid gap-1">
+            <p className="text-sm font-medium leading-none group-hover:underline">{task.title}</p>
+            <p className="text-sm text-muted-foreground">
+              per {clientsMap.get(task.clientId)?.name || 'Sconosciuto'} - Scade {formatDistanceToNow(new Date(task.dueDate!), { addSuffix: true, locale: it })}
+            </p>
+          </div>
+          <div className="ml-auto font-medium text-sm">{format(new Date(task.dueDate!), 'dd/MM')}</div>
+        </div>
+    );
+
   return (
     <>
       <Header 
@@ -260,16 +291,103 @@ export default function DashboardPage() {
                 <div key="activity-feed">
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                 </div>
-                <div key="upcoming-tasks">
-                     <UpcomingTasks 
-                      interventions={kpiData.dueSoonInterventions}
-                      installations={kpiData.dueSoonNewInstallations}
-                      clients={clients}
+                 <div key="upcoming-interventions">
+                     <Card 
+                        onClick={() => !isEditMode && router.push('/dashboard/interventions')}
+                        className={cn("h-full", !isEditMode && "cursor-pointer hover:bg-muted/50 transition-colors")}
+                      >
+                        <CardHeader>
+                          <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
+                          <CardDescription>
+                            Interventi standard che richiedono attenzione immediata.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-6">
+                          {kpiData.dueSoonInterventions.length > 0 ? (
+                            kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                </div>
+                 <div key="upcoming-installations">
+                    <Card 
+                        onClick={() => !isEditMode && router.push('/dashboard/new-installations')}
+                        className={cn("h-full", !isEditMode && "cursor-pointer hover:bg-muted/50 transition-colors")}
+                    >
+                        <CardHeader>
+                            <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
+                            <CardDescription>
+                                Installazioni pianificate per la prossima settimana.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-6">
+                            {kpiData.dueSoonNewInstallations.length > 0 ? (
+                            kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)
+                            ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">Nessun nuovo impianto in programma per la prossima settimana.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+                <div key="sla-adherence">
+                    <KpiCard
+                        title="Adesione SLA"
+                        value={`${kpiData.slaAdherencePercentage}%`}
+                        icon={<Check className="h-4 w-4 text-muted-foreground" />}
+                        description="Percentuale interventi nei tempi"
                     />
                 </div>
-                <div key="kpi-dashboard">
-                    <KpiDashboard kpiData={kpiData} currentUser={user} />
+                {user.role !== 'Client' && user.role !== 'Operator' && (
+                    <div key="overdue-maintenance">
+                        <KpiCard
+                            title="Manutenzioni Scadute"
+                            value={kpiData.overdueMaintenanceTasks}
+                            icon={<AlertOctagon className="h-4 w-4 text-muted-foreground" />}
+                            description="Attività di manutenzione in ritardo"
+                            onClick={() => !isEditMode && router.push('/dashboard/maintenance')}
+                        />
+                    </div>
+                )}
+                <div key="closed-interventions">
+                    <KpiCard
+                        title="Interventi Chiusi (30d)"
+                        value={kpiData.closedInterventions}
+                        icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+                        description="Completati nell'ultimo mese"
+                    />
                 </div>
+                {user.role !== 'Client' && user.role !== 'Operator' && (
+                    <div key="open-new-installations">
+                         <KpiCard
+                            title="Nuovi Impianti Aperti"
+                            value={kpiData.openNewInstallations}
+                            icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
+                            description="Installazioni da completare"
+                            onClick={() => !isEditMode && router.push('/dashboard/new-installations')}
+                        />
+                    </div>
+                )}
+                 {user.role !== 'Client' && user.role !== 'Operator' && (
+                    <div key="operator-workload">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="font-headline">Carico Operatori</CardTitle>
+                                <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={200}>
+                                <BarChart data={kpiData.operatorWorkloadData}>
+                                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
               </ResponsiveGridLayout>
           )}
         </main>
