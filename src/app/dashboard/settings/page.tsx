@@ -27,6 +27,7 @@ import { ThemeSwitcher } from '@/components/dashboard/theme-switcher';
 import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ManualPageContent from '@/components/dashboard/manual-page-content';
+import { FontSwitcher } from '@/components/dashboard/font-switcher';
 
 
 const resendFormSchema = z.object({
@@ -474,10 +475,17 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Aspetto Applicazione</CardTitle>
-                <CardDescription>Scegli la palette di colori per l'interfaccia.</CardDescription>
+                <CardDescription>Personalizza la palette di colori e i font per l'interfaccia della tua azienda.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <ThemeSwitcher />
+              <CardContent className="space-y-8">
+                 <div>
+                    <h4 className="font-medium mb-4">Temi Colore</h4>
+                    <ThemeSwitcher />
+                 </div>
+                 <div>
+                    <h4 className="font-medium mb-4">Caratteri</h4>
+                    <FontSwitcher />
+                 </div>
               </CardContent>
             </Card>
           </TabsContent>
