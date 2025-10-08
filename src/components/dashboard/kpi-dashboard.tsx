@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import React from 'react';
 import { KpiCard } from './kpi-card';
-import { Activity, AlertOctagon, Check, Clock } from 'lucide-react';
+import { Activity, AlertOctagon, Check, Clock, HardHat } from 'lucide-react';
 import { Intervention, ScheduledMaintenance, User } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
@@ -19,6 +19,7 @@ interface KpiDashboardProps {
       overdueMaintenanceTasks: number; 
       operatorWorkloadData: { name: string, workload: number }[],
       highPriorityInterventions: (Intervention | ScheduledMaintenance)[],
+      openNewInstallations: number;
     };
   currentUser: User;
 }
@@ -29,7 +30,11 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
   const router = useRouter();
 
   const handleOpenInterventionsClick = () => {
-    router.push('/dashboard/map');
+    router.push('/dashboard/interventions');
+  };
+  
+  const handleNewInstallationsClick = () => {
+    router.push('/dashboard/new-installations');
   };
 
   return (
@@ -41,6 +46,13 @@ export function KpiDashboard({ kpiData, currentUser }: KpiDashboardProps) {
           icon={<Activity className="h-4 w-4 text-muted-foreground" />}
           description="Interventi che richiedono azione"
           onClick={handleOpenInterventionsClick}
+        />
+         <KpiCard
+          title="Nuovi Impianti Aperti"
+          value={kpiData.openNewInstallations}
+          icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
+          description="Installazioni da completare"
+          onClick={handleNewInstallationsClick}
         />
         <KpiCard
           title="Adesione SLA"

@@ -39,6 +39,7 @@ type KpiData = GenerateKpiDashboardInput & {
   allInterventions: (Intervention | ScheduledMaintenance)[],
   dueSoonInterventions: Intervention[],
   dueSoonNewInstallations: Intervention[],
+  openNewInstallations: number,
 };
 
 export default function DashboardPage() {
@@ -141,6 +142,8 @@ export default function DashboardPage() {
         i.dueDate && new Date(i.dueDate) <= sevenDaysFromNow && (i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa')
     );
 
+    const openNewInstallations = newInstallations.filter(i => i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa').length;
+
 
     setKpiData({
       openInterventions: openInterventions.length,
@@ -151,9 +154,9 @@ export default function DashboardPage() {
       highPriorityInterventions,
       latestUpdates,
       allInterventions: relevantInterventions,
-      openInterventionsWithLocation: openInterventionsWithLocation as { id: string; title: string; clientName: string; clientAddress: string; }[],
       dueSoonInterventions,
       dueSoonNewInstallations,
+      openNewInstallations,
     });
     setLoading(false);
   }
