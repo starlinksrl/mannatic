@@ -1,31 +1,40 @@
 
+
 'use client';
 
 import { useTheme } from '@/contexts/theme-context';
 import { themes } from '@/lib/themes';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <>
-      {themes.map((t) => (
-        <DropdownMenuItem key={t.name} onSelect={() => setTheme(t.name)}>
-          <div className="flex items-center gap-2">
-            <div
-              className="h-4 w-4 rounded-full border"
-              style={{ backgroundColor: `hsl(${t.color})` }}
-            />
-            <span>{t.label}</span>
-          </div>
-          {theme === t.name && <Check className="ml-auto h-4 w-4" />}
-        </DropdownMenuItem>
-      ))}
-    </>
+    <div className="flex flex-wrap gap-4">
+      <TooltipProvider>
+        {themes.map((t) => (
+          <Tooltip key={t.name}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setTheme(t.name)}
+                className={cn(
+                  'h-8 w-8 rounded-full flex items-center justify-center ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  theme === t.name && 'ring-2 ring-ring'
+                )}
+                style={{ backgroundColor: `hsl(${t.color})` }}
+                aria-label={`Switch to ${t.label} theme`}
+              >
+                {theme === t.name && <Check className="h-5 w-5 text-primary-foreground" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{t.label}</p>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </TooltipProvider>
+    </div>
   );
 }

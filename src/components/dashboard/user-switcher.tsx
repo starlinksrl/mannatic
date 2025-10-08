@@ -18,14 +18,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, ChevronsUpDown, User as UserIcon, Users, Building, Palette } from 'lucide-react';
+import { LogOut, ChevronsUpDown, User as UserIcon, Users, Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { EditUserForm } from './edit-user-form';
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ThemeSwitcher } from './theme-switcher';
 
 export function UserSwitcher() {
   const { user, sessionUser, switchUser, availableUsers, logout, companies, currentCompany, switchCompany } = useUser();
@@ -228,18 +227,6 @@ export function UserSwitcher() {
                 <UserIcon className="mr-2" />
                 Profilo
             </DropdownMenuItem>
-
-            <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                    <Palette className="mr-2" />
-                    <span>Tema</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                        <ThemeSwitcher />
-                    </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-            </DropdownMenuSub>
 
             <DropdownMenuSeparator/>
             <DropdownMenuItem onClick={handleLogout}>

@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Autocomplete } from '@react-google-maps/api';
 import { useMaps } from '@/contexts/maps-context';
+import { ThemeSwitcher } from '@/components/dashboard/theme-switcher';
 
 const resendFormSchema = z.object({
   resendApiKey: z.string().min(1, { message: 'API Key obbligatoria.' }),
@@ -452,15 +453,27 @@ export default function SettingsPage() {
       <Header title="Impostazioni" />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile">Profilo Azienda</TabsTrigger>
             <TabsTrigger value="resend">Notifiche (Resend)</TabsTrigger>
+            <TabsTrigger value="appearance">Aspetto</TabsTrigger>
           </TabsList>
           <TabsContent value="profile">
             <CompanyProfileForm company={currentCompany} onSave={handleSave} />
           </TabsContent>
           <TabsContent value="resend">
              <ResendSettingsForm company={currentCompany} onSave={handleSave} onTest={handleTestResult} />
+          </TabsContent>
+           <TabsContent value="appearance">
+            <Card>
+              <CardHeader>
+                <CardTitle>Aspetto Applicazione</CardTitle>
+                <CardDescription>Scegli la palette di colori per l'interfaccia.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ThemeSwitcher />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
