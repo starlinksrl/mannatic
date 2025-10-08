@@ -1,7 +1,10 @@
+
 import { z } from 'zod';
 
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'matrix';
+export type Font = 'default' | 'lato' | 'roboto' | 'playfair' | 'sourcecode';
+
 
 export interface AppConfiguration {
   id: 'global';
@@ -28,6 +31,7 @@ export interface Company {
   email?: string;
   platformUrl?: string;
   theme?: Theme;
+  font?: Font;
   // Resend settings
   resendApiKey?: string;
   senderEmail?: string;

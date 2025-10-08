@@ -12,6 +12,11 @@ export default {
       fontFamily: {
         body: ['var(--font-inter)', 'sans-serif'],
         headline: ['var(--font-space-grotesk)', 'sans-serif'],
+        inter: ['var(--font-inter)', 'sans-serif'],
+        lato: ['var(--font-lato)', 'sans-serif'],
+        'roboto-slab': ['var(--font-roboto-slab)', 'serif'],
+        playfair: ['var(--font-playfair)', 'serif'],
+        'source-code': ['var(--font-source-code)', 'monospace'],
       },
       colors: {
         background: 'hsl(var(--background))',

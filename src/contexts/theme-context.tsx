@@ -3,12 +3,15 @@
 
 import React, { createContext, useContext, useEffect, ReactNode, useCallback } from 'react';
 import { useUser } from './user-context';
-import { type Theme } from '@/lib/types';
+import { type Theme, type Font } from '@/lib/types';
 import { updateCompanySettings } from '@/app/actions';
+import { fonts } from '@/lib/fonts';
 
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  font: Font;
+  setFont: (font: Font) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -17,6 +20,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const { currentCompany, setCurrentCompany } = useUser();
 
   const theme = currentCompany?.theme || 'default';
+  const font = currentCompany?.font || 'default';
 
   const setTheme = useCallback(async (newTheme: Theme) => {
     if (currentCompany) {
@@ -24,13 +28,33 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       await updateCompanySettings(currentCompany.id, { theme: newTheme });
     }
   }, [currentCompany, setCurrentCompany]);
+  
+  const setFont = useCallback(async (newFont: Font) => {
+    if (currentCompany) {
+      setCurrentCompany(prev => prev ? { ...prev, font: newFont } : null);
+      await updateCompanySettings(currentCompany.id, { font: newFont });
+    }
+  }, [currentCompany, setCurrentCompany]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+  
+  useEffect(() => {
+    const fontConfig = fonts.find(f => f.name === font) || fonts.find(f => f.name === 'default');
+    if (fontConfig) {
+      document.body.classList.forEach(className => {
+        if (className.startsWith('font-')) {
+          document.body.classList.remove(className);
+        }
+      });
+      document.body.classList.add(fontConfig.variable);
+    }
+  }, [font]);
+
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, font, setFont }}>
       {children}
     </ThemeContext.Provider>
   );
