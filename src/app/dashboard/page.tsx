@@ -280,7 +280,7 @@ export default function DashboardPage() {
                     <div className="lg:col-span-2 space-y-6">
                          <Card 
                             onClick={() => router.push('/dashboard/interventions')}
-                            className={cn("h-full", "cursor-pointer hover:bg-muted/50 transition-colors flex flex-col")}
+                            className={cn("cursor-pointer hover:bg-muted/50 transition-colors flex flex-col")}
                           >
                             <CardHeader>
                               <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
@@ -290,14 +290,9 @@ export default function DashboardPage() {
                             </CardHeader>
                             <CardContent className="flex-1 flex flex-col">
                                 {kpiData.dueSoonInterventions.length > 0 ? (
-                                    <ScrollArea className="flex-1 max-h-40">
+                                    <ScrollArea className="h-40">
                                         <div className="grid gap-6 pr-6">
-                                            {kpiData.dueSoonInterventions.slice(0, 3).map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)}
-                                            {kpiData.dueSoonInterventions.length > 3 && (
-                                                <div className="grid gap-6">
-                                                  {kpiData.dueSoonInterventions.slice(3).map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)}
-                                                </div>
-                                            )}
+                                            {kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)}
                                         </div>
                                     </ScrollArea>
                                 ) : (
@@ -369,3 +364,4 @@ export default function DashboardPage() {
     </>
   );
 }
+
