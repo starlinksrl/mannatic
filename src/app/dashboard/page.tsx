@@ -18,7 +18,6 @@ import { EditInterventionForm } from '@/components/dashboard/edit-intervention-f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
 import { Button } from '@/components/ui/button';
-import { Responsive, WidthProvider, Layout } from "react-grid-layout";
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -28,8 +27,6 @@ import { KpiCard } from '@/components/dashboard/kpi-card';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
 
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export type EnrichedUpdate = InterventionUpdate & { 
   interventionTitle: string; 
@@ -51,26 +48,6 @@ type KpiData = GenerateKpiDashboardInput & {
   openNewInstallations: number,
 };
 
-const defaultLayouts = {
-    lg: [
-      // Row 1: KPIs
-      { i: "sla-adherence", x: 0, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
-      { i: "overdue-maintenance", x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
-      { i: "closed-interventions", x: 6, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
-      { i: "open-new-installations", x: 9, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
-      
-      // Row 2: Main Content
-      { i: "upcoming-interventions", x: 0, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
-      { i: "upcoming-installations", x: 0, y: 3, w: 6, h: 2, minW: 4, minH: 2 },
-      
-      { i: "activity-feed", x: 6, y: 1, w: 6, h: 3, minW: 4, minH: 3 },
-      { i: "quote-of-the-day", x: 6, y: 4, w: 6, h: 1, minW: 4, minH: 1 },
-      
-      // Row 3: Chart
-      { i: "operator-workload", x: 0, y: 5, w: 12, h: 2, minW: 6, minH: 2 },
-    ],
-};
-
 
 export default function DashboardPage() {
   const { user, setUser, currentCompany } = useUser();
@@ -81,9 +58,6 @@ export default function DashboardPage() {
   const [operators, setOperators] = useState<User[]>([]);
   const [clients, setClients] = useState<User[]>([]);
   const { intervention: interventionToEdit, isOpen, closeModal, openModal } = useInterventionModal();
-
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [layouts, setLayouts] = useState(user?.dashboardLayout || defaultLayouts);
   
   const clientsMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));
@@ -206,60 +180,8 @@ export default function DashboardPage() {
     
     if (user) {
       fetchKpiData();
-       if (user.dashboardLayout) {
-        setLayouts(user.dashboardLayout);
-      }
     }
   }, [user, currentCompany, router]);
-
-  const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    setLayouts(allLayouts);
-  };
-
-  const handleSaveLayout = async () => {
-    if (!user) return;
-
-    // Deep clone and clean the layout object to prevent saving undefined values
-    const cleanedLayouts = JSON.parse(JSON.stringify(layouts), (key, value) => {
-        if (value === null || value === undefined) {
-            return undefined;
-        }
-        if (typeof value === 'object' && !Array.isArray(value)) {
-            Object.keys(value).forEach(k => {
-                if (value[k] === undefined) {
-                    delete value[k];
-                }
-            });
-        }
-        return value;
-    });
-    
-    const updatedUser = await updateUser(user.id, { dashboardLayout: cleanedLayouts });
-
-    if (updatedUser) {
-        setUser(updatedUser);
-        toast({ title: "Layout salvato", description: "La tua configurazione della dashboard è stata salvata." });
-    } else {
-        toast({ variant: 'destructive', title: "Errore", description: "Impossibile salvare il layout." });
-    }
-    setIsEditMode(false);
-  };
-  
-   const handleResetLayout = async () => {
-    if (!user) return;
-    
-    setLayouts(defaultLayouts);
-    const updatedUser = await updateUser(user.id, { dashboardLayout: null });
-
-    if (updatedUser) {
-        setUser(updatedUser);
-        toast({ title: "Layout ripristinato", description: "La configurazione della dashboard è stata ripristinata." });
-    } else {
-        toast({ variant: 'destructive', title: "Errore", description: "Impossibile ripristinare il layout." });
-    }
-    setIsEditMode(false);
-  };
-
 
   const NoCompanySelected = () => (
     <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -309,10 +231,6 @@ export default function DashboardPage() {
         onInterventionAdded={fetchKpiData} 
         clients={clients} 
         operators={operators}
-        isEditMode={isEditMode}
-        onEditToggle={() => setIsEditMode(!isEditMode)}
-        onSaveLayout={handleSaveLayout}
-        onResetLayout={handleResetLayout}
         />
       <ScrollArea className="flex-1">
         <main className="p-4 md:p-6 lg:p-8">
@@ -321,120 +239,109 @@ export default function DashboardPage() {
               <Loader className="h-8 w-8 animate-spin" />
             </div>
           ) : (
-             <ResponsiveGridLayout
-                className="layout"
-                layouts={layouts}
-                breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-                cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-                rowHeight={100}
-                onLayoutChange={onLayoutChange}
-                isDraggable={isEditMode}
-                isResizable={isEditMode}
-              >
-                <div key="quote-of-the-day">
-                    <QuoteOfTheDay />
-                </div>
-                <div key="activity-feed">
-                    <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
-                </div>
-                 <div key="upcoming-interventions">
-                     <Card 
-                        onClick={() => !isEditMode && router.push('/dashboard/interventions')}
-                        className={cn("h-full", !isEditMode && "cursor-pointer hover:bg-muted/50 transition-colors")}
-                      >
-                        <CardHeader>
-                          <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
-                          <CardDescription>
-                            Interventi standard che richiedono attenzione immediata.
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-6">
-                          {kpiData.dueSoonInterventions.length > 0 ? (
-                            kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)
-                          ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
-                          )}
-                        </CardContent>
-                      </Card>
-                </div>
-                 <div key="upcoming-installations">
-                    <Card 
-                        onClick={() => !isEditMode && router.push('/dashboard/new-installations')}
-                        className={cn("h-full", !isEditMode && "cursor-pointer hover:bg-muted/50 transition-colors")}
-                    >
-                        <CardHeader>
-                            <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
-                            <CardDescription>
-                                Installazioni pianificate per la prossima settimana.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-6">
-                            {kpiData.dueSoonNewInstallations.length > 0 ? (
-                            kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)
-                            ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">Nessun nuovo impianto in programma per la prossima settimana.</p>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-                <div key="sla-adherence">
+             <div className="grid gap-6">
+                {/* KPI Row */}
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                     <KpiCard
                         title="Adesione SLA"
                         value={`${kpiData.slaAdherencePercentage}%`}
                         icon={<Check className="h-4 w-4 text-muted-foreground" />}
                         description="Percentuale interventi nei tempi"
                     />
-                </div>
-                {user.role !== 'Client' && user.role !== 'Operator' && (
-                    <div key="overdue-maintenance">
+                    {user.role !== 'Client' && user.role !== 'Operator' && (
                         <KpiCard
                             title="Manutenzioni Scadute"
                             value={kpiData.overdueMaintenanceTasks}
                             icon={<AlertOctagon className="h-4 w-4 text-muted-foreground" />}
                             description="Attività di manutenzione in ritardo"
-                            onClick={() => !isEditMode && router.push('/dashboard/maintenance')}
+                            onClick={() => router.push('/dashboard/maintenance')}
                         />
-                    </div>
-                )}
-                <div key="closed-interventions">
+                    )}
                     <KpiCard
                         title="Interventi Chiusi (30d)"
                         value={kpiData.closedInterventions}
                         icon={<Clock className="h-4 w-4 text-muted-foreground" />}
                         description="Completati nell'ultimo mese"
                     />
-                </div>
-                {user.role !== 'Client' && user.role !== 'Operator' && (
-                    <div key="open-new-installations">
+                    {user.role !== 'Client' && user.role !== 'Operator' && (
                          <KpiCard
                             title="Nuovi Impianti Aperti"
                             value={kpiData.openNewInstallations}
                             icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
                             description="Installazioni da completare"
-                            onClick={() => !isEditMode && router.push('/dashboard/new-installations')}
+                            onClick={() => router.push('/dashboard/new-installations')}
                         />
-                    </div>
-                )}
-                 {user.role !== 'Client' && user.role !== 'Operator' && (
-                    <div key="operator-workload">
-                        <Card>
+                    )}
+                </div>
+
+                {/* Main Content Grid */}
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {/* Left Column */}
+                    <div className="lg:col-span-2 space-y-6">
+                         <Card 
+                            onClick={() => router.push('/dashboard/interventions')}
+                            className={cn("h-full", "cursor-pointer hover:bg-muted/50 transition-colors")}
+                          >
                             <CardHeader>
-                                <CardTitle className="font-headline">Carico Operatori</CardTitle>
-                                <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
+                              <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
+                              <CardDescription>
+                                Interventi standard che richiedono attenzione immediata.
+                              </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <ResponsiveContainer width="100%" height={200}>
-                                <BarChart data={kpiData.operatorWorkloadData}>
-                                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                    <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                                </ResponsiveContainer>
+                            <CardContent className="grid gap-6">
+                              {kpiData.dueSoonInterventions.length > 0 ? (
+                                kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)
+                              ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
+                              )}
+                            </CardContent>
+                          </Card>
+                        <Card 
+                            onClick={() => router.push('/dashboard/new-installations')}
+                            className={cn("h-full", "cursor-pointer hover:bg-muted/50 transition-colors")}
+                        >
+                            <CardHeader>
+                                <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
+                                <CardDescription>
+                                    Installazioni pianificate per la prossima settimana.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="grid gap-6">
+                                {kpiData.dueSoonNewInstallations.length > 0 ? (
+                                kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)
+                                ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">Nessun nuovo impianto in programma per la prossima settimana.</p>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Right Column */}
+                    <div className="lg:col-span-1 space-y-6 flex flex-col">
+                        <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
+                        <QuoteOfTheDay />
+                    </div>
+                </div>
+
+                {/* Operator Workload Chart */}
+                 {user.role !== 'Client' && user.role !== 'Operator' && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="font-headline">Carico Operatori</CardTitle>
+                            <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={kpiData.operatorWorkloadData}>
+                                <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
                 )}
-              </ResponsiveGridLayout>
+              </div>
           )}
         </main>
       </ScrollArea>
