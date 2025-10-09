@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -26,6 +25,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
 
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -52,14 +52,15 @@ type KpiData = GenerateKpiDashboardInput & {
 
 const defaultLayouts = {
     lg: [
-      { i: "activity-feed", x: 0, y: 0, w: 12, h: 2, minW: 4, minH: 2 },
-      { i: "upcoming-interventions", x: 0, y: 2, w: 12, h: 2, minW: 4, minH: 2 },
-      { i: "upcoming-installations", x: 0, y: 4, w: 12, h: 2, minW: 4, minH: 2 },
-      { i: "sla-adherence", x: 0, y: 6, w: 12, h: 1, minW: 2, minH: 1 },
-      { i: "overdue-maintenance", x: 0, y: 7, w: 12, h: 1, minW: 2, minH: 1 },
-      { i: "closed-interventions", x: 0, y: 8, w: 12, h: 1, minW: 2, minH: 1 },
-      { i: "open-new-installations", x: 0, y: 9, w: 12, h: 1, minW: 2, minH: 1 },
-      { i: "operator-workload", x: 0, y: 10, w: 12, h: 2, minW: 6, minH: 2 },
+      { i: "quote-of-the-day", x: 0, y: 0, w: 12, h: 2, minW: 4, minH: 2 },
+      { i: "activity-feed", x: 0, y: 2, w: 12, h: 2, minW: 4, minH: 2 },
+      { i: "upcoming-interventions", x: 0, y: 4, w: 12, h: 2, minW: 4, minH: 2 },
+      { i: "upcoming-installations", x: 0, y: 6, w: 12, h: 2, minW: 4, minH: 2 },
+      { i: "sla-adherence", x: 0, y: 8, w: 12, h: 1, minW: 2, minH: 1 },
+      { i: "overdue-maintenance", x: 0, y: 9, w: 12, h: 1, minW: 2, minH: 1 },
+      { i: "closed-interventions", x: 0, y: 10, w: 12, h: 1, minW: 2, minH: 1 },
+      { i: "open-new-installations", x: 0, y: 11, w: 12, h: 1, minW: 2, minH: 1 },
+      { i: "operator-workload", x: 0, y: 12, w: 12, h: 2, minW: 6, minH: 2 },
     ],
 };
 
@@ -307,6 +308,9 @@ export default function DashboardPage() {
                 isDraggable={isEditMode}
                 isResizable={isEditMode}
               >
+                <div key="quote-of-the-day">
+                    <QuoteOfTheDay />
+                </div>
                 <div key="activity-feed">
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                 </div>
@@ -426,5 +430,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
