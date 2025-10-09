@@ -280,7 +280,7 @@ export default function DashboardPage() {
                     <div className="lg:col-span-2 space-y-6">
                          <Card 
                             onClick={() => router.push('/dashboard/interventions')}
-                            className={cn("cursor-pointer hover:bg-muted/50 transition-colors flex flex-col")}
+                            className={cn("cursor-pointer hover:bg-muted/50 transition-colors")}
                           >
                             <CardHeader>
                               <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
@@ -288,7 +288,7 @@ export default function DashboardPage() {
                                 Interventi standard che richiedono attenzione immediata.
                               </CardDescription>
                             </CardHeader>
-                            <CardContent className="flex-1 flex flex-col">
+                            <CardContent>
                                 {kpiData.dueSoonInterventions.length > 0 ? (
                                     <ScrollArea className="h-40">
                                         <div className="grid gap-6 pr-6">
@@ -302,7 +302,7 @@ export default function DashboardPage() {
                           </Card>
                         <Card 
                             onClick={() => router.push('/dashboard/new-installations')}
-                            className={cn("h-full", "cursor-pointer hover:bg-muted/50 transition-colors")}
+                            className={cn("cursor-pointer hover:bg-muted/50 transition-colors")}
                         >
                             <CardHeader>
                                 <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
@@ -310,9 +310,13 @@ export default function DashboardPage() {
                                     Installazioni pianificate per la prossima settimana.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="grid gap-6">
+                             <CardContent>
                                 {kpiData.dueSoonNewInstallations.length > 0 ? (
-                                kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)
+                                 <ScrollArea className="h-40">
+                                    <div className="grid gap-6 pr-6">
+                                        {kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)}
+                                    </div>
+                                </ScrollArea>
                                 ) : (
                                 <p className="text-sm text-muted-foreground text-center py-4">Nessun nuovo impianto in programma per la prossima settimana.</p>
                                 )}
@@ -364,4 +368,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
 
