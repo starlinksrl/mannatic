@@ -53,17 +53,20 @@ type KpiData = GenerateKpiDashboardInput & {
 
 const defaultLayouts = {
     lg: [
+      // Row 1: KPIs
       { i: "sla-adherence", x: 0, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
       { i: "overdue-maintenance", x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
       { i: "closed-interventions", x: 6, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
       { i: "open-new-installations", x: 9, y: 0, w: 3, h: 1, minW: 2, minH: 1 },
       
+      // Row 2: Main Content
       { i: "upcoming-interventions", x: 0, y: 1, w: 6, h: 2, minW: 4, minH: 2 },
       { i: "upcoming-installations", x: 0, y: 3, w: 6, h: 2, minW: 4, minH: 2 },
       
       { i: "activity-feed", x: 6, y: 1, w: 6, h: 3, minW: 4, minH: 3 },
       { i: "quote-of-the-day", x: 6, y: 4, w: 6, h: 1, minW: 4, minH: 1 },
       
+      // Row 3: Chart
       { i: "operator-workload", x: 0, y: 5, w: 12, h: 2, minW: 6, minH: 2 },
     ],
 };
