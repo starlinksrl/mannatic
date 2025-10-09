@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/dashboard/header';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { getInterventions, getClient, getOperator } from '@/lib/data';
+import { getInterventions, getClient, getOperator, getClients, getUsers } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User } from '@/lib/types';
 import { format, isSameDay } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -13,13 +13,16 @@ import { Badge } from '@/components/ui/badge';
 import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { Loader } from 'lucide-react';
+import { useInterventionModal } from '@/contexts/intervention-modal-context';
+import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
+import { cn } from '@/lib/utils';
 
 type InterventionWithDetails = (Intervention | ScheduledMaintenance) & {
     clientName: string | undefined;
     operatorName: string;
 };
 
-const InterventionCard = ({ intervention }: { intervention: InterventionWithDetails }) => {
+const InterventionCard = ({ intervention, onClick }: { intervention: InterventionWithDetails; onClick: () => void }) => {
     
      const getStatusBadge = (status: Intervention['status']) => {
         switch (status) {
@@ -42,7 +45,11 @@ const InterventionCard = ({ intervention }: { intervention: InterventionWithDeta
     };
     
     return (
-        <div key={intervention.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm">
+        <div 
+            key={intervention.id} 
+            className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/80 transition-colors"
+            onClick={onClick}
+        >
             <div className="flex justify-between items-start">
                 <div className="flex-1">
                     <p className="font-semibold">{intervention.title}</p>
@@ -68,21 +75,33 @@ export default function CalendarPage() {
   const router = useRouter();
   const [interventions, setInterventions] = useState<(Intervention | ScheduledMaintenance)[]>([]);
   const [loading, setLoading] = useState(true);
+  const { openModal, intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
+  const [clients, setClients] = useState<User[]>([]);
+  const [operators, setOperators] = useState<User[]>([]);
+
+
+  const fetchData = async () => {
+    if (!user || !currentCompany) return;
+    setLoading(true);
+    const [allInterventions, allClients, allUsers] = await Promise.all([
+        getInterventions(currentCompany.id),
+        getClients(currentCompany.id),
+        getUsers(currentCompany.id),
+    ]);
+    
+    setInterventions(allInterventions.filter(i => i.dueDate));
+    setClients(allClients);
+    setOperators(allUsers.filter(u => u.role === 'Operator'));
+    setLoading(false);
+  }
 
   useEffect(() => {
     if (user && user.role === 'Client') {
       router.push('/dashboard');
     }
     
-    async function fetchInterventions() {
-        if (!currentCompany) return;
-        setLoading(true);
-        const allInterventions = await getInterventions(currentCompany.id);
-        setInterventions(allInterventions.filter(i => i.dueDate));
-        setLoading(false);
-    }
     if (user) {
-        fetchInterventions();
+        fetchData();
     }
   }, [user, router, currentCompany]);
   
@@ -112,6 +131,11 @@ export default function CalendarPage() {
         setDetailedInterventions([]);
     }
   }, [interventions]);
+  
+  const handleClientUpdated = (updatedClient: User) => {
+    setClients(prevClients => prevClients.map(c => c.id === updatedClient.id ? updatedClient : c));
+  }
+
 
   if (!user || loading) {
       return (
@@ -178,13 +202,29 @@ export default function CalendarPage() {
             <CardContent>
                 <div className="space-y-4">
                     {selectedDayInterventions.map(intervention => (
-                       <InterventionCard key={intervention.id} intervention={intervention} />
+                       <InterventionCard 
+                            key={intervention.id} 
+                            intervention={intervention} 
+                            onClick={() => openModal(intervention as Intervention)}
+                        />
                     ))}
                 </div>
             </CardContent>
         </Card>
 
       </main>
+       {interventionToEdit && user && (
+        <EditInterventionForm
+            intervention={interventionToEdit}
+            onInterventionUpdated={fetchData}
+            onClientUpdated={handleClientUpdated}
+            clients={clients}
+            operators={operators}
+            currentUser={user}
+            isOpen={isOpen}
+            setIsOpen={closeModal}
+        />
+      )}
     </>
   );
 }
