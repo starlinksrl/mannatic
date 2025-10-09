@@ -9,6 +9,7 @@ import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
 import { CREATOR_USER } from './constants';
+import { Resend } from 'resend';
 
 
 // --- APP CONFIGURATION ---
@@ -299,16 +300,16 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
             delete dataToUpdate.password;
         }
         
-        if (dataToUpdate.role !== 'Operator') {
-            dataToUpdate.allowedSectors = deleteField();
-        }
-
         // Clean up any undefined fields before sending to Firestore
         Object.keys(dataToUpdate).forEach(key => {
             if (dataToUpdate[key] === undefined) {
                 delete dataToUpdate[key];
             }
         });
+
+        if (dataToUpdate.role !== 'Operator') {
+            dataToUpdate.allowedSectors = deleteField();
+        }
         
         await updateDoc(userDocRef, dataToUpdate);
         
@@ -1158,6 +1159,50 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 
 // --- SUPPORT TICKETS ---
 
+async function sendSupportTicketEmailNotification(companyId: string, ticket: SupportTicket, message: SupportMessage, recipients: User[]) {
+    const company = await getCompanyById(companyId);
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        console.error(`Cannot send support email for company ${companyId}: Resend not configured.`);
+        return;
+    }
+
+    const resend = new Resend(company.resendApiKey);
+
+    for (const recipient of recipients) {
+        if (!recipient.email) continue;
+        
+        const isNewTicket = ticket.messages.length === 1;
+        const subject = isNewTicket 
+            ? `Nuovo Ticket di Supporto #${ticket.id}: ${ticket.subject}`
+            : `Nuova Risposta al Ticket #${ticket.id}: ${ticket.subject}`;
+
+        const body = `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                <h2 style="color: #333;">${subject}</h2>
+                <p>Ciao ${recipient.name},</p>
+                <p>C'è un nuovo aggiornamento per un ticket di supporto.</p>
+                <div style="background-color: #f9f9f9; border-left: 4px solid #64B5F6; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>Da:</strong> ${message.senderName}</p>
+                    <p style="margin: 5px 0 0 0; white-space: pre-wrap;">${message.text}</p>
+                </div>
+                <p>Puoi visualizzare la conversazione completa e rispondere accedendo a MannaTic.</p>
+            </div>
+        `;
+
+        try {
+            await resend.emails.send({
+                from: company.senderEmail,
+                to: [recipient.email],
+                subject: subject,
+                html: body,
+            });
+        } catch (error) {
+            console.error(`Failed to send support email to ${recipient.email}:`, error);
+        }
+    }
+}
+
+
 export async function getSupportTickets(companyId: string, clientId?: string): Promise<SupportTicket[]> {
     if (!companyId) return [];
     try {
@@ -1217,6 +1262,9 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
             type: 'generic'
         });
     }
+    
+    await sendSupportTicketEmailNotification(ticketData.companyId, newTicket, initialMessage, admins);
+
 
     return newTicket;
 }
@@ -1249,34 +1297,44 @@ export async function addSupportMessage(ticketId: string, message: { senderId: s
     
     const sender = await getUserById(message.senderId);
     if (!sender) return;
+    
+    const notificationMessage = `Nuova risposta da ${message.senderName} sul ticket: "${ticket.subject}"`;
+    const recipients: User[] = [];
 
     if (sender.role === 'Client') {
         // Notify all admins
         const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticket.companyId), where("role", "==", "Admin"));
         const adminsSnapshot = await getDocs(adminsQuery);
-        for (const adminDoc of adminsSnapshot.docs) {
-             await addDoc(collection(db, 'notifications'), {
+        adminsSnapshot.forEach(adminDoc => {
+            recipients.push(adminDoc.data() as User);
+            addDoc(collection(db, 'notifications'), {
                 userId: adminDoc.id,
                 companyId: ticket.companyId,
-                message: `Nuova risposta da ${message.senderName} sul ticket: "${ticket.subject}"`,
+                message: notificationMessage,
+                read: false, 
+                createdAt: now, 
+                relatedInterventionId: ticketId,
+                type: 'generic'
+            });
+        });
+    } else {
+        // Notify the client
+        const client = await getUserById(ticket.clientId);
+        if (client) {
+             recipients.push(client);
+             await addDoc(collection(db, 'notifications'), {
+                userId: ticket.clientId,
+                companyId: ticket.companyId,
+                message: notificationMessage,
                 read: false, 
                 createdAt: now, 
                 relatedInterventionId: ticketId,
                 type: 'generic'
             });
         }
-    } else if (sender.role === 'Admin' || sender.role === 'Creator') {
-        // Notify the client
-        await addDoc(collection(db, 'notifications'), {
-            userId: ticket.clientId,
-            companyId: ticket.companyId,
-            message: `Hai una nuova risposta da ${message.senderName} sul ticket: "${ticket.subject}"`,
-            read: false, 
-            createdAt: now, 
-            relatedInterventionId: ticketId,
-            type: 'generic'
-        });
     }
+    
+    await sendSupportTicketEmailNotification(ticket.companyId, ticket, newMessage, recipients);
 }
 
 export async function updateSupportTicketStatus(ticketId: string, status: SupportTicketStatus): Promise<void> {
