@@ -280,7 +280,7 @@ export default function DashboardPage() {
                     <div className="lg:col-span-2 space-y-6">
                          <Card 
                             onClick={() => router.push('/dashboard/interventions')}
-                            className={cn("h-full", "cursor-pointer hover:bg-muted/50 transition-colors")}
+                            className={cn("h-full", "cursor-pointer hover:bg-muted/50 transition-colors flex flex-col")}
                           >
                             <CardHeader>
                               <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
@@ -288,12 +288,21 @@ export default function DashboardPage() {
                                 Interventi standard che richiedono attenzione immediata.
                               </CardDescription>
                             </CardHeader>
-                            <CardContent className="grid gap-6">
-                              {kpiData.dueSoonInterventions.length > 0 ? (
-                                kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)
-                              ) : (
-                                <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
-                              )}
+                            <CardContent className="flex-1 flex flex-col">
+                                {kpiData.dueSoonInterventions.length > 0 ? (
+                                    <ScrollArea className="flex-1 max-h-72">
+                                        <div className="grid gap-6 pr-6">
+                                            {kpiData.dueSoonInterventions.slice(0, 3).map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)}
+                                            {kpiData.dueSoonInterventions.length > 3 && (
+                                                <div className="grid gap-6">
+                                                  {kpiData.dueSoonInterventions.slice(3).map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </ScrollArea>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
+                                )}
                             </CardContent>
                           </Card>
                         <Card 
