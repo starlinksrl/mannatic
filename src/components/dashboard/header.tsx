@@ -4,7 +4,7 @@
 
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Building, Menu, Edit, Save } from 'lucide-react';
+import { ArrowLeft, Building, Menu, Edit, Save, RotateCcw } from 'lucide-react';
 import { SidebarNav } from './sidebar-nav';
 import { UserSwitcher } from './user-switcher';
 import { NotificationsDropdown } from './notifications-dropdown';
@@ -21,10 +21,11 @@ interface HeaderProps {
   isEditMode?: boolean;
   onEditToggle?: () => void;
   onSaveLayout?: () => void;
+  onResetLayout?: () => void;
 }
 
 
-export function Header({ title, onInterventionAdded, clients, operators, isEditMode, onEditToggle, onSaveLayout }: HeaderProps) {
+export function Header({ title, onInterventionAdded, clients, operators, isEditMode, onEditToggle, onSaveLayout, onResetLayout }: HeaderProps) {
   const { user, sessionUser, currentCompany, switchCompany } = useUser();
   const router = useRouter();
 
@@ -69,17 +70,25 @@ export function Header({ title, onInterventionAdded, clients, operators, isEditM
         )}
         <h1 className="font-headline text-xl font-semibold">{title}</h1>
          {onEditToggle && (
-           isEditMode ? (
-              <Button size="sm" onClick={onSaveLayout}>
-                <Save className="mr-2 h-4 w-4" />
-                Salva Layout
-              </Button>
-           ) : (
-              <Button size="sm" variant="outline" onClick={onEditToggle}>
-                <Edit className="mr-2 h-4 w-4" />
-                Modifica Layout
-              </Button>
-           )
+            <div className="flex items-center gap-2">
+                {isEditMode ? (
+                    <>
+                        <Button size="sm" onClick={onSaveLayout}>
+                            <Save className="mr-2 h-4 w-4" />
+                            Salva Layout
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={onResetLayout}>
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Reset
+                        </Button>
+                    </>
+                ) : (
+                    <Button size="sm" variant="outline" onClick={onEditToggle}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Modifica Layout
+                    </Button>
+                )}
+            </div>
         )}
       </div>
       <div className="flex items-center gap-4">

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -240,6 +241,21 @@ export default function DashboardPage() {
     }
     setIsEditMode(false);
   };
+  
+   const handleResetLayout = async () => {
+    if (!user) return;
+    
+    setLayouts(defaultLayouts);
+    const updatedUser = await updateUser(user.id, { dashboardLayout: null });
+
+    if (updatedUser) {
+        setUser(updatedUser);
+        toast({ title: "Layout ripristinato", description: "La configurazione della dashboard è stata ripristinata." });
+    } else {
+        toast({ variant: 'destructive', title: "Errore", description: "Impossibile ripristinare il layout." });
+    }
+    setIsEditMode(false);
+  };
 
 
   const NoCompanySelected = () => (
@@ -293,6 +309,7 @@ export default function DashboardPage() {
         isEditMode={isEditMode}
         onEditToggle={() => setIsEditMode(!isEditMode)}
         onSaveLayout={handleSaveLayout}
+        onResetLayout={handleResetLayout}
         />
       <ScrollArea className="flex-1">
         <main className="p-4 md:p-6 lg:p-8">
