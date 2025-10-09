@@ -8,7 +8,7 @@ import { Intervention, ScheduledMaintenance, User, InterventionUpdate } from '@/
 import { isAfter, addDays } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity } from 'lucide-react';
+import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw } from 'lucide-react';
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -239,7 +239,7 @@ export default function DashboardPage() {
               <Loader className="h-8 w-8 animate-spin" />
             </div>
           ) : (
-             <div className="grid gap-6">
+             <div className="flex flex-col gap-6">
                 {/* KPI Row */}
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                     <KpiCard
@@ -275,14 +275,12 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Main Content Grid */}
-                <div className="grid gap-6 lg:grid-cols-3">
-                    {/* Left Column */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6 flex flex-col">
                         <QuoteOfTheDay />
                         <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                     </div>
 
-                    {/* Right Column */}
                     <div className="lg:col-span-1 space-y-6 flex flex-col">
                         <Card 
                             onClick={() => router.push('/dashboard/interventions')}
@@ -295,15 +293,15 @@ export default function DashboardPage() {
                               </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {kpiData.dueSoonInterventions.length > 0 ? (
-                                    <ScrollArea className="h-40">
-                                        <div className="grid gap-6 pr-6">
-                                            {kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)}
-                                        </div>
-                                    </ScrollArea>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
-                                )}
+                                <ScrollArea className="h-40">
+                                    <div className="grid gap-6 pr-6">
+                                        {kpiData.dueSoonInterventions.length > 0 ? (
+                                            kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
+                                        )}
+                                    </div>
+                                </ScrollArea>
                             </CardContent>
                           </Card>
                         <Card 
@@ -317,15 +315,15 @@ export default function DashboardPage() {
                                 </CardDescription>
                             </CardHeader>
                              <CardContent>
-                                {kpiData.dueSoonNewInstallations.length > 0 ? (
-                                 <ScrollArea className="h-40">
+                                <ScrollArea className="h-40">
                                     <div className="grid gap-6 pr-6">
-                                        {kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)}
+                                        {kpiData.dueSoonNewInstallations.length > 0 ? (
+                                            kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center py-4">Nessun nuovo impianto in programma per la prossima settimana.</p>
+                                        )}
                                     </div>
                                 </ScrollArea>
-                                ) : (
-                                <p className="text-sm text-muted-foreground text-center py-4">Nessun nuovo impianto in programma per la prossima settimana.</p>
-                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -368,6 +366,7 @@ export default function DashboardPage() {
     </>
   );
 }
+
 
 
 
