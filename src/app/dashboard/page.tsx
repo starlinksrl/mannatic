@@ -62,7 +62,7 @@ const defaultLayouts = {
       { i: "upcoming-installations", x: 0, y: 3, w: 6, h: 2, minW: 4, minH: 2 },
       
       { i: "activity-feed", x: 6, y: 1, w: 6, h: 3, minW: 4, minH: 3 },
-      { i: "quote-of-the-day", x: 6, y: 4, w: 6, h: 2, minW: 4, minH: 2 },
+      { i: "quote-of-the-day", x: 6, y: 4, w: 6, h: 1, minW: 4, minH: 1 },
       
       { i: "operator-workload", x: 0, y: 5, w: 12, h: 2, minW: 6, minH: 2 },
     ],
