@@ -277,8 +277,14 @@ export default function DashboardPage() {
                 {/* Main Content Grid */}
                 <div className="grid gap-6 lg:grid-cols-3">
                     {/* Left Column */}
-                    <div className="lg:col-span-2 space-y-6">
-                         <Card 
+                    <div className="lg:col-span-2 space-y-6 flex flex-col">
+                        <QuoteOfTheDay />
+                        <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="lg:col-span-1 space-y-6 flex flex-col">
+                        <Card 
                             onClick={() => router.push('/dashboard/interventions')}
                             className={cn("cursor-pointer hover:bg-muted/50 transition-colors")}
                           >
@@ -323,12 +329,6 @@ export default function DashboardPage() {
                             </CardContent>
                         </Card>
                     </div>
-
-                    {/* Right Column */}
-                    <div className="lg:col-span-1 space-y-6 flex flex-col">
-                        <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
-                        <QuoteOfTheDay />
-                    </div>
                 </div>
 
                 {/* Operator Workload Chart */}
@@ -368,5 +368,6 @@ export default function DashboardPage() {
     </>
   );
 }
+
 
 
