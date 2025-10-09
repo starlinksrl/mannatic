@@ -290,7 +290,7 @@ export default function DashboardPage() {
                             </CardHeader>
                             <CardContent className="flex-1 flex flex-col">
                                 {kpiData.dueSoonInterventions.length > 0 ? (
-                                    <ScrollArea className="flex-1 max-h-72">
+                                    <ScrollArea className="flex-1 max-h-40">
                                         <div className="grid gap-6 pr-6">
                                             {kpiData.dueSoonInterventions.slice(0, 3).map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)}
                                             {kpiData.dueSoonInterventions.length > 3 && (
