@@ -1246,29 +1246,13 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
 
     await setDoc(doc(db, 'supportTickets', newId), newTicket);
     
-    const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticketData.companyId), where("role", "==", "Admin"));
-    const adminsSnapshot = await getDocs(adminsQuery);
-    const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
-
-    for (const admin of admins) {
-        await addDoc(collection(db, 'notifications'), {
-            userId: admin.id,
-            companyId: ticketData.companyId,
-            message: `Nuovo ticket da ${ticketData.clientName}: "${ticketData.subject}"`,
-            read: false, 
-            createdAt: now, 
-            relatedInterventionId: newId,
-            type: 'generic'
-        });
-    }
-    
-    // Send email notification to admins
-    await sendSupportTicketEmailNotification(ticketData.companyId, newTicket, initialMessage, admins);
+    // This logic is now centralized in addSupportMessage, which is called indirectly by creating a ticket
+    await addSupportMessage(newId, ticketData.sender, ticketData.initialMessage);
 
     return newTicket;
 }
 
-export async function addSupportMessage(ticketId: string, message: { senderId: string, senderName: string, text: string }): Promise<void> {
+export async function addSupportMessage(ticketId: string, sender: User, messageText: string): Promise<void> {
     const ticketRef = doc(db, 'supportTickets', ticketId);
     const ticketSnap = await getDoc(ticketRef);
     if (!ticketSnap.exists()) {
@@ -1277,12 +1261,17 @@ export async function addSupportMessage(ticketId: string, message: { senderId: s
 
     const ticket = ticketSnap.data() as SupportTicket;
     const now = new Date().toISOString();
+    
+    const senderProfile = await getUserById(sender.id);
+    if (!senderProfile) {
+        throw new Error("Sender profile not found");
+    }
 
     const newMessage: SupportMessage = {
         id: uuidv4(),
-        senderId: message.senderId,
-        senderName: message.senderName,
-        text: message.text,
+        senderId: senderProfile.id,
+        senderName: senderProfile.name,
+        text: messageText,
         createdAt: now,
     };
 
@@ -1294,13 +1283,10 @@ export async function addSupportMessage(ticketId: string, message: { senderId: s
         status: 'Aperto',
     });
     
-    const sender = await getUserById(message.senderId);
-    if (!sender) return;
-    
-    const notificationMessage = `Nuova risposta da ${message.senderName} sul ticket: "${ticket.subject}"`;
+    const notificationMessage = `Nuova risposta da ${senderProfile.name} sul ticket: "${ticket.subject}"`;
     const recipients: User[] = [];
 
-    if (sender.role === 'Client') {
+    if (senderProfile.role === 'Client') {
         const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticket.companyId), where("role", "==", "Admin"));
         const adminsSnapshot = await getDocs(adminsQuery);
         adminsSnapshot.forEach(adminDoc => {

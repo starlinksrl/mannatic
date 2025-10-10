@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -48,11 +49,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
 
     setIsSubmitting(true);
     try {
-      await addSupportMessage(ticket.id, {
-        senderId: user.id,
-        senderName: user.name,
-        text: newMessage,
-      });
+      await addSupportMessage(ticket.id, user, newMessage);
       setNewMessage('');
       onTicketUpdated();
       toast({ title: 'Messaggio inviato con successo.' });
