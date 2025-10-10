@@ -5,8 +5,13 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { quotes } from '@/lib/quotes';
 import { Lightbulb } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export function QuoteOfTheDay() {
+interface QuoteOfTheDayProps {
+    className?: string;
+}
+
+export function QuoteOfTheDay({ className }: QuoteOfTheDayProps) {
   const [dailyQuote, setDailyQuote] = useState<{ quote: string; author: string } | null>(null);
 
   useEffect(() => {
@@ -27,7 +32,7 @@ export function QuoteOfTheDay() {
   }
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base font-headline">
           <Lightbulb className="h-5 w-5 text-yellow-400" />
