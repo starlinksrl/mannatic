@@ -1246,7 +1246,6 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
 
     await setDoc(doc(db, 'supportTickets', newId), newTicket);
     
-    // Notify all admins of the new ticket
     const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticketData.companyId), where("role", "==", "Admin"));
     const adminsSnapshot = await getDocs(adminsQuery);
     const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
@@ -1258,13 +1257,12 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
             message: `Nuovo ticket da ${ticketData.clientName}: "${ticketData.subject}"`,
             read: false, 
             createdAt: now, 
-            relatedInterventionId: newId, // Using interventionId to link to ticket for now
+            relatedInterventionId: newId,
             type: 'generic'
         });
     }
     
     await sendSupportTicketEmailNotification(ticketData.companyId, newTicket, initialMessage, admins);
-
 
     return newTicket;
 }
@@ -1292,7 +1290,7 @@ export async function addSupportMessage(ticketId: string, message: { senderId: s
     await updateDoc(ticketRef, {
         messages: updatedMessages,
         updatedAt: now,
-        status: 'Aperto', // Re-open ticket on new message
+        status: 'Aperto',
     });
     
     const sender = await getUserById(message.senderId);
@@ -1302,11 +1300,11 @@ export async function addSupportMessage(ticketId: string, message: { senderId: s
     const recipients: User[] = [];
 
     if (sender.role === 'Client') {
-        // Notify all admins
         const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticket.companyId), where("role", "==", "Admin"));
         const adminsSnapshot = await getDocs(adminsQuery);
         adminsSnapshot.forEach(adminDoc => {
-            recipients.push(adminDoc.data() as User);
+            const admin = { id: adminDoc.id, ...adminDoc.data() } as User;
+            recipients.push(admin);
             addDoc(collection(db, 'notifications'), {
                 userId: adminDoc.id,
                 companyId: ticket.companyId,
@@ -1318,7 +1316,6 @@ export async function addSupportMessage(ticketId: string, message: { senderId: s
             });
         });
     } else {
-        // Notify the client
         const client = await getUserById(ticket.clientId);
         if (client) {
              recipients.push(client);
@@ -1349,14 +1346,12 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
     try {
         const batch = writeBatch(db);
 
-        // Delete notifications related to this ticket
         const notificationsQuery = query(collection(db, 'notifications'), where('relatedInterventionId', '==', ticketId));
         const notificationsSnapshot = await getDocs(notificationsQuery);
         notificationsSnapshot.forEach(doc => {
             batch.delete(doc.ref);
         });
 
-        // Delete the ticket itself
         const ticketRef = doc(db, 'supportTickets', ticketId);
         batch.delete(ticketRef);
         
