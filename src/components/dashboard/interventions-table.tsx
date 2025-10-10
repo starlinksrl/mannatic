@@ -139,11 +139,15 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     let filtered = roleBasedInterventions;
 
     if (searchTerm) {
-      filtered = filtered.filter(i =>
-        i.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        i.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const lowercasedSearchTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(i => {
+        const clientName = clientsMap.get(i.clientId)?.name.toLowerCase() || '';
+        return i.title.toLowerCase().includes(lowercasedSearchTerm) ||
+               i.id.toLowerCase().includes(lowercasedSearchTerm) ||
+               clientName.includes(lowercasedSearchTerm);
+      });
     }
+
     if (statusFilter === 'active') {
         const activeStatuses = ['Nuovo', 'In corso', 'In attesa'];
         filtered = filtered.filter(i => activeStatuses.includes(i.status));
@@ -162,7 +166,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     }
 
     return filtered;
-  }, [roleBasedInterventions, searchTerm, statusFilter, priorityFilter, clientFilter, operatorFilter, currentUser.role]);
+  }, [roleBasedInterventions, searchTerm, statusFilter, priorityFilter, clientFilter, operatorFilter, currentUser.role, clientsMap]);
   
   const sortedInterventions = useMemo(() => {
     let sortableItems = [...filteredInterventions];
@@ -270,7 +274,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-grow">
                 <Input
-                placeholder="Cerca per titolo o ID..."
+                placeholder="Cerca per titolo, ID o cliente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="sm:col-span-2"
