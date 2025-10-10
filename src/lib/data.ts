@@ -1262,6 +1262,7 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
         });
     }
     
+    // Send email notification to admins
     await sendSupportTicketEmailNotification(ticketData.companyId, newTicket, initialMessage, admins);
 
     return newTicket;
@@ -1331,6 +1332,7 @@ export async function addSupportMessage(ticketId: string, message: { senderId: s
         }
     }
     
+    // Send email notification
     await sendSupportTicketEmailNotification(ticket.companyId, ticket, newMessage, recipients);
 }
 
