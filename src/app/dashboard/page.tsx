@@ -241,109 +241,106 @@ export default function DashboardPage() {
           ) : (
              <div className="flex flex-col gap-6">
 
-                <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Main content column */}
-                    <div className="flex flex-col w-full flex-1 shrink-0 lg:basis-1/2 space-y-6 order-1 lg:order-none">
-                       <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} className="order-1"/>
-                       <QuoteOfTheDay className="order-4 lg:order-2" />
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <div className="lg:col-span-6 flex flex-col space-y-6 order-1 lg:order-1">
+                      <QuoteOfTheDay />
+                      <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                     </div>
 
-                    {/* Side column */}
-                    <div className="flex flex-col w-full flex-1 shrink-0 lg:basis-1/2 space-y-6 order-2 lg:order-none">
-                         <Card className="order-2 lg:order-none" onClick={() => router.push('/dashboard/interventions')}>
-                            <CardHeader>
-                            <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
-                            <CardDescription>
-                                Interventi standard che richiedono attenzione immediata.
-                            </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ScrollArea className="h-40">
-                                    <div className="grid gap-6 pr-6">
-                                        {kpiData.dueSoonInterventions.length > 0 ? (
-                                            kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)
-                                        ) : (
-                                            <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
-                                        )}
-                                    </div>
-                                </ScrollArea>
-                            </CardContent>
-                        </Card>
+                    <div className="lg:col-span-6 flex flex-col space-y-6 order-2 lg:order-2">
+                       <Card onClick={() => router.push('/dashboard/interventions')}>
+                          <CardHeader>
+                          <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
+                          <CardDescription>
+                              Interventi standard che richiedono attenzione immediata.
+                          </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                              <ScrollArea className="h-40">
+                                  <div className="grid gap-6 pr-6">
+                                      {kpiData.dueSoonInterventions.length > 0 ? (
+                                          kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)
+                                      ) : (
+                                          <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
+                                      )}
+                                  </div>
+                              </ScrollArea>
+                          </CardContent>
+                      </Card>
 
-                        <Card className="order-3 lg:order-none" onClick={() => router.push('/dashboard/new-installations')}>
-                            <CardHeader>
-                                <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
-                                <CardDescription>
-                                    Installazioni pianificate per la prossima settimana.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ScrollArea className="h-40">
-                                    <div className="grid gap-6 pr-6">
-                                        {kpiData.dueSoonNewInstallations.length > 0 ? (
-                                            kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)
-                                        ) : (
-                                            <p className="text-sm text-muted-foreground text-center py-4">Nessun nuovo impianto in programma per la prossima settimana.</p>
-                                        )}
-                                    </div>
-                                </ScrollArea>
-                            </CardContent>
-                        </Card>
+                      <Card onClick={() => router.push('/dashboard/new-installations')}>
+                          <CardHeader>
+                              <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
+                              <CardDescription>
+                                  Installazioni pianificate per la prossima settimana.
+                              </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                              <ScrollArea className="h-40">
+                                  <div className="grid gap-6 pr-6">
+                                      {kpiData.dueSoonNewInstallations.length > 0 ? (
+                                          kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)
+                                      ) : (
+                                          <p className="text-sm text-muted-foreground text-center py-4">Nessun nuovo impianto in programma per la prossima settimana.</p>
+                                      )}
+                                  </div>
+                              </ScrollArea>
+                          </CardContent>
+                      </Card>
                     </div>
-                </div>
 
-
-                {/* KPI Row */}
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 order-3 lg:order-none">
-                    <KpiCard
-                        title="Adesione SLA"
-                        value={`${kpiData.slaAdherencePercentage}%`}
-                        icon={<Check className="h-4 w-4 text-muted-foreground" />}
-                        description="Percentuale interventi nei tempi"
-                    />
-                    {user.role !== 'Client' && user.role !== 'Operator' && (
+                    <div className="lg:col-span-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4 order-3">
                         <KpiCard
-                            title="Manutenzioni Scadute"
-                            value={kpiData.overdueMaintenanceTasks}
-                            icon={<AlertOctagon className="h-4 w-4 text-muted-foreground" />}
-                            description="Attività di manutenzione in ritardo"
-                            onClick={() => router.push('/dashboard/maintenance')}
+                            title="Adesione SLA"
+                            value={`${kpiData.slaAdherencePercentage}%`}
+                            icon={<Check className="h-4 w-4 text-muted-foreground" />}
+                            description="Percentuale interventi nei tempi"
                         />
-                    )}
-                    <KpiCard
-                        title="Interventi Chiusi (30d)"
-                        value={kpiData.closedInterventions}
-                        icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-                        description="Completati nell'ultimo mese"
-                    />
+                        {user.role !== 'Client' && user.role !== 'Operator' && (
+                            <KpiCard
+                                title="Manutenzioni Scadute"
+                                value={kpiData.overdueMaintenanceTasks}
+                                icon={<AlertOctagon className="h-4 w-4 text-muted-foreground" />}
+                                description="Attività di manutenzione in ritardo"
+                                onClick={() => router.push('/dashboard/maintenance')}
+                            />
+                        )}
+                        <KpiCard
+                            title="Interventi Chiusi (30d)"
+                            value={kpiData.closedInterventions}
+                            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+                            description="Completati nell'ultimo mese"
+                        />
+                        {user.role !== 'Client' && user.role !== 'Operator' && (
+                            <KpiCard
+                                title="Nuovi Impianti Aperti"
+                                value={kpiData.openNewInstallations}
+                                icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
+                                description="Installazioni da completare"
+                                onClick={() => router.push('/dashboard/new-installations')}
+                            />
+                        )}
+                    </div>
+                
                     {user.role !== 'Client' && user.role !== 'Operator' && (
-                         <KpiCard
-                            title="Nuovi Impianti Aperti"
-                            value={kpiData.openNewInstallations}
-                            icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
-                            description="Installazioni da completare"
-                            onClick={() => router.push('/dashboard/new-installations')}
-                        />
+                        <Card className="lg:col-span-12 order-4">
+                            <CardHeader>
+                                <CardTitle className="font-headline">Carico Operatori</CardTitle>
+                                <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={250}>
+                                <BarChart data={kpiData.operatorWorkloadData}>
+                                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
                     )}
                 </div>
-
-                {user.role !== 'Client' && user.role !== 'Operator' && (
-                    <Card className="order-5 lg:order-none">
-                        <CardHeader>
-                            <CardTitle className="font-headline">Carico Operatori</CardTitle>
-                            <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={kpiData.operatorWorkloadData}>
-                                <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
-                )}
               </div>
           )}
         </main>
