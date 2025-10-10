@@ -1171,7 +1171,7 @@ async function sendSupportTicketEmailNotification(companyId: string, ticket: Sup
     for (const recipient of recipients) {
         if (!recipient.email) continue;
         
-        const isNewTicket = ticket.messages.length === 1;
+        const isNewTicket = ticket.messages.length <= 1;
         const subject = isNewTicket 
             ? `Nuovo Ticket di Supporto #${ticket.id}: ${ticket.subject}`
             : `Nuova Risposta al Ticket #${ticket.id}: ${ticket.subject}`;
@@ -1246,7 +1246,7 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
 
     await setDoc(doc(db, 'supportTickets', newId), newTicket);
     
-    // This logic is now centralized in addSupportMessage, which is called indirectly by creating a ticket
+    // The notification logic is centralized in addSupportMessage
     await addSupportMessage(newId, ticketData.sender, ticketData.initialMessage);
 
     return newTicket;
@@ -1275,6 +1275,7 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         createdAt: now,
     };
 
+    const isNewTicket = ticket.messages.length === 0;
     const updatedMessages = [...ticket.messages, newMessage];
 
     await updateDoc(ticketRef, {
@@ -1283,6 +1284,12 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         status: 'Aperto',
     });
     
+    const company = await getCompanyById(ticket.companyId);
+    if (!company) {
+        console.error(`Company not found for ticket ${ticketId}. Cannot send notifications.`);
+        return;
+    }
+
     const notificationMessage = `Nuova risposta da ${senderProfile.name} sul ticket: "${ticket.subject}"`;
     const recipients: User[] = [];
 
@@ -1318,9 +1325,11 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         }
     }
     
-    // Send email notification
-    await sendSupportTicketEmailNotification(ticket.companyId, ticket, newMessage, recipients);
+    // Send email notification, passing the full ticket object which now includes the new message
+    const fullTicket = { ...ticket, messages: updatedMessages };
+    await sendSupportTicketEmailNotification(ticket.companyId, fullTicket, newMessage, recipients);
 }
+
 
 export async function updateSupportTicketStatus(ticketId: string, status: SupportTicketStatus): Promise<void> {
     const ticketRef = doc(db, 'supportTickets', ticketId);
