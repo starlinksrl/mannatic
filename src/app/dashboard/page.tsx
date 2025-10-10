@@ -5,7 +5,7 @@
 import { Header } from '@/components/dashboard/header';
 import { getInterventions, getUsers, getClients, updateUser } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate } from '@/lib/types';
-import { isAfter, addDays } from 'date-fns';
+import { isAfter, addDays, startOfToday } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
 import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw } from 'lucide-react';
@@ -275,16 +275,33 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6 flex flex-col">
+                <div className="flex flex-col gap-6 lg:flex-row">
+                    <div className="flex w-full flex-col gap-6 lg:w-1/2 order-4 lg:order-1">
                         <QuoteOfTheDay />
-                        <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
+                         {user.role !== 'Client' && user.role !== 'Operator' && (
+                            <Card className="order-5">
+                                <CardHeader>
+                                    <CardTitle className="font-headline">Carico Operatori</CardTitle>
+                                    <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <ResponsiveContainer width="100%" height={250}>
+                                    <BarChart data={kpiData.operatorWorkloadData}>
+                                        <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                    </ResponsiveContainer>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
-
-                    <div className="lg:col-span-1 space-y-6 flex flex-col">
+                    
+                    <div className="flex w-full flex-col gap-6 lg:w-1/2 order-1 lg:order-2">
+                        <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} className="order-1 lg:order-none"/>
                         <Card 
                             onClick={() => router.push('/dashboard/interventions')}
-                            className={cn("cursor-pointer hover:bg-muted/50 transition-colors")}
+                            className={cn("cursor-pointer hover:bg-muted/50 transition-colors order-2 lg:order-none")}
                           >
                             <CardHeader>
                               <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
@@ -306,7 +323,7 @@ export default function DashboardPage() {
                           </Card>
                         <Card 
                             onClick={() => router.push('/dashboard/new-installations')}
-                            className={cn("cursor-pointer hover:bg-muted/50 transition-colors")}
+                            className={cn("cursor-pointer hover:bg-muted/50 transition-colors order-3 lg:order-none")}
                         >
                             <CardHeader>
                                 <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
@@ -328,25 +345,6 @@ export default function DashboardPage() {
                         </Card>
                     </div>
                 </div>
-
-                {/* Operator Workload Chart */}
-                 {user.role !== 'Client' && user.role !== 'Operator' && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="font-headline">Carico Operatori</CardTitle>
-                            <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={kpiData.operatorWorkloadData}>
-                                <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
-                )}
               </div>
           )}
         </main>
@@ -366,6 +364,7 @@ export default function DashboardPage() {
     </>
   );
 }
+
 
 
 

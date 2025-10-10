@@ -19,9 +19,10 @@ interface ActivityFeedProps {
     interventions: Intervention[];
     latestUpdates: EnrichedUpdate[];
     onUpdate: () => void;
+    className?: string;
 }
 
-export function ActivityFeed({ interventions, latestUpdates, onUpdate }: ActivityFeedProps) {
+export function ActivityFeed({ interventions, latestUpdates, onUpdate, className }: ActivityFeedProps) {
     const { user } = useUser();
     const { openModal } = useInterventionModal();
 
@@ -41,7 +42,7 @@ export function ActivityFeed({ interventions, latestUpdates, onUpdate }: Activit
     
 
     return (
-        <Card>
+        <Card className={className}>
             <CardHeader>
                 <CardTitle>Attività Recenti</CardTitle>
                 <CardDescription>Ultimi aggiornamenti dagli interventi.</CardDescription>
