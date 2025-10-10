@@ -47,6 +47,7 @@ type KpiData = GenerateKpiDashboardInput & {
   dueSoonNewInstallations: Intervention[],
   openNewInstallations: number,
   openSurveys: number,
+  openSurveysList: Survey[],
 };
 
 
@@ -156,7 +157,8 @@ export default function DashboardPage() {
     );
 
     const openNewInstallations = newInstallations.filter(i => i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa').length;
-    const openSurveys = allSurveys.filter(s => s.status === 'Pianificato').length;
+    const openSurveysList = allSurveys.filter(s => s.status === 'Pianificato');
+    const openSurveys = openSurveysList.length;
 
 
     setKpiData({
@@ -172,6 +174,7 @@ export default function DashboardPage() {
       dueSoonNewInstallations,
       openNewInstallations,
       openSurveys,
+      openSurveysList,
     });
     setLoading(false);
   }
@@ -227,6 +230,26 @@ export default function DashboardPage() {
           <div className="ml-auto font-medium text-sm">{format(new Date(task.dueDate!), 'dd/MM')}</div>
         </div>
     );
+    
+    const SurveyTaskItem = ({ task }: { task: Survey }) => (
+        <div 
+            className="flex items-center gap-4 group cursor-pointer"
+             onClick={(e) => {
+                e.stopPropagation();
+                router.push('/dashboard/surveys');
+            }}
+        >
+          <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
+          <div className="grid gap-1">
+            <p className="text-sm font-medium leading-none group-hover:underline">{task.title}</p>
+            <p className="text-sm text-muted-foreground">
+              per {clientsMap.get(task.clientId)?.name || 'Sconosciuto'}
+            </p>
+          </div>
+          <div className="ml-auto font-medium text-sm">{format(new Date(task.date), 'dd/MM')}</div>
+        </div>
+    );
+
 
   return (
     <>
@@ -245,13 +268,13 @@ export default function DashboardPage() {
           ) : (
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                <div className="lg:col-span-6 flex flex-col space-y-6 order-1">
-                    <QuoteOfTheDay />
+                <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
+                    
                 </div>
-
-                <div className="lg:col-span-6 flex flex-col space-y-6 order-2 lg:order-3">
-                    <Card onClick={() => router.push('/dashboard/interventions')}>
+                
+                <div className="lg:col-span-6 flex flex-col gap-6 order-3 lg:order-2">
+                     <Card onClick={() => router.push('/dashboard/interventions')}>
                         <CardHeader>
                         <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
                         <CardDescription>
@@ -290,9 +313,26 @@ export default function DashboardPage() {
                             </ScrollArea>
                         </CardContent>
                     </Card>
+                    <Card onClick={() => router.push('/dashboard/surveys')}>
+                        <CardHeader>
+                            <CardTitle className="font-headline">Sopralluoghi da Fare</CardTitle>
+                            <CardDescription>Sopralluoghi con stato "Pianificato".</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             <ScrollArea className="h-40">
+                                <div className="grid gap-6 pr-6">
+                                    {kpiData.openSurveysList.length > 0 ? (
+                                        kpiData.openSurveysList.map(task => <SurveyTaskItem key={task.id} task={task} />)
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground text-center py-4">Nessun sopralluogo pianificato.</p>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
                 </div>
-                
-                <div className="lg:col-span-12 grid gap-6 md:grid-cols-2 lg:grid-cols-5 order-3 lg:order-2">
+
+                 <div className="lg:col-span-12 grid gap-6 md:grid-cols-2 lg:grid-cols-5 order-4 lg:order-3">
                     <KpiCard
                         title="Adesione SLA"
                         value={`${kpiData.slaAdherencePercentage}%`}
@@ -325,13 +365,17 @@ export default function DashboardPage() {
                     )}
                      {user.role !== 'Client' && (
                         <KpiCard
-                            title="Sopralluoghi"
+                            title="Sopralluoghi Pianificati"
                             value={kpiData.openSurveys}
                             icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
                             description="Sopralluoghi da eseguire"
                             onClick={() => router.push('/dashboard/surveys')}
                         />
                     )}
+                </div>
+
+                <div className="lg:col-span-12 order-2 lg:order-4">
+                     <QuoteOfTheDay />
                 </div>
             
                 {user.role !== 'Client' && user.role !== 'Operator' && (
