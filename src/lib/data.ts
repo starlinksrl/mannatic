@@ -1241,7 +1241,7 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
         createdAt: now,
         updatedAt: now,
         status: 'Aperto',
-        messages: [initialMessage],
+        messages: [], // Start with no messages, add it via addSupportMessage
     };
 
     await setDoc(doc(db, 'supportTickets', newId), newTicket);
@@ -1249,7 +1249,7 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
     // The notification logic is centralized in addSupportMessage
     await addSupportMessage(newId, ticketData.sender, ticketData.initialMessage);
 
-    return newTicket;
+    return { ...newTicket, messages: [initialMessage] };
 }
 
 export async function addSupportMessage(ticketId: string, sender: User, messageText: string): Promise<void> {
@@ -1275,7 +1275,6 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         createdAt: now,
     };
 
-    const isNewTicket = ticket.messages.length === 0;
     const updatedMessages = [...ticket.messages, newMessage];
 
     await updateDoc(ticketRef, {
@@ -1325,7 +1324,6 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         }
     }
     
-    // Send email notification, passing the full ticket object which now includes the new message
     const fullTicket = { ...ticket, messages: updatedMessages };
     await sendSupportTicketEmailNotification(ticket.companyId, fullTicket, newMessage, recipients);
 }
@@ -1359,3 +1357,4 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
