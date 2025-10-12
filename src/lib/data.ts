@@ -1159,9 +1159,9 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 
 // --- SUPPORT TICKETS ---
 
-async function sendSupportTicketEmailNotification(company: Company, ticket: SupportTicket, message: SupportMessage, recipients: User[]) {
-    if (!company.resendApiKey || !company.senderEmail) {
-        console.error(`Cannot send support email for company ${company.id}: Resend not configured.`);
+async function sendSupportTicketEmailNotification(company: Company | null, ticket: SupportTicket, message: SupportMessage, recipients: User[]) {
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        console.error(`Cannot send support email for company ${company?.id}: Resend not configured.`);
         return;
     }
 
@@ -1245,12 +1245,14 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
 
     await setDoc(doc(db, 'supportTickets', newId), newTicket);
     
+    // Fetch company info to get Resend config
     const company = await getCompanyById(ticketData.companyId);
     if (company) {
         const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticketData.companyId), where("role", "==", "Admin"));
         const adminsSnapshot = await getDocs(adminsQuery);
         const recipients = adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
 
+        // Create in-app notifications
         for (const admin of recipients) {
             await addDoc(collection(db, 'notifications'), {
                 userId: admin.id,
@@ -1258,11 +1260,12 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
                 message: `Nuovo ticket da ${ticketData.clientName}: "${ticketData.subject}"`,
                 read: false, 
                 createdAt: now, 
-                relatedInterventionId: newId,
+                relatedInterventionId: newId, // Using interventionId field for ticket ID as well
                 type: 'generic'
             });
         }
-        await sendSupportTicketEmailNotification(ticketData.companyId, newTicket, initialMessage, recipients);
+        // Send email notifications
+        await sendSupportTicketEmailNotification(company, newTicket, initialMessage, recipients);
     }
 
     return newTicket;
@@ -1298,8 +1301,10 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         status: 'Aperto' as SupportTicketStatus,
     };
 
+    // First, update the ticket in the database
     await updateDoc(ticketRef, updatedTicketData);
     
+    // Then, use the updated ticket to send notifications
     const updatedTicket = { ...ticket, ...updatedTicketData };
     
     const company = await getCompanyById(ticket.companyId);
@@ -1327,7 +1332,7 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
                 type: 'generic'
             });
         });
-    } else {
+    } else { // Sender is Admin or Operator
         const client = await getUserById(ticket.clientId);
         if (client) {
              recipients.push(client);
@@ -1343,6 +1348,7 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         }
     }
     
+    // Finally, send the email notifications
     await sendSupportTicketEmailNotification(company, updatedTicket, newMessage, recipients);
 }
 
