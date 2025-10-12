@@ -12,6 +12,7 @@ import { sendCredentialsEmail } from '@/ai/flows/send-credentials-email';
 import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
+import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-notification';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken } from '@/lib/data';
 import { Company, User } from '@/lib/types';
 import { Resend } from 'resend';
@@ -20,6 +21,7 @@ import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
 import type { SendCredentialsEmailInput, SendCredentialsEmailOutput } from '@/ai/flows/send-credentials-email';
+import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput } from '@/ai/flows/send-support-ticket-notification';
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
@@ -156,6 +158,16 @@ export async function triggerNewInterventionNotification(input: SendNewIntervent
         return result;
     } catch (error: any) {
         console.error("Error sending new intervention notification email:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function triggerSupportTicketNotification(input: SendSupportTicketNotificationInput): Promise<SendSupportTicketNotificationOutput> {
+    try {
+        const result = await sendSupportTicketNotification(input);
+        return result;
+    } catch (error: any) {
+        console.error("Error sending support ticket notification email:", error);
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }

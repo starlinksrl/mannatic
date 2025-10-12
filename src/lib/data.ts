@@ -4,7 +4,7 @@ import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRol
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter, differenceInMinutes, addHours } from 'date-fns';
 import { db, auth } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail } from '@/app/actions';
+import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail, triggerSupportTicketNotification } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
@@ -1159,49 +1159,6 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 
 // --- SUPPORT TICKETS ---
 
-async function sendSupportTicketEmailNotification(company: Company | null, ticket: SupportTicket, message: SupportMessage, recipients: User[]) {
-    if (!company || !company.resendApiKey || !company.senderEmail) {
-        console.error(`Cannot send support email for company ${company.id}: Resend not configured.`);
-        return;
-    }
-
-    const resend = new Resend(company.resendApiKey);
-
-    for (const recipient of recipients) {
-        if (!recipient.email) continue;
-        
-        const isNewTicket = ticket.messages.length <= 1;
-        const subject = isNewTicket 
-            ? `Nuovo Ticket di Supporto #${ticket.id}: ${ticket.subject}`
-            : `Nuova Risposta al Ticket #${ticket.id}: ${ticket.subject}`;
-
-        const body = `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-                <h2 style="color: #333;">${subject}</h2>
-                <p>Ciao ${recipient.name},</p>
-                <p>C'è un nuovo aggiornamento per un ticket di supporto.</p>
-                <div style="background-color: #f9f9f9; border-left: 4px solid #64B5F6; padding: 15px; margin: 20px 0;">
-                    <p style="margin: 0;"><strong>Da:</strong> ${message.senderName}</p>
-                    <p style="margin: 5px 0 0 0; white-space: pre-wrap;">${message.text}</p>
-                </div>
-                <p>Puoi visualizzare la conversazione completa e rispondere accedendo a MannaTic.</p>
-            </div>
-        `;
-
-        try {
-            await resend.emails.send({
-                from: company.senderEmail,
-                to: [recipient.email],
-                subject: subject,
-                html: body,
-            });
-        } catch (error) {
-            console.error(`Failed to send support email to ${recipient.email}:`, error);
-        }
-    }
-}
-
-
 export async function getSupportTickets(companyId: string, clientId?: string): Promise<SupportTicket[]> {
     if (!companyId) return [];
     try {
@@ -1245,27 +1202,40 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
 
     await setDoc(doc(db, 'supportTickets', newId), newTicket);
     
-    // Fetch company info to get Resend config
     const company = await getCompanyById(ticketData.companyId);
-    if (company) {
-        const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticketData.companyId), where("role", "==", "Admin"));
-        const adminsSnapshot = await getDocs(adminsQuery);
-        const recipients = adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        console.error(`Cannot send support email for company ${ticketData.companyId}: Resend not configured.`);
+        return newTicket;
+    }
+    
+    const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticketData.companyId), where("role", "==", "Admin"));
+    const adminsSnapshot = await getDocs(adminsQuery);
+    
+    for (const adminDoc of adminsSnapshot.docs) {
+        const admin = { id: adminDoc.id, ...adminDoc.data() } as User;
+        
+        await addDoc(collection(db, 'notifications'), {
+            userId: admin.id,
+            companyId: ticketData.companyId,
+            message: `Nuovo ticket da ${ticketData.clientName}: "${ticketData.subject}"`,
+            read: false, 
+            createdAt: now, 
+            relatedInterventionId: newId,
+            type: 'generic'
+        });
 
-        // Create in-app notifications
-        for (const admin of recipients) {
-            await addDoc(collection(db, 'notifications'), {
-                userId: admin.id,
-                companyId: ticketData.companyId,
-                message: `Nuovo ticket da ${ticketData.clientName}: "${ticketData.subject}"`,
-                read: false, 
-                createdAt: now, 
-                relatedInterventionId: newId, // Using interventionId field for ticket ID as well
-                type: 'generic'
+        if (admin.email) {
+            await triggerSupportTicketNotification({
+                recipientEmail: admin.email,
+                recipientName: admin.name,
+                ticket: newTicket,
+                isNewTicket: true,
+                resendConfig: {
+                    apiKey: company.resendApiKey!,
+                    from: company.senderEmail!,
+                },
             });
         }
-        // Send email notifications
-        await sendSupportTicketEmailNotification(company, newTicket, initialMessage, recipients);
     }
 
     return newTicket;
@@ -1301,15 +1271,13 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         status: 'Aperto' as SupportTicketStatus,
     };
 
-    // First, update the ticket in the database
     await updateDoc(ticketRef, updatedTicketData);
     
-    // Then, use the updated ticket to send notifications
     const updatedTicket = { ...ticket, ...updatedTicketData };
     
     const company = await getCompanyById(ticket.companyId);
-    if (!company) {
-        console.error(`Company not found for ticket ${ticketId}. Cannot send notifications.`);
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        console.error(`Company not found or Resend not configured for ticket ${ticketId}. Cannot send notifications.`);
         return;
     }
 
@@ -1332,7 +1300,7 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
                 type: 'generic'
             });
         });
-    } else { // Sender is Admin or Operator
+    } else { 
         const client = await getUserById(ticket.clientId);
         if (client) {
              recipients.push(client);
@@ -1348,8 +1316,20 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         }
     }
     
-    // Finally, send the email notifications
-    await sendSupportTicketEmailNotification(company, updatedTicket, newMessage, recipients);
+    for (const recipient of recipients) {
+        if (recipient.email) {
+             await triggerSupportTicketNotification({
+                recipientEmail: recipient.email,
+                recipientName: recipient.name,
+                ticket: updatedTicket,
+                isNewTicket: false,
+                resendConfig: {
+                    apiKey: company.resendApiKey!,
+                    from: company.senderEmail!,
+                },
+            });
+        }
+    }
 }
 
 

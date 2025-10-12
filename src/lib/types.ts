@@ -259,3 +259,18 @@ export const FetchFileFromGcsOutputSchema = z.object({
   error: z.string().optional(),
 });
 export type FetchFileFromGcsOutput = z.infer<typeof FetchFileFromGcsOutputSchema>;
+
+export const SendSupportTicketNotificationInputSchema = z.object({
+  recipientEmail: z.string().email(),
+  recipientName: z.string(),
+  ticket: z.custom<SupportTicket>(),
+  isNewTicket: z.boolean(),
+  resendConfig: ResendConfigSchema,
+});
+export type SendSupportTicketNotificationInput = z.infer<typeof SendSupportTicketNotificationInputSchema>;
+
+export const SendSupportTicketNotificationOutputSchema = z.object({
+  success: z.boolean(),
+  error: z.string().optional(),
+});
+export type SendSupportTicketNotificationOutput = z.infer<typeof SendSupportTicketNotificationOutputSchema>;
