@@ -1161,7 +1161,7 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 
 async function sendSupportTicketEmailNotification(company: Company | null, ticket: SupportTicket, message: SupportMessage, recipients: User[]) {
     if (!company || !company.resendApiKey || !company.senderEmail) {
-        console.error(`Cannot send support email for company ${company?.id}: Resend not configured.`);
+        console.error(`Cannot send support email for company ${company.id}: Resend not configured.`);
         return;
     }
 
