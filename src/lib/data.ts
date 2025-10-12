@@ -1159,10 +1159,9 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 
 // --- SUPPORT TICKETS ---
 
-async function sendSupportTicketEmailNotification(companyId: string, ticket: SupportTicket, message: SupportMessage, recipients: User[]) {
-    const company = await getCompanyById(companyId);
-    if (!company || !company.resendApiKey || !company.senderEmail) {
-        console.error(`Cannot send support email for company ${companyId}: Resend not configured.`);
+async function sendSupportTicketEmailNotification(company: Company, ticket: SupportTicket, message: SupportMessage, recipients: User[]) {
+    if (!company.resendApiKey || !company.senderEmail) {
+        console.error(`Cannot send support email for company ${company.id}: Resend not configured.`);
         return;
     }
 
@@ -1241,15 +1240,32 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
         createdAt: now,
         updatedAt: now,
         status: 'Aperto',
-        messages: [], // Start with no messages, add it via addSupportMessage
+        messages: [initialMessage],
     };
 
     await setDoc(doc(db, 'supportTickets', newId), newTicket);
     
-    // The notification logic is centralized in addSupportMessage
-    await addSupportMessage(newId, ticketData.sender, ticketData.initialMessage);
+    const company = await getCompanyById(ticketData.companyId);
+    if (company) {
+        const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticketData.companyId), where("role", "==", "Admin"));
+        const adminsSnapshot = await getDocs(adminsQuery);
+        const recipients = adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
 
-    return { ...newTicket, messages: [initialMessage] };
+        for (const admin of recipients) {
+            await addDoc(collection(db, 'notifications'), {
+                userId: admin.id,
+                companyId: ticketData.companyId,
+                message: `Nuovo ticket da ${ticketData.clientName}: "${ticketData.subject}"`,
+                read: false, 
+                createdAt: now, 
+                relatedInterventionId: newId,
+                type: 'generic'
+            });
+        }
+        await sendSupportTicketEmailNotification(ticketData.companyId, newTicket, initialMessage, recipients);
+    }
+
+    return newTicket;
 }
 
 export async function addSupportMessage(ticketId: string, sender: User, messageText: string): Promise<void> {
@@ -1276,12 +1292,15 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
     };
 
     const updatedMessages = [...ticket.messages, newMessage];
-
-    await updateDoc(ticketRef, {
+    const updatedTicketData = {
         messages: updatedMessages,
         updatedAt: now,
-        status: 'Aperto',
-    });
+        status: 'Aperto' as SupportTicketStatus,
+    };
+
+    await updateDoc(ticketRef, updatedTicketData);
+    
+    const updatedTicket = { ...ticket, ...updatedTicketData };
     
     const company = await getCompanyById(ticket.companyId);
     if (!company) {
@@ -1324,8 +1343,7 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
         }
     }
     
-    const fullTicket = { ...ticket, messages: updatedMessages };
-    await sendSupportTicketEmailNotification(ticket.companyId, fullTicket, newMessage, recipients);
+    await sendSupportTicketEmailNotification(company, updatedTicket, newMessage, recipients);
 }
 
 
@@ -1357,4 +1375,3 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
-
