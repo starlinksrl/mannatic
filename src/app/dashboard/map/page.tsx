@@ -80,12 +80,11 @@ export default function MapPage() {
   
   const itemsToDisplay = useMemo(() => {
     const mapItems: MapItem[] = [];
+    const openInterventionStatuses = ['Nuovo', 'In corso'];
+    const now = startOfToday();
+    const thirtyDaysFromNow = addDays(now, 30);
 
     if (filter === 'open_activities') {
-        const openInterventionStatuses = ['Nuovo', 'In corso', 'In attesa'];
-        const now = startOfToday();
-        const thirtyDaysFromNow = addDays(now, 30);
-
         interventions.forEach(i => {
             const client = clientsMap.get(i.clientId);
             if (!client || !client.latitude || !client.longitude) return;
