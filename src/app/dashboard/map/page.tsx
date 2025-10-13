@@ -189,12 +189,12 @@ export default function MapPage() {
   const getMarkerIcon = (item: MapItem) => {
     if (item.itemType === 'survey') {
         return {
-            path: 'M16 2H8C6.9 2 6 2.9 6 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM8 20V4h8v4h4v12H8zm10-10V9l-1-1h-3V4h-2v4h4v1z',
+            path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
             fillColor: '#8B5CF6', // purple-500
             fillOpacity: 1,
             strokeWeight: 0,
-            anchor: new google.maps.Point(12, 12),
-            scale: 1.2,
+            anchor: new google.maps.Point(12, 24),
+            scale: 1.5,
         };
     }
     
