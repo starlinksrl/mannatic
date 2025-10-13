@@ -1,21 +1,23 @@
 {
-  "name": "Gestione Interventi",
-  "short_name": "Interventi",
+  "name": "MannaTic - Gestione Interventi",
+  "short_name": "MannaTic",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#1565c0",
+  "theme_color": "#64B5F6",
   "description": "Gestisci interventi e manutenzioni con scadenze programmate.",
   "icons": [
     {
       "src": "/icon-192.svg",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.svg",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }
