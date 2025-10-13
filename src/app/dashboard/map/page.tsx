@@ -29,8 +29,8 @@ const defaultCenter = {
   lng: 12.5674,
 };
 
-type MapItem = (Intervention | ScheduledMaintenance | Survey) & {
-    itemType: 'intervention' | 'survey';
+type MapItem = (Intervention | ScheduledMaintenance | Survey | User) & {
+    itemType: 'intervention' | 'survey' | 'client';
     latitude: number;
     longitude: number;
 };
@@ -46,7 +46,7 @@ export default function MapPage() {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
-  const [filter, setFilter] = useState<'open' | 'all'>('open');
+  const [filter, setFilter] = useState<'open_activities' | 'surveys' | 'all_clients'>('open_activities');
   const { openModal } = useInterventionModal();
 
   const clientsMap = useMemo(() => {
@@ -67,7 +67,7 @@ export default function MapPage() {
         getSurveys(currentCompany.id),
       ]);
       
-      const clientsWithCoords = allUsers.filter(u => u.role === 'Client');
+      const clientsWithCoords = allUsers.filter(u => u.role === 'Client' && u.latitude && u.longitude);
       
       setAllClients(clientsWithCoords);
       setInterventions([...allInterventions, ...allMaintenance]);
@@ -79,19 +79,19 @@ export default function MapPage() {
 
   
   const itemsToDisplay = useMemo(() => {
-    const openInterventionStatuses = ['Nuovo', 'In corso', 'In attesa'];
-    const now = startOfToday();
-    const thirtyDaysFromNow = addDays(now, 30);
-
     const mapItems: MapItem[] = [];
 
-    interventions.forEach(i => {
-        const client = clientsMap.get(i.clientId);
-        if (!client || !client.latitude || !client.longitude) return;
+    if (filter === 'open_activities') {
+        const openInterventionStatuses = ['Nuovo', 'In corso', 'In attesa'];
+        const now = startOfToday();
+        const thirtyDaysFromNow = addDays(now, 30);
 
-        let shouldInclude = filter === 'all';
-        if (filter === 'open') {
-             if (i.isMaintenance === false && i.type === 'standard' && openInterventionStatuses.includes(i.status)) {
+        interventions.forEach(i => {
+            const client = clientsMap.get(i.clientId);
+            if (!client || !client.latitude || !client.longitude) return;
+
+            let shouldInclude = false;
+            if (i.isMaintenance === false && i.type === 'standard' && openInterventionStatuses.includes(i.status)) {
                 shouldInclude = true;
             }
             if (i.type === 'new_installation' && i.status !== 'Completato' && i.status !== 'Annullato') {
@@ -104,32 +104,30 @@ export default function MapPage() {
                     shouldInclude = true;
                 }
             }
-        }
-        
-        if (shouldInclude) {
-            mapItems.push({ ...i, itemType: 'intervention', latitude: client.latitude, longitude: client.longitude });
-        }
-    });
+            
+            if (shouldInclude) {
+                mapItems.push({ ...i, itemType: 'intervention', latitude: client.latitude, longitude: client.longitude });
+            }
+        });
+    } else if (filter === 'surveys') {
+        surveys.forEach(s => {
+            const client = clientsMap.get(s.clientId);
+            if (!client || !client.latitude || !client.longitude) return;
 
-    surveys.forEach(s => {
-        const client = clientsMap.get(s.clientId);
-        let latitude: number | null | undefined = client?.latitude;
-        let longitude: number | null | undefined = client?.longitude;
-
-        if (!latitude || !longitude) return; // Surveys need a location via client
-
-        let shouldInclude = filter === 'all';
-        if (filter === 'open' && s.status === 'Pianificato') {
-            shouldInclude = true;
-        }
-
-        if (shouldInclude) {
-            mapItems.push({ ...s, itemType: 'survey', latitude, longitude });
-        }
-    });
+            if (s.status === 'Pianificato') {
+                 mapItems.push({ ...s, itemType: 'survey', latitude: client.latitude, longitude: client.longitude });
+            }
+        });
+    } else if (filter === 'all_clients') {
+        allClients.forEach(c => {
+             if (c.latitude && c.longitude) {
+                mapItems.push({ ...c, itemType: 'client', latitude: c.latitude, longitude: c.longitude });
+            }
+        });
+    }
     
     return mapItems;
-  }, [filter, interventions, surveys, clientsMap]);
+  }, [filter, interventions, surveys, allClients, clientsMap]);
   
   const selectedItemInterventions = useMemo(() => {
     if (!selectedItem) return [];
@@ -201,16 +199,28 @@ export default function MapPage() {
         };
     }
     
-    // Intervention
-    const isNewInstallation = (item as Intervention).type === 'new_installation';
-     return {
-        path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
-        fillColor: isNewInstallation ? '#4285F4' : '#f44336', // blue for new install, red for standard
-        fillOpacity: 1,
-        strokeWeight: 0,
-        anchor: new google.maps.Point(12, 24),
-        scale: 1.5,
-    };
+    if (item.itemType === 'intervention') {
+        const isNewInstallation = (item as Intervention).type === 'new_installation';
+        return {
+            path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+            fillColor: isNewInstallation ? '#4285F4' : '#f44336', // blue for new install, red for standard
+            fillOpacity: 1,
+            strokeWeight: 0,
+            anchor: new google.maps.Point(12, 24),
+            scale: 1.5,
+        };
+    }
+
+    if (item.itemType === 'client') {
+       return {
+            path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+            fillColor: '#888',
+            fillOpacity: 0.8,
+            strokeWeight: 0,
+            anchor: new google.maps.Point(12, 24),
+            scale: 1,
+        };
+    }
   }
 
   const selectedClient = selectedItem ? clientsMap.get(selectedItem.clientId) : null;
@@ -223,15 +233,16 @@ export default function MapPage() {
         <div className="p-4 bg-card border-b">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Select value={filter} onValueChange={(value) => {
-                    setFilter(value as 'open' | 'all');
+                    setFilter(value as 'open_activities' | 'surveys' | 'all_clients');
                     setSelectedItem(null);
                 }}>
                     <SelectTrigger>
                         <SelectValue placeholder="Filtra elementi..." />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="open">Attività aperte</SelectItem>
-                        <SelectItem value="all">Tutti i clienti</SelectItem>
+                        <SelectItem value="open_activities">Attività aperte</SelectItem>
+                        <SelectItem value="surveys">Sopralluoghi pianificati</SelectItem>
+                        <SelectItem value="all_clients">Tutti i clienti</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -295,6 +306,18 @@ export default function MapPage() {
                             </CardContent>
                           </>
                         )}
+                        {selectedItem.itemType === 'client' && (
+                           <>
+                             <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><MapPin/>{selectedItem.name}</CardTitle>
+                                <CardDescription>{(selectedItem as User).address}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                               <p className="text-sm text-muted-foreground">Cliente generico. Nessuna attività aperta associata.</p>
+                               <Button className="mt-4" onClick={() => router.push('/dashboard/clients')}>Vai alla Scheda Cliente</Button>
+                            </CardContent>
+                           </>
+                        )}
 
                         </Card>
 
@@ -311,4 +334,3 @@ export default function MapPage() {
     </>
   );
 }
-
