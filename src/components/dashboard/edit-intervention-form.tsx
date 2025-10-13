@@ -522,7 +522,9 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                 <SelectContent>
                                     <SelectItem value="Nuovo">Nuovo</SelectItem>
                                     <SelectItem value="In corso">In corso</SelectItem>
-                                    <SelectItem value="Archiviato">Archiviato</SelectItem>
+                                    {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
+                                        <SelectItem value="Archiviato">Archiviato</SelectItem>
+                                    )}
                                     <SelectItem value="Completato">Completato</SelectItem>
                                     {canSetInvoiceStatus && (
                                         <>
@@ -876,6 +878,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
 
 
 

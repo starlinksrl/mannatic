@@ -286,7 +286,9 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                     <SelectItem value="all">Tutti</SelectItem>
                     <SelectItem value="Nuovo">Nuovo</SelectItem>
                     <SelectItem value="In corso">In corso</SelectItem>
-                    <SelectItem value="Archiviato">Archiviato</SelectItem>
+                    {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
+                        <SelectItem value="Archiviato">Archiviato</SelectItem>
+                    )}
                     <SelectItem value="Completato">Completato</SelectItem>
                     <SelectItem value="Da Fatturare">Da Fatturare</SelectItem>
                     <SelectItem value="Fatturato">Fatturato</SelectItem>
