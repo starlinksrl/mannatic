@@ -1,11 +1,11 @@
 {
-  "name": "MannaTic - Gestione Interventi",
+  "name": "MannaTic",
   "short_name": "MannaTic",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#64B5F6",
-  "description": "Gestisci interventi e manutenzioni con scadenze programmate.",
+  "description": "Gestione interventi e manutenzioni smart.",
   "icons": [
     {
       "src": "/icon-192.svg",
