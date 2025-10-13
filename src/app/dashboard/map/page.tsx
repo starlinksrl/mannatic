@@ -1,13 +1,14 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { GoogleMap, MarkerF } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
-import { getUsers, getInterventions, getScheduledMaintenance } from '@/lib/data';
-import { User, Intervention, ScheduledMaintenance } from '@/lib/types';
-import { Loader, MapPin } from 'lucide-react';
+import { getUsers, getInterventions, getScheduledMaintenance, getSurveys } from '@/lib/data';
+import { User, Intervention, ScheduledMaintenance, Survey } from '@/lib/types';
+import { Loader, MapPin, Wrench, HardHat, ClipboardCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMaps } from '@/contexts/maps-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,6 +17,7 @@ import { isBefore, addDays, startOfToday, format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
+import { useRouter } from 'next/navigation';
 
 const mapContainerStyle = {
   width: '100%',
@@ -27,83 +29,112 @@ const defaultCenter = {
   lng: 12.5674,
 };
 
-type ClientWithLocation = User;
+type MapItem = (Intervention | ScheduledMaintenance | Survey) & {
+    itemType: 'intervention' | 'survey';
+    latitude: number;
+    longitude: number;
+};
+
 
 export default function MapPage() {
   const { isLoaded, loadError } = useMaps();
-  const { currentCompany } = useUser();
+  const { user, currentCompany } = useUser();
+  const router = useRouter();
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [allClients, setAllClients] = useState<ClientWithLocation[]>([]);
+  const [allClients, setAllClients] = useState<User[]>([]);
   const [interventions, setInterventions] = useState<(Intervention | ScheduledMaintenance)[]>([]);
+  const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedClient, setSelectedClient] = useState<ClientWithLocation | null>(null);
+  const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
   const [filter, setFilter] = useState<'open' | 'all'>('open');
   const { openModal } = useInterventionModal();
+
+  const clientsMap = useMemo(() => {
+    const map = new Map<string, User>();
+    allClients.forEach(client => map.set(client.id, client));
+    return map;
+  }, [allClients]);
 
   useEffect(() => {
     async function fetchData() {
       if (!currentCompany || !isLoaded) return;
       setLoading(true);
 
-      const [allUsers, allInterventions, allMaintenance] = await Promise.all([
+      const [allUsers, allInterventions, allMaintenance, allSurveys] = await Promise.all([
         getUsers(currentCompany.id),
         getInterventions(currentCompany.id),
         getScheduledMaintenance(currentCompany.id),
+        getSurveys(currentCompany.id),
       ]);
       
       const clientsWithCoords = allUsers.filter(u => u.role === 'Client');
       
       setAllClients(clientsWithCoords);
       setInterventions([...allInterventions, ...allMaintenance]);
+      setSurveys(allSurveys);
       setLoading(false);
     }
     fetchData();
   }, [currentCompany, isLoaded]);
 
-  const clientsWithNewInstallation = useMemo(() => {
-    const clientIds = new Set(
-      interventions
-        .filter(i => i.type === 'new_installation' && i.status !== 'Completato' && i.status !== 'Annullato')
-        .map(i => i.clientId)
-    );
-    return clientIds;
-  }, [interventions]);
-
-  const clientsToDisplay = useMemo(() => {
-    if (filter === 'all') {
-      return allClients.filter(client => client.latitude && client.longitude);
-    }
-
+  
+  const itemsToDisplay = useMemo(() => {
     const openInterventionStatuses = ['Nuovo', 'In corso', 'In attesa'];
     const now = startOfToday();
     const thirtyDaysFromNow = addDays(now, 30);
-    
-    const clientIdsWithOpenWork = new Set(
-      interventions
-        .filter(i => {
-            if (i.isMaintenance === false && i.type === 'standard' && openInterventionStatuses.includes(i.status)) {
-                return true;
+
+    const mapItems: MapItem[] = [];
+
+    interventions.forEach(i => {
+        const client = clientsMap.get(i.clientId);
+        if (!client || !client.latitude || !client.longitude) return;
+
+        let shouldInclude = filter === 'all';
+        if (filter === 'open') {
+             if (i.isMaintenance === false && i.type === 'standard' && openInterventionStatuses.includes(i.status)) {
+                shouldInclude = true;
             }
             if (i.type === 'new_installation' && i.status !== 'Completato' && i.status !== 'Annullato') {
-                return true;
+                shouldInclude = true;
             }
             if (i.isMaintenance) {
                 const maintenanceTask = i as ScheduledMaintenance;
                 const nextDueDate = new Date(maintenanceTask.nextDueDate);
-                return isBefore(nextDueDate, thirtyDaysFromNow) && !['Completato', 'Annullato'].includes(maintenanceTask.status);
+                if(isBefore(nextDueDate, thirtyDaysFromNow) && !['Completato', 'Annullato'].includes(maintenanceTask.status)) {
+                    shouldInclude = true;
+                }
             }
-            return false;
-        })
-        .map(i => i.clientId)
-    );
+        }
+        
+        if (shouldInclude) {
+            mapItems.push({ ...i, itemType: 'intervention', latitude: client.latitude, longitude: client.longitude });
+        }
+    });
+
+    surveys.forEach(s => {
+        const client = clientsMap.get(s.clientId);
+        let latitude: number | null | undefined = client?.latitude;
+        let longitude: number | null | undefined = client?.longitude;
+
+        if (!latitude || !longitude) return; // Surveys need a location via client
+
+        let shouldInclude = filter === 'all';
+        if (filter === 'open' && s.status === 'Pianificato') {
+            shouldInclude = true;
+        }
+
+        if (shouldInclude) {
+            mapItems.push({ ...s, itemType: 'survey', latitude, longitude });
+        }
+    });
     
-    return allClients.filter(client => client.latitude && client.longitude && clientIdsWithOpenWork.has(client.id));
-  }, [filter, allClients, interventions]);
+    return mapItems;
+  }, [filter, interventions, surveys, clientsMap]);
   
-  const selectedClientInterventions = useMemo(() => {
-    if (!selectedClient) return [];
-    return interventions.filter(i => i.clientId === selectedClient.id && i.status !== 'Completato' && i.status !== 'Annullato');
-  }, [selectedClient, interventions]);
+  const selectedItemInterventions = useMemo(() => {
+    if (!selectedItem) return [];
+    return interventions.filter(i => i.clientId === selectedItem.clientId && i.status !== 'Completato' && i.status !== 'Annullato');
+  }, [selectedItem, interventions]);
 
 
   const onLoad = useCallback(function callback(mapInstance: google.maps.Map) {
@@ -115,27 +146,27 @@ export default function MapPage() {
   }, []);
   
   useEffect(() => {
-    if (map && clientsToDisplay.length > 0 && !selectedClient) {
+    if (map && itemsToDisplay.length > 0 && !selectedItem) {
       const bounds = new window.google.maps.LatLngBounds();
-      clientsToDisplay.forEach(client => {
-        if(client.latitude && client.longitude) {
-           bounds.extend(new window.google.maps.LatLng(client.latitude, client.longitude));
+      itemsToDisplay.forEach(item => {
+        if(item.latitude && item.longitude) {
+           bounds.extend(new window.google.maps.LatLng(item.latitude, item.longitude));
         }
       });
-      if (clientsToDisplay.length > 1) {
+      if (itemsToDisplay.length > 1) {
         map.fitBounds(bounds);
-      } else if (clientsToDisplay.length === 1 && clientsToDisplay[0].latitude && clientsToDisplay[0].longitude) {
-        map.setCenter({ lat: clientsToDisplay[0].latitude, lng: clientsToDisplay[0].longitude });
+      } else if (itemsToDisplay.length === 1 && itemsToDisplay[0].latitude && itemsToDisplay[0].longitude) {
+        map.setCenter({ lat: itemsToDisplay[0].latitude, lng: itemsToDisplay[0].longitude });
         map.setZoom(14);
       }
-    } else if (map && selectedClient) {
-        map.panTo({ lat: selectedClient.latitude!, lng: selectedClient.longitude! });
+    } else if (map && selectedItem) {
+        map.panTo({ lat: selectedItem.latitude!, lng: selectedItem.longitude! });
         map.setZoom(15);
     }
-  }, [map, clientsToDisplay, selectedClient]);
+  }, [map, itemsToDisplay, selectedItem]);
   
-  const handleMarkerClick = (client: ClientWithLocation) => {
-    setSelectedClient(client);
+  const handleMarkerClick = (item: MapItem) => {
+    setSelectedItem(item);
   };
   
   const handleOpenInterventionModal = (intervention: Intervention | ScheduledMaintenance) => {
@@ -147,10 +178,10 @@ export default function MapPage() {
     console.error("Map Load Error:", loadError)
     return <div>Error loading maps. Check console for details.</div>;
   }
-  if (!isLoaded || loading) {
+  if (!isLoaded || loading || !user) {
     return (
         <>
-            <Header title="Mappa Clienti" />
+            <Header title="Mappa Operativa" />
             <div className="flex items-center justify-center flex-1">
                 <Loader className="h-8 w-8 animate-spin" />
             </div>
@@ -158,22 +189,49 @@ export default function MapPage() {
     )
   }
 
+  const getMarkerIcon = (item: MapItem) => {
+    if (item.itemType === 'survey') {
+        return {
+            path: 'M16 2H8C6.9 2 6 2.9 6 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM8 20V4h8v4h4v12H8zm10-10V9l-1-1h-3V4h-2v4h4v1z',
+            fillColor: '#8B5CF6', // purple-500
+            fillOpacity: 1,
+            strokeWeight: 0,
+            anchor: new google.maps.Point(12, 12),
+            scale: 1.2,
+        };
+    }
+    
+    // Intervention
+    const isNewInstallation = (item as Intervention).type === 'new_installation';
+     return {
+        path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+        fillColor: isNewInstallation ? '#4285F4' : '#f44336', // blue for new install, red for standard
+        fillOpacity: 1,
+        strokeWeight: 0,
+        anchor: new google.maps.Point(12, 24),
+        scale: 1.5,
+    };
+  }
+
+  const selectedClient = selectedItem ? clientsMap.get(selectedItem.clientId) : null;
+
+
   return (
     <>
-      <Header title="Mappa Clienti" />
+      <Header title="Mappa Operativa" />
       <main className="flex-1 flex flex-col">
         <div className="p-4 bg-card border-b">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Select value={filter} onValueChange={(value) => {
                     setFilter(value as 'open' | 'all');
-                    setSelectedClient(null);
+                    setSelectedItem(null);
                 }}>
                     <SelectTrigger>
-                        <SelectValue placeholder="Filtra clienti..." />
+                        <SelectValue placeholder="Filtra elementi..." />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="open">Clienti con interventi aperti</SelectItem>
-                        <SelectItem value="all">Tutti i clienti con coordinate</SelectItem>
+                        <SelectItem value="open">Attività aperte</SelectItem>
+                        <SelectItem value="all">Tutti i clienti</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -188,24 +246,14 @@ export default function MapPage() {
               onUnmount={onUnmount}
               options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
             >
-              {clientsToDisplay.map(client => {
-                const isNewInstallation = clientsWithNewInstallation.has(client.id);
-                const markerIcon = isNewInstallation ? {
-                    path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
-                    fillColor: '#4285F4',
-                    fillOpacity: 1,
-                    strokeWeight: 0,
-                    anchor: new google.maps.Point(12, 24),
-                    scale: 1.5,
-                } : undefined;
-
+              {itemsToDisplay.map(item => {
                 return (
-                  client.latitude && client.longitude &&
+                  item.latitude && item.longitude &&
                   <MarkerF
-                    key={client.id}
-                    position={{ lat: client.latitude, lng: client.longitude }}
-                    onClick={() => handleMarkerClick(client)}
-                    icon={markerIcon}
+                    key={item.itemType + '-' + item.id}
+                    position={{ lat: item.latitude, lng: item.longitude }}
+                    onClick={() => handleMarkerClick(item)}
+                    icon={getMarkerIcon(item)}
                   />
                 )
               })}
@@ -213,45 +261,47 @@ export default function MapPage() {
           </div>
           <div className="lg:col-span-1 bg-background border-l">
             <ScrollArea className="h-full max-h-[calc(100vh-10rem)]">
-               {selectedClient ? (
+               {selectedItem ? (
                     <div className="p-4">
-                        <Card>
+                       <Card>
+                        {selectedItem.itemType === 'intervention' && (
+                          <>
                              <CardHeader>
-                                <CardTitle>{selectedClient.name}</CardTitle>
-                                <CardDescription>{selectedClient.address}</CardDescription>
-                                <a
-                                    href={`https://www.google.com/maps/dir/?api=1&destination=${selectedClient.latitude},${selectedClient.longitude}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    <Button variant="outline" size="sm" className="mt-2">
-                                        <MapPin className="mr-2 h-4 w-4" />
-                                        Ottieni Indicazioni
-                                    </Button>
-                                </a>
+                                <CardTitle className="flex items-center gap-2">
+                                    {(selectedItem as Intervention).type === 'new_installation' ? <HardHat/> : <Wrench/>}
+                                    {selectedItem.title}
+                                </CardTitle>
+                                <CardDescription>{selectedClient?.name}</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <h4 className="font-semibold mb-2">Interventi Attivi</h4>
-                                {selectedClientInterventions.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {selectedClientInterventions.map(i => (
-                                            <div key={i.id} onClick={() => handleOpenInterventionModal(i)} className="p-2 border rounded-md cursor-pointer hover:bg-muted">
-                                                <p className="font-semibold text-sm">{i.title}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Stato: {i.status} - Scadenza: {i.dueDate ? format(new Date(i.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">Nessun intervento attivo per questo cliente.</p>
-                                )}
+                                <p className="text-sm text-muted-foreground">{selectedItem.description}</p>
+                                <Button className="mt-4" onClick={() => handleOpenInterventionModal(selectedItem as Intervention)}>Vedi Dettagli</Button>
                             </CardContent>
+                          </>
+                        )}
+                         {selectedItem.itemType === 'survey' && (
+                          <>
+                             <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><ClipboardCheck/>{selectedItem.title}</CardTitle>
+                                <CardDescription>{clientsMap.get(selectedItem.clientId)?.name}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                               <div className="space-y-1 text-sm">
+                                  <p><b>Indirizzo:</b> {(selectedItem as Survey).address}</p>
+                                  <p><b>Data:</b> {format(new Date((selectedItem as Survey).date), 'dd/MM/yyyy HH:mm')}</p>
+                                  <p><b>Stato:</b> {(selectedItem as Survey).status}</p>
+                               </div>
+                                <Button className="mt-4" onClick={() => router.push('/dashboard/surveys')}>Gestisci Sopralluoghi</Button>
+                            </CardContent>
+                          </>
+                        )}
+
                         </Card>
+
                     </div>
                ) : (
                  <div className="p-4 text-center text-muted-foreground h-full flex items-center justify-center">
-                    <p>Seleziona un cliente sulla mappa per vedere i dettagli.</p>
+                    <p>Seleziona un elemento sulla mappa per vedere i dettagli.</p>
                 </div>
                )}
             </ScrollArea>
@@ -261,3 +311,4 @@ export default function MapPage() {
     </>
   );
 }
+
