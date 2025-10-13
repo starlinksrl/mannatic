@@ -88,7 +88,7 @@ export interface Equipment {
   companyId: string;
 }
 
-export type InterventionStatus = 'Nuovo' | 'In corso' | 'In attesa' | 'Completato' | 'Annullato' | 'Pianificato' | 'Da Fatturare' | 'Fatturato';
+export type InterventionStatus = 'Nuovo' | 'In corso' | 'Archiviato' | 'Completato' | 'Annullato' | 'Pianificato' | 'Da Fatturare' | 'Fatturato';
 export type InterventionPriority = 'Bassa' | 'Media' | 'Alta' | 'Critica';
 export type InterventionType = 'standard' | 'new_installation';
 
@@ -265,7 +265,6 @@ export const SendSupportTicketNotificationInputSchema = z.object({
   recipientName: z.string(),
   ticket: z.custom<SupportTicket>(),
   isNewTicket: z.boolean(),
-  resendConfig: ResendConfigSchema,
 });
 export type SendSupportTicketNotificationInput = z.infer<typeof SendSupportTicketNotificationInputSchema>;
 

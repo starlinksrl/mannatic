@@ -54,7 +54,7 @@ const formSchema = z.object({
   type: z.enum(['standard', 'new_installation']),
   description: z.string().min(10, { message: 'La descrizione deve contenere almeno 10 caratteri.' }),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
-  status: z.enum(['Nuovo', 'In corso', 'In attesa', 'Completato', 'Annullato', 'Da Fatturare', 'Fatturato'], { required_error: 'Lo stato è obbligatorio.' }),
+  status: z.enum(['Nuovo', 'In corso', 'Archiviato', 'Completato', 'Annullato', 'Da Fatturare', 'Fatturato'], { required_error: 'Lo stato è obbligatorio.' }),
   dueDate: z.date().optional(),
   dueTime: z.string().optional(),
   assignedOperatorId: z.string().nullable(),
@@ -522,7 +522,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                 <SelectContent>
                                     <SelectItem value="Nuovo">Nuovo</SelectItem>
                                     <SelectItem value="In corso">In corso</SelectItem>
-                                    <SelectItem value="In attesa">In attesa</SelectItem>
+                                    <SelectItem value="Archiviato">Archiviato</SelectItem>
                                     <SelectItem value="Completato">Completato</SelectItem>
                                     {canSetInvoiceStatus && (
                                         <>
@@ -876,6 +876,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
 
 
 

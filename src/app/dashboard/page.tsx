@@ -97,8 +97,8 @@ export default function DashboardPage() {
     const standardInterventions = relevantInterventions.filter(i => !i.isMaintenance && i.type === 'standard') as Intervention[];
     const newInstallations = relevantInterventions.filter(i => !i.isMaintenance && i.type === 'new_installation') as Intervention[];
 
-    const openInterventions = relevantInterventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa');
-    const closedInterventions = relevantInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato');
+    const openInterventions = relevantInterventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso');
+    const closedInterventions = relevantInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato' || i.status === 'Archiviato');
     
     const totalClosedOrInProgress = relevantInterventions.filter(i => i.status === 'Completato' || i.status === 'In corso');
     const onTime = totalClosedOrInProgress.filter(i => {
@@ -116,7 +116,7 @@ export default function DashboardPage() {
     
     const operatorWorkload: Record<string, number> = {};
     users.filter(u => u.role === 'Operator').forEach(op => {
-      operatorWorkload[op.name] = allInterventions.filter(i => i.assignedOperatorId === op.id && (i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa')).length;
+      operatorWorkload[op.name] = allInterventions.filter(i => i.assignedOperatorId === op.id && (i.status === 'Nuovo' || i.status === 'In corso')).length;
     });
 
     const operatorWorkloadData = Object.entries(operatorWorkload).map(([name, workload]) => ({ name, workload }));
@@ -149,14 +149,14 @@ export default function DashboardPage() {
     const sevenDaysFromNow = addDays(now, 7);
 
     const dueSoonInterventions = standardInterventions.filter(i => 
-        i.dueDate && new Date(i.dueDate) <= twoDaysFromNow && (i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa')
+        i.dueDate && new Date(i.dueDate) <= twoDaysFromNow && (i.status === 'Nuovo' || i.status === 'In corso')
     );
 
     const dueSoonNewInstallations = newInstallations.filter(i => 
-        i.dueDate && new Date(i.dueDate) <= sevenDaysFromNow && (i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa')
+        i.dueDate && new Date(i.dueDate) <= sevenDaysFromNow && (i.status === 'Nuovo' || i.status === 'In corso')
     );
 
-    const openNewInstallations = newInstallations.filter(i => i.status === 'Nuovo' || i.status === 'In corso' || i.status === 'In attesa').length;
+    const openNewInstallations = newInstallations.filter(i => i.status === 'Nuovo' || i.status === 'In corso').length;
     const openSurveysList = allSurveys.filter(s => s.status === 'Pianificato');
     const openSurveys = openSurveysList.length;
 

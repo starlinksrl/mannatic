@@ -47,7 +47,7 @@ interface InterventionsTableProps {
 }
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
-const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'In attesa': 3, 'Completato': 4, 'Da Fatturare': 5, 'Fatturato': 6, 'Annullato': 7 };
+const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'Archiviato': 3, 'Completato': 4, 'Da Fatturare': 5, 'Fatturato': 6, 'Annullato': 7 };
 
 const isDueSoon = (dueDate: string | null | undefined): boolean => {
     if (!dueDate) return false;
@@ -149,7 +149,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     }
 
     if (statusFilter === 'active') {
-        const activeStatuses = ['Nuovo', 'In corso', 'In attesa'];
+        const activeStatuses = ['Nuovo', 'In corso'];
         filtered = filtered.filter(i => activeStatuses.includes(i.status));
     } else if (statusFilter !== 'all') {
       filtered = filtered.filter(i => i.status === statusFilter);
@@ -236,7 +236,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     switch (status) {
       case 'Nuovo': return <Badge variant="outline">Nuovo</Badge>;
       case 'In corso': return <Badge className="bg-blue-100 text-blue-800">In corso</Badge>;
-      case 'In attesa': return <Badge className="bg-yellow-100 text-yellow-800">In attesa</Badge>;
+      case 'Archiviato': return <Badge className="bg-yellow-100 text-yellow-800">Archiviato</Badge>;
       case 'Completato': return <Badge className="bg-green-100 text-green-800">Completato</Badge>;
       case 'Da Fatturare': return <Badge className="bg-purple-100 text-purple-800">Da Fatturare</Badge>;
       case 'Fatturato': return <Badge className="bg-gray-100 text-gray-800">Fatturato</Badge>;
@@ -286,7 +286,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                     <SelectItem value="all">Tutti</SelectItem>
                     <SelectItem value="Nuovo">Nuovo</SelectItem>
                     <SelectItem value="In corso">In corso</SelectItem>
-                    <SelectItem value="In attesa">In attesa</SelectItem>
+                    <SelectItem value="Archiviato">Archiviato</SelectItem>
                     <SelectItem value="Completato">Completato</SelectItem>
                     <SelectItem value="Da Fatturare">Da Fatturare</SelectItem>
                     <SelectItem value="Fatturato">Fatturato</SelectItem>
