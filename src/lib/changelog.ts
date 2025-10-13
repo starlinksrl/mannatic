@@ -1,11 +1,24 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2 } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map } from 'lucide-react';
 
 export const changelog = [
     {
+        version: "0.19",
+        date: "2024-10-05",
+        title: "Mappa Operativa Potenziata e Geolocalizzazione Sopralluoghi",
+        icon: Map,
+        iconClass: "bg-purple-500",
+        changes: [
+            { type: Map, description: "Aggiunto un filtro dedicato sulla Mappa Operativa per visualizzare separatamente Interventi, Sopralluoghi e Clienti." },
+            { type: MapPin, description: "I sopralluoghi ora hanno coordinate geografiche proprie, indipendenti da quelle del cliente, per una localizzazione precisa." },
+            { type: Wrench, description: "Migliorata l'iconografia sulla mappa, utilizzando un puntatore viola per i sopralluoghi per coerenza visiva." },
+            { type: Bug, description: "Risolto un bug che impediva la visualizzazione dei sopralluoghi sulla mappa." },
+        ]
+    },
+    {
         version: "0.18",
-        date: format(new Date(), 'yyyy-MM-dd'),
+        date: "2024-10-04",
         title: "Modulo Supporto Tecnico e Controllo Notifiche",
         icon: LifeBuoy,
         iconClass: "bg-indigo-500",
