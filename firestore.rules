@@ -1,0 +1,95 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isCreator() {
+      return request.auth.token.email == "creator@mannatic.com";
+    }
+
+    function isUserInCompany(companyId) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+    }
+
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    }
+    
+    function isCompanyAdmin(companyId) {
+        return isUserInCompany(companyId) && getUserRole(request.auth.uid) == 'Admin';
+    }
+
+    function isCompanyMember(companyId) {
+        return isUserInCompany(companyId);
+    }
+    
+    // Global configuration is read-only for all authenticated users
+    match /appConfiguration/global {
+      allow read: if isSignedIn();
+      allow write: if isCreator(); 
+    }
+
+    // Companies can be read by any signed-in user, but only modified by the Creator
+    match /companies/{companyId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isCreator();
+    }
+
+    // Users can only manage their own data, or Admins can manage users in their company.
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId || isCompanyAdmin(resource.data.companyId);
+      allow create, delete: if isCreator() || isCompanyAdmin(get(/databases/$(database)/documents/users/$(userId)).data.companyId);
+    }
+
+    // Data collections partitioned by companyId
+    match /{collection}/{docId} {
+       allow read, write: if isCreator();
+    }
+
+    match /interventions/{interventionId} {
+        allow read: if isCreator() || (isSignedIn() && isUserInCompany(resource.data.companyId));
+        allow create, update: if isCreator() || (isSignedIn() && (
+            isCompanyAdmin(resource.data.companyId) ||
+            (getUserRole(request.auth.uid) == 'Operator' && request.auth.uid == resource.data.assignedOperatorId) ||
+            (getUserRole(request.auth.uid) == 'Client' && request.auth.uid == resource.data.clientId)
+        ));
+        allow delete: if isCreator() || isCompanyAdmin(resource.data.companyId);
+    }
+    
+    match /surveys/{surveyId} {
+        allow read: if isCreator() || (isSignedIn() && isUserInCompany(resource.data.companyId));
+        allow create, update: if isCreator() || (isSignedIn() && (
+            isCompanyAdmin(resource.data.companyId) ||
+            (getUserRole(request.auth.uid) == 'Operator' && request.auth.uid == resource.data.assignedOperatorId)
+        ));
+        allow delete: if isCreator() || isCompanyAdmin(resource.data.companyId);
+    }
+
+    match /supportTickets/{ticketId} {
+        allow read: if isCreator() || isCompanyAdmin(resource.data.companyId) || (request.auth.uid == resource.data.clientId);
+        allow create: if isSignedIn() && (request.auth.uid == resource.data.clientId);
+        allow update: if isCreator() || isCompanyAdmin(resource.data.companyId) || (request.auth.uid == resource.data.clientId);
+        allow delete: if isCreator() || isCompanyAdmin(resource.data.companyId);
+    }
+
+    match /notifications/{notificationId} {
+        allow read, update: if isCreator() || (isSignedIn() && request.auth.uid == resource.data.userId);
+        allow create, delete: if isCreator() || (isSignedIn() && isCompanyMember(resource.data.companyId));
+    }
+    
+    match /passwordResetTokens/{tokenId} {
+        // No one should be able to read/write these tokens directly. They are managed by the server.
+        allow read, write: if false;
+    }
+
+     match /autologinTokens/{tokenId} {
+        // No one should be able to read/write these tokens directly. They are managed by the server.
+        allow read, write: if false;
+    }
+  }
+}
