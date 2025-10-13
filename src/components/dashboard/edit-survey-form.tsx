@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Loader, MapPin } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -43,6 +43,8 @@ const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
   address: z.string().min(5, { message: 'L\'indirizzo deve contenere almeno 5 caratteri.' }),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
   date: z.date({ required_error: 'La data è obbligatoria' }),
   time: z.string({ required_error: "L'ora è obbligatoria." }),
   assignedOperatorId: z.string().nullable(),
@@ -63,6 +65,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
   const { toast } = useToast();
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { isLoaded } = useMaps();
 
@@ -82,6 +85,8 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
             time: format(surveyDate, 'HH:mm'),
             notes: survey.notes || '',
             assignedOperatorId: survey.assignedOperatorId || null,
+            latitude: survey.latitude || null,
+            longitude: survey.longitude || null,
         })
     }
   }, [survey, form]);
@@ -90,6 +95,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!values.date || !values.time) return;
+    setIsSubmitting(true);
     
     const [hours, minutes] = values.time.split(':').map(Number);
     let date = values.date;
@@ -119,6 +125,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
             description: "Impossibile aggiornare il sopralluogo.",
         });
     }
+    setIsSubmitting(false);
   }
 
   const handlePlaceChanged = () => {
@@ -127,7 +134,36 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
         if (place && place.formatted_address) {
             form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
         }
+        if (place?.geometry?.location) {
+            form.setValue('latitude', place.geometry.location.lat());
+            form.setValue('longitude', place.geometry.location.lng());
+        }
     }
+  };
+
+  const handleGeolocate = () => {
+    if (!navigator.geolocation) {
+        toast({
+            variant: 'destructive',
+            title: 'Geolocalizzazione non supportata',
+        });
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            form.setValue('latitude', position.coords.latitude, { shouldDirty: true });
+            form.setValue('longitude', position.coords.longitude, { shouldDirty: true });
+            toast({
+                title: 'Posizione acquisita',
+            });
+        },
+        () => {
+            toast({
+                variant: 'destructive',
+                title: 'Errore di geolocalizzazione',
+            });
+        }
+    );
   };
 
 
@@ -183,7 +219,13 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                       name="address"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Indirizzo</FormLabel>
+                          <div className="flex items-center justify-between">
+                            <FormLabel>Indirizzo</FormLabel>
+                            <Button type="button" variant="ghost" size="sm" onClick={handleGeolocate}>
+                                <MapPin className="mr-2 h-4 w-4" />
+                                Localizza
+                            </Button>
+                          </div>
                            <FormControl>
                                 {isLoaded ? (
                                     <Autocomplete
@@ -191,7 +233,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                                             autocompleteRef.current = autocomplete;
                                         }}
                                         onPlaceChanged={handlePlaceChanged}
-                                        fields={['formatted_address']}
+                                        fields={['formatted_address', 'geometry.location']}
                                     >
                                         <Input
                                             {...field}
@@ -211,6 +253,32 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                         </FormItem>
                       )}
                     />
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="latitude"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Latitudine</FormLabel>
+                                <FormControl>
+                                    <Input {...field} disabled value={field.value ?? ''} />
+                                </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="longitude"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Longitudine</FormLabel>
+                                <FormControl>
+                                    <Input {...field} disabled value={field.value ?? ''} />
+                                </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="grid grid-cols-2 gap-2">
@@ -337,9 +405,12 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
         </ScrollArea>
         <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
             <DialogClose asChild>
-                <Button variant="outline">Annulla</Button>
+                <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>
-            <Button type="submit" form="edit-survey-form">Salva Modifiche</Button>
+            <Button type="submit" form="edit-survey-form" disabled={isSubmitting}>
+                 {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                Salva Modifiche
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

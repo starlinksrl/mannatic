@@ -88,7 +88,7 @@ export interface Equipment {
   companyId: string;
 }
 
-export type InterventionStatus = 'Nuovo' | 'In corso' | 'Archiviato' | 'Completato' | 'Annullato' | 'Pianificato' | 'Da Fatturare' | 'Fatturato';
+export type InterventionStatus = 'Nuovo' | 'In corso' | 'Archiviato' | 'Completato' | 'Annullato' | 'Da Fatturare' | 'Fatturato';
 export type InterventionPriority = 'Bassa' | 'Media' | 'Alta' | 'Critica';
 export type InterventionType = 'standard' | 'new_installation';
 
@@ -165,6 +165,8 @@ export interface Survey {
   title: string;
   clientId: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   date: string;
   assignedOperatorId: string | null;
   notes?: string;
@@ -265,6 +267,7 @@ export const SendSupportTicketNotificationInputSchema = z.object({
   recipientName: z.string(),
   ticket: z.custom<SupportTicket>(),
   isNewTicket: z.boolean(),
+  resendConfig: z.custom<any>(),
 });
 export type SendSupportTicketNotificationInput = z.infer<typeof SendSupportTicketNotificationInputSchema>;
 

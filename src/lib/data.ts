@@ -472,7 +472,7 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
 
     const qInterventions = query(collection(db, 'interventions'),
         where("companyId", "==", companyId),
-        where("status", "in", ["Nuovo", "In corso", "In attesa"])
+        where("status", "in", ["Nuovo", "In corso"])
     );
     const interventionsSnapshot = await getDocs(qInterventions);
     const openInterventions = interventionsSnapshot.docs
@@ -764,7 +764,7 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
     const newMaintenanceData: ScheduledMaintenance = {
         ...maintenanceData,
         id: newId,
-        status: 'Pianificato' as ScheduledMaintenanceStatus,
+        status: 'Pianificato',
         sla: '48h',
         createdAt: new Date().toISOString(),
         isMaintenance: true,
@@ -1202,41 +1202,8 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
 
     await setDoc(doc(db, 'supportTickets', newId), newTicket);
     
-    const company = await getCompanyById(ticketData.companyId);
-    if (!company || !company.resendApiKey || !company.senderEmail) {
-        console.error(`Cannot send support email for company ${ticketData.companyId}: Resend not configured.`);
-        return newTicket;
-    }
-    
-    const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticketData.companyId), where("role", "==", "Admin"));
-    const adminsSnapshot = await getDocs(adminsQuery);
-    
-    for (const adminDoc of adminsSnapshot.docs) {
-        const admin = { id: adminDoc.id, ...adminDoc.data() } as User;
-        
-        await addDoc(collection(db, 'notifications'), {
-            userId: admin.id,
-            companyId: ticketData.companyId,
-            message: `Nuovo ticket da ${ticketData.clientName}: "${ticketData.subject}"`,
-            read: false, 
-            createdAt: now, 
-            relatedInterventionId: newId,
-            type: 'generic'
-        });
-
-        if (admin.email) {
-            await triggerSupportTicketNotification({
-                recipientEmail: admin.email,
-                recipientName: admin.name,
-                ticket: newTicket,
-                isNewTicket: true,
-                resendConfig: {
-                    apiKey: company.resendApiKey!,
-                    from: company.senderEmail!,
-                },
-            });
-        }
-    }
+    // Send notifications after creating the ticket
+    await sendSupportTicketEmailNotification(newTicket.companyId, newTicket, true);
 
     return newTicket;
 }
@@ -1251,15 +1218,10 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
     const ticket = ticketSnap.data() as SupportTicket;
     const now = new Date().toISOString();
     
-    const senderProfile = await getUserById(sender.id);
-    if (!senderProfile) {
-        throw new Error("Sender profile not found");
-    }
-
     const newMessage: SupportMessage = {
         id: uuidv4(),
-        senderId: senderProfile.id,
-        senderName: senderProfile.name,
+        senderId: sender.id,
+        senderName: sender.name,
         text: messageText,
         createdAt: now,
     };
@@ -1275,54 +1237,51 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
     
     const updatedTicket = { ...ticket, ...updatedTicketData };
     
-    const company = await getCompanyById(ticket.companyId);
+    // Send notifications after adding the message
+    await sendSupportTicketEmailNotification(ticket.companyId, updatedTicket, false);
+}
+
+async function sendSupportTicketEmailNotification(companyId: string, ticket: SupportTicket, isNewTicket: boolean) {
+    const company = await getCompanyById(companyId);
     if (!company || !company.resendApiKey || !company.senderEmail) {
-        console.error(`Company not found or Resend not configured for ticket ${ticketId}. Cannot send notifications.`);
+        console.error(`Cannot send support email for company ${companyId}: Resend not configured.`);
         return;
     }
 
-    const notificationMessage = `Nuova risposta da ${senderProfile.name} sul ticket: "${ticket.subject}"`;
-    const recipients: User[] = [];
+    const lastMessage = ticket.messages[ticket.messages.length - 1];
+    const sender = await getUserById(lastMessage.senderId);
 
-    if (senderProfile.role === 'Client') {
-        const adminsQuery = query(collection(db, 'users'), where("companyId", "==", ticket.companyId), where("role", "==", "Admin"));
+    const recipients: User[] = [];
+    if (sender?.role === 'Client') {
+        const adminsQuery = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
         const adminsSnapshot = await getDocs(adminsQuery);
         adminsSnapshot.forEach(adminDoc => {
-            const admin = { id: adminDoc.id, ...adminDoc.data() } as User;
-            recipients.push(admin);
-            addDoc(collection(db, 'notifications'), {
-                userId: adminDoc.id,
-                companyId: ticket.companyId,
-                message: notificationMessage,
-                read: false, 
-                createdAt: now, 
-                relatedInterventionId: ticketId,
-                type: 'generic'
-            });
+            recipients.push({ id: adminDoc.id, ...adminDoc.data() } as User);
         });
-    } else { 
+    } else {
         const client = await getUserById(ticket.clientId);
-        if (client) {
-             recipients.push(client);
-             await addDoc(collection(db, 'notifications'), {
-                userId: ticket.clientId,
-                companyId: ticket.companyId,
-                message: notificationMessage,
-                read: false, 
-                createdAt: now, 
-                relatedInterventionId: ticketId,
-                type: 'generic'
-            });
-        }
+        if (client) recipients.push(client);
     }
     
     for (const recipient of recipients) {
+        if (recipient.id === sender?.id) continue;
+
+        await addDoc(collection(db, 'notifications'), {
+            userId: recipient.id,
+            companyId: companyId,
+            message: `Nuova risposta da ${lastMessage.senderName} sul ticket: "${ticket.subject}"`,
+            read: false, 
+            createdAt: new Date().toISOString(),
+            relatedInterventionId: ticket.id,
+            type: 'generic'
+        });
+
         if (recipient.email) {
-             await triggerSupportTicketNotification({
+            await triggerSupportTicketNotification({
                 recipientEmail: recipient.email,
                 recipientName: recipient.name,
-                ticket: updatedTicket,
-                isNewTicket: false,
+                ticket: ticket,
+                isNewTicket: isNewTicket,
                 resendConfig: {
                     apiKey: company.resendApiKey!,
                     from: company.senderEmail!,

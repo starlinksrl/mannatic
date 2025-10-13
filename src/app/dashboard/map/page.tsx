@@ -33,6 +33,7 @@ type MapItem = (Intervention | ScheduledMaintenance | Survey | User) & {
     itemType: 'intervention' | 'survey' | 'client';
     latitude: number;
     longitude: number;
+    clientId: string;
 };
 
 
@@ -67,7 +68,7 @@ export default function MapPage() {
         getSurveys(currentCompany.id),
       ]);
       
-      const clientsWithCoords = allUsers.filter(u => u.role === 'Client' && u.latitude && u.longitude);
+      const clientsWithCoords = allUsers.filter(u => u.role === 'Client');
       
       setAllClients(clientsWithCoords);
       setInterventions([...allInterventions, ...allMaintenance]);
@@ -110,17 +111,16 @@ export default function MapPage() {
         });
     } else if (filter === 'surveys') {
         surveys.forEach(s => {
-            const client = clientsMap.get(s.clientId);
-            if (!client || !client.latitude || !client.longitude) return;
+            if (!s.latitude || !s.longitude) return;
 
             if (s.status === 'Pianificato') {
-                 mapItems.push({ ...s, itemType: 'survey', latitude: client.latitude, longitude: client.longitude });
+                 mapItems.push({ ...s, itemType: 'survey', latitude: s.latitude, longitude: s.longitude });
             }
         });
     } else if (filter === 'all_clients') {
         allClients.forEach(c => {
              if (c.latitude && c.longitude) {
-                mapItems.push({ ...c, itemType: 'client', latitude: c.latitude, longitude: c.longitude });
+                mapItems.push({ ...c, itemType: 'client', latitude: c.latitude, longitude: c.longitude, clientId: c.id });
             }
         });
     }
@@ -308,7 +308,7 @@ export default function MapPage() {
                         {selectedItem.itemType === 'client' && (
                            <>
                              <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><MapPin/>{selectedItem.name}</CardTitle>
+                                <CardTitle className="flex items-center gap-2"><MapPin/>{(selectedItem as User).name}</CardTitle>
                                 <CardDescription>{(selectedItem as User).address}</CardDescription>
                             </CardHeader>
                             <CardContent>

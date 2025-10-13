@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Check, ChevronsUpDown, Loader } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown, Loader, MapPin } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,8 @@ const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
   address: z.string().min(5, { message: 'L\'indirizzo deve contenere almeno 5 caratteri.' }),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
   date: z.date({ required_error: 'La data è obbligatoria' }),
   time: z.string().min(1, { message: "L'ora è obbligatoria." }),
   assignedOperatorId: z.string().nullable(),
@@ -79,6 +81,8 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
       notes: '',
       assignedOperatorId: null,
       time: '',
+      latitude: null,
+      longitude: null,
     },
   });
 
@@ -131,9 +135,37 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
         const place = autocompleteRef.current.getPlace();
         if (place && place.formatted_address) {
             form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
-            inputRef.current?.focus();
+        }
+        if (place?.geometry?.location) {
+            form.setValue('latitude', place.geometry.location.lat());
+            form.setValue('longitude', place.geometry.location.lng());
         }
     }
+  };
+
+  const handleGeolocate = () => {
+    if (!navigator.geolocation) {
+        toast({
+            variant: 'destructive',
+            title: 'Geolocalizzazione non supportata',
+        });
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            form.setValue('latitude', position.coords.latitude, { shouldDirty: true });
+            form.setValue('longitude', position.coords.longitude, { shouldDirty: true });
+            toast({
+                title: 'Posizione acquisita',
+            });
+        },
+        () => {
+            toast({
+                variant: 'destructive',
+                title: 'Errore di geolocalizzazione',
+            });
+        }
+    );
   };
 
   return (
@@ -145,6 +177,8 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
           notes: '',
           assignedOperatorId: null,
           time: '',
+          latitude: null,
+          longitude: null,
         });
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -245,7 +279,13 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                       name="address"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Indirizzo</FormLabel>
+                           <div className="flex items-center justify-between">
+                            <FormLabel>Indirizzo</FormLabel>
+                            <Button type="button" variant="ghost" size="sm" onClick={handleGeolocate}>
+                                <MapPin className="mr-2 h-4 w-4" />
+                                Localizza
+                            </Button>
+                          </div>
                            <FormControl>
                                 {isLoaded ? (
                                     <Autocomplete
@@ -253,7 +293,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                                             autocompleteRef.current = autocomplete;
                                         }}
                                         onPlaceChanged={handlePlaceChanged}
-                                        fields={['formatted_address']}
+                                        fields={['formatted_address', 'geometry.location']}
                                     >
                                         <Input
                                             {...field}
@@ -273,6 +313,32 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                         </FormItem>
                       )}
                     />
+                     <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="latitude"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Latitudine</FormLabel>
+                                <FormControl>
+                                    <Input {...field} disabled value={field.value ?? ''} />
+                                </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="longitude"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Longitudine</FormLabel>
+                                <FormControl>
+                                    <Input {...field} disabled value={field.value ?? ''} />
+                                </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="grid grid-cols-2 gap-2">
