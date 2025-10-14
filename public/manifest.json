@@ -2,10 +2,10 @@
   "name": "MannaTic",
   "short_name": "MannaTic",
   "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
+  "display": "fullscreen",
+  "background_color": "#E3F2FD",
   "theme_color": "#64B5F6",
-  "description": "Gestione interventi e manutenzioni smart.",
+  "description": "Gestisci interventi e manutenzioni con scadenze programmate.",
   "icons": [
     {
       "src": "/icon-192.svg",
