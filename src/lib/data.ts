@@ -4,7 +4,7 @@ import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRol
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter, differenceInMinutes, addHours } from 'date-fns';
 import { db, auth } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail, triggerSupportTicketNotification } from '@/app/actions';
+import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail, triggerSupportTicketNotification, sendPushNotification } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
@@ -724,12 +724,21 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                             from: company.senderEmail,
                         }
                     });
-                     await addDoc(collection(db, 'notifications'), {
-                        userId: admin.id,
-                        companyId: companyId,
-                        message: `Nuovo intervento #${newInterventionData.id} (${newInterventionData.title}) creato da ${creatorName} per il cliente ${clientName}.`,
-                        read: false, createdAt: new Date().toISOString(), relatedInterventionId: newId, type: 'assignment'
+                }
+                 await addDoc(collection(db, 'notifications'), {
+                    userId: admin.id,
+                    companyId: companyId,
+                    message: `Nuovo intervento #${newInterventionData.id} (${newInterventionData.title}) creato da ${creatorName} per il cliente ${clientName}.`,
+                    read: false, createdAt: new Date().toISOString(), relatedInterventionId: newId, type: 'assignment'
+                });
+
+                if (admin.pushSubscriptions && admin.pushSubscriptions.length > 0) {
+                    const payload = JSON.stringify({
+                        title: 'Nuovo Intervento Creato',
+                        body: `Intervento #${newId}: ${newInterventionData.title}`,
+                        data: { url: `/dashboard/interventions?id=${newId}` },
                     });
+                    admin.pushSubscriptions.forEach(sub => sendPushNotification(sub, payload));
                 }
             }
 
@@ -1266,7 +1275,7 @@ async function sendSupportTicketEmailNotification(companyId: string, ticket: Sup
     for (const recipient of recipients) {
         if (recipient.id === sender?.id) continue;
 
-        await addDoc(collection(db, 'notifications'), {
+         await addDoc(collection(db, 'notifications'), {
             userId: recipient.id,
             companyId: companyId,
             message: `Nuova risposta da ${lastMessage.senderName} sul ticket: "${ticket.subject}"`,
@@ -1287,6 +1296,15 @@ async function sendSupportTicketEmailNotification(companyId: string, ticket: Sup
                     from: company.senderEmail!,
                 },
             });
+        }
+        
+        if (recipient.pushSubscriptions && recipient.pushSubscriptions.length > 0) {
+            const payload = JSON.stringify({
+                title: isNewTicket ? `Nuovo Ticket: ${ticket.subject}` : `Nuova Risposta: ${ticket.subject}`,
+                body: `${lastMessage.senderName}: ${lastMessage.text.substring(0, 100)}...`,
+                data: { url: `/dashboard/support?id=${ticket.id}` },
+            });
+            recipient.pushSubscriptions.forEach(sub => sendPushNotification(sub, payload));
         }
     }
 }
@@ -1320,3 +1338,5 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
+    

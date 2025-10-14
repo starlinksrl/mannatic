@@ -24,13 +24,21 @@ import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationO
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
 
-if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-    webpush.setVapidDetails(
-        'mailto:your-email@example.com',
-        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-        process.env.VAPID_PRIVATE_KEY
-    );
+let vapidDetailsSet = false;
+
+function ensureVapidDetails() {
+    if (!vapidDetailsSet && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+        webpush.setVapidDetails(
+            'mailto:your-email@example.com',
+            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+            process.env.VAPID_PRIVATE_KEY
+        );
+        vapidDetailsSet = true;
+    } else if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+         console.warn("VAPID keys not found. Push notifications will not work.");
+    }
 }
+
 
 export async function savePushSubscription(userId: string, subscription: webpush.PushSubscription) {
     try {
@@ -54,6 +62,24 @@ export async function savePushSubscription(userId: string, subscription: webpush
         return { success: true };
     } catch (error: any) {
         console.error('Error saving push subscription:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function sendPushNotification(subscription: webpush.PushSubscription, payload: string) {
+    ensureVapidDetails();
+    if (!vapidDetailsSet) {
+        return { success: false, error: "VAPID keys not configured on the server." };
+    }
+    try {
+        await webpush.sendNotification(subscription, payload);
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error sending push notification:', error);
+        if (error.statusCode === 410) {
+            // Subscription is no longer valid, we should remove it
+            return { success: false, error: 'Subscription expired or invalid.', expired: true, endpoint: error.endpoint };
+        }
         return { success: false, error: error.message };
     }
 }
@@ -317,3 +343,5 @@ export async function createClientAutologinUrl(clientId: string): Promise<{ succ
         return { success: false, error: 'Errore durante la creazione del link di accesso.' };
     }
 }
+
+    
