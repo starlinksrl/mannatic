@@ -8,6 +8,7 @@ import { Loader } from 'lucide-react';
 import { InterventionModalProvider } from '@/contexts/intervention-modal-context';
 import { MapsProvider } from '@/contexts/maps-context';
 import { ChangelogModal } from '@/components/dashboard/changelog-modal';
+import { NotificationManager } from '@/components/dashboard/notification-manager';
 
 export default function DashboardLayout({
   children,
@@ -16,6 +17,14 @@ export default function DashboardLayout({
 }) {
   const { user, isLoading, currentCompany } = useUser();
   const router = useRouter();
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .catch((err) => console.error('Service Worker registration failed:', err));
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoading) {
@@ -44,6 +53,7 @@ export default function DashboardLayout({
   return (
     <MapsProvider>
       <InterventionModalProvider>
+        <NotificationManager />
         <ChangelogModal />
         <div className="grid min-h-screen w-full md:grid-cols-[280px_1fr]">
           <div className="hidden border-r bg-card md:block">

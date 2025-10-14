@@ -1,5 +1,6 @@
 
 import { z } from 'zod';
+import webpush from 'web-push';
 
 export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
 export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'matrix';
@@ -54,6 +55,7 @@ export interface User {
   longitude?: number | null;
   clientNotes?: string;
   dashboardLayout?: { [key: string]: any };
+  pushSubscriptions?: webpush.PushSubscription[];
 }
 
 export interface PasswordResetToken {

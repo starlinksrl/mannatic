@@ -1,5 +1,4 @@
 
-
 'use server';
 import 'dotenv/config';
 
@@ -13,16 +12,52 @@ import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-notification';
-import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken } from '@/lib/data';
+import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser } from '@/lib/data';
 import { Company, User } from '@/lib/types';
 import { Resend } from 'resend';
 import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
 import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
-import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
+import type { SendNewInterventionNotificationInput, SendNewInterventionOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
 import type { SendCredentialsEmailInput, SendCredentialsEmailOutput } from '@/ai/flows/send-credentials-email';
 import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput } from '@/ai/flows/send-support-ticket-notification';
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
+import webpush from 'web-push';
+
+if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        'mailto:your-email@example.com',
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+    );
+}
+
+export async function savePushSubscription(userId: string, subscription: webpush.PushSubscription) {
+    try {
+        const user = await getUserById(userId);
+        if (!user) {
+            return { success: false, error: 'User not found' };
+        }
+
+        const existingSubscriptions = user.pushSubscriptions || [];
+        
+        // Avoid duplicates
+        const alreadyExists = existingSubscriptions.some(
+            (sub) => sub.endpoint === subscription.endpoint
+        );
+
+        if (!alreadyExists) {
+            const updatedSubscriptions = [...existingSubscriptions, subscription];
+            await updateUser(userId, { pushSubscriptions: updatedSubscriptions });
+        }
+        
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error saving push subscription:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 
 export async function getKpiDashboardDescription(input: GenerateKpiDashboardInput): Promise<GenerateKpiDashboardOutput> {
   try {
@@ -152,7 +187,7 @@ export async function triggerExpiryNotification(input: SendExpiryNotificationInp
     }
 }
 
-export async function triggerNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionNotificationOutput> {
+export async function triggerNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionOutput> {
     try {
         const result = await sendNewInterventionNotification(input);
         return result;
