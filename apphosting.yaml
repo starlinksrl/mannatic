@@ -1,7 +1,22 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
+# Specifies the settings for a build.
+buildConfig:
+  # No specific build steps needed for Next.js, App Hosting handles it automatically.
+  # This empty block is sufficient to trigger the correct build process.
+
+# Specifies the settings for a runtime instance of the backend.
 runConfig:
-  # Increase this value if you'd like to automatically spin up
-  # more instances in response to increased traffic.
-  maxInstances: 1
+  # The minimum number of CPU cores to allocate to a running instance.
+  # The value '1' is a good default for many applications.
+  cpu: 1
+  # The amount of memory in mebibytes to allocate to a running instance.
+  memoryMiB: 512
+  # The maximum number of instances that can be spun up in response to traffic.
+  maxInstances: 2
+  # The minimum number of instances to keep running at all times.
+  minInstances: 0
+
+# The command that starts the web server.
+entryPoint: next start
