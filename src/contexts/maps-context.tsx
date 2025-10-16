@@ -15,7 +15,7 @@ const MapsContext = createContext<MapsContextType | undefined>(undefined);
 
 export const MapsProvider = ({ children }: { children: ReactNode }) => {
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     libraries,
   });
 
