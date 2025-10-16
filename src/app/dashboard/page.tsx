@@ -3,12 +3,12 @@
 'use client';
 
 import { Header } from '@/components/dashboard/header';
-import { getInterventions, getUsers, getClients, updateUser, getSurveys } from '@/lib/data';
-import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Survey } from '@/lib/types';
+import { getInterventions, getUsers, getClients, updateUser, getSurveys, getSupportTickets } from '@/lib/data';
+import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Survey, SupportTicket } from '@/lib/types';
 import { isAfter, addDays, startOfToday } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck } from 'lucide-react';
+import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy } from 'lucide-react';
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -26,6 +26,7 @@ import { it } from 'date-fns/locale';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
+import { Badge } from '@/components/ui/badge';
 
 
 export type EnrichedUpdate = InterventionUpdate & { 
@@ -48,6 +49,7 @@ type KpiData = GenerateKpiDashboardInput & {
   openNewInstallations: number,
   openSurveys: number,
   openSurveysList: Survey[],
+  latestSupportTickets?: SupportTicket[],
 };
 
 
@@ -74,11 +76,12 @@ export default function DashboardPage() {
     setLoading(true);
 
     const now = new Date();
-    const [allInterventions, users, allClients, allSurveys] = await Promise.all([
+    const [allInterventions, users, allClients, allSurveys, supportTickets] = await Promise.all([
       getInterventions(currentCompany.id),
       getUsers(currentCompany.id),
       getClients(currentCompany.id),
       getSurveys(currentCompany.id),
+      user.role === 'Client' ? getSupportTickets(currentCompany.id, user.id) : Promise.resolve([]),
     ]);
 
     const localClientsMap = new Map(allClients.map(c => [c.id, c]));
@@ -160,6 +163,10 @@ export default function DashboardPage() {
     const openSurveysList = allSurveys.filter(s => s.status === 'Pianificato');
     const openSurveys = openSurveysList.length;
 
+    const latestSupportTickets = user.role === 'Client' 
+      ? supportTickets.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0,3)
+      : [];
+
 
     setKpiData({
       openInterventions: openInterventions.length,
@@ -175,6 +182,7 @@ export default function DashboardPage() {
       openNewInstallations,
       openSurveys,
       openSurveysList,
+      latestSupportTickets,
     });
     setLoading(false);
   }
@@ -249,6 +257,39 @@ export default function DashboardPage() {
           <div className="ml-auto font-medium text-sm">{format(new Date(task.date), 'dd/MM')}</div>
         </div>
     );
+    
+    const SupportTicketItem = ({ ticket }: { ticket: SupportTicket }) => {
+       const getStatusBadge = (status: 'Aperto' | 'Chiuso') => {
+        switch (status) {
+          case 'Aperto':
+            return <Badge className="bg-green-100 text-green-800">Aperto</Badge>;
+          case 'Chiuso':
+            return <Badge variant="secondary">Chiuso</Badge>;
+          default:
+            return <Badge>{status}</Badge>;
+        }
+      };
+
+      return (
+        <div 
+            className="flex items-center gap-4 group cursor-pointer"
+             onClick={(e) => {
+                e.stopPropagation();
+                router.push('/dashboard/support');
+            }}
+        >
+          <div className="flex-1 grid gap-1">
+            <div className="flex justify-between items-start">
+              <p className="text-sm font-medium leading-none group-hover:underline pr-2">{ticket.subject}</p>
+              {getStatusBadge(ticket.status)}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Ultimo agg.: {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true, locale: it })}
+            </p>
+          </div>
+        </div>
+      );
+    }
 
 
   return (
@@ -270,7 +311,27 @@ export default function DashboardPage() {
 
                 <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
-                    
+                     {user.role === 'Client' && (
+                       <Card onClick={() => router.push('/dashboard/support')}>
+                          <CardHeader>
+                          <CardTitle className="font-headline flex items-center gap-2"><LifeBuoy className="h-5 w-5"/> Ultime Richieste di Supporto</CardTitle>
+                          <CardDescription>
+                              Le tue 3 più recenti conversazioni con il supporto.
+                          </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                              <ScrollArea className="h-40">
+                                  <div className="grid gap-6 pr-6">
+                                      {kpiData.latestSupportTickets && kpiData.latestSupportTickets.length > 0 ? (
+                                          kpiData.latestSupportTickets.map(ticket => <SupportTicketItem key={ticket.id} ticket={ticket} />)
+                                      ) : (
+                                          <p className="text-sm text-muted-foreground text-center py-4">Nessun ticket di supporto trovato.</p>
+                                      )}
+                                  </div>
+                              </ScrollArea>
+                          </CardContent>
+                      </Card>
+                    )}
                 </div>
                 
                 <div className="lg:col-span-6 flex flex-col gap-6 order-3 lg:order-2">
