@@ -18,11 +18,19 @@ export default function SupportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
 
-  const fetchData = async () => {
-    if (!currentCompany) return;
+  const fetchData = async (ticketToUpdateId?: string) => {
+    if (!currentCompany || !user) return;
     setIsLoading(true);
     const fetchedTickets = await getSupportTickets(currentCompany.id, user?.role === 'Client' ? user.id : undefined);
     setTickets(fetchedTickets);
+    
+    if (ticketToUpdateId) {
+        const updatedTicket = fetchedTickets.find(t => t.id === ticketToUpdateId);
+        if (updatedTicket) {
+            setSelectedTicket(updatedTicket);
+        }
+    }
+    
     setIsLoading(false);
   };
 
@@ -48,7 +56,7 @@ export default function SupportPage() {
       <SupportTicketConversation
         ticket={selectedTicket}
         onBack={() => setSelectedTicket(null)}
-        onTicketUpdated={fetchData}
+        onTicketUpdated={() => fetchData(selectedTicket.id)}
       />
     );
   }
@@ -59,7 +67,7 @@ export default function SupportPage() {
       <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
         {user.role === 'Client' && (
           <div className="flex justify-end">
-            <AddSupportTicketForm onTicketAdded={fetchData}>
+            <AddSupportTicketForm onTicketAdded={() => fetchData()}>
               <Button>
                 <PlusCircle className="mr-2" />
                 Apri un nuovo ticket
@@ -71,7 +79,7 @@ export default function SupportPage() {
           tickets={tickets}
           onTicketSelect={setSelectedTicket}
           currentUser={user}
-          onTicketDeleted={fetchData}
+          onTicketDeleted={() => fetchData()}
         />
       </main>
     </>
