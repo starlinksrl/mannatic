@@ -1,36 +1,35 @@
-self.addEventListener('push', function (event) {
+self.addEventListener('push', (event) => {
   const data = event.data.json();
   const options = {
     body: data.body,
-    icon: data.icon || '/icon-192.svg',
-    badge: data.badge || '/icon-192.svg',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
     data: {
-      url: data.url,
-    },
+      url: data.data.url
+    }
   };
   event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
-self.addEventListener('notificationclick', function (event) {
+self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const urlToOpen = event.notification.data.url || '/';
+  const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
+
   event.waitUntil(
-    clients
-      .matchAll({
-        type: 'window',
-        includeUncontrolled: true,
-      })
-      .then((clientList) => {
-        if (clientList.length > 0) {
-          let client = clientList[0];
-          for (let i = 0; i < clientList.length; i++) {
-            if (clientList[i].focused) {
-              client = clientList[i];
-            }
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((clientList) => {
+      if (clientList.length > 0) {
+        let client = clientList[0];
+        for (let i = 0; i < clientList.length; i++) {
+          if (clientList[i].focused) {
+            client = clientList[i];
           }
-          return client.focus().then((c) => c.navigate(urlToOpen));
         }
-        return clients.openWindow(urlToOpen);
-      })
+        return client.focus().then(client => client.navigate(urlToOpen));
+      }
+      return clients.openWindow(urlToOpen);
+    })
   );
 });

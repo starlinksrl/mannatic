@@ -512,6 +512,15 @@ async function checkAndNotifyExpiringInterventions(companyId: string) {
                             from: company.senderEmail,
                         }
                     });
+
+                    if (operator.pushSubscriptions && operator.pushSubscriptions.length > 0) {
+                        const payload = JSON.stringify({
+                            title: 'Intervento in Scadenza',
+                            body: `L'intervento #${intervention.id}: "${intervention.title}" scade a breve.`,
+                            data: { url: `/dashboard/interventions?id=${intervention.id}` },
+                        });
+                        operator.pushSubscriptions.forEach(sub => sendPushNotification(sub, payload));
+                    }
                 }
             }
         }
@@ -890,6 +899,16 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                     relatedInterventionId: interventionForNotif.id,
                     type: 'status_change'
                 });
+                
+                const recipientUser = await getUserById(userId);
+                if (recipientUser && recipientUser.pushSubscriptions && recipientUser.pushSubscriptions.length > 0) {
+                     const payload = JSON.stringify({
+                        title: 'Aggiornamento Intervento',
+                        body: `Stato intervento #${id}: ${interventionForNotif.status}`,
+                        data: { url: `/dashboard/interventions?id=${id}` },
+                    });
+                    recipientUser.pushSubscriptions.forEach(sub => sendPushNotification(sub, payload));
+                }
             }
 
             if (notifyClient) {
@@ -1338,5 +1357,3 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
-
-    
