@@ -458,7 +458,7 @@ export default function SettingsPage() {
       <Header title="Impostazioni" />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <TabsTrigger value="profile">Profilo Azienda</TabsTrigger>
             <TabsTrigger value="resend">Notifiche (Resend)</TabsTrigger>
             <TabsTrigger value="appearance">Aspetto</TabsTrigger>
