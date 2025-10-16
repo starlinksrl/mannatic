@@ -53,8 +53,6 @@ export default function DashboardLayout({
   return (
     <MapsProvider>
       <InterventionModalProvider>
-        <NotificationManager />
-        <ChangelogModal />
         <div className="grid min-h-screen w-full md:grid-cols-[280px_1fr]">
           <div className="hidden border-r bg-card md:block">
             <SidebarNav />
@@ -63,6 +61,8 @@ export default function DashboardLayout({
             {children}
           </div>
         </div>
+        <NotificationManager />
+        <ChangelogModal />
       </InterventionModalProvider>
     </MapsProvider>
   );

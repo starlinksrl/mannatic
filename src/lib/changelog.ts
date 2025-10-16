@@ -1,8 +1,21 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell } from 'lucide-react';
 
 export const changelog = [
+    {
+        version: "0.20",
+        date: "2024-10-06",
+        title: "Sistema di Notifiche Push e Stabilità API Mappe",
+        icon: Bell,
+        iconClass: "bg-red-500",
+        changes: [
+            { type: Bell, description: "Aggiunto un sistema di notifiche push per avvisare gli utenti su nuovi interventi e aggiornamenti importanti, anche quando non hanno l'app aperta." },
+            { type: Map, description: "Risolto in modo definitivo l'errore 'ApiProjectMapError' e 'ApiTargetBlockedMapError' utilizzando una chiave API dedicata e correttamente configurata." },
+            { type: Bug, description: "Stabilizzato il caricamento delle mappe, eliminando gli errori intermittenti legati alla configurazione della chiave API." },
+            { type: Wrench, description: "Effettuata una revisione completa del sistema di notifiche per garantire l'affidabilità dell'invio di email, notifiche in-app e push." },
+        ]
+    },
     {
         version: "0.19",
         date: "2024-10-05",
@@ -201,5 +214,3 @@ export const changelog = [
         ]
     }
 ];
-
-    
