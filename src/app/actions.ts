@@ -20,7 +20,7 @@ import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '
 import type { SendNewInterventionNotificationInput, SendNewInterventionOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
 import type { SendCredentialsEmailInput, SendCredentialsEmailOutput } from '@/ai/flows/send-credentials-email';
-import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput } from '@/ai/flows/send-support-ticket-notification';
+import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput } from '@/lib/types';
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
 
