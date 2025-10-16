@@ -81,7 +81,8 @@ export default function DashboardPage() {
       getUsers(currentCompany.id),
       getClients(currentCompany.id),
       getSurveys(currentCompany.id),
-      user.role === 'Client' ? getSupportTickets(currentCompany.id, user.id) : Promise.resolve([]),
+      user.role === 'Client' ? getSupportTickets(currentCompany.id, user.id) : 
+      (user.role === 'Admin' || user.role === 'Creator') ? getSupportTickets(currentCompany.id) : Promise.resolve([]),
     ]);
 
     const localClientsMap = new Map(allClients.map(c => [c.id, c]));
@@ -163,9 +164,15 @@ export default function DashboardPage() {
     const openSurveysList = allSurveys.filter(s => s.status === 'Pianificato');
     const openSurveys = openSurveysList.length;
 
-    const latestSupportTickets = user.role === 'Client' 
-      ? supportTickets.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0,3)
-      : [];
+    let latestSupportTickets: SupportTicket[] = [];
+    if (user.role === 'Client') {
+      latestSupportTickets = supportTickets.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0,3)
+    } else if (user.role === 'Admin' || user.role === 'Creator') {
+      latestSupportTickets = supportTickets
+        .filter(t => t.status === 'Aperto')
+        .sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0,3);
+    }
 
 
     setKpiData({
@@ -284,6 +291,7 @@ export default function DashboardPage() {
               {getStatusBadge(ticket.status)}
             </div>
             <p className="text-sm text-muted-foreground">
+              {user?.role !== 'Client' && `Per: ${ticket.clientName} - `}
               Ultimo agg.: {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true, locale: it })}
             </p>
           </div>
@@ -311,13 +319,15 @@ export default function DashboardPage() {
 
                 <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
-                     {user.role === 'Client' && (
+                    {(user.role === 'Client' || user.role === 'Admin' || user.role === 'Creator') && (
                        <Card onClick={() => router.push('/dashboard/support')}>
                           <CardHeader>
-                          <CardTitle className="font-headline flex items-center gap-2"><LifeBuoy className="h-5 w-5"/> Ultime Richieste di Supporto</CardTitle>
-                          <CardDescription>
-                              Le tue 3 più recenti conversazioni con il supporto.
-                          </CardDescription>
+                            <CardTitle className="font-headline flex items-center gap-2"><LifeBuoy className="h-5 w-5"/> 
+                                {user.role === 'Client' ? 'Le tue Richieste di Supporto' : 'Richieste di Supporto Aperte'}
+                            </CardTitle>
+                            <CardDescription>
+                                Le 3 più recenti conversazioni con il supporto.
+                            </CardDescription>
                           </CardHeader>
                           <CardContent>
                               <ScrollArea className="h-40">
