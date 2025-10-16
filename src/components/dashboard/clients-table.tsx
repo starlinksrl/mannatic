@@ -138,15 +138,15 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
         <CardContent className="p-2 space-y-2">
           {filteredClients.map((client) => (
             <div key={client.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
-                <div className="flex items-start gap-4 flex-1 cursor-pointer" onClick={() => handleEditClick(client)}>
+                <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => handleEditClick(client)}>
                     <Avatar className="h-10 w-10 border">
                         <AvatarImage src={client.avatarUrl} alt={client.name} />
                         <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 space-y-2 pr-4 break-words">
+                    <div className="flex-1 space-y-1">
                         <p className="font-medium break-words">{client.name}</p>
                         <div className="space-y-1 text-sm text-muted-foreground">
-                            {client.email && (
+                             {client.email && (
                                 <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
                                     <Mail className="h-4 w-4" /> <span>{client.email}</span>
                                 </a>
