@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useLoadScript } from '@react-google-maps/api';
+import { app } from '@/lib/firebase'; // Importa l'app firebase
 
 const libraries: ('places' | 'drawing' | 'geometry' | 'localContext' | 'visualization')[] = ['places', 'geometry'];
 
@@ -15,7 +16,7 @@ const MapsContext = createContext<MapsContextType | undefined>(undefined);
 
 export const MapsProvider = ({ children }: { children: ReactNode }) => {
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    googleMapsApiKey: app.options.apiKey!, // Usa direttamente la chiave API dalla config di Firebase
     libraries,
   });
 
