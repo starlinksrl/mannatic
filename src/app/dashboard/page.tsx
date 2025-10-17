@@ -28,6 +28,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
 import { Badge } from '@/components/ui/badge';
 import { Scratchpad } from '@/components/dashboard/scratchpad';
+import { CompanyScratchpad } from '@/components/dashboard/company-scratchpad';
 
 
 export type EnrichedUpdate = InterventionUpdate & { 
@@ -55,7 +56,7 @@ type KpiData = GenerateKpiDashboardInput & {
 
 
 export default function DashboardPage() {
-  const { user, setUser, currentCompany } = useUser();
+  const { user, setUser, currentCompany, setCurrentCompany } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
@@ -311,7 +312,7 @@ export default function DashboardPage() {
         />
       <ScrollArea className="flex-1">
         <main className="p-4 md:p-6 lg:p-8">
-          {loading || !kpiData || !user ? (
+          {loading || !kpiData || !user || !currentCompany ? (
             <div className="flex items-center justify-center flex-1 h-full">
               <Loader className="h-8 w-8 animate-spin" />
             </div>
@@ -319,7 +320,10 @@ export default function DashboardPage() {
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                 <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
-                    <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
+                        <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />
+                    </div>
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                     {(user.role === 'Client' || user.role === 'Admin' || user.role === 'Creator') && (
                        <Card onClick={() => router.push('/dashboard/support')}>

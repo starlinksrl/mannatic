@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 import webpush from 'web-push';
 
@@ -37,6 +36,7 @@ export interface Company {
   // Resend settings
   resendApiKey?: string;
   senderEmail?: string;
+  companyScratchpad?: string;
 }
 
 export type AllowedSector = 'interventions' | 'surveys' | 'maintenance';
