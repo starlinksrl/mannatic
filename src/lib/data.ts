@@ -1281,17 +1281,32 @@ async function sendSupportTicketEmailNotification(companyId: string, ticket: Sup
 
     const recipients: User[] = [];
     if (sender?.role === 'Client') {
+        // Notify all admins in the company
         const adminsQuery = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
         const adminsSnapshot = await getDocs(adminsQuery);
         adminsSnapshot.forEach(adminDoc => {
             recipients.push({ id: adminDoc.id, ...adminDoc.data() } as User);
         });
-    } else {
+    } else { // Sender is Admin or Operator
+        // Notify the client
         const client = await getUserById(ticket.clientId);
         if (client) recipients.push(client);
+        
+        // Notify other admins
+        const adminsQuery = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
+        const adminsSnapshot = await getDocs(adminsQuery);
+        adminsSnapshot.forEach(adminDoc => {
+            // Add other admins to recipients, excluding the sender
+            if (adminDoc.id !== sender?.id) {
+                recipients.push({ id: adminDoc.id, ...adminDoc.data() } as User);
+            }
+        });
     }
     
-    for (const recipient of recipients) {
+    // Ensure unique recipients
+    const uniqueRecipients = Array.from(new Map(recipients.map(item => [item.id, item])).values());
+
+    for (const recipient of uniqueRecipients) {
         if (recipient.id === sender?.id) continue;
 
          await addDoc(collection(db, 'notifications'), {
@@ -1357,4 +1372,3 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
-
