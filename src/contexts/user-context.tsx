@@ -79,12 +79,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (loggedInUser.role === 'Creator') {
         const companyId = localStorage.getItem('companyId');
         if (companyId) {
-            await switchCompany(companyId);
+            await switchCompany(companyId, loggedInUser);
         } else {
-            await switchCompany(null);
+            await switchCompany(null, loggedInUser);
         }
     } else {
-        await switchCompany(loggedInUser.companyId);
+        await switchCompany(loggedInUser.companyId, loggedInUser);
     }
 
     setIsLoading(false);
@@ -119,7 +119,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const switchCompany = async (companyId: string | null) => {
+  const switchCompany = async (companyId: string | null, loggedInSessionUser?: User) => {
+      const activeSessionUser = loggedInSessionUser || sessionUser;
+
       if (companyId === null) {
           setCurrentCompany(null);
           localStorage.removeItem('companyId');
@@ -138,7 +140,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           setCurrentCompany(company);
           localStorage.setItem('companyId', companyId);
           
-          if(sessionUser?.role === 'Creator') {
+          if(activeSessionUser?.role === 'Creator') {
             const companyUsers = await getUsers(companyId);
             const adminUser = companyUsers.find(u => u.role === 'Admin');
             const usersToShow: User[] = [CREATOR_USER];
@@ -146,6 +148,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                 usersToShow.push(adminUser);
             }
             setAvailableUsers(usersToShow);
+            
+            // This is the critical check: only switch the active user if it's the creator simulating.
+            // For a normal login, the user is already set correctly.
+            const currentUserIsDifferent = user?.id !== adminUser?.id;
+            if (adminUser && currentUserIsDifferent) {
+                const userFromStorage = JSON.parse(localStorage.getItem('user') || '{}');
+                // Only switch if the user in storage is NOT the admin of this company
+                if (userFromStorage.id !== adminUser.id) {
+                     setUser(adminUser);
+                }
+            }
           }
       }
   }
