@@ -1,8 +1,33 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen } from 'lucide-react';
 
 export const changelog = [
+    {
+        version: "0.22",
+        date: "2024-10-08",
+        title: "Promemoria e Note Integrate",
+        icon: NotebookPen,
+        iconClass: "bg-yellow-500",
+        changes: [
+            { type: NotebookPen, description: "Aggiunto un riquadro 'Promemoria Personale' sulla dashboard, dove ogni utente può salvare i propri appunti privati." },
+            { type: Building, description: "Introdotto un 'Promemoria Aziendale' condiviso, visibile a tutti gli utenti dell'azienda ma modificabile solo dagli Admin, per comunicazioni importanti." },
+            { type: Wrench, description: "Entrambi i promemoria salvano automaticamente il testo durante la digitazione per non perdere nessuna informazione." },
+        ]
+    },
+    {
+        version: "0.21",
+        date: "2024-10-07",
+        title: "Stabilità e Miglioramenti UX",
+        icon: Rocket,
+        iconClass: "bg-teal-500",
+        changes: [
+            { type: Bell, description: "Risolto un problema critico che impediva il corretto funzionamento delle notifiche push per tutti gli utenti, che ora sono pienamente operative." },
+            { type: Smartphone, description: "Migliorata la visualizzazione dell'elenco clienti e della pagina Impostazioni su dispositivi mobili per evitare sovrapposizioni." },
+            { type: Bug, description: "Corretto un errore che impediva la corretta compilazione dell'app Android a causa di un'icona mancante." },
+            { type: Wrench, description: "La pagina di conversazione dei ticket di supporto ora si aggiorna automaticamente dopo l'invio di un nuovo messaggio." },
+        ]
+    },
     {
         version: "0.20",
         date: "2024-10-06",
@@ -214,3 +239,5 @@ export const changelog = [
         ]
     }
 ];
+
+    
