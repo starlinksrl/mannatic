@@ -13,6 +13,7 @@ interface UserContextType {
   logout: () => void;
   isLoading: boolean;
   companies: Company[];
+  setCompanies: React.Dispatch<React.SetStateAction<Company[]>>;
   currentCompany: Company | null;
   switchCompany: (companyId: string | null) => Promise<void>;
   setCurrentCompany: React.Dispatch<React.SetStateAction<Company | null>>;
@@ -32,7 +33,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(true);
         try {
             const savedUserJson = localStorage.getItem('user');
-            
             if (savedUserJson) {
                 const savedUser = JSON.parse(savedUserJson);
                 await login(savedUser);
@@ -57,10 +57,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     fetchCompanies();
   }, [user]);
 
+
   const login = async (loggedInUser: User) => {
     setIsLoading(true);
     
-    // Re-validate user from DB to get fresh data
     const freshUser = await getUserById(loggedInUser.id);
     if (!freshUser) {
         logout();
@@ -80,7 +80,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             setCurrentCompany(company);
             localStorage.setItem('companyId', company.id);
         } else {
-            // Handle case where company not found for non-creator user
             logout();
         }
     }
@@ -97,6 +96,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const switchCompany = async (companyId: string | null) => {
+      if (!user || user.role !== 'Creator') {
+          return;
+      }
+      
       if (companyId === null) {
           setCurrentCompany(null);
           localStorage.removeItem('companyId');
@@ -118,6 +121,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     logout, 
     isLoading, 
     companies,
+    setCompanies,
     currentCompany,
     switchCompany,
     setCurrentCompany,
