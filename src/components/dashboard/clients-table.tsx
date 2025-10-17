@@ -138,27 +138,27 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
         <CardContent className="p-2 space-y-2">
           {filteredClients.map((client) => (
             <div key={client.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
-                <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => handleEditClick(client)}>
-                    <Avatar className="h-10 w-10 border">
+                <div className="flex items-start min-w-0" onClick={() => handleEditClick(client)}>
+                    <Avatar className="h-10 w-10 border shrink-0 mr-4">
                         <AvatarImage src={client.avatarUrl} alt={client.name} />
                         <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 space-y-1">
+                    <div className="flex-1 space-y-1 min-w-0">
                         <p className="font-medium break-words">{client.name}</p>
-                        <div className="space-y-1 text-sm text-muted-foreground">
+                        <div className="space-y-1 text-sm text-muted-foreground break-all">
                              {client.email && (
                                 <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                    <Mail className="h-4 w-4" /> <span>{client.email}</span>
+                                    <Mail className="h-4 w-4 shrink-0" /> <span>{client.email}</span>
                                 </a>
                             )}
                             {client.phone && (
                                 <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                    <Phone className="h-4 w-4" /> <span>{client.phone}</span>
+                                    <Phone className="h-4 w-4 shrink-0" /> <span>{client.phone}</span>
                                 </a>
                             )}
                             {client.address && (
                                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-start gap-2 hover:underline">
-                                    <MapPin className="h-4 w-4 mt-0.5 shrink-0" /> <span>{client.address}</span>
+                                    <MapPin className="h-4 w-4 mt-0.5 shrink-0" /> <span className="break-words">{client.address}</span>
                                 </a>
                             )}
                         </div>
