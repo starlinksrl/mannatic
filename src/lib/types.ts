@@ -57,6 +57,7 @@ export interface User {
   clientNotes?: string;
   dashboardLayout?: { [key: string]: any };
   pushSubscriptions?: webpush.PushSubscription[];
+  scratchpad?: string;
 }
 
 export interface PasswordResetToken {

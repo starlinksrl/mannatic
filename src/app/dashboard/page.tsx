@@ -27,6 +27,7 @@ import { KpiCard } from '@/components/dashboard/kpi-card';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
 import { Badge } from '@/components/ui/badge';
+import { Scratchpad } from '@/components/dashboard/scratchpad';
 
 
 export type EnrichedUpdate = InterventionUpdate & { 
@@ -318,6 +319,7 @@ export default function DashboardPage() {
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                 <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
+                    <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                     {(user.role === 'Client' || user.role === 'Admin' || user.role === 'Creator') && (
                        <Card onClick={() => router.push('/dashboard/support')}>
