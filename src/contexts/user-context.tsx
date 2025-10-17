@@ -49,12 +49,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   
   useEffect(() => {
     const fetchCompanies = async () => {
-      const allCompanies = await getCompanies();
-      setCompanies(allCompanies);
+      if (user?.role === 'Creator') {
+        const allCompanies = await getCompanies();
+        setCompanies(allCompanies);
+      }
     };
-    if (user?.role === 'Creator') {
-        fetchCompanies();
-    }
+    fetchCompanies();
   }, [user]);
 
   const login = async (loggedInUser: User) => {
@@ -64,6 +64,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const freshUser = await getUserById(loggedInUser.id);
     if (!freshUser) {
         logout();
+        setIsLoading(false);
         return;
     }
     
@@ -74,7 +75,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const companyId = localStorage.getItem('companyId');
         await switchCompany(companyId);
     } else {
-        await switchCompany(freshUser.companyId);
+        const company = await getCompanyById(freshUser.companyId);
+        if (company) {
+            setCurrentCompany(company);
+            localStorage.setItem('companyId', company.id);
+        } else {
+            // Handle case where company not found for non-creator user
+            logout();
+        }
     }
 
     setIsLoading(false);
@@ -95,7 +103,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           return;
       }
       
-      const company = companies.find(c => c.id === companyId) || await getCompanyById(companyId);
+      const company = await getCompanyById(companyId);
 
       if (company) {
           setCurrentCompany(company);
