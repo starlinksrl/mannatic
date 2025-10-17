@@ -64,6 +64,12 @@ export default function DashboardPage() {
   const [operators, setOperators] = useState<User[]>([]);
   const [clients, setClients] = useState<User[]>([]);
   const { intervention: interventionToEdit, isOpen, closeModal, openModal } = useInterventionModal();
+
+  useEffect(() => {
+    if (user?.role === 'Client') {
+      router.replace('/dashboard/requests');
+    }
+  }, [user, router]);
   
   const clientsMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));
@@ -202,8 +208,10 @@ export default function DashboardPage() {
       return;
     }
     
-    if (user && currentCompany) {
+    if (user && currentCompany && user.role !== 'Client') {
       fetchKpiData();
+    } else if (!user || !currentCompany) {
+        setLoading(false);
     }
   }, [user, currentCompany, router]);
 
@@ -222,6 +230,14 @@ export default function DashboardPage() {
             <NoCompanySelected />
         </>
       )
+  }
+
+  if (user?.role === 'Client') {
+    return (
+        <div className="flex items-center justify-center flex-1 h-full">
+          <Loader className="h-8 w-8 animate-spin" />
+        </div>
+    );
   }
   
     const handleClientUpdated = (updatedClient: User) => {
