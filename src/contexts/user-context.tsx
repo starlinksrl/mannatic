@@ -35,7 +35,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             const savedUserJson = localStorage.getItem('user');
             if (savedUserJson) {
                 const savedUser = JSON.parse(savedUserJson);
-                await login(savedUser);
+                // Directly log in the user, which will also set the company context
+                await login(savedUser, true);
             }
         } catch (error) {
             console.error("Failed to initialize session:", error);
@@ -47,20 +48,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     initializeSession();
   }, []);
   
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      if (user?.role === 'Creator') {
-        const allCompanies = await getCompanies();
-        setCompanies(allCompanies);
-      }
-    };
-    fetchCompanies();
-  }, [user]);
-
-
-  const login = async (loggedInUser: User) => {
+  const login = async (loggedInUser: User, isInitializing: boolean = false) => {
     setIsLoading(true);
-    
+
     const freshUser = await getUserById(loggedInUser.id);
     if (!freshUser) {
         logout();
@@ -71,19 +61,40 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setUser(freshUser);
     localStorage.setItem('user', JSON.stringify(freshUser));
 
+    let companyToSet: Company | null = null;
+    let companyIdToSet: string | null = null;
+
     if (freshUser.role === 'Creator') {
-        const companyId = localStorage.getItem('companyId');
-        await switchCompany(companyId);
-    } else {
-        const company = await getCompanyById(freshUser.companyId);
-        if (company) {
-            setCurrentCompany(company);
-            localStorage.setItem('companyId', company.id);
-        } else {
-            logout();
+        const allCompanies = await getCompanies();
+        setCompanies(allCompanies);
+        
+        // On initialization, try to load the stored company for the creator
+        if (isInitializing) {
+            const savedCompanyId = localStorage.getItem('companyId');
+            if (savedCompanyId) {
+                companyToSet = allCompanies.find(c => c.id === savedCompanyId) || null;
+                companyIdToSet = companyToSet ? companyToSet.id : null;
+            }
         }
+    } else {
+        // For non-creators, always fetch their assigned company
+        companyToSet = await getCompanyById(freshUser.companyId);
+        if (!companyToSet) {
+            // This is a critical error, the user has no valid company
+            logout();
+            setIsLoading(false);
+            return;
+        }
+        companyIdToSet = companyToSet.id;
     }
 
+    setCurrentCompany(companyToSet);
+    if (companyIdToSet) {
+        localStorage.setItem('companyId', companyIdToSet);
+    } else {
+        localStorage.removeItem('companyId');
+    }
+    
     setIsLoading(false);
   };
 
