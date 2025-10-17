@@ -30,11 +30,10 @@ import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
 
 
 export default function CompaniesPage() {
-  const { user, switchCompany, currentCompany } = useUser();
+  const { user, switchCompany, companies, setCompanies } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -57,7 +56,7 @@ export default function CompaniesPage() {
     if (user) {
         fetchCompanies();
     }
-  }, [user, router]);
+  }, [user, router, setCompanies]);
   
   const handleAddCompany = () => {
     setEditingCompany(null);

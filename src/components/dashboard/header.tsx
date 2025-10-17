@@ -22,11 +22,10 @@ interface HeaderProps {
 
 
 export function Header({ title, onInterventionAdded, clients, operators }: HeaderProps) {
-  const { user, sessionUser, currentCompany, switchCompany } = useUser();
+  const { user, currentCompany, switchCompany } = useUser();
   const router = useRouter();
 
   const handleReturnToCompanies = () => {
-    // This action implicitly switches the user to creator and clears the company
     switchCompany(null);
     router.push('/dashboard/companies');
   };
@@ -48,13 +47,13 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
         </SheetContent>
       </Sheet>
       <div className="flex items-center gap-4 flex-1">
-        {sessionUser?.role === 'Creator' && currentCompany && (
+        {user?.role === 'Creator' && currentCompany && (
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleReturnToCompanies}>
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Torna alle aziende</span>
           </Button>
         )}
-         {currentCompany && !sessionUser?.role && (
+         {currentCompany && (
           <div className="flex items-center gap-2">
             {currentCompany.logoUrl ? (
                 <Image src={currentCompany.logoUrl} alt={currentCompany.name} width={28} height={28} className="rounded-md object-contain" />

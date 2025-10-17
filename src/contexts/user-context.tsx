@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
@@ -8,15 +7,11 @@ import { User, getUserByEmail, getUserById, getCompanies, Company, getUsers, get
 import { CREATOR_USER } from '@/lib/constants';
 
 interface UserContextType {
-  user: User | null; // The currently active user (can be the original or a simulated one)
+  user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  sessionUser: User | null; // The user who originally logged in
   login: (user: User) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
-  switchUser: (userId: string) => void;
-  availableUsers: User[];
-  creator: User | null;
   companies: Company[];
   currentCompany: Company | null;
   switchCompany: (companyId: string | null) => Promise<void>;
@@ -27,9 +22,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [sessionUser, setSessionUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const router = useRouter();
@@ -42,14 +35,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             
             if (savedUserJson) {
                 const savedUser = JSON.parse(savedUserJson);
-                
-                // Re-validate user from DB
-                const freshUser = await getUserById(savedUser.id);
-                if (freshUser) {
-                    await login(freshUser);
-                } else {
-                    logout();
-                }
+                await login(savedUser);
             }
         } catch (error) {
             console.error("Failed to initialize session:", error);
@@ -66,21 +52,29 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       const allCompanies = await getCompanies();
       setCompanies(allCompanies);
     };
-    fetchCompanies();
-  }, []);
+    if (user?.role === 'Creator') {
+        fetchCompanies();
+    }
+  }, [user]);
 
   const login = async (loggedInUser: User) => {
     setIsLoading(true);
-    setUser(loggedInUser);
-    setSessionUser(loggedInUser);
     
-    localStorage.setItem('user', JSON.stringify(loggedInUser));
+    // Re-validate user from DB to get fresh data
+    const freshUser = await getUserById(loggedInUser.id);
+    if (!freshUser) {
+        logout();
+        return;
+    }
+    
+    setUser(freshUser);
+    localStorage.setItem('user', JSON.stringify(freshUser));
 
-    if (loggedInUser.role === 'Creator') {
+    if (freshUser.role === 'Creator') {
         const companyId = localStorage.getItem('companyId');
-        await switchCompany(companyId, loggedInUser);
+        await switchCompany(companyId);
     } else {
-        await switchCompany(loggedInUser.companyId, loggedInUser);
+        await switchCompany(freshUser.companyId);
     }
 
     setIsLoading(false);
@@ -88,45 +82,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
-    setSessionUser(null);
     setCurrentCompany(null);
-    setAvailableUsers([]);
     localStorage.removeItem('user');
-    localStorage.removeItem('sessionUser');
     localStorage.removeItem('companyId');
     router.push('/login');
   };
-  
-  const switchUser = async (userId: string) => {
-    if (sessionUser?.role !== 'Creator') return; // Only creator can switch
 
-    const selectedUser = await getUserById(userId);
-    
-    if (selectedUser) {
-      setUser(selectedUser);
-      localStorage.setItem('user', JSON.stringify(selectedUser));
-
-      if (selectedUser.id === CREATOR_USER.id) {
-        await switchCompany(null);
-      } else if (selectedUser.companyId !== currentCompany?.id) {
-        await switchCompany(selectedUser.companyId);
-      }
-      router.push('/dashboard');
-    }
-  }
-
-  const switchCompany = async (companyId: string | null, loggedInSessionUser?: User) => {
-      const activeSessionUser = loggedInSessionUser || sessionUser;
-
+  const switchCompany = async (companyId: string | null) => {
       if (companyId === null) {
           setCurrentCompany(null);
           localStorage.removeItem('companyId');
-          setAvailableUsers([CREATOR_USER]);
-          // When no company, the active user MUST be the creator.
-          if (user?.id !== CREATOR_USER.id) {
-              setUser(CREATOR_USER);
-              localStorage.setItem('user', JSON.stringify(CREATOR_USER));
-          }
           return;
       }
       
@@ -135,40 +100,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (company) {
           setCurrentCompany(company);
           localStorage.setItem('companyId', companyId);
-          
-          if(activeSessionUser?.role === 'Creator') {
-            const companyUsers = await getUsers(companyId);
-            const adminUser = companyUsers.find(u => u.role === 'Admin');
-            const usersToShow: User[] = [CREATOR_USER];
-            if(adminUser) {
-                usersToShow.push(adminUser);
-            }
-            setAvailableUsers(usersToShow);
-            
-             // This is the critical check: this logic should only run if the *session user* is a creator
-             // And we should only set the user if the current active user is not already the target admin
-            if (adminUser && user?.id !== adminUser.id) {
-                 setUser(adminUser);
-                 localStorage.setItem('user', JSON.stringify(adminUser));
-            } else if (!adminUser) {
-                // If there's no admin, default back to creator
-                setUser(CREATOR_USER);
-                localStorage.setItem('user', JSON.stringify(CREATOR_USER));
-            }
-          }
       }
   }
 
   const value = { 
     user, 
     setUser,
-    sessionUser,
     login,
     logout, 
     isLoading, 
-    switchUser, 
-    availableUsers,
-    creator: CREATOR_USER,
     companies,
     currentCompany,
     switchCompany,

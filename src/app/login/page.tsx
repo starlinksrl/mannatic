@@ -69,31 +69,27 @@ function LoginFormComponent() {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-        // Handle special Creator login
+        let userProfile: User | null = null;
         if (email.toLowerCase() === CREATOR_USER.email.toLowerCase()) {
             if (password === CREATOR_USER.password) {
-                 await login(CREATOR_USER); // Client-side login for creator
-                 router.push('/dashboard');
-                 toast({
-                    title: 'Accesso effettuato',
-                    description: `Bentornato, ${CREATOR_USER.name}!`,
-                });
-            } else {
-                throw new Error("Credenziali non valide.");
+                userProfile = CREATOR_USER;
             }
         } else {
-            // For regular users, check credentials against Firestore
-            const userProfile = await getUserByEmail(email);
-            if (userProfile && userProfile.password === password) {
-                await login(userProfile);
-                toast({
-                    title: 'Accesso effettuato',
-                    description: `Login in corso...`,
-                });
-                router.push('/dashboard');
-            } else {
-                throw new Error("Credenziali non valide.");
+            const fetchedUser = await getUserByEmail(email);
+            if (fetchedUser && fetchedUser.password === password) {
+                userProfile = fetchedUser;
             }
+        }
+
+        if (userProfile) {
+            await login(userProfile);
+            toast({
+                title: 'Accesso effettuato',
+                description: `Bentornato, ${userProfile.name}!`,
+            });
+            router.push('/dashboard');
+        } else {
+            throw new Error("Credenziali non valide.");
         }
     } catch (error: any) {
        let description = 'Credenziali non valide. Riprova.';

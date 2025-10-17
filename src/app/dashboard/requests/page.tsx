@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -28,6 +29,7 @@ export default function ClientRequestsPage() {
         
         if (user.role !== 'Client') {
           setLoading(false);
+          router.push('/dashboard');
           return;
         }
 
@@ -44,12 +46,8 @@ export default function ClientRequestsPage() {
     }
 
     useEffect(() => {
-        if (user && user.role !== 'Client') {
-          router.push('/dashboard');
-        }
-
         fetchData();
-    }, [user, currentCompany, router]);
+    }, [user, currentCompany]);
     
     if (user?.role !== 'Client') {
       return null;
