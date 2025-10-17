@@ -137,13 +137,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (company) {
           setCurrentCompany(company);
           localStorage.setItem('companyId', companyId);
-          const companyUsers = await getUsers(companyId);
-          const adminUser = companyUsers.find(u => u.role === 'Admin');
-          const usersToShow: User[] = [CREATOR_USER];
-          if(adminUser) {
-            usersToShow.push(adminUser);
+          
+          if(sessionUser?.role === 'Creator') {
+            const companyUsers = await getUsers(companyId);
+            const adminUser = companyUsers.find(u => u.role === 'Admin');
+            const usersToShow: User[] = [CREATOR_USER];
+            if(adminUser) {
+                usersToShow.push(adminUser);
+            }
+            setAvailableUsers(usersToShow);
           }
-          setAvailableUsers(usersToShow);
       }
   }
 
