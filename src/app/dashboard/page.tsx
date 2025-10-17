@@ -202,7 +202,7 @@ export default function DashboardPage() {
       return;
     }
     
-    if (user) {
+    if (user && currentCompany) {
       fetchKpiData();
     }
   }, [user, currentCompany, router]);
