@@ -11,7 +11,7 @@ interface UserContextType {
   user: User | null; // The currently active user (can be the original or a simulated one)
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   sessionUser: User | null; // The user who originally logged in
-  login: (user: User) => void;
+  login: (user: User) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
   switchUser: (userId: string) => void;
@@ -19,7 +19,7 @@ interface UserContextType {
   creator: User | null;
   companies: Company[];
   currentCompany: Company | null;
-  switchCompany: (companyId: string | null) => void;
+  switchCompany: (companyId: string | null) => Promise<void>;
   setCurrentCompany: React.Dispatch<React.SetStateAction<Company | null>>;
 }
 
@@ -78,11 +78,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     if (loggedInUser.role === 'Creator') {
         const companyId = localStorage.getItem('companyId');
-        if (companyId) {
-            await switchCompany(companyId, loggedInUser);
-        } else {
-            await switchCompany(null, loggedInUser);
-        }
+        await switchCompany(companyId, loggedInUser);
     } else {
         await switchCompany(loggedInUser.companyId, loggedInUser);
     }
@@ -149,15 +145,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             }
             setAvailableUsers(usersToShow);
             
-            // This is the critical check: only switch the active user if it's the creator simulating.
-            // For a normal login, the user is already set correctly.
-            const currentUserIsDifferent = user?.id !== adminUser?.id;
-            if (adminUser && currentUserIsDifferent) {
-                const userFromStorage = JSON.parse(localStorage.getItem('user') || '{}');
-                // Only switch if the user in storage is NOT the admin of this company
-                if (userFromStorage.id !== adminUser.id) {
-                     setUser(adminUser);
-                }
+             // This is the critical check: this logic should only run if the *session user* is a creator
+             // And we should only set the user if the current active user is not already the target admin
+            if (adminUser && user?.id !== adminUser.id) {
+                 setUser(adminUser);
+                 localStorage.setItem('user', JSON.stringify(adminUser));
+            } else if (!adminUser) {
+                // If there's no admin, default back to creator
+                setUser(CREATOR_USER);
+                localStorage.setItem('user', JSON.stringify(CREATOR_USER));
             }
           }
       }
