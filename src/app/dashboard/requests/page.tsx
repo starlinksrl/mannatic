@@ -4,15 +4,18 @@
 
 import { Header } from '@/components/dashboard/header';
 import { InterventionsTable } from '@/components/dashboard/interventions-table';
-import { getInterventions, getUsers, getClients } from '@/lib/data';
+import { getSupportTickets, getInterventions, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User, Intervention } from '@/lib/types';
+import { User, Intervention, SupportTicket } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader, Mail, Phone, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { SupportTicketsTable } from '@/components/dashboard/support-tickets-table';
+import { AddSupportTicketForm } from '@/components/dashboard/add-support-ticket-form';
+import { PlusCircle } from 'lucide-react';
 
 
 export default function ClientRequestsPage() {
@@ -21,6 +24,7 @@ export default function ClientRequestsPage() {
     const [operators, setOperators] = useState<User[]>([]);
     const [clients, setClients] = useState<User[]>([]);
     const [interventions, setInterventions] = useState<Intervention[]>([]);
+    const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
@@ -33,15 +37,17 @@ export default function ClientRequestsPage() {
           return;
         }
 
-        const [allUsers, allClients, allInterventions] = await Promise.all([
+        const [allUsers, allClients, allInterventions, allTickets] = await Promise.all([
             getUsers(currentCompany.id),
             getClients(currentCompany.id),
-            getInterventions(currentCompany.id)
+            getInterventions(currentCompany.id),
+            getSupportTickets(currentCompany.id, user.id)
         ]);
 
         setOperators(allUsers.filter(u => u.role === 'Operator'));
         setClients(allClients.filter(c => c.id === user.id));
         setInterventions(allInterventions.filter(i => i.clientId === user.id));
+        setSupportTickets(allTickets);
         setLoading(false);
     }
 
@@ -63,6 +69,10 @@ export default function ClientRequestsPage() {
                 </div>
             </>
         )
+    }
+    
+    const handleTicketSelect = (ticket: SupportTicket) => {
+        router.push(`/dashboard/support?ticketId=${ticket.id}`);
     }
 
   return (
@@ -97,6 +107,32 @@ export default function ClientRequestsPage() {
                 </CardContent>
             </Card>
         ))}
+        
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Ticket di Supporto</CardTitle>
+                        <CardDescription>Le tue richieste di assistenza tecnica o amministrativa.</CardDescription>
+                    </div>
+                    <AddSupportTicketForm onTicketAdded={fetchData}>
+                        <Button size="sm">
+                            <PlusCircle className="mr-2" />
+                            Apri Ticket
+                        </Button>
+                    </AddSupportTicketForm>
+                </div>
+            </CardHeader>
+            <CardContent>
+                 <SupportTicketsTable
+                    tickets={supportTickets}
+                    onTicketSelect={handleTicketSelect}
+                    currentUser={user}
+                    onTicketDeleted={fetchData}
+                    isDashboardView={true}
+                />
+            </CardContent>
+        </Card>
 
         <Separator />
       

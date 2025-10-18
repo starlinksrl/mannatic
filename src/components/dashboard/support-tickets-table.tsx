@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { SupportTicket, User } from '@/lib/types';
@@ -30,9 +31,10 @@ interface SupportTicketsTableProps {
   onTicketSelect: (ticket: SupportTicket) => void;
   currentUser: User;
   onTicketDeleted: () => void;
+  isDashboardView?: boolean;
 }
 
-export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTicketDeleted }: SupportTicketsTableProps) {
+export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTicketDeleted, isDashboardView = false }: SupportTicketsTableProps) {
   const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState<SupportTicket | null>(null);
@@ -70,6 +72,28 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
   }
 
   const sortedTickets = [...tickets].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.createdAt).getTime());
+
+  if (isDashboardView) {
+      return (
+        <div className="space-y-2">
+          {sortedTickets.length > 0 ? sortedTickets.map((ticket) => (
+            <div key={ticket.id} className="p-3 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => onTicketSelect(ticket)}>
+               <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <p className="font-semibold break-words pr-2">{ticket.subject}</p>
+                    {getStatusBadge(ticket.status)}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    <p>Ultimo aggiorn.: {format(new Date(ticket.updatedAt), 'dd/MM/yy HH:mm', { locale: it })}</p>
+                  </div>
+               </div>
+            </div>
+          )) : (
+            <p className="text-sm text-muted-foreground text-center py-4">Nessun ticket di supporto trovato.</p>
+          )}
+        </div>
+      )
+  }
 
   return (
     <>

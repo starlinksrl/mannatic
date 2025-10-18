@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useUser } from '@/contexts/user-context';
 import { Header } from '@/components/dashboard/header';
 import { Loader, PlusCircle } from 'lucide-react';
@@ -11,9 +12,11 @@ import { Button } from '@/components/ui/button';
 import { AddSupportTicketForm } from '@/components/dashboard/add-support-ticket-form';
 import { SupportTicketsTable } from '@/components/dashboard/support-tickets-table';
 import { SupportTicketConversation } from '@/components/dashboard/support-ticket-conversation';
+import { useSearchParams } from 'next/navigation';
 
-export default function SupportPage() {
+function SupportPageComponent() {
   const { user, currentCompany } = useUser();
+  const searchParams = useSearchParams();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -24,11 +27,15 @@ export default function SupportPage() {
     const fetchedTickets = await getSupportTickets(currentCompany.id, user?.role === 'Client' ? user.id : undefined);
     setTickets(fetchedTickets);
     
+    let ticketToSelect = null;
     if (ticketToUpdateId) {
-        const updatedTicket = fetchedTickets.find(t => t.id === ticketToUpdateId);
-        if (updatedTicket) {
-            setSelectedTicket(updatedTicket);
-        }
+        ticketToSelect = fetchedTickets.find(t => t.id === ticketToUpdateId);
+    }
+    
+    if (ticketToSelect) {
+        setSelectedTicket(ticketToSelect);
+    } else {
+        setSelectedTicket(null); // Explicitly set to null if no ticket is found or needed
     }
     
     setIsLoading(false);
@@ -36,9 +43,10 @@ export default function SupportPage() {
 
   useEffect(() => {
     if (user && currentCompany) {
-      fetchData();
+      const ticketIdFromUrl = searchParams.get('ticketId');
+      fetchData(ticketIdFromUrl || undefined);
     }
-  }, [user, currentCompany]);
+  }, [user, currentCompany, searchParams]);
 
   if (isLoading || !user || !currentCompany) {
     return (
@@ -55,7 +63,7 @@ export default function SupportPage() {
     return (
       <SupportTicketConversation
         ticket={selectedTicket}
-        onBack={() => setSelectedTicket(null)}
+        onBack={() => fetchData()} // Refetch all tickets when going back
         onTicketUpdated={() => fetchData(selectedTicket.id)}
       />
     );
@@ -84,4 +92,19 @@ export default function SupportPage() {
       </main>
     </>
   );
+}
+
+export default function SupportPage() {
+    return (
+        <Suspense fallback={
+            <>
+                <Header title="Supporto" />
+                <div className="flex flex-1 items-center justify-center">
+                    <Loader className="h-8 w-8 animate-spin" />
+                </div>
+            </>
+        }>
+            <SupportPageComponent />
+        </Suspense>
+    )
 }
