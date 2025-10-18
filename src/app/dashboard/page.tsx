@@ -466,10 +466,6 @@ export default function DashboardPage() {
                         />
                     )}
                 </div>
-
-                <div className="lg:col-span-12 order-2 lg:order-4">
-                     <QuoteOfTheDay />
-                </div>
             
                 {user.role !== 'Client' && user.role !== 'Operator' && (
                     <Card className="lg:col-span-12 order-last">
@@ -504,6 +500,7 @@ export default function DashboardPage() {
             setIsOpen={closeModal}
         />
       )}
+      <QuoteOfTheDay />
     </>
   );
 }
