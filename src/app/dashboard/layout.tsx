@@ -64,7 +64,7 @@ export default function DashboardLayout({
         </div>
         <NotificationManager />
         <ChangelogModal />
-        <QuoteOfTheDay />
+        {!isLoading && currentCompany && <QuoteOfTheDay />}
       </InterventionModalProvider>
     </MapsProvider>
   );
