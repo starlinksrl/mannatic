@@ -24,19 +24,26 @@ import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationO
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BFs_U33A8I4P6hC-njsOxgF9sVGNwVfP94T8A1a-8FqH9qJ3a7gC6c4dF5eX6jJ0a3dZ7w8b9jY0c1bA0aB9dE8';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'pP1vHwzH9-u0qXkI6nZ_rYf3eD2c1B0a9s8d7f6g5h4j3k2l1m0n';
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BHe-e3mBNo_tNk32T12s5mpH_AnJ8oKjT5M1d2v4jP7T9C3v8aN1o_G8H3o_J9K4jQ_M1e3s4H3r2b1c0';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'd8J_8h-h9JkL_l7n6m5p4o3r2b1c0a-v-V9G8H3o_J9K4jQ';
+
 
 let vapidDetailsSet = false;
 
 function ensureVapidDetails() {
     if (!vapidDetailsSet && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-        webpush.setVapidDetails(
-            'mailto:your-email@example.com',
-            VAPID_PUBLIC_KEY,
-            VAPID_PRIVATE_KEY
-        );
-        vapidDetailsSet = true;
+        try {
+            webpush.setVapidDetails(
+                'mailto:your-email@example.com',
+                VAPID_PUBLIC_KEY,
+                VAPID_PRIVATE_KEY
+            );
+            vapidDetailsSet = true;
+        } catch (error) {
+            console.error("Error setting VAPID details:", error);
+            // This will prevent repeated attempts with invalid keys.
+            vapidDetailsSet = true; 
+        }
     } else if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
          console.warn("VAPID keys not found. Push notifications will not work.");
     }
