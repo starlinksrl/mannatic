@@ -12,16 +12,19 @@ import {
 import { Button } from '@/components/ui/button';
 import { quotes } from '@/lib/quotes';
 import { Lightbulb } from 'lucide-react';
-import { format } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
 
 export function QuoteOfTheDay() {
   const { currentCompany } = useUser();
   const [isOpen, setIsOpen] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
   const [dailyQuote, setDailyQuote] = useState<{ quote: string; author: string } | null>(null);
 
+  const storageKey = 'quoteOfTheDayDismissed';
+
   useEffect(() => {
-    // Only run this logic if there is an active company
     if (currentCompany) {
       // Determine the quote of the day based on the day of the year
       const getDayOfYear = (date: Date) => {
@@ -36,19 +39,17 @@ export function QuoteOfTheDay() {
       const quoteIndex = dayOfYear % quotes.length;
       setDailyQuote(quotes[quoteIndex]);
 
-      // Check if the dialog has been shown today
-      const lastShownDate = localStorage.getItem('quoteOfTheDayLastShown');
-      const todayStr = format(today, 'yyyy-MM-dd');
-
-      if (lastShownDate !== todayStr) {
+      const isDismissed = localStorage.getItem(storageKey);
+      if (isDismissed !== 'true') {
         setIsOpen(true);
       }
     }
   }, [currentCompany]);
 
   const handleClose = () => {
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    localStorage.setItem('quoteOfTheDayLastShown', todayStr);
+    if (dontShowAgain) {
+      localStorage.setItem(storageKey, 'true');
+    }
     setIsOpen(false);
   };
 
@@ -71,7 +72,17 @@ export function QuoteOfTheDay() {
           </blockquote>
           <p className="mt-4 text-right text-sm font-medium text-muted-foreground">- {dailyQuote.author}</p>
         </div>
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-4">
+           <div className="flex items-center space-x-2">
+            <Checkbox
+              id="dont-show-again-quote"
+              checked={dontShowAgain}
+              onCheckedChange={(checked) => setDontShowAgain(checked as boolean)}
+            />
+            <Label htmlFor="dont-show-again-quote" className="text-sm font-normal">
+              Non mostrare più
+            </Label>
+          </div>
           <Button onClick={handleClose}>Ho capito</Button>
         </DialogFooter>
       </DialogContent>
