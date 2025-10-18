@@ -500,7 +500,6 @@ export default function DashboardPage() {
             setIsOpen={closeModal}
         />
       )}
-      <QuoteOfTheDay />
     </>
   );
 }

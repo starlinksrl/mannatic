@@ -9,6 +9,7 @@ import { InterventionModalProvider } from '@/contexts/intervention-modal-context
 import { MapsProvider } from '@/contexts/maps-context';
 import { ChangelogModal } from '@/components/dashboard/changelog-modal';
 import { NotificationManager } from '@/components/dashboard/notification-manager';
+import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
 
 export default function DashboardLayout({
   children,
@@ -63,6 +64,7 @@ export default function DashboardLayout({
         </div>
         <NotificationManager />
         <ChangelogModal />
+        <QuoteOfTheDay />
       </InterventionModalProvider>
     </MapsProvider>
   );
