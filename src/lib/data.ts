@@ -1,6 +1,6 @@
 
 
-import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Survey, SurveyStatus, PasswordResetToken, AllowedSector, InterventionUpdate, AppConfiguration, Attachment, InterventionType, WorkLog, AutologinToken, SupportTicket, SupportMessage, SupportTicketStatus } from './types';
+import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Appointment, AppointmentStatus, PasswordResetToken, AllowedSector, InterventionUpdate, AppConfiguration, Attachment, InterventionType, WorkLog, AutologinToken, SupportTicket, SupportMessage, SupportTicketStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter, differenceInMinutes, addHours } from 'date-fns';
 import { db, auth } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
@@ -163,7 +163,7 @@ export async function updateCompany(id: string, updatedData: Partial<Company>): 
 }
 
 export async function deleteCompanyAndSubcollections(companyId: string): Promise<void> {
-    const collectionsToDelete = ['users', 'interventions', 'notifications', 'surveys', 'passwordResetTokens'];
+    const collectionsToDelete = ['users', 'interventions', 'notifications', 'appointments', 'passwordResetTokens'];
     const batch = writeBatch(db);
 
     for (const coll of collectionsToDelete) {
@@ -1054,32 +1054,32 @@ export async function deleteScheduledMaintenance(id: string): Promise<boolean> {
     }
 }
 
-// --- SURVEYS MANAGEMENT (Firestore Implementation) ---
+// --- APPOINTMENTS MANAGEMENT (Firestore Implementation) ---
 
-export async function getSurveys(companyId: string): Promise<Survey[]> {
+export async function getAppointments(companyId: string): Promise<Appointment[]> {
     if (!companyId) return [];
     try {
-        const q = query(collection(db, 'surveys'), where("companyId", "==", companyId));
+        const q = query(collection(db, 'appointments'), where("companyId", "==", companyId));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Survey));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
     } catch (error) {
-        console.error("Error fetching surveys:", error);
+        console.error("Error fetching appointments:", error);
         return [];
     }
 }
 
-export async function getAllSurveys(): Promise<Survey[]> {
+export async function getAllAppointments(): Promise<Appointment[]> {
     try {
-        const snapshot = await getDocs(collection(db, 'surveys'));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Survey));
+        const snapshot = await getDocs(collection(db, 'appointments'));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
     } catch (error) {
-        console.error("Error fetching all surveys:", error);
+        console.error("Error fetching all appointments:", error);
         return [];
     }
 }
 
-export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'createdAt'>): Promise<Survey> {
-    const { clientId, companyId, ...restOfData } = surveyData;
+export async function addAppointment(appointmentData: Omit<Appointment, 'id' | 'status' | 'createdAt'>): Promise<Appointment> {
+    const { clientId, companyId, ...restOfData } = appointmentData;
 
     const existingClient = await getUserById(clientId);
     let finalClientId = existingClient ? existingClient.id : null;
@@ -1096,7 +1096,7 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
             email: clientEmail,
             role: 'Client',
             companyId: companyId,
-            address: surveyData.address,
+            address: appointmentData.address,
             phone: null,
         });
         if (!newClient) {
@@ -1106,7 +1106,7 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
     }
 
     const newId = generateShortId();
-    const newSurvey: Survey = {
+    const newAppointment: Appointment = {
         ...restOfData,
         id: newId,
         clientId: finalClientId,
@@ -1114,28 +1114,28 @@ export async function addSurvey(surveyData: Omit<Survey, 'id' | 'status' | 'crea
         status: 'Pianificato',
         createdAt: new Date().toISOString(),
     };
-    await setDoc(doc(db, 'surveys', newId), newSurvey);
-    return newSurvey;
+    await setDoc(doc(db, 'appointments', newId), newAppointment);
+    return newAppointment;
 }
 
-export async function updateSurvey(id: string, updatedData: Partial<Survey>): Promise<Survey | null> {
+export async function updateAppointment(id: string, updatedData: Partial<Appointment>): Promise<Appointment | null> {
     try {
-        const docRef = doc(db, 'surveys', id);
+        const docRef = doc(db, 'appointments', id);
         await updateDoc(docRef, updatedData);
         const updatedDoc = await getDoc(docRef);
-        return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Survey : null;
+        return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Appointment : null;
     } catch (error) {
-        console.error("Error updating survey:", error);
+        console.error("Error updating appointment:", error);
         return null;
     }
 }
 
-export async function deleteSurvey(id: string): Promise<boolean> {
+export async function deleteAppointment(id: string): Promise<boolean> {
     try {
-        await deleteDoc(doc(db, 'surveys', id));
+        await deleteDoc(doc(db, 'appointments', id));
         return true;
     } catch (error) {
-        console.error("Error deleting survey:", error);
+        console.error("Error deleting appointment:", error);
         return false;
     }
 }

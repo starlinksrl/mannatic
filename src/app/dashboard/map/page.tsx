@@ -6,8 +6,8 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { GoogleMap, MarkerF } from '@react-google-maps/api';
 import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
-import { getUsers, getInterventions, getScheduledMaintenance, getSurveys } from '@/lib/data';
-import { User, Intervention, ScheduledMaintenance, Survey } from '@/lib/types';
+import { getUsers, getInterventions, getScheduledMaintenance, getAppointments } from '@/lib/data';
+import { User, Intervention, ScheduledMaintenance, Appointment } from '@/lib/types';
 import { Loader, MapPin, Wrench, HardHat, ClipboardCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMaps } from '@/contexts/maps-context';
@@ -29,8 +29,8 @@ const defaultCenter = {
   lng: 12.5674,
 };
 
-type MapItem = (Intervention | ScheduledMaintenance | Survey | User) & {
-    itemType: 'intervention' | 'survey' | 'client';
+type MapItem = (Intervention | ScheduledMaintenance | Appointment | User) & {
+    itemType: 'intervention' | 'appointment' | 'client';
     latitude: number;
     longitude: number;
     clientId: string;
@@ -44,10 +44,10 @@ export default function MapPage() {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [allClients, setAllClients] = useState<User[]>([]);
   const [interventions, setInterventions] = useState<(Intervention | ScheduledMaintenance)[]>([]);
-  const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
-  const [filter, setFilter] = useState<'open_activities' | 'surveys' | 'all_clients'>('open_activities');
+  const [filter, setFilter] = useState<'open_activities' | 'appointments' | 'all_clients'>('open_activities');
   const { openModal } = useInterventionModal();
 
   const clientsMap = useMemo(() => {
@@ -61,18 +61,18 @@ export default function MapPage() {
       if (!currentCompany || !isLoaded) return;
       setLoading(true);
 
-      const [allUsers, allInterventions, allMaintenance, allSurveys] = await Promise.all([
+      const [allUsers, allInterventions, allMaintenance, allAppointments] = await Promise.all([
         getUsers(currentCompany.id),
         getInterventions(currentCompany.id),
         getScheduledMaintenance(currentCompany.id),
-        getSurveys(currentCompany.id),
+        getAppointments(currentCompany.id),
       ]);
       
       const clientsWithCoords = allUsers.filter(u => u.role === 'Client');
       
       setAllClients(clientsWithCoords);
       setInterventions([...allInterventions, ...allMaintenance]);
-      setSurveys(allSurveys);
+      setAppointments(allAppointments);
       setLoading(false);
     }
     fetchData();
@@ -109,12 +109,12 @@ export default function MapPage() {
                 mapItems.push({ ...i, itemType: 'intervention', latitude: client.latitude, longitude: client.longitude });
             }
         });
-    } else if (filter === 'surveys') {
-        surveys.forEach(s => {
+    } else if (filter === 'appointments') {
+        appointments.forEach(s => {
             if (!s.latitude || !s.longitude) return;
 
             if (s.status === 'Pianificato') {
-                 mapItems.push({ ...s, itemType: 'survey', latitude: s.latitude, longitude: s.longitude });
+                 mapItems.push({ ...s, itemType: 'appointment', latitude: s.latitude, longitude: s.longitude });
             }
         });
     } else if (filter === 'all_clients') {
@@ -126,7 +126,7 @@ export default function MapPage() {
     }
     
     return mapItems;
-  }, [filter, interventions, surveys, allClients, clientsMap]);
+  }, [filter, interventions, appointments, allClients, clientsMap]);
   
   const selectedItemInterventions = useMemo(() => {
     if (!selectedItem) return [];
@@ -187,7 +187,7 @@ export default function MapPage() {
   }
 
   const getMarkerIcon = (item: MapItem) => {
-    if (item.itemType === 'survey') {
+    if (item.itemType === 'appointment') {
         return {
             path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
             fillColor: '#8B5CF6', // purple-500
@@ -232,7 +232,7 @@ export default function MapPage() {
         <div className="p-4 bg-card border-b">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Select value={filter} onValueChange={(value) => {
-                    setFilter(value as 'open_activities' | 'surveys' | 'all_clients');
+                    setFilter(value as 'open_activities' | 'appointments' | 'all_clients');
                     setSelectedItem(null);
                 }}>
                     <SelectTrigger>
@@ -240,7 +240,7 @@ export default function MapPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="open_activities">Attività aperte</SelectItem>
-                        <SelectItem value="surveys">Sopralluoghi pianificati</SelectItem>
+                        <SelectItem value="appointments">Appuntamenti pianificati</SelectItem>
                         <SelectItem value="all_clients">Tutti i clienti</SelectItem>
                     </SelectContent>
                 </Select>
@@ -289,7 +289,7 @@ export default function MapPage() {
                             </CardContent>
                           </>
                         )}
-                         {selectedItem.itemType === 'survey' && (
+                         {selectedItem.itemType === 'appointment' && (
                           <>
                              <CardHeader>
                                 <CardTitle className="flex items-center gap-2"><ClipboardCheck/>{selectedItem.title}</CardTitle>
@@ -297,11 +297,11 @@ export default function MapPage() {
                             </CardHeader>
                             <CardContent>
                                <div className="space-y-1 text-sm">
-                                  <p><b>Indirizzo:</b> {(selectedItem as Survey).address}</p>
-                                  <p><b>Data:</b> {format(new Date((selectedItem as Survey).date), 'dd/MM/yyyy HH:mm')}</p>
-                                  <p><b>Stato:</b> {(selectedItem as Survey).status}</p>
+                                  <p><b>Indirizzo:</b> {(selectedItem as Appointment).address}</p>
+                                  <p><b>Data:</b> {format(new Date((selectedItem as Appointment).date), 'dd/MM/yyyy HH:mm')}</p>
+                                  <p><b>Stato:</b> {(selectedItem as Appointment).status}</p>
                                </div>
-                                <Button className="mt-4" onClick={() => router.push('/dashboard/surveys')}>Gestisci Sopralluoghi</Button>
+                                <Button className="mt-4" onClick={() => router.push('/dashboard/appointments')}>Gestisci Appuntamenti</Button>
                             </CardContent>
                           </>
                         )}
