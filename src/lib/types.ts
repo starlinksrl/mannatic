@@ -1,4 +1,5 @@
 
+
 import { z } from 'zod';
 import webpush from 'web-push';
 
@@ -162,9 +163,9 @@ export interface ScheduledMaintenance extends Intervention {
   nextDueDate: string;
 }
 
-export type SurveyStatus = 'Pianificato' | 'Eseguito' | 'Annullato';
+export type AppointmentStatus = 'Pianificato' | 'Eseguito' | 'Annullato' | 'Archiviato';
 
-export interface Survey {
+export interface Appointment {
   id: string;
   title: string;
   clientId: string;
@@ -174,7 +175,7 @@ export interface Survey {
   date: string;
   assignedOperatorId: string | null;
   notes?: string;
-  status: SurveyStatus;
+  status: AppointmentStatus;
   createdAt: string;
   companyId: string;
 }
@@ -280,3 +281,6 @@ export const SendSupportTicketNotificationOutputSchema = z.object({
   error: z.string().optional(),
 });
 export type SendSupportTicketNotificationOutput = z.infer<typeof SendSupportTicketNotificationOutputSchema>;
+
+
+    
