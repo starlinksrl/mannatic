@@ -19,7 +19,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteAppointment } from '@/lib/data';
 import { Button } from '../ui/button';
-import { MoreHorizontal, PlusCircle, Pencil, Trash2, MapPin, Phone } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Pencil, Trash2, MapPin, Phone, Calendar as CalendarIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddSurveyForm } from './add-survey-form';
 import { EditSurveyForm } from './edit-survey-form';
+import { generateGoogleCalendarLink } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface SurveysTableProps {
   surveys: Appointment[];
@@ -231,6 +233,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
             {filteredSurveys.map((survey) => {
               const client = clientsMap.get(survey.clientId);
               const operatorName = survey.assignedOperatorId ? operatorsMap.get(survey.assignedOperatorId) : null;
+              const calendarLink = generateGoogleCalendarLink(survey);
               return (
                 <TableRow key={survey.id}>
                     <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(survey)}>{survey.title}</TableCell>
@@ -258,7 +261,23 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                          )}
                     </TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>
-                        {survey.date ? format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}
+                        <div className="flex items-center gap-2">
+                           <span>{survey.date ? format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</span>
+                           {calendarLink && (
+                             <TooltipProvider>
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <a href={calendarLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                                     <CalendarIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                   </a>
+                                 </TooltipTrigger>
+                                 <TooltipContent>
+                                   <p>Aggiungi a Google Calendar</p>
+                                 </TooltipContent>
+                               </Tooltip>
+                             </TooltipProvider>
+                           )}
+                        </div>
                     </TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>{operatorName || 'Non assegnato'}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>{getStatusBadge(survey.status)}</TableCell>

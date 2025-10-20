@@ -31,7 +31,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Loader, MapPin } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, generateGoogleCalendarLink } from '@/lib/utils';
 import { Appointment, User, AppointmentStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateAppointment } from '@/lib/data';
@@ -91,6 +91,8 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
         })
     }
   }, [survey, form]);
+
+  const watchedValues = form.watch();
 
   if (!survey) return null;
 
@@ -171,6 +173,12 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
         }
     );
   };
+
+  const calendarLink = generateGoogleCalendarLink({
+    ...survey,
+    ...watchedValues,
+    date: watchedValues.date?.toISOString(),
+  } as Appointment);
 
 
   return (
@@ -412,14 +420,26 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
                 </Form>
             </div>
         </ScrollArea>
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
-            <DialogClose asChild>
-                <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
-            </DialogClose>
-            <Button type="submit" form="edit-appointment-form" disabled={isSubmitting}>
-                 {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                Salva Modifiche
-            </Button>
+        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t justify-between">
+            <div>
+              {calendarLink && (
+                  <Button variant="outline" asChild>
+                      <a href={calendarLink} target="_blank" rel="noopener noreferrer">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          Aggiungi a Google Calendar
+                      </a>
+                  </Button>
+              )}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <DialogClose asChild>
+                  <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
+              </DialogClose>
+              <Button type="submit" form="edit-appointment-form" disabled={isSubmitting}>
+                  {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                  Salva Modifiche
+              </Button>
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
