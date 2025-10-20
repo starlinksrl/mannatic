@@ -8,7 +8,7 @@ import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
 import { getUsers, getInterventions, getScheduledMaintenance, getAppointments } from '@/lib/data';
 import { User, Intervention, ScheduledMaintenance, Appointment } from '@/lib/types';
-import { Loader, MapPin, Wrench, HardHat, ClipboardCheck } from 'lucide-react';
+import { Loader, MapPin, Wrench, HardHat, ClipboardCheck, Navigation } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMaps } from '@/contexts/maps-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -299,7 +299,16 @@ export default function MapPage() {
                             </CardHeader>
                             <CardContent>
                                 <p className="text-sm text-muted-foreground">{selectedItem.description}</p>
-                                <Button className="mt-4" onClick={() => handleOpenInterventionModal(selectedItem as Intervention)}>Vedi Dettagli</Button>
+                                <div className="flex gap-2 mt-4">
+                                    <Button onClick={() => handleOpenInterventionModal(selectedItem as Intervention)}>Vedi Dettagli</Button>
+                                    {selectedClient?.address && (
+                                        <Button variant="outline" asChild>
+                                             <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selectedClient.address)}`} target="_blank" rel="noopener noreferrer">
+                                                <Navigation className="mr-2 h-4 w-4" /> Naviga
+                                            </a>
+                                        </Button>
+                                    )}
+                                </div>
                             </CardContent>
                           </>
                         )}
@@ -312,10 +321,19 @@ export default function MapPage() {
                             <CardContent>
                                <div className="space-y-1 text-sm">
                                   <p><b>Indirizzo:</b> {(selectedItem as Appointment).address}</p>
-                                  <p><b>Data:</b> {format(new Date((selectedItem as Appointment).date), 'dd/MM/yyyy HH:mm')}</p>
+                                  <p><b>Data:</b> {format(new Date((selectedItem as Appointment).date!), 'dd/MM/yyyy HH:mm')}</p>
                                   <p><b>Stato:</b> {(selectedItem as Appointment).status}</p>
                                </div>
-                                <Button className="mt-4" onClick={() => router.push('/dashboard/appointments')}>Gestisci Appuntamenti</Button>
+                               <div className="flex gap-2 mt-4">
+                                <Button onClick={() => router.push('/dashboard/appointments')}>Gestisci</Button>
+                                 {(selectedItem as Appointment).address && (
+                                    <Button variant="outline" asChild>
+                                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((selectedItem as Appointment).address!)}`} target="_blank" rel="noopener noreferrer">
+                                            <Navigation className="mr-2 h-4 w-4" /> Naviga
+                                        </a>
+                                    </Button>
+                                 )}
+                               </div>
                             </CardContent>
                           </>
                         )}
@@ -327,7 +345,16 @@ export default function MapPage() {
                             </CardHeader>
                             <CardContent>
                                <p className="text-sm text-muted-foreground">Cliente generico. Nessuna attività aperta associata.</p>
-                               <Button className="mt-4" onClick={() => router.push('/dashboard/clients')}>Vai alla Scheda Cliente</Button>
+                               <div className="flex gap-2 mt-4">
+                                <Button onClick={() => router.push('/dashboard/clients')}>Vai a Cliente</Button>
+                                {(selectedItem as User).address && (
+                                <Button variant="outline" asChild>
+                                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((selectedItem as User).address!)}`} target="_blank" rel="noopener noreferrer">
+                                        <Navigation className="mr-2 h-4 w-4" /> Naviga
+                                    </a>
+                                </Button>
+                                )}
+                               </div>
                             </CardContent>
                            </>
                         )}
