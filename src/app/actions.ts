@@ -3,8 +3,6 @@
 import 'dotenv/config';
 
 import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOutput } from '@/ai/flows/generate-kpi-dashboard';
-import { sendNotificationEmail } from '@/ai/flows/send-notification-email';
-import { sendExpiryNotification } from '@/ai/flows/send-expiry-notification';
 import { sendNewInterventionNotification } from '@/ai/flows/send-new-intervention-notification';
 import { sendPasswordResetEmail } from '@/ai/flows/send-password-reset-email';
 import { sendCredentialsEmail } from '@/ai/flows/send-credentials-email';
@@ -15,9 +13,7 @@ import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-no
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser } from '@/lib/data';
 import { Company, User } from '@/lib/types';
 import { Resend } from 'resend';
-import type { SendNotificationEmailInput, SendNotificationEmailOutput } from '@/ai/flows/send-notification-email';
-import type { SendExpiryNotificationInput, SendExpiryNotificationOutput } from '@/ai/flows/send-expiry-notification';
-import type { SendNewInterventionNotificationInput, SendNewInterventionOutput } from '@/ai/flows/send-new-intervention-notification';
+import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
 import type { SendCredentialsEmailInput, SendCredentialsEmailOutput } from '@/ai/flows/send-credentials-email';
 import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput } from '@/lib/types';
@@ -213,17 +209,58 @@ export async function updateCompanySettings(companyId: string, settings: Partial
     }
 }
 
-export async function triggerExpiryNotification(input: SendExpiryNotificationInput): Promise<SendExpiryNotificationOutput> {
+interface TriggerExpiryNotificationInput {
+    recipientEmail: string;
+    interventionId: string;
+    interventionTitle: string;
+    clientName: string;
+    dueDate: string;
+    companyId: string;
+    resendConfig: {
+      apiKey: string;
+      from: string;
+    };
+}
+export async function triggerExpiryNotification(input: TriggerExpiryNotificationInput): Promise<{success: boolean, error?: string}> {
+    const { resendConfig, recipientEmail, interventionId, interventionTitle, clientName, dueDate } = input;
+    const emailSubject = `AVVISO: Intervento #${interventionId} in Scadenza`;
+    const emailBody = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2 style="color: #c0392b;">Promemoria Scadenza Intervento</h2>
+            <p>Questo è un avviso per l'intervento in scadenza:</p>
+            <ul>
+                <li><b>ID Intervento:</b> ${interventionId}</li>
+                <li><b>Titolo:</b> ${interventionTitle}</li>
+                <li><b>Cliente:</b> ${clientName}</li>
+                <li><b>Scadenza:</b> ${dueDate}</li>
+            </ul>
+            <p>Si prega di completare l'attività il prima possibile.</p>
+            <p>Cordiali saluti,<br>MannaTic System</p>
+        </div>
+    `;
+
     try {
-        const result = await sendExpiryNotification(input);
-        return result;
+        const resend = new Resend(resendConfig.apiKey);
+        const { data, error } = await resend.emails.send({
+            from: resendConfig.from,
+            to: [recipientEmail],
+            subject: emailSubject,
+            html: emailBody,
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        return { success: true };
+
     } catch (error: any) {
-        console.error("Error sending expiry notification email:", error);
-        return { success: false, error: error.message || "An unknown error occurred." };
+        console.error(`[triggerExpiryNotification] FAILED for ${recipientEmail}:`, error.message);
+        return { success: false, error: error.message || 'An unknown error occurred.' };
     }
 }
 
-export async function triggerNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionOutput> {
+export async function triggerNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionNotificationOutput> {
     try {
         const result = await sendNewInterventionNotification(input);
         return result;
@@ -353,3 +390,5 @@ export async function createClientAutologinUrl(clientId: string): Promise<{ succ
         return { success: false, error: 'Errore durante la creazione del link di accesso.' };
     }
 }
+
+    
