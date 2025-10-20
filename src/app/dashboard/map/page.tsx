@@ -58,7 +58,7 @@ export default function MapPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!currentCompany || !isLoaded) return;
+      if (!currentCompany || !isLoaded || !user) return;
       setLoading(true);
 
       const [allUsers, allInterventions, allMaintenance, allAppointments] = await Promise.all([
@@ -71,12 +71,26 @@ export default function MapPage() {
       const clientsWithCoords = allUsers.filter(u => u.role === 'Client');
       
       setAllClients(clientsWithCoords);
-      setInterventions([...allInterventions, ...allMaintenance]);
-      setAppointments(allAppointments);
+
+      if (user.role === 'Operator') {
+        const operatorId = user.id;
+        const operatorInterventions = [...allInterventions, ...allMaintenance].filter(
+            (i) => i.assignedOperatorId === operatorId || !i.assignedOperatorId
+        );
+        const operatorAppointments = allAppointments.filter(
+            (a) => a.assignedOperatorId === operatorId || !a.assignedOperatorId
+        );
+        setInterventions(operatorInterventions);
+        setAppointments(operatorAppointments);
+      } else {
+        setInterventions([...allInterventions, ...allMaintenance]);
+        setAppointments(allAppointments);
+      }
+      
       setLoading(false);
     }
     fetchData();
-  }, [currentCompany, isLoaded]);
+  }, [currentCompany, isLoaded, user]);
 
   
   const itemsToDisplay = useMemo(() => {
@@ -241,7 +255,7 @@ export default function MapPage() {
                     <SelectContent>
                         <SelectItem value="open_activities">Attività aperte</SelectItem>
                         <SelectItem value="appointments">Appuntamenti pianificati</SelectItem>
-                        <SelectItem value="all_clients">Tutti i clienti</SelectItem>
+                        {user.role === 'Admin' && <SelectItem value="all_clients">Tutti i clienti</SelectItem>}
                     </SelectContent>
                 </Select>
             </div>
