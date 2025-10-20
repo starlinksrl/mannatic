@@ -48,7 +48,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
   const { toast } = useToast();
   const [surveys, setSurveys] = useState(initialSurveys);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active');
   
   const [clientsMap, setClientsMap] = useState<Map<string, User>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
@@ -104,7 +104,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
   }
 
   const filteredSurveys = useMemo(() => {
-    let filtered = surveys;
+    let filtered = [...surveys].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     if (searchTerm) {
       filtered = filtered.filter(s =>
@@ -113,7 +113,10 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
         (clientsMap.get(s.clientId)?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    if (statusFilter !== 'all') {
+    
+    if (statusFilter === 'active') {
+        filtered = filtered.filter(s => s.status !== 'Archiviato');
+    } else if (statusFilter !== 'all') {
       filtered = filtered.filter(s => s.status === statusFilter);
     }
 
@@ -143,6 +146,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
                     <SelectContent>
+                        <SelectItem value="active">Tutti (esclusi archiviati)</SelectItem>
                         <SelectItem value="all">Tutti gli stati</SelectItem>
                         <SelectItem value="Pianificato">Pianificato</SelectItem>
                         <SelectItem value="Eseguito">Eseguito</SelectItem>
