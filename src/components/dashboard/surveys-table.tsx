@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Survey, User, SurveyStatus } from '@/lib/types';
+import { Appointment, User, AppointmentStatus } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { deleteSurvey } from '@/lib/data';
+import { deleteAppointment } from '@/lib/data';
 import { Button } from '../ui/button';
 import { MoreHorizontal, PlusCircle, Pencil, Trash2, MapPin, Phone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -37,7 +37,7 @@ import { AddSurveyForm } from './add-survey-form';
 import { EditSurveyForm } from './edit-survey-form';
 
 interface SurveysTableProps {
-  surveys: Survey[];
+  surveys: Appointment[];
   currentUser: User;
   clients: User[];
   operators: User[];
@@ -54,10 +54,10 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
+  const [selectedSurvey, setSelectedSurvey] = useState<Appointment | null>(null);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [surveyToDelete, setSurveyToDelete] = useState<Survey | null>(null);
+  const [surveyToDelete, setSurveyToDelete] = useState<Appointment | null>(null);
 
   useEffect(() => {
     setSurveys(initialSurveys);
@@ -73,30 +73,30 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
     setClientsMap(cliMap);
   }, [operators, clients]);
 
-  const handleEditClick = (survey: Survey) => {
+  const handleEditClick = (survey: Appointment) => {
     setSelectedSurvey(survey);
     setIsEditModalOpen(true);
   }
   
-  const handleDeleteClick = (survey: Survey) => {
+  const handleDeleteClick = (survey: Appointment) => {
     setSurveyToDelete(survey);
     setIsDeleteDialogOpen(true);
   }
 
   const confirmDelete = async () => {
       if (!surveyToDelete) return;
-      const success = await deleteSurvey(surveyToDelete.id);
+      const success = await deleteAppointment(surveyToDelete.id);
       if (success) {
           onSurveyChange();
           toast({
-              title: 'Sopralluogo eliminato',
-              description: `Il sopralluogo "${surveyToDelete.title}" è stato eliminato.`,
+              title: 'Appuntamento eliminato',
+              description: `L'appuntamento "${surveyToDelete.title}" è stato eliminato.`,
           });
       } else {
            toast({
               variant: 'destructive',
               title: 'Errore',
-              description: "Impossibile eliminare il sopralluogo.",
+              description: "Impossibile eliminare l'appuntamento.",
           });
       }
       setIsDeleteDialogOpen(false);
@@ -120,11 +120,12 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
     return filtered;
   }, [surveys, searchTerm, statusFilter, clientsMap]);
   
-  const getStatusBadge = (status: SurveyStatus) => {
+  const getStatusBadge = (status: AppointmentStatus) => {
     switch (status) {
       case 'Pianificato': return <Badge className="bg-blue-100 text-blue-800">Pianificato</Badge>;
       case 'Eseguito': return <Badge className="bg-green-100 text-green-800">Eseguito</Badge>;
       case 'Annullato': return <Badge variant="destructive">Annullato</Badge>;
+      case 'Archiviato': return <Badge variant="secondary">Archiviato</Badge>;
       default: return <Badge>{status}</Badge>;
     }
   };
@@ -146,6 +147,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                         <SelectItem value="Pianificato">Pianificato</SelectItem>
                         <SelectItem value="Eseguito">Eseguito</SelectItem>
                         <SelectItem value="Annullato">Annullato</SelectItem>
+                        <SelectItem value="Archiviato">Archiviato</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -154,11 +156,11 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                     <AddSurveyForm
                         clients={clients}
                         operators={operators}
-                        onSurveyAdded={onSurveyChange}
+                        onAppointmentAdded={onSurveyChange}
                     >
                         <Button className="w-full md:w-auto">
                             <PlusCircle className="mr-2" />
-                            Crea Sopralluogo
+                            Crea Appuntamento
                         </Button>
                     </AddSurveyForm>
                 </div>
@@ -275,8 +277,8 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
         </Table>
       </Card>
       <EditSurveyForm
-        survey={selectedSurvey}
-        onSurveyUpdated={onSurveyChange}
+        appointment={selectedSurvey}
+        onAppointmentUpdated={onSurveyChange}
         clients={clients}
         operators={operators}
         isOpen={isEditModalOpen}
@@ -287,7 +289,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
             <AlertDialogHeader>
             <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
             <AlertDialogDescription>
-                Questa azione non può essere annullata. Il sopralluogo <b>{surveyToDelete?.title}</b> verrà eliminato definitivamente.
+                Questa azione non può essere annullata. L'appuntamento <b>{surveyToDelete?.title}</b> verrà eliminato definitivamente.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
