@@ -1,35 +1,36 @@
 
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
 import { SurveysTable } from '@/components/dashboard/surveys-table';
-import { getSurveys, getUsers, getClients } from '@/lib/data';
+import { getAppointments, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { User, Survey } from '@/lib/types';
+import { User, Appointment } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 
 
-export default function SurveysPage() {
+export default function AppointmentsPage() {
     const { user, currentCompany } = useUser();
     const [operators, setOperators] = useState<User[]>([]);
     const [clients, setClients] = useState<User[]>([]);
-    const [surveys, setSurveys] = useState<Survey[]>([]);
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
         if (!user || !currentCompany) return;
         setLoading(true);
 
-        const [allUsers, allClients, allSurveys] = await Promise.all([
+        const [allUsers, allClients, allAppointments] = await Promise.all([
             getUsers(currentCompany.id),
             getClients(currentCompany.id),
-            getSurveys(currentCompany.id)
+            getAppointments(currentCompany.id)
         ]);
 
         setOperators(allUsers.filter(u => u.role === 'Operator'));
         setClients(allClients);
-        setSurveys(allSurveys);
+        setAppointments(allAppointments);
         setLoading(false);
     }
     
@@ -37,14 +38,14 @@ export default function SurveysPage() {
         fetchData();
     }, [user, currentCompany]);
 
-    const handleSurveyChange = () => {
+    const handleAppointmentChange = () => {
         fetchData();
     }
 
     if (!user || loading) {
         return (
             <>
-                <Header title="Gestione Sopralluoghi" />
+                <Header title="Gestione Appuntamenti" />
                 <div className="flex items-center justify-center flex-1">
                     <Loader className="h-8 w-8 animate-spin" />
                 </div>
@@ -54,14 +55,14 @@ export default function SurveysPage() {
 
   return (
     <>
-      <Header title="Gestione Sopralluoghi" />
+      <Header title="Gestione Appuntamenti" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
         <SurveysTable 
-            surveys={surveys} 
+            surveys={appointments} 
             currentUser={user} 
             clients={clients} 
             operators={operators}
-            onSurveyChange={handleSurveyChange}
+            onSurveyChange={handleAppointmentChange}
         />
       </main>
     </>

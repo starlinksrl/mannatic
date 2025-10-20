@@ -33,9 +33,9 @@ import { CalendarIcon, Check, ChevronsUpDown, Loader, MapPin } from 'lucide-reac
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Survey, User } from '@/lib/types';
+import { Appointment, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addSurvey } from '@/lib/data';
+import { addAppointment } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { ScrollArea } from '../ui/scroll-area';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
@@ -54,14 +54,14 @@ const formSchema = z.object({
   notes: z.string().optional(),
 });
 
-interface AddSurveyFormProps {
+interface AddAppointmentFormProps {
   children: React.ReactNode;
-  onSurveyAdded: (survey: Survey) => void;
+  onAppointmentAdded: (appointment: Appointment) => void;
   clients: User[];
   operators: User[];
 }
 
-export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: AddSurveyFormProps) {
+export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, clients, operators }: AddAppointmentFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -100,20 +100,20 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
     date = setMinutes(date, minutes);
     const finalDate = date.toISOString();
 
-    const newSurvey = await addSurvey({
+    const newAppointment = await addAppointment({
         ...values,
         notes: values.notes || '',
         date: finalDate,
         companyId: currentCompany.id,
     });
     
-    onSurveyAdded(newSurvey);
+    onSurveyAdded(newAppointment);
 
     // Check if a new client was created and update the local list
-    const isNewClient = !clients.some(c => c.id === newSurvey.clientId);
+    const isNewClient = !clients.some(c => c.id === newAppointment.clientId);
     if (isNewClient) {
         const client = {
-            id: newSurvey.clientId,
+            id: newAppointment.clientId,
             name: values.clientId,
             companyId: currentCompany.id,
             address: values.address
@@ -122,8 +122,8 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
     }
     
     toast({
-      title: 'Sopralluogo creato',
-      description: `Il sopralluogo "${values.title}" è stato creato con successo.`,
+      title: 'Appuntamento creato',
+      description: `L'appuntamento "${values.title}" è stato creato con successo.`,
     });
     setIsSubmitting(false);
     setIsOpen(false);
@@ -184,12 +184,12 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle>Crea nuovo sopralluogo</DialogTitle>
+          <DialogTitle>Crea nuovo appuntamento</DialogTitle>
         </DialogHeader>
         <ScrollArea className="h-full">
             <div className="p-6">
                 <Form {...form}>
-                <form id="add-survey-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form id="add-appointment-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
                     control={form.control}
                     name="title"
@@ -197,7 +197,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                         <FormItem>
                         <FormLabel>Titolo</FormLabel>
                         <FormControl>
-                            <Input placeholder="Es. Sopralluogo per nuovo impianto..." {...field} />
+                            <Input placeholder="Es. Appuntamento per nuovo impianto..." {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -431,7 +431,7 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
                             <FormItem>
                             <FormLabel>Note</FormLabel>
                             <FormControl>
-                                <Textarea placeholder="Note aggiuntive per il sopralluogo..." {...field} />
+                                <Textarea placeholder="Note aggiuntive per l'appuntamento..." {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -445,9 +445,9 @@ export function AddSurveyForm({ children, onSurveyAdded, clients, operators }: A
             <DialogClose asChild>
                 <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>
-            <Button type="submit" form="add-survey-form" disabled={isSubmitting}>
+            <Button type="submit" form="add-appointment-form" disabled={isSubmitting}>
                 {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                Crea Sopralluogo
+                Crea Appuntamento
             </Button>
         </DialogFooter>
       </DialogContent>

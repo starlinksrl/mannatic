@@ -3,8 +3,8 @@
 'use client';
 
 import { Header } from '@/components/dashboard/header';
-import { getInterventions, getUsers, getClients, updateUser, getSurveys, getSupportTickets } from '@/lib/data';
-import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Survey, SupportTicket } from '@/lib/types';
+import { getInterventions, getUsers, getClients, updateUser, getAppointments, getSupportTickets } from '@/lib/data';
+import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointment, SupportTicket } from '@/lib/types';
 import { isAfter, addDays, startOfToday } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
@@ -49,8 +49,8 @@ type KpiData = GenerateKpiDashboardInput & {
   dueSoonInterventions: Intervention[],
   dueSoonNewInstallations: Intervention[],
   openNewInstallations: number,
-  openSurveys: number,
-  openSurveysList: Survey[],
+  openAppointments: number,
+  openAppointmentsList: Appointment[],
   latestSupportTickets?: SupportTicket[],
 };
 
@@ -84,11 +84,11 @@ export default function DashboardPage() {
     setLoading(true);
 
     const now = new Date();
-    const [allInterventions, users, allClients, allSurveys, supportTickets] = await Promise.all([
+    const [allInterventions, users, allClients, allAppointments, supportTickets] = await Promise.all([
       getInterventions(currentCompany.id),
       getUsers(currentCompany.id),
       getClients(currentCompany.id),
-      getSurveys(currentCompany.id),
+      getAppointments(currentCompany.id),
       user.role === 'Client' ? getSupportTickets(currentCompany.id, user.id) : 
       (user.role === 'Admin' || user.role === 'Creator') ? getSupportTickets(currentCompany.id) : Promise.resolve([]),
     ]);
@@ -169,8 +169,8 @@ export default function DashboardPage() {
     );
 
     const openNewInstallations = newInstallations.filter(i => i.status === 'Nuovo' || i.status === 'In corso').length;
-    const openSurveysList = allSurveys.filter(s => s.status === 'Pianificato');
-    const openSurveys = openSurveysList.length;
+    const openAppointmentsList = allAppointments.filter(s => s.status === 'Pianificato');
+    const openAppointments = openAppointmentsList.length;
 
     let latestSupportTickets: SupportTicket[] = [];
     if (user.role === 'Client') {
@@ -195,8 +195,8 @@ export default function DashboardPage() {
       dueSoonInterventions,
       dueSoonNewInstallations,
       openNewInstallations,
-      openSurveys,
-      openSurveysList,
+      openAppointments,
+      openAppointmentsList,
       latestSupportTickets,
     });
     setLoading(false);
@@ -264,7 +264,7 @@ export default function DashboardPage() {
         </div>
     );
     
-    const SurveyTaskItem = ({ task }: { task: Survey }) => (
+    const AppointmentTaskItem = ({ task }: { task: Appointment }) => (
         <div 
             className="flex items-center gap-4 group cursor-pointer"
              onClick={(e) => {
@@ -408,16 +408,16 @@ export default function DashboardPage() {
                     </Card>
                     <Card onClick={() => router.push('/dashboard/surveys')}>
                         <CardHeader>
-                            <CardTitle className="font-headline">Sopralluoghi da Fare</CardTitle>
-                            <CardDescription>Sopralluoghi con stato "Pianificato".</CardDescription>
+                            <CardTitle className="font-headline">Appuntamenti da Fare</CardTitle>
+                            <CardDescription>Appuntamenti con stato "Pianificato".</CardDescription>
                         </CardHeader>
                         <CardContent>
                              <ScrollArea className="h-40">
                                 <div className="grid gap-6 pr-6">
-                                    {kpiData.openSurveysList.length > 0 ? (
-                                        kpiData.openSurveysList.map(task => <SurveyTaskItem key={task.id} task={task} />)
+                                    {kpiData.openAppointmentsList.length > 0 ? (
+                                        kpiData.openAppointmentsList.map(task => <AppointmentTaskItem key={task.id} task={task} />)
                                     ) : (
-                                        <p className="text-sm text-muted-foreground text-center py-4">Nessun sopralluogo pianificato.</p>
+                                        <p className="text-sm text-muted-foreground text-center py-4">Nessun appuntamento pianificato.</p>
                                     )}
                                 </div>
                             </ScrollArea>
@@ -458,10 +458,10 @@ export default function DashboardPage() {
                     )}
                      {user.role !== 'Client' && (
                         <KpiCard
-                            title="Sopralluoghi Pianificati"
-                            value={kpiData.openSurveys}
+                            title="Appuntamenti Pianificati"
+                            value={kpiData.openAppointments}
                             icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
-                            description="Sopralluoghi da eseguire"
+                            description="Appuntamenti da eseguire"
                             onClick={() => router.push('/dashboard/surveys')}
                         />
                     )}

@@ -32,9 +32,9 @@ import { CalendarIcon, Loader, MapPin } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Survey, User, SurveyStatus } from '@/lib/types';
+import { Appointment, User, AppointmentStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateSurvey } from '@/lib/data';
+import { updateAppointment } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Autocomplete } from '@react-google-maps/api';
 import { useMaps } from '@/contexts/maps-context';
@@ -48,20 +48,20 @@ const formSchema = z.object({
   date: z.date({ required_error: 'La data è obbligatoria' }),
   time: z.string({ required_error: "L'ora è obbligatoria." }),
   assignedOperatorId: z.string().nullable(),
-  status: z.enum(['Pianificato', 'Eseguito', 'Annullato'], { required_error: 'Lo stato è obbligatorio.' }),
+  status: z.enum(['Pianificato', 'Eseguito', 'Annullato', 'Archiviato'], { required_error: 'Lo stato è obbligatorio.' }),
   notes: z.string().optional(),
 });
 
-interface EditSurveyFormProps {
-  survey: Survey | null;
-  onSurveyUpdated: (survey: Survey) => void;
+interface EditAppointmentFormProps {
+  appointment: Appointment | null;
+  onAppointmentUpdated: (appointment: Appointment) => void;
   clients: User[];
   operators: User[];
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
 
-export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, isOpen, setIsOpen }: EditSurveyFormProps) {
+export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSurveyUpdated, clients, operators, isOpen, setIsOpen }: EditAppointmentFormProps) {
   const { toast } = useToast();
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -103,26 +103,26 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
     date = setMinutes(date, minutes);
     const finalDate = date.toISOString();
 
-    const updatedSurveyData = {
+    const updatedAppointmentData = {
         ...survey,
         ...values,
         date: finalDate,
     };
     
-    const updated = await updateSurvey(survey!.id, updatedSurveyData);
+    const updated = await updateAppointment(survey!.id, updatedAppointmentData);
     
     if (updated) {
         onSurveyUpdated(updated);
         toast({
-          title: 'Sopralluogo aggiornato',
-          description: `Il sopralluogo "${values.title}" è stato aggiornato.`,
+          title: 'Appuntamento aggiornato',
+          description: `L'appuntamento "${values.title}" è stato aggiornato.`,
         });
         setIsOpen(false);
     } else {
         toast({
             variant: 'destructive',
             title: 'Errore',
-            description: "Impossibile aggiornare il sopralluogo.",
+            description: "Impossibile aggiornare l'appuntamento.",
         });
     }
     setIsSubmitting(false);
@@ -171,12 +171,12 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle>Modifica sopralluogo #{survey.id}</DialogTitle>
+          <DialogTitle>Modifica appuntamento #{survey.id}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="h-full">
             <div className="p-6">
                 <Form {...form}>
-                <form id="edit-survey-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form id="edit-appointment-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
                     control={form.control}
                     name="title"
@@ -379,6 +379,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                                     <SelectItem value="Pianificato">Pianificato</SelectItem>
                                     <SelectItem value="Eseguito">Eseguito</SelectItem>
                                     <SelectItem value="Annullato">Annullato</SelectItem>
+                                    <SelectItem value="Archiviato">Archiviato</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -393,7 +394,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
                             <FormItem>
                             <FormLabel>Note</FormLabel>
                             <FormControl>
-                                <Textarea placeholder="Note aggiuntive per il sopralluogo..." {...field} />
+                                <Textarea placeholder="Note aggiuntive per l'appuntamento..." {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -407,7 +408,7 @@ export function EditSurveyForm({ survey, onSurveyUpdated, clients, operators, is
             <DialogClose asChild>
                 <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>
-            <Button type="submit" form="edit-survey-form" disabled={isSubmitting}>
+            <Button type="submit" form="edit-appointment-form" disabled={isSubmitting}>
                  {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 Salva Modifiche
             </Button>

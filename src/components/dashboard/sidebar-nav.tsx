@@ -42,7 +42,7 @@ const navItems: {
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
   { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'], sector: 'interventions' },
   { href: '/dashboard/new-installations', label: 'Nuovi Impianti', icon: HardHat, roles: ['Admin', 'Operator'], sector: 'interventions' },
-  { href: '/dashboard/surveys', label: 'Sopralluoghi', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'surveys' },
+  { href: '/dashboard/surveys', label: 'Appuntamenti', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'surveys' },
   { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'], sector: 'maintenance' },
   { href: '/dashboard/support', label: 'Supporto', icon: LifeBuoy, roles: ['Admin', 'Client'] },
   { href: '/dashboard/map', label: 'Mappa', icon: Map, roles: ['Admin', 'Operator'] },
