@@ -109,7 +109,7 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
     if (searchTerm) {
       filtered = filtered.filter(s =>
         s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.address && s.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (clientsMap.get(s.clientId)?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -179,8 +179,12 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                     <div className="flex-1 space-y-1 cursor-pointer" onClick={() => handleEditClick(survey)}>
                         <p className="font-medium">{survey.title}</p>
                         <p className="text-sm text-muted-foreground">{client?.name}</p>
-                        <p className="text-sm text-muted-foreground">{survey.address}</p>
-                        <p className="text-sm text-muted-foreground">Data: {format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it })}</p>
+                        {survey.address && <p className="text-sm text-muted-foreground">{survey.address}</p>}
+                        {survey.date ? (
+                            <p className="text-sm text-muted-foreground">Data: {format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it })}</p>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">Data: N/D</p>
+                        )}
                         <div className="flex items-center gap-2 pt-1">
                             {getStatusBadge(survey.status)}
                         </div>
@@ -245,11 +249,17 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
                         )}
                     </TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>
-                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(survey.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
-                            <MapPin className="h-4 w-4 shrink-0" /> <span>{survey.address}</span>
-                        </a>
+                         {survey.address ? (
+                           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(survey.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
+                                <MapPin className="h-4 w-4 shrink-0" /> <span>{survey.address}</span>
+                            </a>
+                         ) : (
+                            <span>N/D</span>
+                         )}
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>{format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>
+                        {survey.date ? format(new Date(survey.date), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}
+                    </TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>{operatorName || 'Non assegnato'}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(survey)}>{getStatusBadge(survey.status)}</TableCell>
                     <TableCell className="text-right">

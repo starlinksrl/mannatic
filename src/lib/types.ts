@@ -169,10 +169,10 @@ export interface Appointment {
   id: string;
   title: string;
   clientId: string;
-  address: string;
+  address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  date: string;
+  date?: string | null;
   assignedOperatorId: string | null;
   notes?: string;
   status: AppointmentStatus;

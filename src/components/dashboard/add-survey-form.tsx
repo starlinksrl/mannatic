@@ -45,11 +45,11 @@ import { useMaps } from '@/contexts/maps-context';
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
-  address: z.string().min(5, { message: 'L\'indirizzo deve contenere almeno 5 caratteri.' }),
+  address: z.string().optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
-  date: z.date({ required_error: 'La data è obbligatoria' }),
-  time: z.string().min(1, { message: "L'ora è obbligatoria." }),
+  date: z.date().optional(),
+  time: z.string().optional(),
   assignedOperatorId: z.string().nullable(),
   notes: z.string().optional(),
 });
@@ -91,18 +91,24 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
   }, [clients]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!currentCompany || !values.date || !values.time) return;
+    if (!currentCompany) return;
     
     setIsSubmitting(true);
-    const [hours, minutes] = values.time.split(':').map(Number);
-    let date = values.date;
-    date = setHours(date, hours);
-    date = setMinutes(date, minutes);
-    const finalDate = date.toISOString();
+    let finalDate: string | null = null;
+    if (values.date && values.time) {
+        const [hours, minutes] = values.time.split(':').map(Number);
+        let date = values.date;
+        date = setHours(date, hours);
+        date = setMinutes(date, minutes);
+        finalDate = date.toISOString();
+    } else if (values.date) {
+        finalDate = values.date.toISOString();
+    }
 
     const newAppointment = await addAppointment({
         ...values,
         notes: values.notes || '',
+        address: values.address || null,
         date: finalDate,
         companyId: currentCompany.id,
     });
@@ -280,7 +286,7 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
                       render={({ field }) => (
                         <FormItem>
                            <div className="flex items-center justify-between">
-                            <FormLabel>Indirizzo</FormLabel>
+                            <FormLabel>Indirizzo (Opzionale)</FormLabel>
                             <Button type="button" variant="ghost" size="sm" onClick={handleGeolocate}>
                                 <MapPin className="mr-2 h-4 w-4" />
                                 Localizza
@@ -299,6 +305,7 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
                                             {...field}
                                             ref={inputRef}
                                             placeholder="Via, numero civico, città"
+                                            value={field.value || ''}
                                         />
                                     </Autocomplete>
                                 ) : (
@@ -306,6 +313,7 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
                                         {...field}
                                         placeholder="Via, numero civico, città"
                                         disabled
+                                        value={field.value || ''}
                                     />
                                 )}
                             </FormControl>
@@ -347,7 +355,7 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
                                 name="date"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
-                                    <FormLabel>Data</FormLabel>
+                                    <FormLabel>Data (Opzionale)</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                         <FormControl>
@@ -388,7 +396,7 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
                                     <FormItem className="flex flex-col">
                                     <FormLabel>Ora</FormLabel>
                                         <FormControl>
-                                            <Input type="time" {...field} />
+                                            <Input type="time" {...field} value={field.value || ''} />
                                         </FormControl>
                                     <FormMessage />
                                     </FormItem>

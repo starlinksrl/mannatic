@@ -1130,6 +1130,8 @@ export async function addAppointment(appointmentData: Omit<Appointment, 'id' | '
         companyId: companyId,
         status: 'Pianificato',
         createdAt: new Date().toISOString(),
+        date: appointmentData.date || null,
+        address: appointmentData.address || null,
     };
     await setDoc(doc(db, 'appointments', newId), newAppointment);
     return newAppointment;

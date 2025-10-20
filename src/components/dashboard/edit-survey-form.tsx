@@ -42,11 +42,11 @@ import { useMaps } from '@/contexts/maps-context';
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
   clientId: z.string({ required_error: 'Il cliente è obbligatorio.' }),
-  address: z.string().min(5, { message: 'L\'indirizzo deve contenere almeno 5 caratteri.' }),
+  address: z.string().optional().nullable(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
-  date: z.date({ required_error: 'La data è obbligatoria' }),
-  time: z.string({ required_error: "L'ora è obbligatoria." }),
+  date: z.date().optional().nullable(),
+  time: z.string().optional().nullable(),
   assignedOperatorId: z.string().nullable(),
   status: z.enum(['Pianificato', 'Eseguito', 'Annullato', 'Archiviato'], { required_error: 'Lo stato è obbligatorio.' }),
   notes: z.string().optional(),
@@ -78,11 +78,12 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
   
   useEffect(() => {
     if (survey) {
-        const surveyDate = new Date(survey.date);
+        const surveyDate = survey.date ? new Date(survey.date) : null;
         form.reset({
             ...survey,
             date: surveyDate,
-            time: format(surveyDate, 'HH:mm'),
+            time: surveyDate ? format(surveyDate, 'HH:mm') : '',
+            address: survey.address || '',
             notes: survey.notes || '',
             assignedOperatorId: survey.assignedOperatorId || null,
             latitude: survey.latitude || null,
@@ -94,14 +95,19 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
   if (!survey) return null;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!values.date || !values.time) return;
     setIsSubmitting(true);
     
-    const [hours, minutes] = values.time.split(':').map(Number);
-    let date = values.date;
-    date = setHours(date, hours);
-    date = setMinutes(date, minutes);
-    const finalDate = date.toISOString();
+    let finalDate: string | null = null;
+    if (values.date && values.time) {
+        const [hours, minutes] = values.time.split(':').map(Number);
+        let date = values.date;
+        date = setHours(date, hours);
+        date = setMinutes(date, minutes);
+        finalDate = date.toISOString();
+    } else if (values.date) {
+        finalDate = values.date.toISOString();
+    }
+
 
     const updatedAppointmentData = {
         ...survey,
@@ -220,7 +226,7 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
                       render={({ field }) => (
                         <FormItem>
                           <div className="flex items-center justify-between">
-                            <FormLabel>Indirizzo</FormLabel>
+                            <FormLabel>Indirizzo (Opzionale)</FormLabel>
                             <Button type="button" variant="ghost" size="sm" onClick={handleGeolocate}>
                                 <MapPin className="mr-2 h-4 w-4" />
                                 Localizza
@@ -239,6 +245,7 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
                                             {...field}
                                             ref={inputRef}
                                             placeholder="Via, numero civico, città"
+                                            value={field.value || ''}
                                         />
                                     </Autocomplete>
                                 ) : (
@@ -246,6 +253,7 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
                                         {...field}
                                         placeholder="Via, numero civico, città"
                                         disabled
+                                        value={field.value || ''}
                                     />
                                 )}
                             </FormControl>
@@ -287,7 +295,7 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
                                 name="date"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
-                                    <FormLabel>Data</FormLabel>
+                                    <FormLabel>Data (Opzionale)</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                         <FormControl>
@@ -328,7 +336,7 @@ export function EditSurveyForm({ appointment: survey, onAppointmentUpdated: onSu
                                     <FormItem className="flex flex-col">
                                     <FormLabel>Ora</FormLabel>
                                         <FormControl>
-                                            <Input type="time" {...field} />
+                                            <Input type="time" {...field} value={field.value || ''} />
                                         </FormControl>
                                     <FormMessage />
                                     </FormItem>
