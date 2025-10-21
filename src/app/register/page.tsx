@@ -22,7 +22,6 @@ const formSchema = z.object({
   companyName: z.string().min(2, { message: "Il nome dell'azienda deve contenere almeno 2 caratteri." }),
   name: z.string().min(2, { message: 'Il tuo nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
-  password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.' }),
 });
 
 export default function RegisterPage() {
@@ -37,7 +36,6 @@ export default function RegisterPage() {
       companyName: '',
       name: '',
       email: '',
-      password: '',
     },
   });
 
@@ -49,7 +47,7 @@ export default function RegisterPage() {
     if (result.success && result.user) {
       toast({
         title: 'Registrazione completata!',
-        description: `Benvenuto in MannaTic, ${result.user.name}!`,
+        description: `Benvenuto in MannaTic, ${result.user.name}! Le tue credenziali di accesso sono state inviate alla tua email.`,
       });
       // Automatically log in the user
       await login(result.user);
@@ -72,7 +70,7 @@ export default function RegisterPage() {
           </div>
           <CardTitle className="text-2xl">Crea una nuova Azienda</CardTitle>
           <CardDescription>
-            Registra la tua azienda e inizia a gestire i tuoi interventi.
+            Registra la tua azienda e inizia a gestire i tuoi interventi. La password verrà generata e inviata alla tua email.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -112,19 +110,6 @@ export default function RegisterPage() {
                     <FormLabel>La Tua Email</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="admin@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
