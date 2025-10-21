@@ -67,13 +67,34 @@ export async function updateDocument(collectionName: string, docId: string, data
 export async function getCompanies(creatorId?: string): Promise<Company[]> {
     try {
         const isMainCreatorRequest = creatorId === CREATOR_USER_ID;
-        const companiesQuery = isMainCreatorRequest
-            ? query(collection(db, 'companies'), where("creatorId", "in", [null, "", creatorId]))
-            : query(collection(db, 'companies'), where("creatorId", "==", creatorId));
 
-        const querySnapshot = await getDocs(companiesQuery);
-        const companies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
+        const queries = [];
+        if (creatorId) {
+            queries.push(query(collection(db, 'companies'), where("creatorId", "==", creatorId)));
+        }
+
+        // For the main creator, also fetch companies with null or no creatorId
+        if (isMainCreatorRequest) {
+            queries.push(query(collection(db, 'companies'), where("creatorId", "==", null)));
+            queries.push(query(collection(db, 'companies'), where("creatorId", "==", "")));
+        }
         
+        const querySnapshots = await Promise.all(queries.map(q => getDocs(q).catch(e => {
+            console.error("Error executing a query for companies:", e);
+            return { docs: [] }; // Return an empty result on error to not fail the whole process
+        })));
+        
+        const companyMap = new Map<string, Company>();
+        querySnapshots.forEach(snapshot => {
+            snapshot.docs.forEach((doc: any) => {
+                if (!companyMap.has(doc.id)) {
+                    companyMap.set(doc.id, { id: doc.id, ...doc.data() } as Company);
+                }
+            });
+        });
+
+        const companies = Array.from(companyMap.values());
+
         // If main creator, find and "claim" any legacy companies without a creatorId.
         if (isMainCreatorRequest) {
             const batch = writeBatch(db);
@@ -99,6 +120,7 @@ export async function getCompanies(creatorId?: string): Promise<Company[]> {
         return [];
     }
 }
+
 
 export async function getCompanyById(companyId: string): Promise<Company | null> {
     try {
@@ -1436,6 +1458,7 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
 
 
 
