@@ -107,10 +107,6 @@ function LoginFormComponent() {
     setIsLoading(false);
   };
   
-  const handleCreatorLogin = () => {
-    setEmail(CREATOR_USER.email);
-  }
-
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -179,15 +175,6 @@ function LoginFormComponent() {
                   Registra una nuova azienda
                 </Link>
               </div>
-              <div className="relative w-full">
-                <Separator />
-                <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-background px-2 text-xs text-muted-foreground">
-                    DEV
-                </span>
-              </div>
-               <Button variant="outline" className="w-full" onClick={handleCreatorLogin}>
-                Login as Creator (Dev)
-               </Button>
             </>
            )}
         </CardFooter>
