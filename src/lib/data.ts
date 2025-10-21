@@ -67,24 +67,32 @@ export async function updateDocument(collectionName: string, docId: string, data
 export async function getCompanies(creatorId?: string): Promise<Company[]> {
     try {
         const isMainCreatorRequest = creatorId === CREATOR_USER_ID;
+        const companiesQuery = isMainCreatorRequest
+            ? query(collection(db, 'companies'), where("creatorId", "in", [null, "", creatorId]))
+            : query(collection(db, 'companies'), where("creatorId", "==", creatorId));
 
-        // Query for companies explicitly assigned to the creator
-        const q1 = query(collection(db, 'companies'), where("creatorId", "==", creatorId));
-        const querySnapshot1 = await getDocs(q1);
-        const companies = querySnapshot1.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
-
-        // If it's the main creator, also fetch companies without a creatorId (legacy)
+        const querySnapshot = await getDocs(companiesQuery);
+        const companies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
+        
+        // If main creator, find and "claim" any legacy companies without a creatorId.
         if (isMainCreatorRequest) {
-            const q2 = query(collection(db, 'companies'), where("creatorId", "in", [null, ""]));
-            const querySnapshot2 = await getDocs(q2);
-            const legacyCompanies = querySnapshot2.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
-            
-            // Combine and remove duplicates
-            const allCompanies = [...companies, ...legacyCompanies];
-            const uniqueCompanies = Array.from(new Map(allCompanies.map(c => [c.id, c])).values());
-            return uniqueCompanies;
-        }
+            const batch = writeBatch(db);
+            let hasUnclaimed = false;
+            companies.forEach(company => {
+                if (!company.creatorId) {
+                    const companyRef = doc(db, 'companies', company.id);
+                    batch.update(companyRef, { creatorId: CREATOR_USER_ID });
+                    company.creatorId = CREATOR_USER_ID; // Update in-memory object
+                    hasUnclaimed = true;
+                }
+            });
 
+            if (hasUnclaimed) {
+                console.log("Claiming legacy companies for main creator...");
+                await batch.commit();
+            }
+        }
+        
         return companies;
     } catch (error) {
         console.error("Error fetching companies:", error);
@@ -141,9 +149,10 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
             senderEmail: appConfig?.defaultSenderEmail || null,
         };
         
-        if (companyPayload.creatorId === undefined) {
-            companyPayload.creatorId = null;
+        if (companyData.creatorId === undefined) {
+             companyPayload.creatorId = null;
         }
+
 
         const docRef = await addDoc(collection(db, 'companies'), companyPayload);
         
@@ -1427,6 +1436,7 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
 
 
 
