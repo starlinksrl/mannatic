@@ -350,7 +350,7 @@ export default function DashboardPage() {
                 {(user.role === 'Admin' || user.role === 'Operator') && (
                   <Card className="lg:col-span-12 order-1">
                     <CardHeader>
-                      <CardTitle className="font-headline">Riepilogo Interventi</CardTitle>
+                        <CardTitle className="font-headline">Riepilogo Interventi</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-6 md:grid-cols-3">
                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=active&priority=Alta,Critica')}>
@@ -386,7 +386,7 @@ export default function DashboardPage() {
                             icon={<Check className="h-4 w-4 text-muted-foreground" />}
                             description="Percentuale interventi nei tempi"
                         />
-                        {user.role !== 'Client' && user.role !== 'Operator' && (
+                        {user.role !== 'Client' && (
                             <KpiCard
                                 title="Manutenzioni Scadute"
                                 value={kpiData.overdueMaintenanceTasks}
@@ -401,7 +401,7 @@ export default function DashboardPage() {
                             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
                             description="Completati nell'ultimo mese"
                         />
-                        {user.role !== 'Client' && user.role !== 'Operator' && (
+                        {user.role !== 'Client' && (
                             <KpiCard
                                 title="Nuovi Impianti Aperti"
                                 value={kpiData.openNewInstallations}
