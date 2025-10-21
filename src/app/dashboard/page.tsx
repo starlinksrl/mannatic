@@ -494,23 +494,25 @@ export default function DashboardPage() {
                             </ScrollArea>
                         </CardContent>
                     </Card>
-                    <Card onClick={() => router.push('/dashboard/appointments')}>
-                        <CardHeader>
-                            <CardTitle className="font-headline">Appuntamenti da Fare</CardTitle>
-                            <CardDescription>Appuntamenti con stato "Pianificato".</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                             <ScrollArea className="h-40">
-                                <div className="grid gap-6 pr-6">
-                                    {kpiData.openAppointmentsList.length > 0 ? (
-                                        kpiData.openAppointmentsList.map(task => <AppointmentTaskItem key={task.id} task={task} />)
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground text-center py-4">Nessun appuntamento pianificato.</p>
-                                    )}
-                                </div>
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
+                    {(user.role === 'Admin' || user.allowedSectors?.includes('appointments')) && (
+                        <Card onClick={() => router.push('/dashboard/appointments')}>
+                            <CardHeader>
+                                <CardTitle className="font-headline">Appuntamenti da Fare</CardTitle>
+                                <CardDescription>Appuntamenti con stato "Pianificato".</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ScrollArea className="h-40">
+                                    <div className="grid gap-6 pr-6">
+                                        {kpiData.openAppointmentsList.length > 0 ? (
+                                            kpiData.openAppointmentsList.map(task => <AppointmentTaskItem key={task.id} task={task} />)
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center py-4">Nessun appuntamento pianificato.</p>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
             
