@@ -39,7 +39,6 @@ import { addAppointment } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { ScrollArea } from '../ui/scroll-area';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
-import { Autocomplete } from '@react-google-maps/api';
 import { useMaps } from '@/contexts/maps-context';
 
 const formSchema = z.object({
@@ -61,14 +60,14 @@ interface AddAppointmentFormProps {
   operators: User[];
 }
 
-export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, clients, operators }: AddAppointmentFormProps) {
+export function AddSurveyForm({ children, onAppointmentAdded, clients, operators }: AddAppointmentFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [addressInput, setAddressInput] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
 
   const { isLoaded } = useMaps();
 
@@ -113,7 +112,7 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
         companyId: currentCompany.id,
     });
     
-    onSurveyAdded(newAppointment);
+    onAppointmentAdded(newAppointment);
 
     // Check if a new client was created and update the local list
     const isNewClient = !clients.some(c => c.id === newAppointment.clientId);
@@ -136,18 +135,35 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
     form.reset();
   }
   
-  const handlePlaceChanged = () => {
-    if (autocompleteRef.current) {
-        const place = autocompleteRef.current.getPlace();
-        if (place && place.formatted_address) {
-            form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
-        }
-        if (place?.geometry?.location) {
-            form.setValue('latitude', place.geometry.location.lat());
-            form.setValue('longitude', place.geometry.location.lng());
-        }
+  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAddressInput(e.target.value);
+    if (isLoaded && e.target.value) {
+      const service = new google.maps.places.AutocompleteService();
+      service.getPlacePredictions({ input: e.target.value, componentRestrictions: { country: 'it' } }, (predictions) => {
+        setAddressSuggestions(predictions || []);
+      });
+    } else {
+      setAddressSuggestions([]);
     }
   };
+
+  const handleSuggestionClick = (suggestion: google.maps.places.AutocompletePrediction) => {
+    setAddressInput(suggestion.description);
+    form.setValue('address', suggestion.description, { shouldValidate: true, shouldDirty: true });
+    setAddressSuggestions([]);
+
+    if (isLoaded) {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ placeId: suggestion.place_id }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const location = results[0].geometry.location;
+          form.setValue('latitude', location.lat());
+          form.setValue('longitude', location.lng());
+        }
+      });
+    }
+  };
+
 
   const handleGeolocate = () => {
     if (!navigator.geolocation) {
@@ -186,6 +202,8 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
           latitude: null,
           longitude: null,
         });
+        setAddressInput('');
+        setAddressSuggestions([]);
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
@@ -293,29 +311,29 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
                             </Button>
                           </div>
                            <FormControl>
-                                {isLoaded ? (
-                                    <Autocomplete
-                                        onLoad={(autocomplete) => {
-                                            autocompleteRef.current = autocomplete;
-                                        }}
-                                        onPlaceChanged={handlePlaceChanged}
-                                        fields={['formatted_address', 'geometry.location']}
-                                    >
-                                        <Input
-                                            {...field}
-                                            ref={inputRef}
-                                            placeholder="Via, numero civico, città"
-                                            value={field.value || ''}
-                                        />
-                                    </Autocomplete>
-                                ) : (
-                                   <Input
-                                        {...field}
-                                        placeholder="Via, numero civico, città"
-                                        disabled
-                                        value={field.value || ''}
-                                    />
-                                )}
+                                <div className="relative">
+                                  <Input
+                                    {...field}
+                                    placeholder="Via, numero civico, città"
+                                    value={addressInput}
+                                    onChange={handleAddressInputChange}
+                                    disabled={!isLoaded}
+                                    autoComplete="off"
+                                  />
+                                  {addressSuggestions.length > 0 && (
+                                    <div className="absolute z-10 w-full bg-background border mt-1 rounded-md shadow-lg">
+                                      {addressSuggestions.map((suggestion) => (
+                                        <div
+                                          key={suggestion.place_id}
+                                          className="p-2 hover:bg-muted cursor-pointer"
+                                          onClick={() => handleSuggestionClick(suggestion)}
+                                        >
+                                          {suggestion.description}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                             </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -462,3 +480,4 @@ export function AddSurveyForm({ children, onAppointmentAdded: onSurveyAdded, cli
     </Dialog>
   );
 }
+

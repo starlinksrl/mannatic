@@ -87,7 +87,7 @@ export default function MapPage() {
 
         const operatorAppointments = allAppointments.filter(a => {
             if (a.assignedOperatorId !== operatorId && a.assignedOperatorId) return false;
-            return allowedSectors.includes('surveys');
+            return allowedSectors.includes('appointments');
         });
         
         setInterventions(operatorInterventions);
@@ -385,4 +385,5 @@ export default function MapPage() {
     </>
   );
 }
+
 

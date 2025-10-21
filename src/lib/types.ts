@@ -41,7 +41,7 @@ export interface Company {
   companyScratchpad?: string;
 }
 
-export type AllowedSector = 'interventions' | 'surveys' | 'maintenance' | 'new_installations';
+export type AllowedSector = 'interventions' | 'new_installations' | 'appointments' | 'maintenance';
 
 export interface User {
   id: string;

@@ -1,0 +1,336 @@
+
+
+'use client';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { Appointment, User, AppointmentStatus } from '@/lib/types';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { deleteAppointment } from '@/lib/data';
+import { Button } from '../ui/button';
+import { MoreHorizontal, PlusCircle, Pencil, Trash2, MapPin, Phone, Calendar as CalendarIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AddAppointmentForm } from './add-appointment-form';
+import { EditAppointmentForm } from './edit-appointment-form';
+import { generateGoogleCalendarLink } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+
+interface AppointmentsTableProps {
+  appointments: Appointment[];
+  currentUser: User;
+  clients: User[];
+  operators: User[];
+  onAppointmentChange: () => void;
+}
+
+export function AppointmentsTable({ appointments: initialAppointments, currentUser, clients, operators, onAppointmentChange }: AppointmentsTableProps) {
+  const { toast } = useToast();
+  const [appointments, setAppointments] = useState(initialAppointments);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
+  
+  const [clientsMap, setClientsMap] = useState<Map<string, User>>(new Map());
+  const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
+
+  useEffect(() => {
+    setAppointments(initialAppointments);
+  }, [initialAppointments]);
+
+  useEffect(() => {
+    const opMap = new Map<string, string>();
+    operators.forEach(op => opMap.set(op.id, op.name));
+    setOperatorsMap(opMap);
+
+    const cliMap = new Map<string, User>();
+    clients.forEach(c => cliMap.set(c.id, c));
+    setClientsMap(cliMap);
+  }, [operators, clients]);
+
+  const handleEditClick = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setIsEditModalOpen(true);
+  }
+  
+  const handleDeleteClick = (appointment: Appointment) => {
+    setAppointmentToDelete(appointment);
+    setIsDeleteDialogOpen(true);
+  }
+
+  const confirmDelete = async () => {
+      if (!appointmentToDelete) return;
+      const success = await deleteAppointment(appointmentToDelete.id);
+      if (success) {
+          onAppointmentChange();
+          toast({
+              title: 'Appuntamento eliminato',
+              description: `L'appuntamento "${appointmentToDelete.title}" è stato eliminato.`,
+          });
+      } else {
+           toast({
+              variant: 'destructive',
+              title: 'Errore',
+              description: "Impossibile eliminare l'appuntamento.",
+          });
+      }
+      setIsDeleteDialogOpen(false);
+      setAppointmentToDelete(null);
+  }
+
+  const filteredAppointments = useMemo(() => {
+    let filtered = [...appointments].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (searchTerm) {
+      filtered = filtered.filter(s =>
+        s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.address && s.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (clientsMap.get(s.clientId)?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (statusFilter === 'active') {
+        filtered = filtered.filter(s => s.status !== 'Archiviato');
+    } else if (statusFilter !== 'all') {
+      filtered = filtered.filter(s => s.status === statusFilter);
+    }
+
+    return filtered;
+  }, [appointments, searchTerm, statusFilter, clientsMap]);
+  
+  const getStatusBadge = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'Pianificato': return <Badge className="bg-blue-100 text-blue-800">Pianificato</Badge>;
+      case 'Eseguito': return <Badge className="bg-green-100 text-green-800">Eseguito</Badge>;
+      case 'Annullato': return <Badge variant="destructive">Annullato</Badge>;
+      case 'Archiviato': return <Badge variant="secondary">Archiviato</Badge>;
+      default: return <Badge>{status}</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-grow max-w-lg">
+                <Input
+                placeholder="Cerca per titolo, cliente, indirizzo..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="sm:col-span-2"
+                />
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="active">Tutti (esclusi archiviati)</SelectItem>
+                        <SelectItem value="all">Tutti gli stati</SelectItem>
+                        <SelectItem value="Pianificato">Pianificato</SelectItem>
+                        <SelectItem value="Eseguito">Eseguito</SelectItem>
+                        <SelectItem value="Annullato">Annullato</SelectItem>
+                        <SelectItem value="Archiviato">Archiviato</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            { currentUser.role === 'Admin' &&
+                <div className="md:ml-4">
+                    <AddAppointmentForm
+                        clients={clients}
+                        operators={operators}
+                        onAppointmentAdded={onAppointmentChange}
+                    >
+                        <Button className="w-full md:w-auto">
+                            <PlusCircle className="mr-2" />
+                            Crea Appuntamento
+                        </Button>
+                    </AddAppointmentForm>
+                </div>
+            }
+      </div>
+      <Card className="lg:hidden">
+        <CardContent className="p-2 space-y-2">
+            {filteredAppointments.map((appointment) => {
+              const client = clientsMap.get(appointment.clientId);
+              return (
+                 <div key={appointment.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
+                    <div className="flex-1 space-y-1 cursor-pointer" onClick={() => handleEditClick(appointment)}>
+                        <p className="font-medium">{appointment.title}</p>
+                        <p className="text-sm text-muted-foreground">{client?.name}</p>
+                        {appointment.address && <p className="text-sm text-muted-foreground">{appointment.address}</p>}
+                        {appointment.date ? (
+                            <p className="text-sm text-muted-foreground">Data: {format(new Date(appointment.date), 'dd/MM/yy HH:mm', { locale: it })}</p>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">Data: N/D</p>
+                        )}
+                        <div className="flex items-center gap-2 pt-1">
+                            {getStatusBadge(appointment.status)}
+                        </div>
+                    </div>
+                     <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => handleEditClick(appointment)}>
+                            <Pencil className="mr-2" /> Modifica
+                        </DropdownMenuItem>
+                        {currentUser.role === 'Admin' && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    onSelect={() => handleDeleteClick(appointment)}>
+                                    <Trash2 className="mr-2" /> Elimina
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                 </div>
+              )
+            })}
+        </CardContent>
+      </Card>
+      <Card className="hidden lg:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Titolo</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Indirizzo</TableHead>
+              <TableHead>Data</TableHead>
+              <TableHead>Operatore</TableHead>
+              <TableHead>Stato</TableHead>
+              <TableHead className="w-12 text-right">Azioni</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredAppointments.map((appointment) => {
+              const client = clientsMap.get(appointment.clientId);
+              const operatorName = appointment.assignedOperatorId ? operatorsMap.get(appointment.assignedOperatorId) : null;
+              const calendarLink = generateGoogleCalendarLink(appointment);
+              return (
+                <TableRow key={appointment.id}>
+                    <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(appointment)}>{appointment.title}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>
+                        {client ? (
+                            <div>
+                                <span>{client.name}</span>
+                                {client.phone && (
+                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline">
+                                        <Phone className="h-3 w-3" /> {client.phone}
+                                    </a>
+                                )}
+                            </div>
+                        ) : (
+                            <span>-</span>
+                        )}
+                    </TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>
+                         {appointment.address ? (
+                           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
+                                <MapPin className="h-4 w-4 shrink-0" /> <span>{appointment.address}</span>
+                            </a>
+                         ) : (
+                            <span>N/D</span>
+                         )}
+                    </TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>
+                        <div className="flex items-center gap-2">
+                           <span>{appointment.date ? format(new Date(appointment.date), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</span>
+                           {calendarLink && (
+                             <TooltipProvider>
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <a href={calendarLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                                     <CalendarIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                   </a>
+                                 </TooltipTrigger>
+                                 <TooltipContent>
+                                   <p>Aggiungi a Google Calendar</p>
+                                 </TooltipContent>
+                               </Tooltip>
+                             </TooltipProvider>
+                           )}
+                        </div>
+                    </TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>{operatorName || 'Non assegnato'}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>{getStatusBadge(appointment.status)}</TableCell>
+                    <TableCell className="text-right">
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onSelect={() => handleEditClick(appointment)}>
+                                <Pencil className="mr-2" /> Modifica
+                            </DropdownMenuItem>
+                            {currentUser.role === 'Admin' && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                        onSelect={() => handleDeleteClick(appointment)}>
+                                        <Trash2 className="mr-2" /> Elimina
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Card>
+      <EditAppointmentForm
+        appointment={selectedAppointment}
+        onAppointmentUpdated={onAppointmentChange}
+        clients={clients}
+        operators={operators}
+        isOpen={isEditModalOpen}
+        setIsOpen={setIsEditModalOpen}
+      />
+       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Questa azione non può essere annullata. L'appuntamento <b>{appointmentToDelete?.title}</b> verrà eliminato definitivamente.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Elimina</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

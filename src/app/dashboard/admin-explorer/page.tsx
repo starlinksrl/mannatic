@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -15,7 +16,7 @@ type Data = {
     companies: Company[];
     users: User[];
     interventions: (Intervention | ScheduledMaintenance)[];
-    surveys: Appointment[];
+    appointments: Appointment[];
     notifications: Notification[];
     supportTickets: SupportTicket[];
 }
@@ -32,7 +33,7 @@ export default function AdminExplorerPage() {
     const fetchData = async () => {
         if (!currentCompany) return;
         setIsLoading(true);
-        const [company, users, interventions, surveys, notifications, supportTickets] = await Promise.all([
+        const [company, users, interventions, appointments, notifications, supportTickets] = await Promise.all([
             getCompanyById(currentCompany.id),
             getUsers(currentCompany.id),
             getInterventions(currentCompany.id),
@@ -44,7 +45,7 @@ export default function AdminExplorerPage() {
             companies: company ? [company] : [], 
             users, 
             interventions, 
-            surveys, 
+            appointments, 
             notifications, 
             supportTickets,
         });
@@ -77,7 +78,7 @@ export default function AdminExplorerPage() {
         return null;
     }
 
-    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'surveys', 'supportTickets', 'notifications'];
+    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'appointments', 'supportTickets', 'notifications'];
 
     return (
         <>
@@ -99,3 +100,4 @@ export default function AdminExplorerPage() {
         </>
     );
 }
+

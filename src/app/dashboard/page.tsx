@@ -269,7 +269,7 @@ export default function DashboardPage() {
             className="flex items-center gap-4 group cursor-pointer"
              onClick={(e) => {
                 e.stopPropagation();
-                router.push('/dashboard/surveys');
+                router.push('/dashboard/appointments');
             }}
         >
           <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
@@ -279,7 +279,7 @@ export default function DashboardPage() {
               per {clientsMap.get(task.clientId)?.name || 'Sconosciuto'}
             </p>
           </div>
-          <div className="ml-auto font-medium text-sm">{format(new Date(task.date), 'dd/MM')}</div>
+          <div className="ml-auto font-medium text-sm">{format(new Date(task.date!), 'dd/MM')}</div>
         </div>
     );
     
@@ -406,7 +406,7 @@ export default function DashboardPage() {
                             </ScrollArea>
                         </CardContent>
                     </Card>
-                    <Card onClick={() => router.push('/dashboard/surveys')}>
+                    <Card onClick={() => router.push('/dashboard/appointments')}>
                         <CardHeader>
                             <CardTitle className="font-headline">Appuntamenti da Fare</CardTitle>
                             <CardDescription>Appuntamenti con stato "Pianificato".</CardDescription>
@@ -462,7 +462,7 @@ export default function DashboardPage() {
                             value={kpiData.openAppointments}
                             icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
                             description="Appuntamenti da eseguire"
-                            onClick={() => router.push('/dashboard/surveys')}
+                            onClick={() => router.push('/dashboard/appointments')}
                         />
                     )}
                 </div>
@@ -504,3 +504,4 @@ export default function DashboardPage() {
     </>
   );
 }
+

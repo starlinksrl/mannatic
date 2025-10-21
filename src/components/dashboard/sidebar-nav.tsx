@@ -54,7 +54,7 @@ export function SidebarNav() {
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
     { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'], sector: 'interventions' },
     { href: '/dashboard/new-installations', label: 'Nuovi Impianti', icon: HardHat, roles: ['Admin', 'Operator'], sector: 'new_installations' },
-    { href: '/dashboard/surveys', label: 'Appuntamenti', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'surveys' },
+    { href: '/dashboard/appointments', label: 'Appuntamenti', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'appointments' },
     { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'], sector: 'maintenance' },
     { href: '/dashboard/support', label: 'Supporto', icon: LifeBuoy, roles: ['Admin', 'Client'] },
     { href: '/dashboard/map', label: 'Mappa', icon: Map, roles: ['Admin', 'Operator'] },
@@ -143,3 +143,4 @@ export function SidebarNav() {
     </div>
   );
 }
+

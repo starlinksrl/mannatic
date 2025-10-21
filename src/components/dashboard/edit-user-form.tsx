@@ -32,7 +32,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Pencil, Eye, EyeOff, MapPin, Loader } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
-import { Autocomplete, useLoadScript } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
 import { useMaps } from '@/contexts/maps-context';
 import { Textarea } from '../ui/textarea';
@@ -40,7 +39,7 @@ import { Textarea } from '../ui/textarea';
 const allowedSectors: { id: AllowedSector; label: string }[] = [
     { id: 'interventions', label: 'Interventi' },
     { id: 'new_installations', label: 'Nuovi Impianti' },
-    { id: 'surveys', label: 'Appuntamenti' },
+    { id: 'appointments', label: 'Appuntamenti' },
     { id: 'maintenance', label: 'Manutenzioni' },
 ];
 
@@ -73,10 +72,10 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const { toast } = useToast();
   const { user: currentUser } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addressInput, setAddressInput] = useState(user?.address || '');
+  const [addressSuggestions, setAddressSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   
   const { isLoaded } = useMaps();
 
@@ -107,7 +106,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             vatNumber: user.vatNumber || '',
             taxCode: user.taxCode || '',
             uniqueCode: user.uniqueCode || '',
-        })
+        });
+        setAddressInput(user.address || '');
     }
   }, [user, form]);
 
@@ -177,16 +177,32 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const canEditEmail = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator');
   const canEditPassword = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator' || user?.role === 'Client');
 
-  const handlePlaceChanged = () => {
-    if (autocompleteRef.current) {
-        const place = autocompleteRef.current.getPlace();
-        if (place && place.formatted_address) {
-            form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
+  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAddressInput(e.target.value);
+    if (isLoaded && e.target.value) {
+      const service = new google.maps.places.AutocompleteService();
+      service.getPlacePredictions({ input: e.target.value, componentRestrictions: { country: 'it' } }, (predictions) => {
+        setAddressSuggestions(predictions || []);
+      });
+    } else {
+      setAddressSuggestions([]);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: google.maps.places.AutocompletePrediction) => {
+    setAddressInput(suggestion.description);
+    form.setValue('address', suggestion.description, { shouldValidate: true, shouldDirty: true });
+    setAddressSuggestions([]);
+
+    if (isLoaded) {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ placeId: suggestion.place_id }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const location = results[0].geometry.location;
+          form.setValue('latitude', location.lat());
+          form.setValue('longitude', location.lng());
         }
-        if (place && place.geometry && place.geometry.location) {
-          form.setValue('latitude', place.geometry.location.lat());
-          form.setValue('longitude', place.geometry.location.lng());
-        }
+      });
     }
   };
 
@@ -407,31 +423,29 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                     </Button>
                   </div>
                     <FormControl>
-                        {isLoaded ? (
-                            <Autocomplete
-                                onLoad={(autocomplete) => {
-                                    autocompleteRef.current = autocomplete;
-                                }}
-                                onPlaceChanged={handlePlaceChanged}
-                                fields={['formatted_address', 'geometry.location']}
-                            >
-                                <Input
-                                    {...field}
-                                    ref={inputRef}
-                                    placeholder="Cerca un indirizzo..."
-                                    onBlur={field.onBlur}
-                                    onChange={field.onChange}
-                                    value={field.value ?? ''}
-                                />
-                            </Autocomplete>
-                        ) : (
-                           <Input
-                                {...field}
-                                placeholder="Cerca un indirizzo..."
-                                disabled
-                                value={field.value ?? ''}
-                            />
-                        )}
+                        <div className="relative">
+                          <Input
+                            {...field}
+                            placeholder="Cerca un indirizzo..."
+                            value={addressInput}
+                            onChange={handleAddressInputChange}
+                            disabled={!isLoaded}
+                            autoComplete="off"
+                          />
+                          {addressSuggestions.length > 0 && (
+                            <div className="absolute z-10 w-full bg-background border mt-1 rounded-md shadow-lg">
+                              {addressSuggestions.map((suggestion) => (
+                                <div
+                                  key={suggestion.place_id}
+                                  className="p-2 hover:bg-muted cursor-pointer"
+                                  onClick={() => handleSuggestionClick(suggestion)}
+                                >
+                                  {suggestion.description}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                     </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -497,3 +511,4 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
+

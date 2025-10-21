@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +22,7 @@ const adminGuide = [
         icon: Wrench,
         items: [
             { title: "Interventi e Nuovi Impianti", description: "Crea, modifica, assegna e monitora lo stato di tutti gli interventi, incluse le nuove installazioni. Allega file e registra le ore di lavoro." },
-            { title: "Sopralluoghi", description: "Pianifica e gestisci le visite preliminari, assegnando operatori e definendo indirizzi geolocalizzati." },
+            { title: "Appuntamenti", description: "Pianifica e gestisci le visite preliminari, assegnando operatori e definendo indirizzi geolocalizzati." },
             { title: "Manutenzioni Programmate", description: "Imposta e traccia interventi ricorrenti, definendo periodicità e prossime scadenze." },
         ]
     },
@@ -39,7 +40,7 @@ const adminGuide = [
         items: [
             { title: "Impostazioni Azienda", description: "Configura il profilo della tua azienda, il logo e le impostazioni per l'invio di email (SMTP)." },
             { title: "Aspetto (Tema)", description: "Personalizza la palette di colori dell'interfaccia per tutta la tua azienda scegliendo tra diversi temi predefiniti." },
-            { title: "Calendario e Mappa", description: "Usa il filtro sulla Mappa Operativa per visualizzare separatamente le attività aperte, i sopralluoghi pianificati o tutti i clienti. Il calendario mostra tutte le scadenze." },
+            { title: "Calendario e Mappa", description: "Usa il filtro sulla Mappa Operativa per visualizzare separatamente le attività aperte, gli appuntamenti pianificati o tutti i clienti. Il calendario mostra tutte le scadenze." },
             { title: "Changelog e Manuale", description: "Consulta le ultime novità dell'applicazione e questa guida direttamente dalle impostazioni." },
         ]
     }
@@ -58,7 +59,7 @@ const operatorGuide = [
         category: "Gestione Incarichi",
         icon: Wrench,
         items: [
-            { title: "Le Tue Attività", description: "Accedi alle sezioni Interventi, Sopralluoghi e Manutenzioni per vedere solo gli incarichi a te assegnati o non ancora assegnati." },
+            { title: "Le Tue Attività", description: "Accedi alle sezioni Interventi, Appuntamenti e Manutenzioni per vedere solo gli incarichi a te assegnati o non ancora assegnati." },
             { title: "Aggiorna Stato e Dettagli", description: "Apri un intervento per registrarne l'avanzamento, aggiungere aggiornamenti, materiali usati, tempo impiegato e allegati." },
             { title: "Registrazione Lavoro", description: "Usa i pulsanti 'Avvia Lavoro' e 'Termina Lavoro' per tracciare automaticamente il tempo e la posizione." },
         ]
@@ -67,7 +68,7 @@ const operatorGuide = [
         category: "Strumenti",
         icon: Calendar,
         items: [
-            { title: "Calendario e Mappa", description: "Consulta il tuo calendario e la mappa operativa. Usa il filtro sulla mappa per visualizzare le attività aperte o i sopralluoghi a te assegnati." },
+            { title: "Calendario e Mappa", description: "Consulta il tuo calendario e la mappa operativa. Usa il filtro sulla mappa per visualizzare le attività aperte o gli appuntamenti a te assegnati." },
             { title: "Profilo", description: "Puoi modificare le tue informazioni personali, come nome, avatar e password, dal menu utente in alto a destra." },
         ]
     }
@@ -178,3 +179,4 @@ export default function ManualPageContent() {
          ) : null
     );
 }
+

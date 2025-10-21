@@ -31,7 +31,6 @@ import { useToast } from '@/hooks/use-toast';
 import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Eye, EyeOff, Loader, MapPin } from 'lucide-react';
-import { Autocomplete } from '@react-google-maps/api';
 import { Checkbox } from '../ui/checkbox';
 import { useMaps } from '@/contexts/maps-context';
 import { Textarea } from '../ui/textarea';
@@ -39,7 +38,7 @@ import { Textarea } from '../ui/textarea';
 const allowedSectors: { id: AllowedSector; label: string }[] = [
     { id: 'interventions', label: 'Interventi' },
     { id: 'new_installations', label: 'Nuovi Impianti' },
-    { id: 'surveys', label: 'Appuntamenti' },
+    { id: 'appointments', label: 'Appuntamenti' },
     { id: 'maintenance', label: 'Manutenzioni' },
 ];
 
@@ -75,8 +74,8 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const { toast } = useToast();
   const { user: currentUser, currentCompany } = useUser();
   const [showPassword, setShowPassword] = useState(false);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const [addressInput, setAddressInput] = useState('');
 
   const { isLoaded } = useMaps();
 
@@ -89,7 +88,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       address: '',
       phone: '',
       role: defaultRole,
-      allowedSectors: ['interventions', 'new_installations', 'surveys', 'maintenance'], // Default to all for new operators
+      allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'], // Default to all for new operators
       clientNotes: '',
     },
   });
@@ -103,10 +102,12 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
           address: '',
           phone: '',
           role: defaultRole,
-          allowedSectors: ['interventions', 'new_installations', 'surveys', 'maintenance'],
+          allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'],
           clientNotes: '',
         });
         setShowPassword(false);
+        setAddressInput('');
+        setAddressSuggestions([]);
     }
   }, [isOpen, defaultRole, form]);
 
@@ -178,18 +179,35 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   
   const role = form.watch('role');
 
-  const handlePlaceChanged = () => {
-    if (autocompleteRef.current) {
-        const place = autocompleteRef.current.getPlace();
-        if (place && place.formatted_address) {
-            form.setValue('address', place.formatted_address, { shouldValidate: true, shouldDirty: true });
-        }
-         if (place && place.geometry && place.geometry.location) {
-          form.setValue('latitude', place.geometry.location.lat());
-          form.setValue('longitude', place.geometry.location.lng());
-        }
+  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAddressInput(e.target.value);
+    if (isLoaded && e.target.value) {
+      const service = new google.maps.places.AutocompleteService();
+      service.getPlacePredictions({ input: e.target.value, componentRestrictions: { country: 'it' } }, (predictions) => {
+        setAddressSuggestions(predictions || []);
+      });
+    } else {
+      setAddressSuggestions([]);
     }
   };
+
+  const handleSuggestionClick = (suggestion: google.maps.places.AutocompletePrediction) => {
+    setAddressInput(suggestion.description);
+    form.setValue('address', suggestion.description, { shouldValidate: true, shouldDirty: true });
+    setAddressSuggestions([]);
+
+    if (isLoaded) {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ placeId: suggestion.place_id }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const location = results[0].geometry.location;
+          form.setValue('latitude', location.lat());
+          form.setValue('longitude', location.lng());
+        }
+      });
+    }
+  };
+
 
   const handleGeolocate = () => {
     if (!navigator.geolocation) {
@@ -237,7 +255,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
               address: '',
               phone: '',
               role: defaultRole,
-              allowedSectors: ['interventions', 'new_installations', 'surveys', 'maintenance'],
+              allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'],
               clientNotes: '',
             });
             setShowPassword(false);
@@ -405,29 +423,29 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                         </Button>
                       </div>
                         <FormControl>
-                            {isLoaded ? (
-                                 <Autocomplete
-                                    onLoad={(autocomplete) => {
-                                        autocompleteRef.current = autocomplete;
-                                    }}
-                                    onPlaceChanged={handlePlaceChanged}
-                                    fields={['formatted_address', 'geometry.location']}
-                                >
-                                    <Input
-                                        {...field}
-                                        ref={inputRef}
-                                        placeholder="Cerca un indirizzo..."
-                                        onBlur={field.onBlur}
-                                        onChange={field.onChange}
-                                    />
-                                </Autocomplete>
-                            ) : (
-                               <Input
-                                    {...field}
-                                    placeholder="Cerca un indirizzo..."
-                                    disabled
-                                />
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              placeholder="Cerca un indirizzo..."
+                              value={addressInput}
+                              onChange={handleAddressInputChange}
+                              disabled={!isLoaded}
+                              autoComplete="off"
+                            />
+                            {addressSuggestions.length > 0 && (
+                              <div className="absolute z-10 w-full bg-background border mt-1 rounded-md shadow-lg">
+                                {addressSuggestions.map((suggestion) => (
+                                  <div
+                                    key={suggestion.place_id}
+                                    className="p-2 hover:bg-muted cursor-pointer"
+                                    onClick={() => handleSuggestionClick(suggestion)}
+                                  >
+                                    {suggestion.description}
+                                  </div>
+                                ))}
+                              </div>
                             )}
+                          </div>
                         </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -464,3 +482,4 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     </Dialog>
   );
 }
+
