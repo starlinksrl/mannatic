@@ -373,12 +373,6 @@ export default function DashboardPage() {
                    </div>
                 ) : (
                     <>
-                    <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
-                            {user.role !== 'Operator' && <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />}
-                        </div>
-                    </div>
                     <div className="lg:col-span-12 grid gap-6 md:grid-cols-2 lg:grid-cols-5 order-4 lg:order-3">
                         <KpiCard
                             title="Adesione SLA"
@@ -419,6 +413,12 @@ export default function DashboardPage() {
                                 onClick={() => router.push('/dashboard/appointments')}
                             />
                         )}
+                    </div>
+                     <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
+                            {user.role !== 'Operator' && <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />}
+                        </div>
                     </div>
                     </>
                 )}
