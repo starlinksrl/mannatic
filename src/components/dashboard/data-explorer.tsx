@@ -14,6 +14,7 @@ import { UploadCloud, Check, X, Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, isValid } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { updateDocument } from '@/lib/data';
 
 interface ImageEditDialogProps {
   isOpen: boolean;
@@ -224,7 +225,13 @@ export function DataExplorer({ data, collectionName, onDataChange }: DataExplore
         return <p className="text-muted-foreground p-4">Nessun dato disponibile in questa collezione.</p>;
     }
 
-    const headers = Object.keys(data[0] || {});
+    const allKeys = new Set<string>();
+    data.forEach(item => {
+        Object.keys(item).forEach(key => {
+            allKeys.add(key);
+        });
+    });
+    const headers = Array.from(allKeys);
     
     // Move 'id' to the beginning
     const sortedHeaders = ['id', ...headers.filter(h => h !== 'id')];
