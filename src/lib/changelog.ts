@@ -4,6 +4,20 @@ import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wren
 
 export const changelog = [
     {
+        version: "0.23",
+        date: "2024-10-09",
+        title: "Standardizzazione Appuntamenti e Dashboard Operatori",
+        icon: ClipboardCheck,
+        iconClass: "bg-cyan-500",
+        changes: [
+            { type: Wrench, description: "Standardizzata la terminologia in tutta l'app, sostituendo 'Sopralluoghi' con 'Appuntamenti' per coerenza." },
+            { type: Database, description: "Implementata una migrazione automatica e sicura per convertire tutti i vecchi 'Sopralluoghi' in 'Appuntamenti', senza perdita di dati." },
+            { type: LayoutDashboard, description: "Migliorata la dashboard degli operatori con un box unificato per il riepilogo degli interventi (Urgenti, Nuovi, In Corso)." },
+            { type: Eye, description: "Corretta la logica di visualizzazione dei box nella dashboard per rispettare i permessi specifici degli operatori (es. visualizzazione appuntamenti)." },
+            { type: Trash2, description: "Rimosso il codice obsoleto relativo ai vecchi 'Sopralluoghi' per una maggiore pulizia e manutenibilità." },
+        ]
+    },
+    {
         version: "0.22",
         date: "2024-10-08",
         title: "Promemoria e Note Integrate",
