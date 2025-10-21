@@ -127,6 +127,7 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
             name: companyData.name!,
             creatorId: companyData.creatorId,
             address: companyData.address || '',
+            logoUrl: companyData.logoUrl || '',
             vatNumber: companyData.vatNumber || '',
             taxCode: companyData.taxCode || '',
             phone: companyData.phone || '',
@@ -262,7 +263,7 @@ export async function getUserById(id: string): Promise<User | null> {
     }
 }
 
-export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>> & { currentUser?: User }): Promise<User> {
+export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
     if (!userData.email) {
         throw new Error("Email is required to add a user.");
     }
@@ -272,11 +273,6 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>> & { cur
         throw new Error('Un utente con questa email esiste già.');
     }
     
-    // Prevent non-main creator from creating other creators
-    if (userData.currentUser?.email !== 'creator@mannatic.com' && userData.role === 'Creator') {
-        throw new Error("Non hai i permessi per creare un utente Creator.");
-    }
-
     try {
         let userId = userData.id || generateShortId(20);
         const passwordForDb = userData.password || 'starlink74';
@@ -296,12 +292,12 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>> & { cur
             latitude: userData.latitude ?? null,
             longitude: userData.longitude ?? null,
             clientNotes: userData.clientNotes || '',
+            logoUrl: userData.logoUrl || '',
+            vatNumber: userData.vatNumber || '',
+            taxCode: userData.taxCode || '',
+            uniqueCode: userData.uniqueCode || '',
         };
         
-        // Add creator specific fields
-        if (newUserPayload.role === 'Creator') {
-        }
-
         if (newUserPayload.role === 'Operator') {
              newUserPayload.allowedSectors = userData.allowedSectors || ['interventions', 'surveys', 'maintenance'];
         } else {
@@ -1441,6 +1437,7 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
 
 
 
