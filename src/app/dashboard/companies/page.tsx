@@ -7,7 +7,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Company, addCompany, getCompanies, deleteCompanyAndSubcollections, updateCompany } from '@/lib/data';
-import { Loader, PlusCircle, Building, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Loader, PlusCircle, Building, MoreHorizontal, Pencil, Trash2, Import } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -24,8 +24,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
+import { CREATOR_USER_ID } from '@/lib/constants';
 
 const isMainCreator = (user: Company | null) => user?.email === 'creator@mannatic.com';
 
@@ -39,23 +40,25 @@ export default function CompaniesPage() {
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
-  
-  useEffect(() => {
-    if (user && user.role !== 'Creator') {
-        router.push('/dashboard');
-    }
-  }, [user, router]);
-  
+  const [isImporting, setIsImporting] = useState<string | null>(null);
+
+  const isUserMainCreator = isMainCreator(user);
+
   useEffect(() => {
     async function fetchCompanies() {
-        if (!user || user.role !== 'Creator') {
-          setIsLoading(false);
-          return;
-        };
+        if (!user) return;
         setIsLoading(true);
-        // A regular creator sees only their own companies. The main creator sees all companies without a creatorId (their own).
-        const creatorId = isMainCreator(user) ? null : user.id;
-        const companiesFromDb = await getCompanies(creatorId);
+        
+        let companiesFromDb = [];
+        // The main creator can see all companies to import them.
+        if (isUserMainCreator) {
+            companiesFromDb = await getCompanies(undefined, true);
+        } else if (user.role === 'Creator') {
+            companiesFromDb = await getCompanies(user.id);
+        } else {
+             router.push('/dashboard');
+        }
+        
         setCompanies(companiesFromDb);
         setIsLoading(false);
     }
@@ -65,8 +68,8 @@ export default function CompaniesPage() {
     } else {
         setIsLoading(false);
     }
-  }, [user, setCompanies]);
-  
+  }, [user, router, isUserMainCreator, setCompanies]);
+
   const handleAddCompany = () => {
     setEditingCompany(null);
     setIsFormOpen(true);
@@ -105,7 +108,7 @@ export default function CompaniesPage() {
           toast({ title: 'Azienda aggiornata', description: 'I dati sono stati salvati.' });
         }
       } else {
-        const creatorId = user.id;
+        const creatorId = isMainCreator(user) ? CREATOR_USER_ID : user.id;
         const newCompanyData = { ...values, creatorId } as Company;
         
         const newCompany = await addCompany(newCompanyData);
@@ -122,6 +125,23 @@ export default function CompaniesPage() {
         return false;
     }
   }
+
+  const handleImportCompany = async (companyId: string) => {
+    if (!user || !isUserMainCreator) return;
+    setIsImporting(companyId);
+    try {
+        const updated = await updateCompany(companyId, { creatorId: CREATOR_USER_ID });
+        if (updated) {
+            setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, creatorId: CREATOR_USER_ID } : c));
+            toast({ title: 'Azienda importata', description: 'L\'azienda è stata associata al tuo account.' });
+        }
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Errore di importazione' });
+    } finally {
+        setIsImporting(null);
+    }
+  }
+
 
   if (isLoading || !user) {
     return (
@@ -182,8 +202,19 @@ export default function CompaniesPage() {
                 <CardContent className="flex-grow cursor-pointer" onClick={() => handleEditCompany(company)}>
                   <p className="text-sm text-muted-foreground">{company.address || 'Nessun indirizzo'}</p>
                 </CardContent>
-                <CardFooter className="text-xs text-muted-foreground">
-                    ID: {company.id}
+                <CardFooter className="text-xs text-muted-foreground justify-between items-center">
+                    <span>ID: {company.id}</span>
+                     {isUserMainCreator && !company.creatorId && (
+                        <Button 
+                            size="sm" 
+                            variant="secondary" 
+                            onClick={() => handleImportCompany(company.id)}
+                            disabled={isImporting === company.id}
+                        >
+                            {isImporting === company.id ? <Loader className="mr-2 animate-spin" /> : <Import className="mr-2" />}
+                            Importa
+                        </Button>
+                    )}
                 </CardFooter>
               </Card>
             ))}
@@ -218,3 +249,4 @@ export default function CompaniesPage() {
     </>
   );
 }
+

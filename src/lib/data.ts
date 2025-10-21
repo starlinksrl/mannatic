@@ -64,62 +64,26 @@ export async function updateDocument(collectionName: string, docId: string, data
 
 // --- COMPANY MANAGEMENT ---
 
-export async function getCompanies(creatorId?: string): Promise<Company[]> {
+export async function getCompanies(creatorId?: string, fetchAll: boolean = false): Promise<Company[]> {
     try {
-        const isMainCreatorRequest = creatorId === CREATOR_USER_ID;
+        if (fetchAll) {
+            const allCompaniesSnapshot = await getDocs(collection(db, 'companies'));
+            return allCompaniesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
+        }
 
-        const queries = [];
         if (creatorId) {
-            queries.push(query(collection(db, 'companies'), where("creatorId", "==", creatorId)));
-        }
-
-        // For the main creator, also fetch companies with null or no creatorId
-        if (isMainCreatorRequest) {
-            queries.push(query(collection(db, 'companies'), where("creatorId", "==", null)));
-            queries.push(query(collection(db, 'companies'), where("creatorId", "==", "")));
+             const q = query(collection(db, 'companies'), where("creatorId", "==", creatorId));
+             const snapshot = await getDocs(q);
+             return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
         }
         
-        const querySnapshots = await Promise.all(queries.map(q => getDocs(q).catch(e => {
-            console.error("Error executing a query for companies:", e);
-            return { docs: [] }; // Return an empty result on error to not fail the whole process
-        })));
-        
-        const companyMap = new Map<string, Company>();
-        querySnapshots.forEach(snapshot => {
-            snapshot.docs.forEach((doc: any) => {
-                if (!companyMap.has(doc.id)) {
-                    companyMap.set(doc.id, { id: doc.id, ...doc.data() } as Company);
-                }
-            });
-        });
-
-        const companies = Array.from(companyMap.values());
-
-        // If main creator, find and "claim" any legacy companies without a creatorId.
-        if (isMainCreatorRequest) {
-            const batch = writeBatch(db);
-            let hasUnclaimed = false;
-            companies.forEach(company => {
-                if (!company.creatorId) {
-                    const companyRef = doc(db, 'companies', company.id);
-                    batch.update(companyRef, { creatorId: CREATOR_USER_ID });
-                    company.creatorId = CREATOR_USER_ID; // Update in-memory object
-                    hasUnclaimed = true;
-                }
-            });
-
-            if (hasUnclaimed) {
-                console.log("Claiming legacy companies for main creator...");
-                await batch.commit();
-            }
-        }
-        
-        return companies;
+        return [];
     } catch (error) {
         console.error("Error fetching companies:", error);
         return [];
     }
 }
+
 
 
 export async function getCompanyById(companyId: string): Promise<Company | null> {
@@ -1458,6 +1422,7 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
 
 
 
