@@ -66,6 +66,8 @@ export async function updateDocument(collectionName: string, docId: string, data
 export async function getCompanies(creatorId?: string): Promise<Company[]> {
     try {
         let q = query(collection(db, 'companies'));
+        // If creatorId is provided, filter by it.
+        // If creatorId is undefined (which can happen for the main creator), this filter is skipped, and all companies are fetched.
         if (creatorId) {
             q = query(q, where("creatorId", "==", creatorId));
         }
@@ -103,7 +105,7 @@ export async function getCompanyByUserId(userId: string): Promise<Company | null
     }
 }
 
-export async function addCompany(companyData: Partial<Company> & { adminName: string, email: string, password?: string, creatorId?: string }): Promise<{ company: Company, adminUser: User }> {
+export async function addCompany(companyData: Partial<Company> & { adminName: string, email: string, password?: string, creatorId?: string | null }): Promise<{ company: Company, adminUser: User }> {
     const existingUser = await getUserByEmail(companyData.email!);
     if (existingUser) {
         throw new Error('Un utente con questa email esiste già.');
@@ -114,7 +116,7 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
         
         const companyPayload: Omit<Company, 'id'> = {
             name: companyData.name!,
-            creatorId: companyData.creatorId,
+            creatorId: companyData.creatorId === undefined ? null : companyData.creatorId,
             address: companyData.address || '',
             vatNumber: companyData.vatNumber || '',
             taxCode: companyData.taxCode || '',
@@ -247,10 +249,20 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
-    const existingUser = await getUserByEmail(userData.email!);
+    if (!userData.email) {
+        throw new Error("Email is required to add a user.");
+    }
+
+    const existingUser = await getUserByEmail(userData.email);
     if (existingUser) {
         throw new Error('Un utente con questa email esiste già.');
     }
+    
+    // Prevent non-main creator from creating other creators
+    if (userData.currentUser?.email !== 'creator@mannatic.com' && userData.role === 'Creator') {
+        throw new Error("Non hai i permessi per creare un utente Creator.");
+    }
+
     try {
         let userId = userData.id || generateShortId(20);
         const passwordForDb = userData.password || 'starlink74';
