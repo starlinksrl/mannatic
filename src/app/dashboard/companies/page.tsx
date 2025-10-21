@@ -41,7 +41,7 @@ export default function CompaniesPage() {
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
 
   useEffect(() => {
-    if (user && user.role !== 'Creator') {
+    if (user && (user.role !== 'Creator' || user.email === 'creator@mannatic.com')) {
       router.push('/dashboard');
       return;
     }
@@ -136,8 +136,11 @@ export default function CompaniesPage() {
   
   if (user.role !== 'Creator' || user.email === 'creator@mannatic.com') {
     // Redirect main creator or non-creators
-    router.push('/dashboard');
-    return null;
+    return (
+        <div className="flex items-center justify-center flex-1">
+          <Loader className="h-8 w-8 animate-spin" />
+        </div>
+    );
   }
 
   return (
@@ -217,8 +220,3 @@ export default function CompaniesPage() {
     </>
   );
 }
-
-    
-
-    
-
