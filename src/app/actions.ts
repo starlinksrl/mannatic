@@ -399,6 +399,7 @@ export async function handleRegistration(values: { companyName: string, name: st
 
         const { company, adminUser } = await addCompany({
             name: values.companyName,
+            adminName: values.name,
             email: values.email,
             password: password,
         });

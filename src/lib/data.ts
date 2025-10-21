@@ -101,7 +101,7 @@ export async function getCompanyByUserId(userId: string): Promise<Company | null
     }
 }
 
-export async function addCompany(companyData: Partial<Company>): Promise<{ company: Company, adminUser: User }> {
+export async function addCompany(companyData: Partial<Company> & { adminName: string, password?: string }): Promise<{ company: Company, adminUser: User }> {
     const existingUser = await getUserByEmail(companyData.email!);
     if (existingUser) {
         throw new Error('Un utente con questa email esiste già.');
@@ -126,7 +126,7 @@ export async function addCompany(companyData: Partial<Company>): Promise<{ compa
         const docRef = await addDoc(collection(db, 'companies'), companyPayload);
         
         const adminUser = await addUser({
-            name: `Admin ${companyData.name}`,
+            name: companyData.adminName,
             email: companyData.email!,
             password: companyData.password!,
             role: 'Admin',
