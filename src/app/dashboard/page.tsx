@@ -348,29 +348,34 @@ export default function DashboardPage() {
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                 {user.role === 'Operator' && (
-                   <div className="lg:col-span-12 grid gap-6 md:grid-cols-3 order-1">
-                       <KpiCard
-                            title="Interventi Aperti Urgenti"
-                            value={kpiData.urgentOpenCount || 0}
-                            icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
-                            description="Priorità Alta o Critica"
-                            onClick={() => router.push('/dashboard/interventions?status=active&priority=Alta,Critica')}
-                        />
-                         <KpiCard
-                            title="Interventi Nuovi"
-                            value={kpiData.newCount || 0}
-                            icon={<FilePlus className="h-4 w-4 text-muted-foreground" />}
-                            description="In attesa di essere presi in carico"
-                            onClick={() => router.push('/dashboard/interventions?status=Nuovo')}
-                        />
-                         <KpiCard
-                            title="Interventi In Corso"
-                            value={kpiData.inProgressCount || 0}
-                            icon={<Hourglass className="h-4 w-4 text-muted-foreground" />}
-                            description="Attualmente in lavorazione"
-                            onClick={() => router.push('/dashboard/interventions?status=In corso')}
-                        />
-                   </div>
+                  <Card className="lg:col-span-12 order-1">
+                    <CardHeader>
+                      <CardTitle className="font-headline">Riepilogo Interventi Operatore</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6 md:grid-cols-3">
+                       <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=active&priority=Alta,Critica')}>
+                            <AlertTriangle className="h-6 w-6 text-destructive" />
+                            <div>
+                                <p className="text-2xl font-bold">{kpiData.urgentOpenCount || 0}</p>
+                                <p className="text-sm text-muted-foreground">Aperti Urgenti</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=Nuovo')}>
+                            <FilePlus className="h-6 w-6 text-blue-500" />
+                            <div>
+                                <p className="text-2xl font-bold">{kpiData.newCount || 0}</p>
+                                <p className="text-sm text-muted-foreground">Nuovi</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=In corso')}>
+                            <Hourglass className="h-6 w-6 text-yellow-500" />
+                            <div>
+                                <p className="text-2xl font-bold">{kpiData.inProgressCount || 0}</p>
+                                <p className="text-sm text-muted-foreground">In Corso</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                  </Card>
                 )}
                 
                 {user.role !== 'Operator' && (
@@ -417,12 +422,11 @@ export default function DashboardPage() {
                     </div>
                 )}
                 
-                <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
-                        {user.role !== 'Client' && <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />}
-                    </div>
+                 <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
+                    <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
+                    {user.role !== 'Client' && <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />}
                 </div>
+
                 
                 <div className={cn("flex flex-col gap-6 order-3 lg:order-2", user.role === 'Operator' ? "lg:col-span-6" : "lg:col-span-6")}>
                     {(user.role === 'Client' || user.role === 'Admin' || user.role === 'Creator') && (
