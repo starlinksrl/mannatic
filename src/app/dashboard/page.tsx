@@ -488,6 +488,7 @@ export default function DashboardPage() {
           )}
         </main>
       </ScrollArea>
+       {!loading && currentCompany && <QuoteOfTheDay />}
       {interventionToEdit && user && (
         <EditInterventionForm
             intervention={interventionToEdit}
