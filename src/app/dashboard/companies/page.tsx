@@ -57,6 +57,8 @@ export default function CompaniesPage() {
             companiesFromDb = await getCompanies(user.id);
         } else {
              router.push('/dashboard');
+             setIsLoading(false);
+             return;
         }
         
         setCompanies(companiesFromDb);
@@ -204,14 +206,14 @@ export default function CompaniesPage() {
                 </CardContent>
                 <CardFooter className="text-xs text-muted-foreground justify-between items-center">
                     <span>ID: {company.id}</span>
-                     {isUserMainCreator && !company.creatorId && (
+                     {isUserMainCreator && company.creatorId !== CREATOR_USER_ID && (
                         <Button 
                             size="sm" 
                             variant="secondary" 
                             onClick={() => handleImportCompany(company.id)}
                             disabled={isImporting === company.id}
                         >
-                            {isImporting === company.id ? <Loader className="mr-2 animate-spin" /> : <Import className="mr-2" />}
+                            {isImporting === company.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Import className="mr-2 h-4 w-4" />}
                             Importa
                         </Button>
                     )}
@@ -249,4 +251,3 @@ export default function CompaniesPage() {
     </>
   );
 }
-
