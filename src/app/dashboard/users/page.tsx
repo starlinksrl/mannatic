@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -12,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { AddUserForm } from '@/components/dashboard/add-user-form';
 import { PlusCircle, Loader } from 'lucide-react';
 
-const creatorUserId = 'user-creator';
 
 export default function UsersPage() {
   const { user, currentCompany } = useUser();
@@ -24,8 +24,8 @@ export default function UsersPage() {
     if (!currentCompany) return;
     setIsLoading(true);
     const usersFromDb = await getUsers(currentCompany.id);
-    // Filter out clients and the creator user
-    setUserList(usersFromDb.filter(u => u.id !== creatorUserId && u.role !== 'Client'));
+    // Filter out clients
+    setUserList(usersFromDb.filter(u => u.role !== 'Client'));
     setIsLoading(false);
   };
 

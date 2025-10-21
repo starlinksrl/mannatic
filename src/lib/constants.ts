@@ -1,6 +1,8 @@
 
 import { User } from './types';
 
+// This constant is now deprecated and will be removed in a future version.
+// Creator users are now managed in the database.
 export const CREATOR_USER_ID = 'user-creator';
 
 export const CREATOR_USER: User = { 

@@ -226,9 +226,6 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
 export async function getUserById(id: string): Promise<User | null> {
     if (!id) return null;
-    if (id === CREATOR_USER.id) {
-        return Promise.resolve(CREATOR_USER);
-    }
     try {
         const userDocRef = doc(db, 'users', id);
         const userDoc = await getDoc(userDocRef);

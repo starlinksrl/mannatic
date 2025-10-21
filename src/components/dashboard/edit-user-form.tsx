@@ -162,7 +162,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     }
   };
   
-  const canEditRole = currentUser?.role === 'Admin' || currentUser?.role === 'Creator';
+  const canEditRole = currentUser?.role === 'Creator' || (currentUser?.role === 'Admin' && user.role !== 'Creator');
   const canEditEmail = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator');
   const canEditPassword = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator' || user?.role === 'Client');
 
@@ -310,6 +310,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      {currentUser?.role === 'Creator' && <SelectItem value="Creator">Creator</SelectItem>}
                       <SelectItem value="Admin">Admin</SelectItem>
                       <SelectItem value="Operator">Operator</SelectItem>
                       <SelectItem value="Client">Client</SelectItem>

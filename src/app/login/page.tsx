@@ -15,7 +15,6 @@ import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { getUserByEmail, consumeAutologinToken } from '@/lib/data';
 import { User } from '@/lib/types';
-import { CREATOR_USER } from '@/lib/constants';
 import { Loader } from 'lucide-react';
 
 function LoginFormComponent() {
@@ -69,23 +68,12 @@ function LoginFormComponent() {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-        let userProfile: User | null = null;
-        if (email.toLowerCase() === CREATOR_USER.email.toLowerCase()) {
-            if (password === CREATOR_USER.password) {
-                userProfile = CREATOR_USER;
-            }
-        } else {
-            const fetchedUser = await getUserByEmail(email);
-            if (fetchedUser && fetchedUser.password === password) {
-                userProfile = fetchedUser;
-            }
-        }
-
-        if (userProfile) {
-            await login(userProfile);
+        const fetchedUser = await getUserByEmail(email);
+        if (fetchedUser && fetchedUser.password === password) {
+            await login(fetchedUser);
             toast({
                 title: 'Accesso effettuato',
-                description: `Bentornato, ${userProfile.name}!`,
+                description: `Bentornato, ${fetchedUser.name}!`,
             });
             router.push('/dashboard');
         } else {

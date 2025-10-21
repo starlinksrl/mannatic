@@ -45,7 +45,7 @@ const allowedSectors: { id: AllowedSector; label: string }[] = [
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
-  role: z.enum(['Admin', 'Operator', 'Client'], { required_error: 'Il ruolo è obbligatorio.' }),
+  role: z.enum(['Admin', 'Operator', 'Client', 'Creator'], { required_error: 'Il ruolo è obbligatorio.' }),
   password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}).optional().or(z.literal('')),
   address: z.string().optional(),
   phone: z.string().optional(),
@@ -58,7 +58,7 @@ const formSchema = z.object({
 interface AddUserFormProps {
   children: React.ReactNode;
   onUserAdded: (user?: User) => void;
-  defaultRole?: 'Admin' | 'Operator' | 'Client';
+  defaultRole?: UserRole;
   isClientForm?: boolean;
 }
 
@@ -66,7 +66,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { currentCompany } = useUser();
+  const { user: currentUser, currentCompany } = useUser();
   const [showPassword, setShowPassword] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -99,7 +99,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             name: values.name,
             email: values.email,
             role: values.role as UserRole,
-            companyId: currentCompany.id,
+            companyId: values.role === 'Creator' ? 'none' : currentCompany.id,
             address: values.address,
             phone: values.phone,
             password: values.password || 'starlink74',
@@ -275,6 +275,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                        {currentUser?.role === 'Creator' && <SelectItem value="Creator">Creator</SelectItem>}
                         <SelectItem value="Admin">Admin</SelectItem>
                         <SelectItem value="Operator">Operator</SelectItem>
                         </SelectContent>

@@ -100,6 +100,7 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
     const getRoleBadge = (role: User['role']) => {
         switch (role) {
             case 'Admin': return <Badge variant="destructive">Admin</Badge>;
+            case 'Creator': return <Badge className="bg-purple-500 text-white">Creator</Badge>;
             case 'Operator': return <Badge className="bg-blue-100 text-blue-800">Operator</Badge>;
             case 'Client': return <Badge variant="secondary">Client</Badge>;
         }
@@ -198,7 +199,7 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
                                 {isSendingCredentials === user.id ? 'Invio...' : 'Invia Credenziali'}
                            </DropdownMenuItem>
                         )}
-                        {currentUser?.role === 'Admin' && user.id !== currentUser.id && (
+                        {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && user.id !== currentUser?.id && (
                             <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
