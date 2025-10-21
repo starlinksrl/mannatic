@@ -173,6 +173,12 @@ function LoginFormComponent() {
                  {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 Accedi
               </Button>
+               <div className="mt-4 text-center text-sm">
+                Non hai un account?{' '}
+                <Link href="/register" className="underline">
+                  Registra una nuova azienda
+                </Link>
+              </div>
               <div className="relative w-full">
                 <Separator />
                 <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-background px-2 text-xs text-muted-foreground">

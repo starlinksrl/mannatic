@@ -10,7 +10,7 @@ import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-notification';
-import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser } from '@/lib/data';
+import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById } from '@/lib/data';
 import { Company, User } from '@/lib/types';
 import { Resend } from 'resend';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
@@ -388,6 +388,28 @@ export async function createClientAutologinUrl(clientId: string): Promise<{ succ
     } catch (error: any) {
         console.error("Error creating autologin URL:", error);
         return { success: false, error: 'Errore durante la creazione del link di accesso.' };
+    }
+}
+
+export async function handleRegistration(values: { companyName: string, name: string, email: string, password: string }): Promise<{ success: boolean, user?: User, error?: string }> {
+    try {
+        const company = await addCompany({
+            name: values.companyName,
+            email: values.email,
+            password: values.password,
+        });
+
+        // The addCompany function already creates the admin user.
+        // We just need to fetch that user to return it for auto-login.
+        const adminUser = await getUserByEmail(values.email);
+        
+        if (!adminUser) {
+            throw new Error("Creation of admin user failed during registration.");
+        }
+
+        return { success: true, user: adminUser };
+    } catch (error: any) {
+        return { success: false, error: error.message || "Si è verificato un errore durante la registrazione." };
     }
 }
 
