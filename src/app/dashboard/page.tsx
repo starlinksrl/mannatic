@@ -410,7 +410,7 @@ export default function DashboardPage() {
                                 onClick={() => router.push('/dashboard/new-installations')}
                             />
                         )}
-                        {user.role !== 'Client' && (
+                        {user.role !== 'Client' && (user.role === 'Admin' || user.allowedSectors?.includes('appointments')) && (
                             <KpiCard
                                 title="Appuntamenti Pianificati"
                                 value={kpiData.openAppointments}
@@ -424,7 +424,7 @@ export default function DashboardPage() {
                 
                  <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
                     <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
-                    {user.role !== 'Client' && <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />}
+                    <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />
                 </div>
 
                 
