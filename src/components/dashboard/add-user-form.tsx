@@ -62,6 +62,8 @@ interface AddUserFormProps {
   isClientForm?: boolean;
 }
 
+const isMainCreator = (user: User | null) => user?.email === 'creator@mannatic.com';
+
 export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm = false }: AddUserFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,20 +106,16 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   }, [isOpen, defaultRole, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // A creator not impersonating can only create other creators
-    if (currentUser?.role === 'Creator' && !currentCompany) {
-        if (values.role !== 'Creator') {
-             toast({ variant: 'destructive', title: 'Azione non permessa', description: 'Puoi creare solo altri utenti Creator.' });
-             return;
-        }
-    }
-    
-    // An admin can't create a creator
-    if (currentUser?.role === 'Admin' && values.role === 'Creator') {
-        toast({ variant: 'destructive', title: 'Azione non permessa', description: 'Non hai i permessi per creare un utente Creator.' });
+    if (isMainCreator(currentUser) && values.role !== 'Creator') {
+        toast({ variant: 'destructive', title: 'Azione non permessa', description: 'Il Main Creator può creare solo altri utenti Creator.' });
         return;
     }
 
+    if (!isMainCreator(currentUser) && values.role === 'Creator') {
+        toast({ variant: 'destructive', title: 'Azione non permessa', description: 'Non hai i permessi per creare un utente Creator.' });
+        return;
+    }
+    
     if (!currentCompany && values.role !== 'Creator') {
         toast({ variant: 'destructive', title: 'Errore', description: 'Nessuna azienda selezionata per creare questo utente.' });
         return;
@@ -165,7 +163,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   }
   
   let title = isClientForm ? 'Crea nuovo cliente' : 'Crea nuovo utente';
-  if (currentUser?.role === 'Creator' && !currentCompany) {
+  if (isMainCreator(currentUser) && !currentCompany) {
     title = "Crea nuovo Creator";
   }
   
@@ -216,7 +214,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     );
   };
   
-  const isCreatorView = currentUser?.role === 'Creator' && !currentCompany;
+  const isMainCreatorView = isMainCreator(currentUser) && !currentCompany;
 
 
   return (
@@ -303,14 +301,14 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Ruolo</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isCreatorView}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isMainCreatorView}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Seleziona un ruolo" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                        {currentUser?.role === 'Creator' && <SelectItem value="Creator">Creator</SelectItem>}
+                        {isMainCreator(currentUser) && <SelectItem value="Creator">Creator</SelectItem>}
                         <SelectItem value="Admin">Admin</SelectItem>
                         <SelectItem value="Operator">Operator</SelectItem>
                         </SelectContent>
@@ -448,7 +446,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 </DialogClose>
                 <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                    Crea {isCreatorView ? 'creator' : isClientForm ? 'cliente' : 'utente'}
+                    Crea {isMainCreatorView ? 'creator' : isClientForm ? 'cliente' : 'utente'}
                 </Button>
             </DialogFooter>
           </form>
@@ -457,3 +455,4 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     </Dialog>
   );
 }
+

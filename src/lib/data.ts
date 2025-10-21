@@ -63,9 +63,12 @@ export async function updateDocument(collectionName: string, docId: string, data
 
 // --- COMPANY MANAGEMENT ---
 
-export async function getCompanies(): Promise<Company[]> {
+export async function getCompanies(creatorId?: string): Promise<Company[]> {
     try {
-        const q = query(collection(db, 'companies'));
+        let q = query(collection(db, 'companies'));
+        if (creatorId) {
+            q = query(q, where("creatorId", "==", creatorId));
+        }
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
     } catch (error) {
@@ -100,7 +103,7 @@ export async function getCompanyByUserId(userId: string): Promise<Company | null
     }
 }
 
-export async function addCompany(companyData: Partial<Company> & { adminName: string, email: string, password?: string }): Promise<{ company: Company, adminUser: User }> {
+export async function addCompany(companyData: Partial<Company> & { adminName: string, email: string, password?: string, creatorId?: string }): Promise<{ company: Company, adminUser: User }> {
     const existingUser = await getUserByEmail(companyData.email!);
     if (existingUser) {
         throw new Error('Un utente con questa email esiste già.');
@@ -111,6 +114,7 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
         
         const companyPayload: Omit<Company, 'id'> = {
             name: companyData.name!,
+            creatorId: companyData.creatorId,
             address: companyData.address || '',
             vatNumber: companyData.vatNumber || '',
             taxCode: companyData.taxCode || '',
@@ -1394,3 +1398,4 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+

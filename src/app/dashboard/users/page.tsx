@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { AddUserForm } from '@/components/dashboard/add-user-form';
 import { PlusCircle, Loader } from 'lucide-react';
 
+const isMainCreator = (user: User | null) => user?.email === 'creator@mannatic.com';
 
 export default function UsersPage() {
   const { user, currentCompany } = useUser();
@@ -21,15 +22,27 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = async () => {
+    if (!user) return;
     setIsLoading(true);
-    const usersFromDb = await getUsers(currentCompany?.id); // Pass optional companyId
     
-    if (user?.role === 'Creator' && !currentCompany) {
+    let usersFromDb: User[] = [];
+    if (user.role === 'Creator' && !currentCompany) {
+      // Main creator or regular creator in global view fetches ALL users to find other creators
+      usersFromDb = await getUsers();
+    } else if (currentCompany) {
+      // Admin or impersonating Creator view: see company users
+      usersFromDb = await getUsers(currentCompany.id);
+    }
+    
+    if (isMainCreator(user) && !currentCompany) {
         // Main Creator view: only see other creators
         setUserList(usersFromDb.filter(u => u.role === 'Creator'));
-    } else {
-        // Admin or Impersonating Creator view: see company users
+    } else if (currentCompany) {
+        // Admin or Impersonating Creator view: see company users (not clients)
         setUserList(usersFromDb.filter(u => u.role !== 'Client'));
+    } else {
+        // Regular creator in global view or other edge cases: show nothing
+        setUserList([]);
     }
     
     setIsLoading(false);
@@ -55,27 +68,31 @@ export default function UsersPage() {
   }
   
   const getButtonLabel = () => {
-    if (user?.role === 'Creator' && !currentCompany) {
+    if (isMainCreator(user) && !currentCompany) {
         return "Crea Creator";
     }
     return "Crea Utente";
   }
 
+  const canCreateUser = (isMainCreator(user) && !currentCompany) || (user.role === 'Admin' && currentCompany);
+
   return (
     <>
       <Header title="Utenti" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-        <div className="flex justify-end mb-4">
-            <AddUserForm 
-                onUserAdded={fetchData} 
-                defaultRole={user?.role === 'Creator' && !currentCompany ? 'Creator' : 'Operator'}
-            >
-              <Button>
-                <PlusCircle className="mr-2" />
-                {getButtonLabel()}
-              </Button>
-            </AddUserForm>
-        </div>
+        {canCreateUser && (
+            <div className="flex justify-end mb-4">
+                <AddUserForm 
+                    onUserAdded={fetchData} 
+                    defaultRole={isMainCreator(user) && !currentCompany ? 'Creator' : 'Operator'}
+                >
+                <Button>
+                    <PlusCircle className="mr-2" />
+                    {getButtonLabel()}
+                </Button>
+                </AddUserForm>
+            </div>
+        )}
         {isLoading ? (
             <div className="flex items-center justify-center pt-20">
                 <Loader className="h-8 w-8 animate-spin" />
@@ -87,3 +104,4 @@ export default function UsersPage() {
     </>
   );
 }
+

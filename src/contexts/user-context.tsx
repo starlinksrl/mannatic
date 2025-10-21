@@ -1,10 +1,12 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, getUserByEmail, getUserById, getCompanies, Company, getUsers, getCompanyById } from '@/lib/data';
-import { CREATOR_USER } from '@/lib/constants';
+
+const isMainCreator = (user: User | null) => user?.email === 'creator@mannatic.com';
 
 interface UserContextType {
   user: User | null;
@@ -65,22 +67,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     let companyIdToSet: string | null = null;
 
     if (freshUser.role === 'Creator') {
-        const allCompanies = await getCompanies();
-        setCompanies(allCompanies);
+        const creatorCompanies = await getCompanies(isMainCreator(freshUser) ? undefined : freshUser.id);
+        setCompanies(creatorCompanies);
         
-        // On initialization, try to load the stored company for the creator
         if (isInitializing) {
             const savedCompanyId = localStorage.getItem('companyId');
             if (savedCompanyId) {
-                companyToSet = allCompanies.find(c => c.id === savedCompanyId) || null;
+                companyToSet = creatorCompanies.find(c => c.id === savedCompanyId) || null;
                 companyIdToSet = companyToSet ? companyToSet.id : null;
             }
         }
     } else {
-        // For non-creators, always fetch their assigned company
         companyToSet = await getCompanyById(freshUser.companyId);
         if (!companyToSet) {
-            // This is a critical error, the user has no valid company
             logout();
             setIsLoading(false);
             return;
@@ -152,3 +151,4 @@ export const useUser = () => {
   }
   return context;
 };
+

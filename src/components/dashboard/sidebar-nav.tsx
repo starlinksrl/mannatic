@@ -27,19 +27,22 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '../icons/logo';
 import Image from 'next/image';
-import { AllowedSector } from '@/lib/types';
+import { AllowedSector, User as UserType } from '@/lib/types';
 import { Separator } from '../ui/separator';
 import { changelog } from '@/lib/changelog';
 import { Badge } from '../ui/badge';
+
+const isMainCreator = (user: UserType | null) => user?.email === 'creator@mannatic.com';
 
 const navItems: {
     href: string;
     label: string;
     icon: React.ElementType;
     roles: ('Creator' | 'Admin' | 'Operator' | 'Client')[];
+    creatorType?: 'main' | 'regular'; // Specify which type of creator can see it
     sector?: AllowedSector;
 }[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client', 'Creator'], creatorType: 'regular' },
   { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'], sector: 'interventions' },
   { href: '/dashboard/new-installations', label: 'Nuovi Impianti', icon: HardHat, roles: ['Admin', 'Operator'], sector: 'interventions' },
   { href: '/dashboard/surveys', label: 'Appuntamenti', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'surveys' },
@@ -48,11 +51,11 @@ const navItems: {
   { href: '/dashboard/map', label: 'Mappa', icon: Map, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin', 'Creator'] },
-  { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin'] },
-  { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
-  { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'] },
-  { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'] },
-  { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'] },
+  { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin', 'Creator'], creatorType: 'regular' },
+  { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'], creatorType: 'regular' },
+  { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'], creatorType: 'main' },
+  { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'], creatorType: 'main' },
+  { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'], creatorType: 'main' },
   { href: '/dashboard/manual', label: 'Manuale', icon: HelpCircle, roles: ['Operator', 'Client'] },
   { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
   { href: '/dashboard/changelog', label: 'Changelog', icon: GitMerge, roles: ['Operator', 'Client', 'Creator'] },
@@ -69,23 +72,38 @@ export function SidebarNav() {
         return false;
     }
     
-    // Special rules for Creator
     if (user.role === 'Creator') {
-        const allowedCreatorRoutes = ['/dashboard/users', '/dashboard/creator-settings'];
-        if (currentCompany) { // A creator with a selected company is like an admin
-            const disallowedRoutesForImpersonation = ['/dashboard/companies', '/dashboard/explorer', '/dashboard/info', '/dashboard/creator-settings'];
-            return !disallowedRoutesForImpersonation.includes(item.href);
+        const isMain = isMainCreator(user);
+
+        // If a creator type is specified, check if the user matches
+        if (item.creatorType) {
+            if (isMain && item.creatorType !== 'main') return false;
+            if (!isMain && item.creatorType !== 'regular') return false;
         }
-        return allowedCreatorRoutes.includes(item.href);
+
+        // Logic for impersonation vs global view
+        if (currentCompany) { // Impersonating a company
+            const disallowedRoutesForImpersonation = ['/dashboard/companies', '/dashboard/explorer', '/dashboard/info', '/dashboard/creator-settings'];
+            if(disallowedRoutesForImpersonation.includes(item.href)) return false;
+            // The item must not be 'main' creator specific when impersonating
+            return item.creatorType !== 'main';
+        } else { // Global view
+             if (isMain) {
+                // Main creator in global view only sees main creator items
+                return item.creatorType === 'main';
+             } else {
+                 // Regular creator in global view sees their company list
+                 return item.href === '/dashboard/companies';
+             }
+        }
     }
 
     if (user.role === 'Operator') {
-        // If it's a sector-specific item, check permissions
         if (item.sector) {
             return user.allowedSectors?.includes(item.sector) ?? true;
         }
     }
-    // For non-operators or non-sector items, role-based access is enough
+    
     return true;
   }
   
@@ -141,3 +159,4 @@ export function SidebarNav() {
     </div>
   );
 }
+

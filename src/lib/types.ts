@@ -24,6 +24,7 @@ export interface AppConfiguration {
 export interface Company {
   id: string;
   name: string;
+  creatorId?: string; // ID of the Creator who created this company
   logoUrl?: string;
   address?: string;
   vatNumber?: string;

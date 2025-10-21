@@ -47,14 +47,20 @@ export default function CompaniesPage() {
     }
     
     async function fetchCompanies() {
+        if (!user) return;
         setIsLoading(true);
-        const companiesFromDb = await getCompanies();
+        // Only fetch companies for the current creator
+        const companiesFromDb = await getCompanies(user.id);
         setCompanies(companiesFromDb);
         setIsLoading(false);
     }
     
-    if (user) {
+    if (user && user.email !== 'creator@mannatic.com') {
         fetchCompanies();
+    } else {
+        setIsLoading(false);
+        // Main creator should not see this page, but as a fallback, show empty.
+        setCompanies([]);
     }
   }, [user, router, setCompanies]);
   
@@ -87,6 +93,7 @@ export default function CompaniesPage() {
 
 
   const handleFormSubmit = async (values: Partial<Company>) => {
+    if (!user) return false;
     try {
       if (editingCompany) {
         const updated = await updateCompany(editingCompany.id, values);
@@ -95,9 +102,10 @@ export default function CompaniesPage() {
           toast({ title: 'Azienda aggiornata', description: 'I dati sono stati salvati.' });
         }
       } else {
-        const newCompany = await addCompany(values as Company);
-        setCompanies([...companies, newCompany]);
-        toast({ title: 'Azienda creata', description: `L'azienda ${newCompany.name} è stata creata.` });
+        // Explicitly set creatorId when a regular creator adds a company
+        const newCompany = await addCompany({ ...values as Company, creatorId: user.id });
+        setCompanies([...companies, newCompany.company]);
+        toast({ title: 'Azienda creata', description: `L'azienda ${newCompany.company.name} è stata creata.` });
       }
       return true;
     } catch (error: any) {
@@ -126,7 +134,9 @@ export default function CompaniesPage() {
     );
   }
   
-  if (user.role !== 'Creator') {
+  if (user.role !== 'Creator' || user.email === 'creator@mannatic.com') {
+    // Redirect main creator or non-creators
+    router.push('/dashboard');
     return null;
   }
 
@@ -211,3 +221,4 @@ export default function CompaniesPage() {
     
 
     
+
