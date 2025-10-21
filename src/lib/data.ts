@@ -66,29 +66,10 @@ export async function updateDocument(collectionName: string, docId: string, data
 
 export async function getCompanies(creatorId?: string, fetchAll: boolean = false): Promise<Company[]> {
     try {
-        const mainCreatorId = CREATOR_USER_ID;
-        
-        if (creatorId === mainCreatorId) {
-            // Fetch companies explicitly assigned to the main creator
-            const assignedQuery = query(collection(db, 'companies'), where("creatorId", "==", mainCreatorId));
-            
-            // Fetch "orphan" companies (creatorId is null or missing)
-            const orphanQuery1 = query(collection(db, 'companies'), where("creatorId", "==", null));
-            const orphanQuery2 = query(collection(db, 'companies'), where("creatorId", "==", ''));
-
-            const [assignedSnapshot, orphan1Snapshot, orphan2Snapshot] = await Promise.all([
-                getDocs(assignedQuery),
-                getDocs(orphanQuery1),
-                getDocs(orphanQuery2)
-            ]);
-
-            const allCompaniesMap = new Map<string, Company>();
-
-            assignedSnapshot.docs.forEach(doc => allCompaniesMap.set(doc.id, { id: doc.id, ...doc.data() } as Company));
-            orphan1Snapshot.docs.forEach(doc => allCompaniesMap.set(doc.id, { id: doc.id, ...doc.data() } as Company));
-            orphan2Snapshot.docs.forEach(doc => allCompaniesMap.set(doc.id, { id: doc.id, ...doc.data() } as Company));
-
-            return Array.from(allCompaniesMap.values());
+        // If fetchAll is true (specifically for Main Creator), get all companies regardless of creatorId.
+        if (fetchAll) {
+            const snapshot = await getDocs(collection(db, 'companies'));
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
         }
 
         if (creatorId) {
@@ -97,6 +78,7 @@ export async function getCompanies(creatorId?: string, fetchAll: boolean = false
              return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
         }
         
+        // If no creatorId and fetchAll is false, return empty array.
         return [];
     } catch (error) {
         console.error("Error fetching companies:", error);
@@ -318,10 +300,6 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>> & { cur
         
         // Add creator specific fields
         if (newUserPayload.role === 'Creator') {
-            newUserPayload.vatNumber = userData.vatNumber;
-            newUserPayload.taxCode = userData.taxCode;
-            newUserPayload.uniqueCode = userData.uniqueCode;
-            newUserPayload.logoUrl = userData.logoUrl;
         }
 
         if (newUserPayload.role === 'Operator') {
@@ -1463,5 +1441,6 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
 
 
