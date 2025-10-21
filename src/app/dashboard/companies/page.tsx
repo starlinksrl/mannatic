@@ -28,6 +28,7 @@ import {
 import { changelog } from '@/lib/changelog';
 import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
 
+const isMainCreator = (user: Company | null) => user?.email === 'creator@mannatic.com';
 
 export default function CompaniesPage() {
   const { user, switchCompany, companies, setCompanies } = useUser();
@@ -41,28 +42,26 @@ export default function CompaniesPage() {
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
 
   useEffect(() => {
-    if (user && (user.role !== 'Creator' || user.email === 'creator@mannatic.com')) {
+    if (user && user.role !== 'Creator') {
       router.push('/dashboard');
-      return;
     }
-    
+  }, [user, router]);
+  
+  useEffect(() => {
     async function fetchCompanies() {
         if (!user) return;
         setIsLoading(true);
-        // Only fetch companies for the current creator
-        const companiesFromDb = await getCompanies(user.id);
+        const companiesFromDb = await getCompanies(isMainCreator(user) ? undefined : user.id);
         setCompanies(companiesFromDb);
         setIsLoading(false);
     }
     
-    if (user && user.email !== 'creator@mannatic.com') {
+    if (user) {
         fetchCompanies();
     } else {
         setIsLoading(false);
-        // Main creator should not see this page, but as a fallback, show empty.
-        setCompanies([]);
     }
-  }, [user, router, setCompanies]);
+  }, [user, setCompanies]);
   
   const handleAddCompany = () => {
     setEditingCompany(null);
@@ -103,7 +102,12 @@ export default function CompaniesPage() {
         }
       } else {
         // Explicitly set creatorId when a regular creator adds a company
-        const newCompany = await addCompany({ ...values as Company, creatorId: user.id });
+        const creatorId = isMainCreator(user) ? undefined : user.id;
+        const newCompanyData = { ...values as Company };
+        if (creatorId) {
+            newCompanyData.creatorId = creatorId;
+        }
+        const newCompany = await addCompany(newCompanyData);
         setCompanies([...companies, newCompany.company]);
         toast({ title: 'Azienda creata', description: `L'azienda ${newCompany.company.name} è stata creata.` });
       }
@@ -134,8 +138,7 @@ export default function CompaniesPage() {
     );
   }
   
-  if (user.role !== 'Creator' || user.email === 'creator@mannatic.com') {
-    // Redirect main creator or non-creators
+  if (user.role !== 'Creator') {
     return (
         <div className="flex items-center justify-center flex-1">
           <Loader className="h-8 w-8 animate-spin" />
@@ -220,3 +223,4 @@ export default function CompaniesPage() {
     </>
   );
 }
+

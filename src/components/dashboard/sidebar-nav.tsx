@@ -39,7 +39,7 @@ const navItems: {
     label: string;
     icon: React.ElementType;
     roles: ('Creator' | 'Admin' | 'Operator' | 'Client')[];
-    creatorType?: 'main' | 'regular'; // Specify which type of creator can see it
+    creatorType?: 'main' | 'regular' | 'all';
     sector?: AllowedSector;
 }[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client', 'Creator'], creatorType: 'regular' },
@@ -52,7 +52,7 @@ const navItems: {
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin', 'Creator'] },
   { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin', 'Creator'], creatorType: 'regular' },
-  { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'], creatorType: 'regular' },
+  { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'], creatorType: 'all' },
   { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'], creatorType: 'main' },
   { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'], creatorType: 'main' },
   { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'], creatorType: 'main' },
@@ -75,27 +75,29 @@ export function SidebarNav() {
     if (user.role === 'Creator') {
         const isMain = isMainCreator(user);
 
-        // If a creator type is specified, check if the user matches
-        if (item.creatorType) {
-            if (isMain && item.creatorType !== 'main') return false;
-            if (!isMain && item.creatorType !== 'regular') return false;
+        // Global view (no company selected)
+        if (!currentCompany) {
+            if (isMain) {
+                // Main creator sees user management, their companies, and main settings
+                return item.href === '/dashboard/users' || item.href === '/dashboard/companies' || item.creatorType === 'main';
+            } else {
+                // Regular creator only sees company management
+                return item.href === '/dashboard/companies';
+            }
         }
 
-        // Logic for impersonation vs global view
-        if (currentCompany) { // Impersonating a company
-            const disallowedRoutesForImpersonation = ['/dashboard/companies', '/dashboard/explorer', '/dashboard/info', '/dashboard/creator-settings'];
-            if(disallowedRoutesForImpersonation.includes(item.href)) return false;
-            // The item must not be 'main' creator specific when impersonating
-            return item.creatorType !== 'main';
-        } else { // Global view
-             if (isMain) {
-                // Main creator in global view only sees main creator items
-                return item.creatorType === 'main';
-             } else {
-                 // Regular creator in global view sees their company list
-                 return item.href === '/dashboard/companies';
-             }
+        // Impersonation view (company selected)
+        // Disallow creator-specific routes when impersonating
+        const disallowedForImpersonation = ['/dashboard/companies', '/dashboard/explorer', '/dashboard/info', '/dashboard/creator-settings'];
+        if (disallowedForImpersonation.includes(item.href)) {
+            return false;
         }
+
+        // If it's a 'main' specific route, hide it.
+        if (item.creatorType === 'main') return false;
+        
+        // Otherwise, show admin-level routes
+        return item.roles.includes('Admin');
     }
 
     if (user.role === 'Operator') {

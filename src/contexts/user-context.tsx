@@ -65,15 +65,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     let companyToSet: Company | null = null;
     let companyIdToSet: string | null = null;
+    let allCompanies: Company[] = [];
 
     if (freshUser.role === 'Creator') {
-        const creatorCompanies = await getCompanies(isMainCreator(freshUser) ? undefined : freshUser.id);
-        setCompanies(creatorCompanies);
+        allCompanies = await getCompanies(isMainCreator(freshUser) ? undefined : freshUser.id);
+        setCompanies(allCompanies);
         
         if (isInitializing) {
             const savedCompanyId = localStorage.getItem('companyId');
             if (savedCompanyId) {
-                companyToSet = creatorCompanies.find(c => c.id === savedCompanyId) || null;
+                companyToSet = allCompanies.find(c => c.id === savedCompanyId) || null;
                 companyIdToSet = companyToSet ? companyToSet.id : null;
             }
         }
