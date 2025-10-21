@@ -49,12 +49,8 @@ const formSchema = z.object({
   role: z.enum(['Admin', 'Operator', 'Client', 'Creator'], { required_error: 'Il ruolo è obbligatorio.' }),
   password: z.string().min(8, { message: "La nuova password deve contenere almeno 8 caratteri." }).optional().or(z.literal('')),
   avatarUrl: z.string().optional(),
-  logoUrl: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
-  vatNumber: z.string().optional(),
-  taxCode: z.string().optional(),
-  uniqueCode: z.string().optional(),
   allowedSectors: z.array(z.string()).optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
@@ -72,7 +68,6 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const { toast } = useToast();
   const { user: currentUser } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -85,10 +80,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   });
   
   const avatarUrl = form.watch('avatarUrl');
-  const logoUrl = form.watch('logoUrl');
   const role = form.watch('role');
-  const latitude = form.watch('latitude');
-  const longitude = form.watch('longitude');
   
   const isEditingOwnProfile = currentUser?.id === user?.id;
 
@@ -100,12 +92,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             role: user.role,
             password: '',
             avatarUrl: user.avatarUrl,
-            logoUrl: user.logoUrl || '',
             address: user.address || '',
             phone: user.phone || '',
-            vatNumber: user.vatNumber || '',
-            taxCode: user.taxCode || '',
-            uniqueCode: user.uniqueCode || '',
             allowedSectors: user.allowedSectors || [],
             latitude: user.latitude || null,
             longitude: user.longitude || null,
@@ -124,12 +112,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             email: values.email,
             role: values.role as UserRole,
             avatarUrl: values.avatarUrl,
-            logoUrl: values.logoUrl,
             address: values.address,
             phone: values.phone,
-            vatNumber: values.vatNumber,
-            taxCode: values.taxCode,
-            uniqueCode: values.uniqueCode,
             allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined,
             latitude: values.latitude,
             longitude: values.longitude,
@@ -164,12 +148,8 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   }
-  
-  const handleLogoClick = () => {
-    logoInputRef.current?.click();
-  }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, field: 'avatarUrl' | 'logoUrl') => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, field: 'avatarUrl') => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -259,26 +239,6 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                         />
                     </FormControl>
                 </div>
-                {role === 'Creator' && (
-                    <div className="relative">
-                        <Avatar className="h-24 w-24 mb-4 cursor-pointer border-dashed border-2" onClick={handleLogoClick}>
-                            <AvatarImage src={logoUrl} alt="Logo" />
-                            <AvatarFallback>Logo</AvatarFallback>
-                        </Avatar>
-                        <Button type="button" variant="outline" size="icon" className="absolute bottom-4 right-0 rounded-full h-8 w-8" onClick={handleLogoClick}>
-                            <Pencil className="h-4 w-4"/>
-                        </Button>
-                        <FormControl>
-                            <Input 
-                                type="file" 
-                                className="hidden" 
-                                ref={logoInputRef} 
-                                onChange={(e) => handleFileChange(e, 'logoUrl')}
-                                accept="image/*"
-                            />
-                        </FormControl>
-                    </div>
-                )}
             </div>
             <FormField
               control={form.control}
@@ -341,7 +301,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ruolo</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={!canEditRole}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={!canEditRole || user.role === 'Creator'}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleziona un ruolo" />
@@ -407,13 +367,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                     )}
                     />
             )}
-             {role === 'Creator' && (
-                <>
-                    <FormField control={form.control} name="vatNumber" render={({ field }) => (<FormItem><FormLabel>Partita IVA</FormLabel><FormControl><Input placeholder="IT..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="taxCode" render={({ field }) => (<FormItem><FormLabel>Codice Fiscale</FormLabel><FormControl><Input placeholder="Codice fiscale..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="uniqueCode" render={({ field }) => (<FormItem><FormLabel>Codice Univoco (SDI)</FormLabel><FormControl><Input placeholder="Codice SDI" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                </>
-            )}
+            
             <FormField
               control={form.control}
               name="phone"
@@ -530,8 +484,3 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
-
-
-
-
-    

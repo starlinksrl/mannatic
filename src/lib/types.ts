@@ -49,13 +49,9 @@ export interface User {
   email: string;
   role: UserRole;
   avatarUrl: string;
-  logoUrl?: string;
   companyId: string;
   address?: string | null;
   phone?: string | null;
-  vatNumber?: string;
-  taxCode?: string;
-  uniqueCode?: string;
   password?: string;
   allowedSectors?: AllowedSector[];
   latitude?: number | null;
