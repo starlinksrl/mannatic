@@ -42,7 +42,7 @@ const navItems: {
     creatorType?: 'main' | 'regular' | 'all';
     sector?: AllowedSector;
 }[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client', 'Creator'], creatorType: 'regular' },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
   { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'], sector: 'interventions' },
   { href: '/dashboard/new-installations', label: 'Nuovi Impianti', icon: HardHat, roles: ['Admin', 'Operator'], sector: 'interventions' },
   { href: '/dashboard/surveys', label: 'Appuntamenti', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'surveys' },
@@ -51,8 +51,8 @@ const navItems: {
   { href: '/dashboard/map', label: 'Mappa', icon: Map, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin', 'Creator'] },
-  { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin', 'Creator'], creatorType: 'regular' },
-  { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'], creatorType: 'all' },
+  { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin'] },
+  { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
   { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'], creatorType: 'main' },
   { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'], creatorType: 'main' },
   { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'], creatorType: 'main' },
@@ -68,36 +68,17 @@ export function SidebarNav() {
   if (!user) return null;
   
   const userCanSeeItem = (item: typeof navItems[0]) => {
+    if (user.role === 'Creator') {
+      const isMain = isMainCreator(user);
+      if (isMain) {
+        return item.roles.includes('Creator');
+      }
+      // Regular creator
+      return item.roles.includes('Creator') && item.creatorType !== 'main';
+    }
+
     if (!item.roles.includes(user.role)) {
         return false;
-    }
-    
-    if (user.role === 'Creator') {
-        const isMain = isMainCreator(user);
-
-        // Global view (no company selected)
-        if (!currentCompany) {
-            if (isMain) {
-                // Main creator sees user management, their companies, and main settings
-                return item.href === '/dashboard/users' || item.href === '/dashboard/companies' || item.creatorType === 'main';
-            } else {
-                // Regular creator only sees company management
-                return item.href === '/dashboard/companies';
-            }
-        }
-
-        // Impersonation view (company selected)
-        // Disallow creator-specific routes when impersonating
-        const disallowedForImpersonation = ['/dashboard/companies', '/dashboard/explorer', '/dashboard/info', '/dashboard/creator-settings'];
-        if (disallowedForImpersonation.includes(item.href)) {
-            return false;
-        }
-
-        // If it's a 'main' specific route, hide it.
-        if (item.creatorType === 'main') return false;
-        
-        // Otherwise, show admin-level routes
-        return item.roles.includes('Admin');
     }
 
     if (user.role === 'Operator') {
@@ -114,7 +95,7 @@ export function SidebarNav() {
   return (
     <div className="flex h-full flex-col">
       <div className="h-16 flex items-center px-6 border-b">
-        {currentCompany?.logoUrl ? (
+        {currentCompany?.logoUrl && user.role !== 'Creator' ? (
           <div className="flex items-center gap-2">
             <Image src={currentCompany.logoUrl} alt={currentCompany.name} width={32} height={32} className="rounded-md object-contain" />
             <span className="font-headline text-lg font-bold text-foreground">{currentCompany.name}</span>
@@ -161,4 +142,3 @@ export function SidebarNav() {
     </div>
   );
 }
-

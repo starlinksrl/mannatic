@@ -37,8 +37,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             const savedUserJson = localStorage.getItem('user');
             if (savedUserJson) {
                 const savedUser = JSON.parse(savedUserJson);
-                // Directly log in the user, which will also set the company context
-                await login(savedUser, true);
+                await login(savedUser);
             }
         } catch (error) {
             console.error("Failed to initialize session:", error);
@@ -50,7 +49,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     initializeSession();
   }, []);
   
-  const login = async (loggedInUser: User, isInitializing: boolean = false) => {
+  const login = async (loggedInUser: User) => {
     setIsLoading(true);
 
     const freshUser = await getUserById(loggedInUser.id);
@@ -63,36 +62,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setUser(freshUser);
     localStorage.setItem('user', JSON.stringify(freshUser));
 
-    let companyToSet: Company | null = null;
-    let companyIdToSet: string | null = null;
-    let allCompanies: Company[] = [];
-
     if (freshUser.role === 'Creator') {
-        allCompanies = await getCompanies(isMainCreator(freshUser) ? undefined : freshUser.id);
+        const creatorId = isMainCreator(freshUser) ? undefined : freshUser.id;
+        const allCompanies = await getCompanies(creatorId);
         setCompanies(allCompanies);
-        
-        if (isInitializing) {
-            const savedCompanyId = localStorage.getItem('companyId');
-            if (savedCompanyId) {
-                companyToSet = allCompanies.find(c => c.id === savedCompanyId) || null;
-                companyIdToSet = companyToSet ? companyToSet.id : null;
-            }
-        }
+        setCurrentCompany(null);
+        localStorage.removeItem('companyId');
     } else {
-        companyToSet = await getCompanyById(freshUser.companyId);
+        const companyToSet = await getCompanyById(freshUser.companyId);
         if (!companyToSet) {
             logout();
             setIsLoading(false);
             return;
         }
-        companyIdToSet = companyToSet.id;
-    }
-
-    setCurrentCompany(companyToSet);
-    if (companyIdToSet) {
-        localStorage.setItem('companyId', companyIdToSet);
-    } else {
-        localStorage.removeItem('companyId');
+        setCurrentCompany(companyToSet);
+        localStorage.setItem('companyId', companyToSet.id);
     }
     
     setIsLoading(false);
@@ -107,22 +91,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const switchCompany = async (companyId: string | null) => {
-      if (!user || user.role !== 'Creator') {
-          return;
-      }
-      
-      if (companyId === null) {
-          setCurrentCompany(null);
-          localStorage.removeItem('companyId');
-          return;
-      }
-      
-      const company = await getCompanyById(companyId);
-
-      if (company) {
-          setCurrentCompany(company);
-          localStorage.setItem('companyId', companyId);
-      }
+    // This function is now disabled for creators as they no longer impersonate.
+    // Kept for potential future use or for other roles.
+    return;
   }
 
   const value = { 
@@ -152,4 +123,3 @@ export const useUser = () => {
   }
   return context;
 };
-

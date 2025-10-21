@@ -31,10 +31,6 @@ export function UserSwitcher() {
     router.push('/login');
   }
 
-  const handleSwitchCompany = (companyId: string) => {
-    switchCompany(companyId);
-  }
-
   const handleProfileUpdated = (updatedUser: User) => {
     // The user context will refresh itself on the next load,
     // so we just need to notify the user.
@@ -49,33 +45,13 @@ export function UserSwitcher() {
   return (
     <>
       <div className="flex items-center gap-4">
-        {user.role === 'Creator' ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex gap-2">
-                <Building />
-                <span className="hidden lg:inline">{currentCompany?.name || 'Seleziona Azienda'}</span>
-                <ChevronsUpDown className="h-4 w-4 text-muted-foreground ml-auto" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Cambia Azienda</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {companies.map(company => (
-                <DropdownMenuItem key={company.id} onSelect={() => handleSwitchCompany(company.id)}>
-                  {company.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          currentCompany && (
+        {(user.role !== 'Creator' && currentCompany) && (
               <div className="hidden md:flex items-center gap-2">
                   <Building className="h-5 w-5 text-muted-foreground" />
                   <span className="font-medium hidden lg:inline">{currentCompany.name}</span>
               </div>
           )
-        )}
+        }
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

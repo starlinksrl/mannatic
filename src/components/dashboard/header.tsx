@@ -25,11 +25,6 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
   const { user, currentCompany, switchCompany } = useUser();
   const router = useRouter();
 
-  const handleReturnToCompanies = () => {
-    switchCompany(null);
-    router.push('/dashboard/companies');
-  };
-
   return (
     <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 sticky top-0 z-30">
       <Sheet>
@@ -47,13 +42,7 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
         </SheetContent>
       </Sheet>
       <div className="flex items-center gap-4 flex-1">
-        {user?.role === 'Creator' && currentCompany && (
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleReturnToCompanies}>
-            <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Torna alle aziende</span>
-          </Button>
-        )}
-         {currentCompany && (
+         {currentCompany && user?.role !== 'Creator' && (
           <div className="flex items-center gap-2">
             {currentCompany.logoUrl ? (
                 <Image src={currentCompany.logoUrl} alt={currentCompany.name} width={28} height={28} className="rounded-md object-contain" />
