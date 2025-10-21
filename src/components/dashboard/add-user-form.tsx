@@ -49,6 +49,9 @@ const formSchema = z.object({
   password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}).optional().or(z.literal('')),
   address: z.string().optional(),
   phone: z.string().optional(),
+  vatNumber: z.string().optional(),
+  taxCode: z.string().optional(),
+  uniqueCode: z.string().optional(),
   allowedSectors: z.array(z.string()).optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
@@ -83,6 +86,9 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       password: '',
       address: '',
       phone: '',
+      vatNumber: '',
+      taxCode: '',
+      uniqueCode: '',
       role: defaultRole,
       allowedSectors: ['interventions', 'surveys', 'maintenance'], // Default to all for new operators
       clientNotes: '',
@@ -97,6 +103,9 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
           password: '',
           address: '',
           phone: '',
+          vatNumber: '',
+          taxCode: '',
+          uniqueCode: '',
           role: defaultRole,
           allowedSectors: ['interventions', 'surveys', 'maintenance'],
           clientNotes: '',
@@ -131,6 +140,9 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             address: values.address,
             phone: values.phone,
             password: values.password || 'starlink74',
+            vatNumber: values.vatNumber,
+            taxCode: values.taxCode,
+            uniqueCode: values.uniqueCode,
             allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined,
             latitude: values.latitude,
             longitude: values.longitude,
@@ -163,7 +175,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   }
   
   let title = isClientForm ? 'Crea nuovo cliente' : 'Crea nuovo utente';
-  if (isMainCreator(currentUser) && !currentCompany) {
+  if (isMainCreator(currentUser)) {
     title = "Crea nuovo Creator";
   }
   
@@ -214,7 +226,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     );
   };
   
-  const isMainCreatorView = isMainCreator(currentUser) && !currentCompany;
+  const isMainCreatorView = isMainCreator(currentUser);
 
 
   return (
@@ -369,6 +381,14 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                     />
             )}
             
+            {role === 'Creator' && (
+                <>
+                    <FormField control={form.control} name="vatNumber" render={({ field }) => (<FormItem><FormLabel>Partita IVA</FormLabel><FormControl><Input placeholder="IT..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="taxCode" render={({ field }) => (<FormItem><FormLabel>Codice Fiscale</FormLabel><FormControl><Input placeholder="Codice fiscale..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="uniqueCode" render={({ field }) => (<FormItem><FormLabel>Codice Univoco (SDI)</FormLabel><FormControl><Input placeholder="Codice SDI" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                </>
+            )}
+            
             {role !== 'Creator' && <>
                 <FormField
                   control={form.control}
@@ -455,4 +475,3 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     </Dialog>
   );
 }
-
