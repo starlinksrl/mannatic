@@ -63,13 +63,13 @@ export async function updateDocument(collectionName: string, docId: string, data
 
 // --- COMPANY MANAGEMENT ---
 
-export async function getCompanies(creatorId?: string): Promise<Company[]> {
+export async function getCompanies(creatorId?: string | null): Promise<Company[]> {
     try {
         let q = query(collection(db, 'companies'));
         // If creatorId is provided, filter by it.
-        // If creatorId is undefined (which can happen for the main creator), this filter is skipped, and all companies are fetched.
-        if (creatorId) {
-            q = query(q, where("creatorId", "==", creatorId));
+        // If creatorId is null (for main creator), filter for companies without a creatorId or with creatorId=null
+        if (creatorId !== undefined) {
+             q = query(q, where("creatorId", "==", creatorId));
         }
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
@@ -248,7 +248,7 @@ export async function getUserById(id: string): Promise<User | null> {
     }
 }
 
-export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
+export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>> & { currentUser?: User }): Promise<User> {
     if (!userData.email) {
         throw new Error("Email is required to add a user.");
     }
@@ -1410,4 +1410,5 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
 

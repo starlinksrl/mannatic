@@ -25,13 +25,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { changelog } from '@/lib/changelog';
 import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
 
 const isMainCreator = (user: Company | null) => user?.email === 'creator@mannatic.com';
 
 export default function CompaniesPage() {
-  const { user, switchCompany, companies, setCompanies } = useUser();
+  const { user, companies, setCompanies } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -40,18 +39,23 @@ export default function CompaniesPage() {
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
-
+  
   useEffect(() => {
     if (user && user.role !== 'Creator') {
-      router.push('/dashboard');
+        router.push('/dashboard');
     }
   }, [user, router]);
   
   useEffect(() => {
     async function fetchCompanies() {
-        if (!user) return;
+        if (!user || user.role !== 'Creator') {
+          setIsLoading(false);
+          return;
+        };
         setIsLoading(true);
-        const companiesFromDb = await getCompanies(isMainCreator(user) ? undefined : user.id);
+        // A regular creator sees only their own companies. The main creator sees all companies without a creatorId (their own).
+        const creatorId = isMainCreator(user) ? null : user.id;
+        const companiesFromDb = await getCompanies(creatorId);
         setCompanies(companiesFromDb);
         setIsLoading(false);
     }
@@ -101,12 +105,9 @@ export default function CompaniesPage() {
           toast({ title: 'Azienda aggiornata', description: 'I dati sono stati salvati.' });
         }
       } else {
-        // Explicitly set creatorId when a regular creator adds a company
-        const creatorId = isMainCreator(user) ? undefined : user.id;
-        const newCompanyData = { ...values as Company };
-        if (creatorId) {
-            newCompanyData.creatorId = creatorId;
-        }
+        const creatorId = user.id;
+        const newCompanyData = { ...values, creatorId } as Company;
+        
         const newCompany = await addCompany(newCompanyData);
         setCompanies([...companies, newCompany.company]);
         toast({ title: 'Azienda creata', description: `L'azienda ${newCompany.company.name} è stata creata.` });
@@ -120,11 +121,6 @@ export default function CompaniesPage() {
         });
         return false;
     }
-  }
-  
-  const handleCardClick = (companyId: string) => {
-    switchCompany(companyId);
-    router.push('/dashboard');
   }
 
   if (isLoading || !user) {
@@ -141,7 +137,7 @@ export default function CompaniesPage() {
   if (user.role !== 'Creator') {
     return (
         <div className="flex items-center justify-center flex-1">
-          <Loader className="h-8 w-8 animate-spin" />
+          <p>Accesso non autorizzato.</p>
         </div>
     );
   }
@@ -152,7 +148,6 @@ export default function CompaniesPage() {
       <ScrollArea className="flex-1">
         <main className="p-4 md:p-6 lg:p-8 space-y-8">
 
-          {/* Company Cards */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <Card className="flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all" onClick={handleAddCompany}>
               <CardContent className="p-6 text-center">
@@ -164,7 +159,7 @@ export default function CompaniesPage() {
               <Card key={company.id} className="flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex justify-between items-start">
-                     <div className="flex items-center gap-3 cursor-pointer break-words" onClick={() => handleCardClick(company.id)}>
+                     <div className="flex items-center gap-3 cursor-pointer break-words" onClick={() => handleEditCompany(company)}>
                         {company.logoUrl ? (
                             <img src={company.logoUrl} alt={company.name} className="h-10 w-10 rounded-md object-contain border p-1" />
                         ) : (
@@ -184,7 +179,7 @@ export default function CompaniesPage() {
                       </DropdownMenu>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-grow cursor-pointer" onClick={() => handleCardClick(company.id)}>
+                <CardContent className="flex-grow cursor-pointer" onClick={() => handleEditCompany(company)}>
                   <p className="text-sm text-muted-foreground">{company.address || 'Nessun indirizzo'}</p>
                 </CardContent>
                 <CardFooter className="text-xs text-muted-foreground">
@@ -223,4 +218,3 @@ export default function CompaniesPage() {
     </>
   );
 }
-
