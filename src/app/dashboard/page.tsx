@@ -372,6 +372,13 @@ export default function DashboardPage() {
                         />
                    </div>
                 ) : (
+                    <>
+                    <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
+                            {user.role !== 'Operator' && <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />}
+                        </div>
+                    </div>
                     <div className="lg:col-span-12 grid gap-6 md:grid-cols-2 lg:grid-cols-5 order-4 lg:order-3">
                         <KpiCard
                             title="Adesione SLA"
@@ -413,13 +420,10 @@ export default function DashboardPage() {
                             />
                         )}
                     </div>
+                    </>
                 )}
-                <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
-                        {user.role !== 'Operator' && <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />}
-                    </div>
-                    <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
+                
+                <div className={cn("flex flex-col gap-6 order-3 lg:order-2", user.role === 'Operator' ? "lg:col-span-6" : "lg:col-span-6")}>
                     {(user.role === 'Client' || user.role === 'Admin' || user.role === 'Creator') && (
                        <Card onClick={() => router.push('/dashboard/support')}>
                           <CardHeader>
@@ -443,9 +447,6 @@ export default function DashboardPage() {
                           </CardContent>
                       </Card>
                     )}
-                </div>
-                
-                <div className="lg:col-span-6 flex flex-col gap-6 order-3 lg:order-2">
                      <Card onClick={() => router.push('/dashboard/interventions')}>
                         <CardHeader>
                         <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
@@ -465,7 +466,10 @@ export default function DashboardPage() {
                             </ScrollArea>
                         </CardContent>
                     </Card>
-
+                </div>
+                
+                 <div className={cn("flex flex-col gap-6 order-2 lg:order-1", user.role === 'Operator' ? "lg:col-span-6" : "lg:col-span-6")}>
+                    <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                     <Card onClick={() => router.push('/dashboard/new-installations')}>
                         <CardHeader>
                             <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
