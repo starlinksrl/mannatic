@@ -119,8 +119,8 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
             uniqueCode: companyData.uniqueCode || '',
             email: companyData.email || '',
             platformUrl: companyData.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it',
-            resendApiKey: appConfig?.resendApiKey,
-            senderEmail: appConfig?.defaultSenderEmail,
+            resendApiKey: appConfig?.resendApiKey || null,
+            senderEmail: appConfig?.defaultSenderEmail || null,
         };
 
         const docRef = await addDoc(collection(db, 'companies'), companyPayload);
@@ -1059,38 +1059,25 @@ export async function deleteScheduledMaintenance(id: string): Promise<boolean> {
 export async function getAppointments(companyId: string): Promise<Appointment[]> {
     if (!companyId) return [];
     try {
-        // Query for new "appointments"
         const appointmentsQuery = query(collection(db, 'appointments'), where("companyId", "==", companyId));
         const appointmentsSnapshot = await getDocs(appointmentsQuery);
         const appointments = appointmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
 
-        // Query for old "surveys"
-        const surveysQuery = query(collection(db, 'surveys'), where("companyId", "==", companyId));
-        const surveysSnapshot = await getDocs(surveysQuery);
-        const surveys = surveysSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-
-        // Merge and return
-        return [...appointments, ...surveys];
+        return appointments;
     } catch (error) {
-        console.error("Error fetching appointments/surveys:", error);
+        console.error("Error fetching appointments:", error);
         return [];
     }
 }
 
 export async function getAllAppointments(): Promise<Appointment[]> {
     try {
-        // Query for new "appointments"
         const appointmentsSnapshot = await getDocs(collection(db, 'appointments'));
         const appointments = appointmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-
-        // Query for old "surveys"
-        const surveysSnapshot = await getDocs(collection(db, 'surveys'));
-        const surveys = surveysSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
         
-        // Merge and return
-        return [...appointments, ...surveys];
+        return appointments;
     } catch (error) {
-        console.error("Error fetching all appointments/surveys:", error);
+        console.error("Error fetching all appointments:", error);
         return [];
     }
 }
@@ -1110,7 +1097,7 @@ export async function addAppointment(appointmentData: Omit<Appointment, 'id' | '
 
         const newClient = await addUser({
             name: clientId,
-            email: clientEmail,
+            email: clientEmail, 
             role: 'Client',
             companyId: companyId,
             address: appointmentData.address,
@@ -1139,24 +1126,19 @@ export async function addAppointment(appointmentData: Omit<Appointment, 'id' | '
 
 export async function updateAppointment(id: string, updatedData: Partial<Appointment>): Promise<Appointment | null> {
     try {
-        // Determine if the document is in 'surveys' or 'appointments'
         let docRef = doc(db, 'appointments', id);
         let docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-            docRef = doc(db, 'surveys', id);
-            docSnap = await getDoc(docRef);
-            if (!docSnap.exists()) {
-                 console.error(`No document found in 'appointments' or 'surveys' with id ${id}`);
-                 return null;
-            }
+             console.error(`No document found in 'appointments' with id ${id}`);
+             return null;
         }
         
         await updateDoc(docRef, updatedData);
         const updatedDoc = await getDoc(docRef);
         return updatedDoc.exists() ? { id: updatedDoc.id, ...updatedDoc.data() } as Appointment : null;
     } catch (error) {
-        console.error("Error updating appointment/survey:", error);
+        console.error("Error updating appointment:", error);
         return null;
     }
 }
@@ -1170,19 +1152,12 @@ export async function deleteAppointment(id: string): Promise<boolean> {
             await deleteDoc(docRef);
             return true;
         }
-
-        docRef = doc(db, 'surveys', id);
-        docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            await deleteDoc(docRef);
-            return true;
-        }
         
-        console.warn(`No appointment/survey found with id ${id} to delete.`);
+        console.warn(`No appointment found with id ${id} to delete.`);
         return false;
         
     } catch (error) {
-        console.error("Error deleting appointment/survey:", error);
+        console.error("Error deleting appointment:", error);
         return false;
     }
 }
