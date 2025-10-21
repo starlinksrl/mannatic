@@ -48,7 +48,7 @@ const navItems: {
   { href: '/dashboard/map', label: 'Mappa', icon: Map, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
   { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin', 'Creator'] },
-  { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin', 'Creator'] },
+  { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin'] },
   { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
   { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'] },
   { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'] },
@@ -68,6 +68,17 @@ export function SidebarNav() {
     if (!item.roles.includes(user.role)) {
         return false;
     }
+    
+    // Special rules for Creator
+    if (user.role === 'Creator') {
+        const allowedCreatorRoutes = ['/dashboard/users', '/dashboard/creator-settings'];
+        if (currentCompany) { // A creator with a selected company is like an admin
+            const disallowedRoutesForImpersonation = ['/dashboard/companies', '/dashboard/explorer', '/dashboard/info', '/dashboard/creator-settings'];
+            return !disallowedRoutesForImpersonation.includes(item.href);
+        }
+        return allowedCreatorRoutes.includes(item.href);
+    }
+
     if (user.role === 'Operator') {
         // If it's a sector-specific item, check permissions
         if (item.sector) {

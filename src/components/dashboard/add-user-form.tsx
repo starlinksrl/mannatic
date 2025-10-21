@@ -86,10 +86,40 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       clientNotes: '',
     },
   });
+  
+  useEffect(() => {
+    if (isOpen) {
+        form.reset({
+          name: '',
+          email: '',
+          password: '',
+          address: '',
+          phone: '',
+          role: defaultRole,
+          allowedSectors: ['interventions', 'surveys', 'maintenance'],
+          clientNotes: '',
+        });
+        setShowPassword(false);
+    }
+  }, [isOpen, defaultRole, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!currentCompany) {
-        toast({ variant: 'destructive', title: 'Errore', description: 'Nessuna azienda selezionata.' });
+    // A creator not impersonating can only create other creators
+    if (currentUser?.role === 'Creator' && !currentCompany) {
+        if (values.role !== 'Creator') {
+             toast({ variant: 'destructive', title: 'Azione non permessa', description: 'Puoi creare solo altri utenti Creator.' });
+             return;
+        }
+    }
+    
+    // An admin can't create a creator
+    if (currentUser?.role === 'Admin' && values.role === 'Creator') {
+        toast({ variant: 'destructive', title: 'Azione non permessa', description: 'Non hai i permessi per creare un utente Creator.' });
+        return;
+    }
+
+    if (!currentCompany && values.role !== 'Creator') {
+        toast({ variant: 'destructive', title: 'Errore', description: 'Nessuna azienda selezionata per creare questo utente.' });
         return;
     }
     
@@ -99,7 +129,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             name: values.name,
             email: values.email,
             role: values.role as UserRole,
-            companyId: values.role === 'Creator' ? 'none' : currentCompany.id,
+            companyId: values.role === 'Creator' ? 'none' : currentCompany!.id,
             address: values.address,
             phone: values.phone,
             password: values.password || 'starlink74',
@@ -115,7 +145,6 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         description: `${isClientForm ? 'Il cliente' : 'L\'utente'} ${values.name} è stato aggiunto con successo.`,
         });
         setIsOpen(false);
-        form.reset();
 
     } catch (error: any) {
          if (error.message.includes('email esiste già')) {
@@ -135,7 +164,11 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     }
   }
   
-  const title = isClientForm ? 'Crea nuovo cliente' : 'Crea nuovo utente';
+  let title = isClientForm ? 'Crea nuovo cliente' : 'Crea nuovo utente';
+  if (currentUser?.role === 'Creator' && !currentCompany) {
+    title = "Crea nuovo Creator";
+  }
+  
   const role = form.watch('role');
 
   const handlePlaceChanged = () => {
@@ -182,6 +215,8 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
         }
     );
   };
+  
+  const isCreatorView = currentUser?.role === 'Creator' && !currentCompany;
 
 
   return (
@@ -268,7 +303,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Ruolo</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isCreatorView}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Seleziona un ruolo" />
@@ -336,82 +371,84 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                     />
             )}
             
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Telefono</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Numero di telefono" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Indirizzo</FormLabel>
-                    <Button type="button" variant="ghost" size="sm" onClick={handleGeolocate} disabled={isSubmitting}>
-                        <MapPin className="mr-2 h-4 w-4" />
-                        Localizza
-                    </Button>
-                  </div>
-                    <FormControl>
-                        {isLoaded ? (
-                             <Autocomplete
-                                onLoad={(autocomplete) => {
-                                    autocompleteRef.current = autocomplete;
-                                }}
-                                onPlaceChanged={handlePlaceChanged}
-                                fields={['formatted_address', 'geometry.location']}
-                            >
-                                <Input
+            {role !== 'Creator' && <>
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefono</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Numero di telefono" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Indirizzo</FormLabel>
+                        <Button type="button" variant="ghost" size="sm" onClick={handleGeolocate} disabled={isSubmitting}>
+                            <MapPin className="mr-2 h-4 w-4" />
+                            Localizza
+                        </Button>
+                      </div>
+                        <FormControl>
+                            {isLoaded ? (
+                                 <Autocomplete
+                                    onLoad={(autocomplete) => {
+                                        autocompleteRef.current = autocomplete;
+                                    }}
+                                    onPlaceChanged={handlePlaceChanged}
+                                    fields={['formatted_address', 'geometry.location']}
+                                >
+                                    <Input
+                                        {...field}
+                                        ref={inputRef}
+                                        placeholder="Cerca un indirizzo..."
+                                        onBlur={field.onBlur}
+                                        onChange={field.onChange}
+                                    />
+                                </Autocomplete>
+                            ) : (
+                               <Input
                                     {...field}
-                                    ref={inputRef}
                                     placeholder="Cerca un indirizzo..."
-                                    onBlur={field.onBlur}
-                                    onChange={field.onChange}
+                                    disabled
                                 />
-                            </Autocomplete>
-                        ) : (
-                           <Input
-                                {...field}
-                                placeholder="Cerca un indirizzo..."
-                                disabled
-                            />
-                        )}
-                    </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             {isClientForm && (
-              <FormField
-                control={form.control}
-                name="clientNotes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Appunti Cliente</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Aggiungi note sul cliente..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                            )}
+                        </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 {isClientForm && (
+                  <FormField
+                    control={form.control}
+                    name="clientNotes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Appunti Cliente</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Aggiungi note sul cliente..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
-              />
-            )}
+            </>}
             <DialogFooter className="flex-col-reverse sm:flex-row pt-4">
                 <DialogClose asChild>
                     <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
                 </DialogClose>
                 <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                    Crea {isClientForm ? 'cliente' : 'utente'}
+                    Crea {isCreatorView ? 'creator' : isClientForm ? 'cliente' : 'utente'}
                 </Button>
             </DialogFooter>
           </form>
@@ -420,7 +457,3 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     </Dialog>
   );
 }
-
-
-
-    

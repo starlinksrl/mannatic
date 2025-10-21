@@ -21,11 +21,17 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = async () => {
-    if (!currentCompany) return;
     setIsLoading(true);
-    const usersFromDb = await getUsers(currentCompany.id);
-    // Filter out clients
-    setUserList(usersFromDb.filter(u => u.role !== 'Client'));
+    const usersFromDb = await getUsers(currentCompany?.id); // Pass optional companyId
+    
+    if (user?.role === 'Creator' && !currentCompany) {
+        // Main Creator view: only see other creators
+        setUserList(usersFromDb.filter(u => u.role === 'Creator'));
+    } else {
+        // Admin or Impersonating Creator view: see company users
+        setUserList(usersFromDb.filter(u => u.role !== 'Client'));
+    }
+    
     setIsLoading(false);
   };
 
@@ -40,10 +46,19 @@ export default function UsersPage() {
     }
   }, [user, router, currentCompany]);
   
-  if(!user || !currentCompany) return null;
+  if(!user) return null;
+  if(user.role === 'Admin' && !currentCompany) return null;
+
 
   if (user.role !== 'Admin' && user.role !== 'Creator') {
     return null; 
+  }
+  
+  const getButtonLabel = () => {
+    if (user?.role === 'Creator' && !currentCompany) {
+        return "Crea Creator";
+    }
+    return "Crea Utente";
   }
 
   return (
@@ -51,10 +66,13 @@ export default function UsersPage() {
       <Header title="Utenti" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
         <div className="flex justify-end mb-4">
-            <AddUserForm onUserAdded={fetchData} defaultRole="Operator">
+            <AddUserForm 
+                onUserAdded={fetchData} 
+                defaultRole={user?.role === 'Creator' && !currentCompany ? 'Creator' : 'Operator'}
+            >
               <Button>
                 <PlusCircle className="mr-2" />
-                Crea Utente
+                {getButtonLabel()}
               </Button>
             </AddUserForm>
         </div>

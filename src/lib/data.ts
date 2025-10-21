@@ -8,7 +8,6 @@ import { triggerExpiryNotification, triggerNewInterventionNotification, sendClie
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
-import { CREATOR_USER } from './constants';
 import { Resend } from 'resend';
 
 
@@ -101,7 +100,7 @@ export async function getCompanyByUserId(userId: string): Promise<Company | null
     }
 }
 
-export async function addCompany(companyData: Partial<Company> & { adminName: string, password?: string }): Promise<{ company: Company, adminUser: User }> {
+export async function addCompany(companyData: Partial<Company> & { adminName: string, email: string, password?: string }): Promise<{ company: Company, adminUser: User }> {
     const existingUser = await getUserByEmail(companyData.email!);
     if (existingUser) {
         throw new Error('Un utente con questa email esiste già.');
@@ -184,10 +183,14 @@ export async function deleteCompanyAndSubcollections(companyId: string): Promise
 
 // --- USER MANAGEMENT ---
 
-export async function getUsers(companyId: string): Promise<User[]> {
-  if(!companyId) return [];
+export async function getUsers(companyId?: string): Promise<User[]> {
   try {
-    const q = query(collection(db, 'users'), where("companyId", "==", companyId));
+    let q;
+    if (companyId) {
+        q = query(collection(db, 'users'), where("companyId", "==", companyId));
+    } else {
+        q = query(collection(db, 'users'));
+    }
     const userSnapshot = await getDocs(q);
     const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
     return userList;
@@ -1391,6 +1394,3 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
-
-
-    
