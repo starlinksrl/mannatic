@@ -37,7 +37,7 @@ const isMainCreator = (user: UserType | null) => user?.email === 'creator@mannat
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const { user, currentCompany } = useUser();
+  const { user } = useUser();
 
   if (!user) return null;
   
@@ -61,7 +61,7 @@ export function SidebarNav() {
     { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
     { href: '/dashboard/users', label: 'Utenti', mainCreatorLabel: 'Creators', icon: Users, roles: ['Creator', 'Admin'] },
     { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin'] },
-    { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'], regularCreatorOnly: true },
+    { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
     { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'], mainCreatorOnly: true },
     { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'], mainCreatorOnly: true },
     { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'], mainCreatorOnly: true },
@@ -79,8 +79,14 @@ export function SidebarNav() {
     }
     if (user.role === 'Creator') {
         if (!item.roles.includes('Creator')) return false;
-
+        
         const isMain = isMainCreator(user);
+        
+        // Show item if it's not restricted by creator type
+        if (!item.mainCreatorOnly && !item.regularCreatorOnly) {
+            return true;
+        }
+
         if (item.mainCreatorOnly) return isMain;
         if (item.regularCreatorOnly) return !isMain;
         
@@ -95,14 +101,7 @@ export function SidebarNav() {
   return (
     <div className="flex h-full flex-col">
       <div className="h-16 flex items-center px-6 border-b">
-        {(currentCompany?.logoUrl && user.role !== 'Creator') ? (
-          <div className="flex items-center gap-2">
-            <Image src={currentCompany.logoUrl} alt={currentCompany.name} width={32} height={32} className="rounded-md object-contain" />
-            <span className="font-headline text-lg font-bold text-foreground">{currentCompany.name}</span>
-          </div>
-        ) : (
-          <Logo />
-        )}
+        <Logo />
       </div>
       <nav className="flex-1 space-y-2 p-4">
         {navItems.map((item) =>
