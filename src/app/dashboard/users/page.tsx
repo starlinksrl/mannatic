@@ -21,27 +21,20 @@ export default function UsersPage() {
   const [userList, setUserList] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const isMainCreatorView = isMainCreator(user);
+
   const fetchData = async () => {
     if (!user) return;
     setIsLoading(true);
     
     let usersFromDb: User[] = [];
-    if (user.role === 'Creator' && !currentCompany) {
-      // Main creator or regular creator in global view fetches ALL users to find other creators
+    if (isMainCreatorView) {
       usersFromDb = await getUsers();
+      setUserList(usersFromDb.filter(u => u.role === 'Creator'));
     } else if (currentCompany) {
-      // Admin or impersonating Creator view: see company users
       usersFromDb = await getUsers(currentCompany.id);
-    }
-    
-    if (isMainCreator(user) && !currentCompany) {
-        // Main Creator view: only see other creators
-        setUserList(usersFromDb.filter(u => u.role === 'Creator'));
-    } else if (currentCompany) {
-        // Admin or Impersonating Creator view: see company users (not clients)
-        setUserList(usersFromDb.filter(u => u.role !== 'Client'));
+       setUserList(usersFromDb.filter(u => u.role !== 'Client'));
     } else {
-        // Regular creator in global view or other edge cases: show nothing
         setUserList([]);
     }
     
@@ -49,7 +42,9 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    if (user && user.role !== 'Admin' && user.role !== 'Creator') {
+    // Redirect non-admins or regular creators if they try to access this page
+    // This page is now for Admins (in a company) or the Main Creator (global)
+    if (user && user.role !== 'Admin' && !isMainCreator(user)) {
       router.push('/dashboard');
       return;
     }
@@ -63,28 +58,35 @@ export default function UsersPage() {
   if(user.role === 'Admin' && !currentCompany) return null;
 
 
-  if (user.role !== 'Admin' && user.role !== 'Creator') {
+  if (user.role !== 'Admin' && !isMainCreator(user)) {
     return null; 
   }
   
   const getButtonLabel = () => {
-    if (isMainCreator(user) && !currentCompany) {
+    if (isMainCreatorView) {
         return "Crea Creator";
     }
     return "Crea Utente";
   }
+  
+  const getTitle = () => {
+     if (isMainCreatorView) {
+        return "Creators";
+    }
+    return "Utenti";
+  }
 
-  const canCreateUser = (isMainCreator(user) && !currentCompany) || (user.role === 'Admin' && currentCompany);
+  const canCreateUser = isMainCreatorView || (user.role === 'Admin' && currentCompany);
 
   return (
     <>
-      <Header title="Utenti" />
+      <Header title={getTitle()} />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
         {canCreateUser && (
             <div className="flex justify-end mb-4">
                 <AddUserForm 
                     onUserAdded={fetchData} 
-                    defaultRole={isMainCreator(user) && !currentCompany ? 'Creator' : 'Operator'}
+                    defaultRole={isMainCreatorView ? 'Creator' : 'Operator'}
                 >
                 <Button>
                     <PlusCircle className="mr-2" />
@@ -104,4 +106,3 @@ export default function UsersPage() {
     </>
   );
 }
-

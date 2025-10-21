@@ -34,32 +34,6 @@ import { Badge } from '../ui/badge';
 
 const isMainCreator = (user: UserType | null) => user?.email === 'creator@mannatic.com';
 
-const navItems: {
-    href: string;
-    label: string;
-    icon: React.ElementType;
-    roles: ('Creator' | 'Admin' | 'Operator' | 'Client')[];
-    creatorType?: 'main' | 'regular' | 'all';
-    sector?: AllowedSector;
-}[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
-  { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'], sector: 'interventions' },
-  { href: '/dashboard/new-installations', label: 'Nuovi Impianti', icon: HardHat, roles: ['Admin', 'Operator'], sector: 'interventions' },
-  { href: '/dashboard/surveys', label: 'Appuntamenti', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'surveys' },
-  { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'], sector: 'maintenance' },
-  { href: '/dashboard/support', label: 'Supporto', icon: LifeBuoy, roles: ['Admin', 'Client'] },
-  { href: '/dashboard/map', label: 'Mappa', icon: Map, roles: ['Admin', 'Operator'] },
-  { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
-  { href: '/dashboard/users', label: 'Utenti', icon: Users, roles: ['Admin', 'Creator'] },
-  { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin'] },
-  { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
-  { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'], creatorType: 'main' },
-  { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'], creatorType: 'main' },
-  { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'], creatorType: 'main' },
-  { href: '/dashboard/manual', label: 'Manuale', icon: HelpCircle, roles: ['Operator', 'Client'] },
-  { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
-  { href: '/dashboard/changelog', label: 'Changelog', icon: GitMerge, roles: ['Operator', 'Client', 'Creator'] },
-];
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -67,35 +41,61 @@ export function SidebarNav() {
 
   if (!user) return null;
   
+  const navItems: {
+    href: string;
+    label: string;
+    mainCreatorLabel?: string;
+    icon: React.ElementType;
+    roles: ('Creator' | 'Admin' | 'Operator' | 'Client')[];
+    sector?: AllowedSector;
+    mainCreatorOnly?: boolean;
+    regularCreatorOnly?: boolean;
+  }[] = [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
+    { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'], sector: 'interventions' },
+    { href: '/dashboard/new-installations', label: 'Nuovi Impianti', icon: HardHat, roles: ['Admin', 'Operator'], sector: 'interventions' },
+    { href: '/dashboard/surveys', label: 'Appuntamenti', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'surveys' },
+    { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'], sector: 'maintenance' },
+    { href: '/dashboard/support', label: 'Supporto', icon: LifeBuoy, roles: ['Admin', 'Client'] },
+    { href: '/dashboard/map', label: 'Mappa', icon: Map, roles: ['Admin', 'Operator'] },
+    { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
+    { href: '/dashboard/users', label: 'Utenti', mainCreatorLabel: 'Creators', icon: Users, roles: ['Creator', 'Admin'] },
+    { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin'] },
+    { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'], regularCreatorOnly: true },
+    { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'], mainCreatorOnly: true },
+    { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'], mainCreatorOnly: true },
+    { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'], mainCreatorOnly: true },
+    { href: '/dashboard/manual', label: 'Manuale', icon: HelpCircle, roles: ['Operator', 'Client'] },
+    { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
+    { href: '/dashboard/changelog', label: 'Changelog', icon: GitMerge, roles: ['Operator', 'Client', 'Creator'] },
+];
+
   const userCanSeeItem = (item: typeof navItems[0]) => {
-    if (user.role === 'Creator') {
-      const isMain = isMainCreator(user);
-      if (isMain) {
-        return item.roles.includes('Creator');
-      }
-      // Regular creator
-      return item.roles.includes('Creator') && item.creatorType !== 'main';
-    }
-
-    if (!item.roles.includes(user.role)) {
-        return false;
-    }
-
-    if (user.role === 'Operator') {
-        if (item.sector) {
+    if (user.role !== 'Creator' && item.roles.includes(user.role)) {
+       if (user.role === 'Operator' && item.sector) {
             return user.allowedSectors?.includes(item.sector) ?? true;
         }
+        return true;
     }
-    
-    return true;
+    if (user.role === 'Creator') {
+        if (!item.roles.includes('Creator')) return false;
+
+        const isMain = isMainCreator(user);
+        if (item.mainCreatorOnly) return isMain;
+        if (item.regularCreatorOnly) return !isMain;
+        
+        return true;
+    }
+    return false;
   }
   
   const latestVersion = changelog[0]?.version;
+  const isMain = isMainCreator(user);
 
   return (
     <div className="flex h-full flex-col">
       <div className="h-16 flex items-center px-6 border-b">
-        {currentCompany?.logoUrl && user.role !== 'Creator' ? (
+        {(currentCompany?.logoUrl && user.role !== 'Creator') ? (
           <div className="flex items-center gap-2">
             <Image src={currentCompany.logoUrl} alt={currentCompany.name} width={32} height={32} className="rounded-md object-contain" />
             <span className="font-headline text-lg font-bold text-foreground">{currentCompany.name}</span>
@@ -116,7 +116,7 @@ export function SidebarNav() {
               )}
             >
               <item.icon className="h-4 w-4" />
-              {item.label}
+              {(isMain && item.mainCreatorLabel) ? item.mainCreatorLabel : item.label}
             </Link>
           ) : null
         )}
