@@ -299,7 +299,7 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
         };
         
         if (newUserPayload.role === 'Operator') {
-             newUserPayload.allowedSectors = userData.allowedSectors || ['interventions', 'surveys', 'maintenance'];
+             newUserPayload.allowedSectors = userData.allowedSectors || ['interventions', 'new_installations', 'appointments', 'maintenance'];
         } else {
             delete newUserPayload.allowedSectors;
         }
@@ -1086,10 +1086,53 @@ export async function deleteScheduledMaintenance(id: string): Promise<boolean> {
     }
 }
 
-// --- APPOINTMENTS MANAGEMENT (Firestore Implementation) ---
+// --- APPOINTMENTS MANAGEMENT ---
+
+async function migrateSurveysToAppointments() {
+    try {
+        const surveysSnapshot = await getDocs(collection(db, 'surveys'));
+        if (surveysSnapshot.empty) {
+            return;
+        }
+
+        console.log(`Found ${surveysSnapshot.size} surveys to migrate.`);
+        const batch = writeBatch(db);
+
+        surveysSnapshot.forEach(surveyDoc => {
+            const surveyData = surveyDoc.data() as Omit<Appointment, 'id'> & { surveyId?: string };
+
+            const newAppointmentData: Appointment = {
+                id: surveyDoc.id,
+                title: surveyData.title,
+                clientId: surveyData.clientId,
+                companyId: surveyData.companyId,
+                address: surveyData.address,
+                latitude: surveyData.latitude,
+                longitude: surveyData.longitude,
+                date: surveyData.date,
+                assignedOperatorId: surveyData.assignedOperatorId,
+                notes: surveyData.notes,
+                status: surveyData.status,
+                createdAt: surveyData.createdAt,
+            };
+            
+            const newAppointmentRef = doc(db, 'appointments', surveyDoc.id);
+            batch.set(newAppointmentRef, newAppointmentData);
+            batch.delete(surveyDoc.ref);
+        });
+
+        await batch.commit();
+        console.log('Survey migration completed successfully.');
+    } catch (error) {
+        console.error("Error migrating surveys to appointments:", error);
+    }
+}
 
 export async function getAppointments(companyId: string): Promise<Appointment[]> {
     if (!companyId) return [];
+    
+    await migrateSurveysToAppointments();
+
     try {
         const appointmentsQuery = query(collection(db, 'appointments'), where("companyId", "==", companyId));
         const appointmentsSnapshot = await getDocs(appointmentsQuery);
@@ -1437,7 +1480,3 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
-
-
-
-
