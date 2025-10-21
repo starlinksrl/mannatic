@@ -180,7 +180,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     }
   };
   
-  const canEditRole = currentUser?.role === 'Creator' || (currentUser?.role === 'Admin' && user.role !== 'Creator');
+  const canEditRole = (currentUser?.role === 'Creator' && !isEditingOwnProfile) || (currentUser?.role === 'Admin' && user.role !== 'Creator');
   const canEditEmail = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator');
   const canEditPassword = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator' || user?.role === 'Client');
 
