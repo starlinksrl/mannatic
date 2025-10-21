@@ -11,6 +11,7 @@ import { NotebookPen, Save } from 'lucide-react';
 import { User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
+import { CREATOR_USER_ID } from '@/lib/constants';
 
 interface ScratchpadProps {
   user: User;
@@ -30,20 +31,23 @@ export function Scratchpad({ user, onUpdate, className }: ScratchpadProps) {
 
   useEffect(() => {
     const saveScratchpad = async () => {
-      if (debouncedText !== user.scratchpad) {
-        setIsSaving(true);
-        const updatedUser = await updateUser(user.id, { scratchpad: debouncedText });
-        if (updatedUser) {
-          onUpdate({ scratchpad: debouncedText });
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Errore nel salvataggio',
-            description: 'Impossibile salvare il promemoria.',
-          });
-        }
-        setIsSaving(false);
+      // Do not save if the user is the creator or if the text hasn't changed
+      if (user.id === CREATOR_USER_ID || debouncedText === user.scratchpad) {
+        return;
       }
+
+      setIsSaving(true);
+      const updatedUser = await updateUser(user.id, { scratchpad: debouncedText });
+      if (updatedUser) {
+        onUpdate({ scratchpad: debouncedText });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Errore nel salvataggio',
+          description: 'Impossibile salvare il promemoria.',
+        });
+      }
+      setIsSaving(false);
     };
 
     saveScratchpad();
