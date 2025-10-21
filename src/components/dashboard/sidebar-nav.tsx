@@ -73,7 +73,9 @@ export function SidebarNav() {
   const userCanSeeItem = (item: typeof navItems[0]) => {
     if (user.role !== 'Creator' && item.roles.includes(user.role)) {
        if (user.role === 'Operator' && item.sector) {
-            return user.allowedSectors?.includes(item.sector) ?? true;
+            // An Operator MUST have the specific sector in their allowedSectors array.
+            // If allowedSectors is undefined or null, they can't see any sector-specific items.
+            return user.allowedSectors?.includes(item.sector) ?? false;
         }
         return true;
     }
