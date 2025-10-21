@@ -71,19 +71,30 @@ export default function MapPage() {
       const clientsWithCoords = allUsers.filter(u => u.role === 'Client');
       
       setAllClients(clientsWithCoords);
+      const combinedInterventions = [...allInterventions, ...allMaintenance];
 
       if (user.role === 'Operator') {
         const operatorId = user.id;
-        const operatorInterventions = [...allInterventions, ...allMaintenance].filter(
-            (i) => i.assignedOperatorId === operatorId || !i.assignedOperatorId
-        );
-        const operatorAppointments = allAppointments.filter(
-            (a) => a.assignedOperatorId === operatorId || !a.assignedOperatorId
-        );
+        const allowedSectors = user.allowedSectors || [];
+
+        const operatorInterventions = combinedInterventions.filter(i => {
+            if (i.assignedOperatorId !== operatorId && i.assignedOperatorId) return false;
+            if (i.isMaintenance) return allowedSectors.includes('maintenance');
+            if (i.type === 'new_installation') return allowedSectors.includes('new_installations');
+            if (i.type === 'standard') return allowedSectors.includes('interventions');
+            return false;
+        });
+
+        const operatorAppointments = allAppointments.filter(a => {
+            if (a.assignedOperatorId !== operatorId && a.assignedOperatorId) return false;
+            return allowedSectors.includes('surveys');
+        });
+        
         setInterventions(operatorInterventions);
         setAppointments(operatorAppointments);
-      } else {
-        setInterventions([...allInterventions, ...allMaintenance]);
+
+      } else { // Admin or Creator
+        setInterventions(combinedInterventions);
         setAppointments(allAppointments);
       }
       
@@ -374,3 +385,4 @@ export default function MapPage() {
     </>
   );
 }
+
