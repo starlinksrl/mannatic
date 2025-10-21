@@ -15,6 +15,7 @@ import { Lightbulb } from 'lucide-react';
 import { useUser } from '@/contexts/user-context';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
+import { format } from 'date-fns';
 
 export function QuoteOfTheDay() {
   const { currentCompany } = useUser();
@@ -22,11 +23,12 @@ export function QuoteOfTheDay() {
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [dailyQuote, setDailyQuote] = useState<{ quote: string; author: string } | null>(null);
 
-  const storageKey = 'quoteOfTheDayDismissed';
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const storageKey = `quoteOfTheDayDismissed_${todayStr}`;
+
 
   useEffect(() => {
     if (currentCompany) {
-      // Determine the quote of the day based on the day of the year
       const getDayOfYear = (date: Date) => {
         const start = new Date(date.getFullYear(), 0, 0);
         const diff = (date.getTime() - start.getTime()) + ((start.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000);
@@ -39,17 +41,23 @@ export function QuoteOfTheDay() {
       const quoteIndex = dayOfYear % quotes.length;
       setDailyQuote(quotes[quoteIndex]);
 
-      const isDismissed = localStorage.getItem(storageKey);
-      if (isDismissed !== 'true') {
+      const isDismissedToday = localStorage.getItem(storageKey);
+      if (isDismissedToday !== 'true') {
         setIsOpen(true);
       }
     }
-  }, [currentCompany]);
+  }, [currentCompany, storageKey]);
 
   const handleClose = () => {
     if (dontShowAgain) {
-      localStorage.setItem(storageKey, 'true');
+      const allKeys = Object.keys(localStorage);
+      for (const key of allKeys) {
+        if (key.startsWith('quoteOfTheDayDismissed_')) {
+          localStorage.removeItem(key);
+        }
+      }
     }
+    localStorage.setItem(storageKey, 'true');
     setIsOpen(false);
   };
 
@@ -80,7 +88,7 @@ export function QuoteOfTheDay() {
               onCheckedChange={(checked) => setDontShowAgain(checked as boolean)}
             />
             <Label htmlFor="dont-show-again-quote" className="text-sm font-normal">
-              Non mostrare più
+              Non mostrare per oggi
             </Label>
           </div>
           <Button onClick={handleClose}>Ho capito</Button>
