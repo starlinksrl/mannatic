@@ -1,4 +1,5 @@
 
+
 'use server';
 import 'dotenv/config';
 
@@ -283,7 +284,7 @@ export async function triggerSupportTicketNotification(input: SendSupportTicketN
 
 export async function handlePasswordResetRequest(email: string): Promise<{ success: boolean, message: string }> {
     const user = await getUserByEmail(email);
-    if (!user || user.email.endsWith('@mannatec.it')) {
+    if (!user || user.email.endsWith('@mannatic.it')) {
         // Don't reveal if user exists or is a system user, for security.
         return { success: true, message: "Se un account valido con questa email esiste, un link di reset verrà inviato." };
     }
@@ -394,7 +395,6 @@ export async function createClientAutologinUrl(clientId: string): Promise<{ succ
 
 export async function handleRegistration(values: { companyName: string, name: string, email: string }): Promise<{ success: boolean, user?: User, error?: string }> {
     try {
-        // Generate a 12-character random password
         const password = generateShortId(12);
 
         const { company, adminUser } = await addCompany({
@@ -408,7 +408,6 @@ export async function handleRegistration(values: { companyName: string, name: st
             throw new Error("Creation of admin user failed during registration.");
         }
         
-        // Send welcome email with the generated password
         await sendCredentialsEmailAction(adminUser.id);
 
         return { success: true, user: adminUser };
