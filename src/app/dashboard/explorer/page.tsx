@@ -12,8 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getCompanies, getAllUsers, getAllInterventions, getAllSurveys, getAllNotifications, updateDocument } from '@/lib/data';
-import { Company, User, Intervention, ScheduledMaintenance, Survey, Notification } from '@/lib/types';
+import { getCompanies, getAllUsers, getAllInterventions, getAllAppointments, getAllNotifications, updateDocument } from '@/lib/data';
+import { Company, User, Intervention, ScheduledMaintenance, Appointment as Survey, Notification } from '@/lib/types';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -227,7 +227,7 @@ export default function ExplorerPage() {
             getCompanies(),
             getAllUsers(),
             getAllInterventions(),
-            getAllSurveys(),
+            getAllAppointments(),
             getAllNotifications(),
         ]);
         setData({ companies, users, interventions, surveys, notifications });
@@ -282,3 +282,5 @@ export default function ExplorerPage() {
         </>
     );
 }
+
+    
