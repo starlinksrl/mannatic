@@ -347,10 +347,10 @@ export default function DashboardPage() {
           ) : (
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                {user.role === 'Operator' && (
+                {(user.role === 'Admin' || user.role === 'Operator') && (
                   <Card className="lg:col-span-12 order-1">
                     <CardHeader>
-                      <CardTitle className="font-headline">Riepilogo Interventi Operatore</CardTitle>
+                      <CardTitle className="font-headline">Riepilogo Interventi</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-6 md:grid-cols-3">
                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=active&priority=Alta,Critica')}>
