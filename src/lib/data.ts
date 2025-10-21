@@ -66,7 +66,7 @@ export async function updateDocument(collectionName: string, docId: string, data
 
 export async function getCompanies(creatorId?: string, fetchAll: boolean = false): Promise<Company[]> {
     try {
-        if (fetchAll) {
+        if (fetchAll && creatorId === CREATOR_USER_ID) {
             const allCompaniesSnapshot = await getDocs(collection(db, 'companies'));
             return allCompaniesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
         }
@@ -180,7 +180,7 @@ export async function updateCompany(id: string, updatedData: Partial<Company>): 
 }
 
 export async function deleteCompanyAndSubcollections(companyId: string): Promise<void> {
-    const collectionsToDelete = ['users', 'interventions', 'notifications', 'appointments', 'passwordResetTokens'];
+    const collectionsToDelete = ['users', 'interventions', 'notifications', 'appointments', 'passwordResetTokens', 'supportTickets'];
     const batch = writeBatch(db);
 
     for (const coll of collectionsToDelete) {
@@ -279,9 +279,11 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>> & { cur
         let userId = userData.id || generateShortId(20);
         const passwordForDb = userData.password || 'starlink74';
         
+        const name = userData.name || userData.email.split('@')[0];
+
         const newUserPayload: Partial<User> = {
             id: userId,
-            name: userData.name!,
+            name: name,
             email: userData.email!.toLowerCase(),
             role: userData.role!,
             companyId: userData.companyId!,
@@ -1437,10 +1439,4 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
-
-
-
-
-
-
 
