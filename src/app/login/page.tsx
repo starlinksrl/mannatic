@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
-import { getUserByEmail, consumeAutologinToken } from '@/lib/data';
+import { getUserByEmail, consumeAutologinToken, addUser } from '@/lib/data';
 import { User } from '@/lib/types';
 import { Loader } from 'lucide-react';
 
@@ -68,12 +68,32 @@ function LoginFormComponent() {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-        const fetchedUser = await getUserByEmail(email);
-        if (fetchedUser && fetchedUser.password === password) {
-            await login(fetchedUser);
+        let userToLogin: User | null = null;
+        
+        // Special logic for the first creator login to seed the database
+        if (email.toLowerCase() === 'creator@mannatic.com' && password === 'Acidosbi74!') {
+            userToLogin = await getUserByEmail(email);
+            if (!userToLogin) {
+                // If the main creator doesn't exist in the DB, create it now.
+                console.log("Seeding main creator user into database...");
+                userToLogin = await addUser({
+                    id: 'user-creator-main',
+                    name: 'Main Creator',
+                    email: 'creator@mannatic.com',
+                    password: 'Acidosbi74!',
+                    role: 'Creator',
+                    companyId: 'none',
+                });
+            }
+        } else {
+            userToLogin = await getUserByEmail(email);
+        }
+
+        if (userToLogin && userToLogin.password === password) {
+            await login(userToLogin);
             toast({
                 title: 'Accesso effettuato',
-                description: `Bentornato, ${fetchedUser.name}!`,
+                description: `Bentornato, ${userToLogin.name}!`,
             });
             router.push('/dashboard');
         } else {
