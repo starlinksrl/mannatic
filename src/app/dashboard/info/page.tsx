@@ -7,16 +7,16 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Building, Users, UserCog, User, Wrench, ShieldCheck, ClipboardCheck, Bot, Palette, Server, HardDrive, ExternalLink, Database, FileText, FolderArchive } from 'lucide-react';
+import { Building, Users, UserCog, User, Wrench, ShieldCheck, ClipboardCheck, Bot, Palette, Server, HardDrive, ExternalLink, Database, FileText, FolderArchive, LifeBuoy, NotebookPen } from 'lucide-react';
 
 const features = [
     {
-        category: "Architettura Multi-Azienda",
+        category: "Architettura Multi-Creator e Multi-Azienda",
         icon: Building,
         items: [
-            { title: "Ruolo Creator", description: "Un ruolo 'Super Admin' che può creare e gestire molteplici aziende indipendenti." },
+            { title: "Ruolo Main Creator", description: "Un 'Super Admin' globale (creator@mannatic.com) che può creare altri Creator e importare aziende esistenti." },
+            { title: "Ruolo Creator", description: "Un ruolo amministrativo che può creare e gestire molteplici aziende indipendenti." },
             { title: "Isolamento Dati", description: "Ogni azienda opera in un contesto isolato, con i propri utenti, clienti e dati operativi." },
-            { title: "Simulazione Utente", description: "Il Creator può 'impersonare' qualsiasi utente di qualsiasi azienda per debug e supporto." },
         ]
     },
     {
@@ -24,25 +24,35 @@ const features = [
         icon: Users,
         items: [
             { title: "Admin", icon: UserCog, description: "Gestisce utenti, clienti e impostazioni della propria azienda. Ha visibilità su tutti i dati aziendali." },
-            { title: "Operator", icon: User, description: "L'utente operativo. Visualizza e gestisce solo gli interventi a cui è assegnato." },
-            { title: "Client", icon: User, description: "Il cliente finale. Può aprire nuove richieste di intervento e visualizzare lo stato delle proprie richieste." },
+            { title: "Operator", icon: User, description: "L'utente operativo. Visualizza e gestisce solo gli interventi a cui è assegnato, con la possibilità di tracciare le ore di lavoro." },
+            { title: "Client", icon: User, description: "Il cliente finale. Può aprire nuove richieste di intervento e ticket di supporto, e visualizzare lo stato delle proprie richieste." },
         ]
     },
     {
         category: "Moduli Operativi Principali",
         icon: Wrench,
         items: [
-            { title: "Interventi", icon: Wrench, description: "Creazione, assegnazione e tracciamento di interventi di riparazione o assistenza. Include aggiornamenti, gestione tempo e materiali." },
+            { title: "Interventi e Nuovi Impianti", icon: Wrench, description: "Creazione, assegnazione e tracciamento di interventi. Include gestione aggiornamenti, tempo e materiali, e allegati." },
+            { title: "Appuntamenti (ex Sopralluoghi)", icon: ClipboardCheck, description: "Gestione delle visite preliminari, con indirizzo geolocalizzato, data, operatore assegnato e note." },
             { title: "Manutenzioni Programmate", icon: ShieldCheck, description: "Impostazione di interventi ricorrenti (es. mensili) legati a specifiche attrezzature del cliente." },
-            { title: "Sopralluoghi", icon: ClipboardCheck, description: "Gestione delle visite preliminari, con indirizzo, data, operatore assegnato e note." },
+            { title: "Supporto Tecnico", icon: LifeBuoy, description: "Un sistema di ticketing per la comunicazione tra clienti e amministratori per richieste non legate a interventi specifici." },
+            { title: "Promemoria", icon: NotebookPen, description: "Blocchi note integrati nella dashboard per appunti personali (privati) e aziendali (condivisi)." },
         ]
     },
     {
-        category: "Intelligenza Artificiale (AI)",
+        category: "Strumenti e Dati",
+        icon: Database,
+        items: [
+            { title: "Data Explorer (Admin)", description: "Gli Admin possono visualizzare e modificare direttamente i dati della propria azienda (interventi, utenti, etc.) attraverso un'interfaccia tabellare." },
+            { title: "Data Explorer (Creator)", description: "Il Main Creator ha una vista globale su tutti i dati di tutte le collezioni del database." },
+        ]
+    },
+    {
+        category: "Intelligenza Artificiale (Genkit)",
         icon: Bot,
         items: [
-            { title: "Dashboard Analitica", description: "Una dashboard che non solo mostra i KPI, ma utilizza un modello AI (Genkit) per generare un'analisi testuale e suggerimenti." },
-            { title: "Notifiche Email", description: "L'AI genera il contenuto delle email per le notifiche (es. interventi in scadenza), inviate tramite un server SMTP configurabile." },
+            { title: "Dashboard Analitica", description: "Una dashboard che non solo mostra i KPI, ma utilizza un modello AI per generare un'analisi testuale e suggerimenti." },
+            { title: "Notifiche Email", description: "L'AI genera il contenuto delle email per notifiche importanti, come il reset della password." },
         ]
     },
     {
