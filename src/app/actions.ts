@@ -20,8 +20,8 @@ import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationO
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BHe-e3mBNo_tNk32T12s5mpH_AnJ8oKjT5M1d2v4jP7T9C3v8aN1o_G8H3o_J9K4jQ_M1e3s4H3r2b1c0';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'd8J_8h-h9JkL_l7n6m5p4o3r2b1c0a-v-V9G8H3o_J9K4jQ';
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BFs_U33A8I4P6hC-njsOxgF9sVGNwVfP94T8A1a-8FqH9qJ3a7gC6c4dF5eX6jJ0a3dZ7w8b9jY0c1bA0aB9dE8';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'T6j4k-2tXh3a-5rV8e_F9zW1xY7cZ6vM0bS_E_L-o8k';
 
 
 let vapidDetailsSet = false;
@@ -393,19 +393,18 @@ export async function createClientAutologinUrl(clientId: string): Promise<{ succ
 
 export async function handleRegistration(values: { companyName: string, name: string, email: string, password: string }): Promise<{ success: boolean, user?: User, error?: string }> {
     try {
-        const company = await addCompany({
+        const { company, adminUser } = await addCompany({
             name: values.companyName,
             email: values.email,
             password: values.password,
         });
 
-        // The addCompany function already creates the admin user.
-        // We just need to fetch that user to return it for auto-login.
-        const adminUser = await getUserByEmail(values.email);
-        
         if (!adminUser) {
             throw new Error("Creation of admin user failed during registration.");
         }
+        
+        // Send welcome email
+        await sendCredentialsEmailAction(adminUser.id);
 
         return { success: true, user: adminUser };
     } catch (error: any) {
