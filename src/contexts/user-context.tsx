@@ -5,6 +5,7 @@
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, getUserByEmail, getUserById, getCompanies, Company, getUsers, getCompanyById } from '@/lib/data';
+import { CREATOR_USER_ID } from '@/lib/constants';
 
 const isMainCreator = (user: User | null) => user?.email === 'creator@mannatic.com';
 
@@ -63,8 +64,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('user', JSON.stringify(freshUser));
 
     if (freshUser.role === 'Creator') {
-        const creatorId = isMainCreator(freshUser) ? undefined : freshUser.id;
-        const allCompanies = await getCompanies(creatorId);
+        const allCompanies = await getCompanies(freshUser.id);
         setCompanies(allCompanies);
         setCurrentCompany(null);
         localStorage.removeItem('companyId');

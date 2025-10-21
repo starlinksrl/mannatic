@@ -9,6 +9,7 @@ import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
 import { Resend } from 'resend';
+import { CREATOR_USER_ID } from './constants';
 
 
 // --- APP CONFIGURATION ---
@@ -63,16 +64,28 @@ export async function updateDocument(collectionName: string, docId: string, data
 
 // --- COMPANY MANAGEMENT ---
 
-export async function getCompanies(creatorId?: string | null): Promise<Company[]> {
+export async function getCompanies(creatorId?: string): Promise<Company[]> {
     try {
-        let q = query(collection(db, 'companies'));
-        // If creatorId is provided, filter by it.
-        // If creatorId is null (for main creator), filter for companies without a creatorId or with creatorId=null
-        if (creatorId !== undefined) {
-             q = query(q, where("creatorId", "==", creatorId));
+        const isMainCreatorRequest = creatorId === CREATOR_USER_ID;
+
+        // Query for companies explicitly assigned to the creator
+        const q1 = query(collection(db, 'companies'), where("creatorId", "==", creatorId));
+        const querySnapshot1 = await getDocs(q1);
+        const companies = querySnapshot1.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
+
+        // If it's the main creator, also fetch companies without a creatorId (legacy)
+        if (isMainCreatorRequest) {
+            const q2 = query(collection(db, 'companies'), where("creatorId", "in", [null, ""]));
+            const querySnapshot2 = await getDocs(q2);
+            const legacyCompanies = querySnapshot2.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
+            
+            // Combine and remove duplicates
+            const allCompanies = [...companies, ...legacyCompanies];
+            const uniqueCompanies = Array.from(new Map(allCompanies.map(c => [c.id, c])).values());
+            return uniqueCompanies;
         }
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
+
+        return companies;
     } catch (error) {
         console.error("Error fetching companies:", error);
         return [];
@@ -116,7 +129,7 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
         
         const companyPayload: Omit<Company, 'id'> = {
             name: companyData.name!,
-            creatorId: companyData.creatorId === undefined ? null : companyData.creatorId,
+            creatorId: companyData.creatorId,
             address: companyData.address || '',
             vatNumber: companyData.vatNumber || '',
             taxCode: companyData.taxCode || '',
@@ -127,6 +140,10 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
             resendApiKey: appConfig?.resendApiKey || null,
             senderEmail: appConfig?.defaultSenderEmail || null,
         };
+        
+        if (companyPayload.creatorId === undefined) {
+            companyPayload.creatorId = null;
+        }
 
         const docRef = await addDoc(collection(db, 'companies'), companyPayload);
         
@@ -1410,5 +1427,6 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
 
 
