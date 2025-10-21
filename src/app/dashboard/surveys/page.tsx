@@ -9,6 +9,7 @@ import { useUser } from '@/contexts/user-context';
 import { User, Appointment } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 
 export default function AppointmentsPage() {
@@ -17,6 +18,8 @@ export default function AppointmentsPage() {
     const [clients, setClients] = useState<User[]>([]);
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
+
 
     const fetchData = async () => {
         if (!user || !currentCompany) return;
@@ -35,6 +38,10 @@ export default function AppointmentsPage() {
     }
     
     useEffect(() => {
+        if (user && user.role === 'Operator' && !user.allowedSectors?.includes('surveys')) {
+            router.push('/dashboard');
+            return;
+        }
         fetchData();
     }, [user, currentCompany]);
 

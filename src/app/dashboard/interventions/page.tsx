@@ -12,6 +12,7 @@ import { EditInterventionForm } from '@/components/dashboard/edit-intervention-f
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 
 export default function InterventionsPage() {
@@ -21,6 +22,8 @@ export default function InterventionsPage() {
     const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [loading, setLoading] = useState(true);
     const { intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
+    const router = useRouter();
+
 
     const fetchData = async () => {
         if (!user || !currentCompany) return;
@@ -39,6 +42,10 @@ export default function InterventionsPage() {
     }
 
     useEffect(() => {
+        if (user && user.role === 'Operator' && !user.allowedSectors?.includes('interventions')) {
+            router.push('/dashboard');
+            return;
+        }
         fetchData();
     }, [user, currentCompany]);
 

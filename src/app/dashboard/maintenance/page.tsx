@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -7,6 +8,7 @@ import { User, ScheduledMaintenance } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { MaintenanceTable } from '@/components/dashboard/maintenance-table';
+import { useRouter } from 'next/navigation';
 
 
 export default function MaintenancePage() {
@@ -15,6 +17,8 @@ export default function MaintenancePage() {
     const [clients, setClients] = useState<User[]>([]);
     const [maintenanceTasks, setMaintenanceTasks] = useState<ScheduledMaintenance[]>([]);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
+
 
     const fetchData = async () => {
         if (!user || !currentCompany) return;
@@ -31,6 +35,10 @@ export default function MaintenancePage() {
     }
 
     useEffect(() => {
+        if (user && user.role === 'Operator' && !user.allowedSectors?.includes('maintenance')) {
+            router.push('/dashboard');
+            return;
+        }
         fetchData();
     }, [user, currentCompany]);
     

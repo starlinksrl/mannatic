@@ -41,7 +41,7 @@ export interface Company {
   companyScratchpad?: string;
 }
 
-export type AllowedSector = 'interventions' | 'surveys' | 'maintenance';
+export type AllowedSector = 'interventions' | 'surveys' | 'maintenance' | 'new_installations';
 
 export interface User {
   id: string;
@@ -60,6 +60,10 @@ export interface User {
   dashboardLayout?: { [key: string]: any };
   pushSubscriptions?: webpush.PushSubscription[];
   scratchpad?: string;
+  logoUrl?: string;
+  vatNumber?: string;
+  taxCode?: string;
+  uniqueCode?: string;
 }
 
 export interface PasswordResetToken {

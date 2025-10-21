@@ -39,7 +39,8 @@ import { Textarea } from '../ui/textarea';
 
 const allowedSectors: { id: AllowedSector; label: string }[] = [
     { id: 'interventions', label: 'Interventi' },
-    { id: 'surveys', label: 'Sopralluoghi' },
+    { id: 'new_installations', label: 'Nuovi Impianti' },
+    { id: 'surveys', label: 'Appuntamenti' },
     { id: 'maintenance', label: 'Manutenzioni' },
 ];
 
@@ -55,6 +56,10 @@ const formSchema = z.object({
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
   clientNotes: z.string().optional(),
+  logoUrl: z.string().optional(),
+  vatNumber: z.string().optional(),
+  taxCode: z.string().optional(),
+  uniqueCode: z.string().optional(),
 });
 
 interface EditUserFormProps {
@@ -98,6 +103,10 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             latitude: user.latitude || null,
             longitude: user.longitude || null,
             clientNotes: user.clientNotes || '',
+            logoUrl: user.logoUrl || '',
+            vatNumber: user.vatNumber || '',
+            taxCode: user.taxCode || '',
+            uniqueCode: user.uniqueCode || '',
         })
     }
   }, [user, form]);
@@ -118,6 +127,10 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             latitude: values.latitude,
             longitude: values.longitude,
             clientNotes: values.role === 'Client' ? values.clientNotes : undefined,
+            logoUrl: values.logoUrl,
+            vatNumber: values.vatNumber,
+            taxCode: values.taxCode,
+            uniqueCode: values.uniqueCode,
         };
 
         if (values.password && values.password.trim() !== '') {
@@ -149,7 +162,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     fileInputRef.current?.click();
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, field: 'avatarUrl') => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, field: 'avatarUrl' | 'logoUrl') => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -160,7 +173,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     }
   };
   
-  const canEditRole = (currentUser?.role === 'Creator' && !isEditingOwnProfile) || (currentUser?.role === 'Admin' && user.role !== 'Creator');
+  const canEditRole = (currentUser?.role === 'Creator' && user.role !== 'Creator' && !isEditingOwnProfile) || (currentUser?.role === 'Admin' && user.role !== 'Creator');
   const canEditEmail = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator');
   const canEditPassword = (currentUser?.role === 'Admin' || currentUser?.role === 'Creator' || user?.role === 'Client');
 
@@ -301,7 +314,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ruolo</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={!canEditRole || user.role === 'Creator'}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={!canEditRole}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleziona un ruolo" />

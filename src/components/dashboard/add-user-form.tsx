@@ -38,7 +38,8 @@ import { Textarea } from '../ui/textarea';
 
 const allowedSectors: { id: AllowedSector; label: string }[] = [
     { id: 'interventions', label: 'Interventi' },
-    { id: 'surveys', label: 'Sopralluoghi' },
+    { id: 'new_installations', label: 'Nuovi Impianti' },
+    { id: 'surveys', label: 'Appuntamenti' },
     { id: 'maintenance', label: 'Manutenzioni' },
 ];
 
@@ -53,6 +54,10 @@ const formSchema = z.object({
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
   clientNotes: z.string().optional(),
+  vatNumber: z.string().optional(),
+  taxCode: z.string().optional(),
+  uniqueCode: z.string().optional(),
+  logoUrl: z.string().optional(),
 });
 
 interface AddUserFormProps {
@@ -84,7 +89,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       address: '',
       phone: '',
       role: defaultRole,
-      allowedSectors: ['interventions', 'surveys', 'maintenance'], // Default to all for new operators
+      allowedSectors: ['interventions', 'new_installations', 'surveys', 'maintenance'], // Default to all for new operators
       clientNotes: '',
     },
   });
@@ -98,7 +103,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
           address: '',
           phone: '',
           role: defaultRole,
-          allowedSectors: ['interventions', 'surveys', 'maintenance'],
+          allowedSectors: ['interventions', 'new_installations', 'surveys', 'maintenance'],
           clientNotes: '',
         });
         setShowPassword(false);
@@ -135,6 +140,10 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             latitude: values.latitude,
             longitude: values.longitude,
             clientNotes: values.role === 'Client' ? values.clientNotes : undefined,
+            logoUrl: values.logoUrl,
+            vatNumber: values.vatNumber,
+            taxCode: values.taxCode,
+            uniqueCode: values.uniqueCode,
         });
         
         onUserAdded();
@@ -228,7 +237,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
               address: '',
               phone: '',
               role: defaultRole,
-              allowedSectors: ['interventions', 'surveys', 'maintenance'],
+              allowedSectors: ['interventions', 'new_installations', 'surveys', 'maintenance'],
               clientNotes: '',
             });
             setShowPassword(false);
