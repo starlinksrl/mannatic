@@ -11,7 +11,7 @@ import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-notification';
-import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById } from '@/lib/data';
+import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById, getAppConfiguration } from '@/lib/data';
 import { Company, User } from '@/lib/types';
 import { Resend } from 'resend';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
@@ -408,7 +408,27 @@ export async function handleRegistration(values: { companyName: string, name: st
             throw new Error("Creation of admin user failed during registration.");
         }
         
-        await sendCredentialsEmailAction(adminUser.id);
+        // Use global/creator Resend config to send the initial email
+        const appConfig = await getAppConfiguration();
+        if (!appConfig || !appConfig.resendApiKey || !appConfig.defaultSenderEmail) {
+            console.warn("Global Resend config not set. Skipping registration email.");
+            return { success: true, user: adminUser };
+        }
+
+        const input: SendCredentialsEmailInput = {
+            recipientEmail: adminUser.email,
+            userName: adminUser.name,
+            userEmail: adminUser.email,
+            userPassword: adminUser.password!,
+            loginLink: company.platformUrl || 'https://work.mannatec.it',
+            companyId: company.id,
+            resendConfig: {
+                apiKey: appConfig.resendApiKey,
+                from: appConfig.defaultSenderEmail,
+            }
+        };
+
+        await sendCredentialsEmail(input);
 
         return { success: true, user: adminUser };
     } catch (error: any) {
@@ -417,3 +437,4 @@ export async function handleRegistration(values: { companyName: string, name: st
 }
 
     
+
