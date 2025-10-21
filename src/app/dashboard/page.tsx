@@ -8,7 +8,7 @@ import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointme
 import { isAfter, addDays, startOfToday } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy } from 'lucide-react';
+import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass } from 'lucide-react';
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -52,6 +52,10 @@ type KpiData = GenerateKpiDashboardInput & {
   openAppointments: number,
   openAppointmentsList: Appointment[],
   latestSupportTickets?: SupportTicket[],
+  // Operator specific
+  urgentOpenCount?: number;
+  newCount?: number;
+  inProgressCount?: number;
 };
 
 
@@ -181,6 +185,11 @@ export default function DashboardPage() {
         .sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         .slice(0,3);
     }
+    
+    // Operator specific KPIs
+    const urgentOpenCount = relevantInterventions.filter(i => (i.priority === 'Critica' || i.priority === 'Alta') && (i.status === 'Nuovo' || i.status === 'In corso')).length;
+    const newCount = relevantInterventions.filter(i => i.status === 'Nuovo').length;
+    const inProgressCount = relevantInterventions.filter(i => i.status === 'In corso').length;
 
 
     setKpiData({
@@ -198,6 +207,9 @@ export default function DashboardPage() {
       openAppointments,
       openAppointmentsList,
       latestSupportTickets,
+      urgentOpenCount,
+      newCount,
+      inProgressCount,
     });
     setLoading(false);
   }
@@ -335,10 +347,77 @@ export default function DashboardPage() {
           ) : (
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
+                {user.role === 'Operator' ? (
+                   <div className="lg:col-span-12 grid gap-6 md:grid-cols-3 order-1">
+                       <KpiCard
+                            title="Interventi Aperti Urgenti"
+                            value={kpiData.urgentOpenCount || 0}
+                            icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
+                            description="Priorità Alta o Critica"
+                            onClick={() => router.push('/dashboard/interventions?status=active&priority=Alta,Critica')}
+                        />
+                         <KpiCard
+                            title="Interventi Nuovi"
+                            value={kpiData.newCount || 0}
+                            icon={<FilePlus className="h-4 w-4 text-muted-foreground" />}
+                            description="In attesa di essere presi in carico"
+                            onClick={() => router.push('/dashboard/interventions?status=Nuovo')}
+                        />
+                         <KpiCard
+                            title="Interventi In Corso"
+                            value={kpiData.inProgressCount || 0}
+                            icon={<Hourglass className="h-4 w-4 text-muted-foreground" />}
+                            description="Attualmente in lavorazione"
+                            onClick={() => router.push('/dashboard/interventions?status=In corso')}
+                        />
+                   </div>
+                ) : (
+                    <div className="lg:col-span-12 grid gap-6 md:grid-cols-2 lg:grid-cols-5 order-4 lg:order-3">
+                        <KpiCard
+                            title="Adesione SLA"
+                            value={`${kpiData.slaAdherencePercentage}%`}
+                            icon={<Check className="h-4 w-4 text-muted-foreground" />}
+                            description="Percentuale interventi nei tempi"
+                        />
+                        {user.role !== 'Client' && user.role !== 'Operator' && (
+                            <KpiCard
+                                title="Manutenzioni Scadute"
+                                value={kpiData.overdueMaintenanceTasks}
+                                icon={<AlertOctagon className="h-4 w-4 text-muted-foreground" />}
+                                description="Attività di manutenzione in ritardo"
+                                onClick={() => router.push('/dashboard/maintenance')}
+                            />
+                        )}
+                        <KpiCard
+                            title="Interventi Chiusi (30d)"
+                            value={kpiData.closedInterventions}
+                            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+                            description="Completati nell'ultimo mese"
+                        />
+                        {user.role !== 'Client' && user.role !== 'Operator' && (
+                            <KpiCard
+                                title="Nuovi Impianti Aperti"
+                                value={kpiData.openNewInstallations}
+                                icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
+                                description="Installazioni da completare"
+                                onClick={() => router.push('/dashboard/new-installations')}
+                            />
+                        )}
+                        {user.role !== 'Client' && (
+                            <KpiCard
+                                title="Appuntamenti Pianificati"
+                                value={kpiData.openAppointments}
+                                icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
+                                description="Appuntamenti da eseguire"
+                                onClick={() => router.push('/dashboard/appointments')}
+                            />
+                        )}
+                    </div>
+                )}
                 <div className="lg:col-span-6 flex flex-col gap-6 order-1 lg:order-1">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Scratchpad user={user} onUpdate={(updatedFields) => setUser(prev => prev ? {...prev, ...updatedFields} : null)} />
-                        <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />
+                        {user.role !== 'Operator' && <CompanyScratchpad user={user} company={currentCompany} onUpdate={(updatedFields) => setCurrentCompany(prev => prev ? {...prev, ...updatedFields} : null)} />}
                     </div>
                     <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
                     {(user.role === 'Client' || user.role === 'Admin' || user.role === 'Creator') && (
@@ -425,47 +504,6 @@ export default function DashboardPage() {
                     </Card>
                 </div>
 
-                 <div className="lg:col-span-12 grid gap-6 md:grid-cols-2 lg:grid-cols-5 order-4 lg:order-3">
-                    <KpiCard
-                        title="Adesione SLA"
-                        value={`${kpiData.slaAdherencePercentage}%`}
-                        icon={<Check className="h-4 w-4 text-muted-foreground" />}
-                        description="Percentuale interventi nei tempi"
-                    />
-                    {user.role !== 'Client' && user.role !== 'Operator' && (
-                        <KpiCard
-                            title="Manutenzioni Scadute"
-                            value={kpiData.overdueMaintenanceTasks}
-                            icon={<AlertOctagon className="h-4 w-4 text-muted-foreground" />}
-                            description="Attività di manutenzione in ritardo"
-                            onClick={() => router.push('/dashboard/maintenance')}
-                        />
-                    )}
-                    <KpiCard
-                        title="Interventi Chiusi (30d)"
-                        value={kpiData.closedInterventions}
-                        icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-                        description="Completati nell'ultimo mese"
-                    />
-                    {user.role !== 'Client' && user.role !== 'Operator' && (
-                        <KpiCard
-                            title="Nuovi Impianti Aperti"
-                            value={kpiData.openNewInstallations}
-                            icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
-                            description="Installazioni da completare"
-                            onClick={() => router.push('/dashboard/new-installations')}
-                        />
-                    )}
-                     {user.role !== 'Client' && (
-                        <KpiCard
-                            title="Appuntamenti Pianificati"
-                            value={kpiData.openAppointments}
-                            icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
-                            description="Appuntamenti da eseguire"
-                            onClick={() => router.push('/dashboard/appointments')}
-                        />
-                    )}
-                </div>
             
                 {user.role !== 'Client' && user.role !== 'Operator' && (
                     <Card className="lg:col-span-12 order-last">
@@ -504,4 +542,3 @@ export default function DashboardPage() {
     </>
   );
 }
-

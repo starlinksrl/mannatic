@@ -44,6 +44,8 @@ interface InterventionsTableProps {
   clients: User[];
   operators: User[];
   onInterventionChange: () => void;
+  initialStatusFilter?: string;
+  initialPriorityFilter?: string;
 }
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
@@ -58,14 +60,14 @@ const isDueSoon = (dueDate: string | null | undefined): boolean => {
     return isBefore(dueDateObj, twoDaysFromNow) && isBefore(startOfToday(), addDays(dueDateObj, 1));
 };
 
-export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onInterventionChange }: InterventionsTableProps) {
+export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onInterventionChange, initialStatusFilter = 'active', initialPriorityFilter = 'all' }: InterventionsTableProps) {
   const { toast } = useToast();
   const { openModal } = useInterventionModal();
   const [interventions, setInterventions] = useState(initialInterventions);
   const [clients, setClients] = useState(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('active');
-  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+  const [priorityFilter, setPriorityFilter] = useState(initialPriorityFilter);
   const [clientFilter, setClientFilter] = useState('all');
   const [operatorFilter, setOperatorFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator' | 'default'; direction: 'ascending' | 'descending' } | null>({ key: 'default', direction: 'ascending' });
@@ -75,6 +77,11 @@ export function InterventionsTable({ interventions: initialInterventions, curren
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [interventionToDelete, setInterventionToDelete] = useState<Intervention | null>(null);
+  
+  useEffect(() => {
+    setStatusFilter(initialStatusFilter);
+    setPriorityFilter(initialPriorityFilter);
+  }, [initialStatusFilter, initialPriorityFilter]);
 
   useEffect(() => {
     setInterventions(initialInterventions);
@@ -147,17 +154,20 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                clientName.includes(lowercasedSearchTerm);
       });
     }
-
+    
+    const statuses = statusFilter.split(',');
     if (statusFilter === 'active') {
         const activeStatuses = ['Nuovo', 'In corso'];
         filtered = filtered.filter(i => activeStatuses.includes(i.status));
-    } else if (statusFilter !== 'all') {
-      filtered = filtered.filter(i => i.status === statusFilter);
+    } else if (statuses[0] !== 'all') {
+      filtered = filtered.filter(i => statuses.includes(i.status));
+    }
+    
+    const priorities = priorityFilter.split(',');
+    if (priorities[0] !== 'all') {
+        filtered = filtered.filter(i => priorities.includes(i.priority));
     }
 
-    if (priorityFilter !== 'all') {
-        filtered = filtered.filter(i => i.priority === priorityFilter);
-    }
     if (clientFilter !== 'all') {
         filtered = filtered.filter(i => i.clientId === clientFilter);
     }

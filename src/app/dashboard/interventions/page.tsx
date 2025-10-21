@@ -6,13 +6,13 @@ import { InterventionsTable } from '@/components/dashboard/interventions-table';
 import { getInterventions, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { User, Intervention } from '@/lib/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Loader, PlusCircle } from 'lucide-react';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 
 export default function InterventionsPage() {
@@ -23,6 +23,10 @@ export default function InterventionsPage() {
     const [loading, setLoading] = useState(true);
     const { intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const initialStatusFilter = useMemo(() => searchParams.get('status') || 'active', [searchParams]);
+    const initialPriorityFilter = useMemo(() => searchParams.get('priority') || 'all', [searchParams]);
 
 
     const fetchData = async () => {
@@ -93,6 +97,8 @@ export default function InterventionsPage() {
             clients={clients} 
             operators={operators}
             onInterventionChange={handleInterventionChange}
+            initialStatusFilter={initialStatusFilter}
+            initialPriorityFilter={initialPriorityFilter}
         />
       </main>
       {interventionToEdit && user && (
