@@ -289,6 +289,10 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>> & { cur
             address: userData.address || '',
             phone: userData.phone || '',
             password: passwordForDb,
+            vatNumber: userData.vatNumber,
+            taxCode: userData.taxCode,
+            uniqueCode: userData.uniqueCode,
+            logoUrl: userData.logoUrl,
             latitude: userData.latitude ?? null,
             longitude: userData.longitude ?? null,
             clientNotes: userData.clientNotes || '',
@@ -1254,6 +1258,17 @@ export async function getSupportTickets(companyId: string, clientId?: string): P
     }
 }
 
+export async function getAllSupportTickets(): Promise<SupportTicket[]> {
+    try {
+        const snapshot = await getDocs(collection(db, 'supportTickets'));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportTicket));
+    } catch (error) {
+        console.error("Error fetching all support tickets:", error);
+        return [];
+    }
+}
+
+
 export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'messages'> & { initialMessage: string, sender: User }): Promise<SupportTicket> {
     const newId = generateShortId();
     const now = new Date().toISOString();
@@ -1422,6 +1437,7 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
 
 
 

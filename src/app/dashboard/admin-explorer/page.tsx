@@ -7,16 +7,17 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getCompanyById, getUsers, getInterventions, getSurveys, getNotifications, updateDocument } from '@/lib/data';
-import { Company, User, Intervention, ScheduledMaintenance, Survey, Notification } from '@/lib/types';
+import { getCompanyById, getUsers, getInterventions, getAppointments, getNotifications, updateDocument, getSupportTickets } from '@/lib/data';
+import { Company, User, Intervention, ScheduledMaintenance, Appointment, Notification, SupportTicket } from '@/lib/types';
 import { DataExplorer } from '@/components/dashboard/data-explorer';
 
 type Data = {
     companies: Company[];
     users: User[];
     interventions: (Intervention | ScheduledMaintenance)[];
-    surveys: Survey[];
+    surveys: Appointment[];
     notifications: Notification[];
+    supportTickets: SupportTicket[];
 }
 
 type CollectionName = keyof Data;
@@ -31,12 +32,13 @@ export default function AdminExplorerPage() {
     const fetchData = async () => {
         if (!currentCompany) return;
         setIsLoading(true);
-        const [company, users, interventions, surveys, notifications] = await Promise.all([
+        const [company, users, interventions, surveys, notifications, supportTickets] = await Promise.all([
             getCompanyById(currentCompany.id),
             getUsers(currentCompany.id),
             getInterventions(currentCompany.id),
-            getSurveys(currentCompany.id),
+            getAppointments(currentCompany.id),
             getNotifications(currentCompany.id),
+            getSupportTickets(currentCompany.id),
         ]);
         setData({ 
             companies: company ? [company] : [], 
@@ -44,6 +46,7 @@ export default function AdminExplorerPage() {
             interventions, 
             surveys, 
             notifications, 
+            supportTickets,
         });
         setIsLoading(false);
     }
@@ -74,7 +77,7 @@ export default function AdminExplorerPage() {
         return null;
     }
 
-    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'surveys', 'notifications'];
+    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'surveys', 'supportTickets', 'notifications'];
 
     return (
         <>

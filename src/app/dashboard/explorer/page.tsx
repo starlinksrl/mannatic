@@ -7,16 +7,17 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getCompanies, getAllUsers, getAllInterventions, getAllAppointments, getAllNotifications, updateDocument } from '@/lib/data';
-import { Company, User, Intervention, ScheduledMaintenance, Appointment as Survey, Notification } from '@/lib/types';
+import { getCompanies, getAllUsers, getAllInterventions, getAllAppointments, getAllNotifications, getAllSupportTickets, updateDocument } from '@/lib/data';
+import { Company, User, Intervention, ScheduledMaintenance, Appointment, Notification, SupportTicket } from '@/lib/types';
 import { DataExplorer } from '@/components/dashboard/data-explorer';
 
 type Data = {
     companies: Company[];
     users: User[];
     interventions: (Intervention | ScheduledMaintenance)[];
-    surveys: Survey[];
+    surveys: Appointment[];
     notifications: Notification[];
+    supportTickets: SupportTicket[];
 }
 
 type CollectionName = keyof Data;
@@ -25,19 +26,20 @@ type CollectionName = keyof Data;
 export default function ExplorerPage() {
     const { user } = useUser();
     const router = useRouter();
-    const [data, setData] = useState<Data | null>(null);
+    const [data, setData] = useState<Partial<Data> | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchData = async () => {
         setIsLoading(true);
-        const [companies, users, interventions, surveys, notifications] = await Promise.all([
+        const [companies, users, interventions, surveys, notifications, supportTickets] = await Promise.all([
             getCompanies(undefined, true),
             getAllUsers(),
             getAllInterventions(),
             getAllAppointments(),
             getAllNotifications(),
+            getAllSupportTickets(),
         ]);
-        setData({ companies, users, interventions, surveys, notifications });
+        setData({ companies, users, interventions, surveys, notifications, supportTickets });
         setIsLoading(false);
     }
 
@@ -67,7 +69,7 @@ export default function ExplorerPage() {
         return null;
     }
 
-    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'surveys', 'notifications'];
+    const collectionNames: CollectionName[] = ['companies', 'users', 'interventions', 'surveys', 'supportTickets', 'notifications'];
 
     return (
         <>
@@ -81,7 +83,7 @@ export default function ExplorerPage() {
                     </TabsList>
                      {collectionNames.map(name => (
                         <TabsContent key={name} value={name} className="pt-4">
-                            <DataExplorer data={data[name]} collectionName={name} onDataChange={fetchData} />
+                            <DataExplorer data={data[name] || []} collectionName={name} onDataChange={fetchData} />
                         </TabsContent>
                      ))}
                 </Tabs>
