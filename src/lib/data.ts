@@ -66,9 +66,29 @@ export async function updateDocument(collectionName: string, docId: string, data
 
 export async function getCompanies(creatorId?: string, fetchAll: boolean = false): Promise<Company[]> {
     try {
-        if (fetchAll && creatorId === CREATOR_USER_ID) {
-            const allCompaniesSnapshot = await getDocs(collection(db, 'companies'));
-            return allCompaniesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
+        const mainCreatorId = CREATOR_USER_ID;
+        
+        if (creatorId === mainCreatorId) {
+            // Fetch companies explicitly assigned to the main creator
+            const assignedQuery = query(collection(db, 'companies'), where("creatorId", "==", mainCreatorId));
+            
+            // Fetch "orphan" companies (creatorId is null or missing)
+            const orphanQuery1 = query(collection(db, 'companies'), where("creatorId", "==", null));
+            const orphanQuery2 = query(collection(db, 'companies'), where("creatorId", "==", ''));
+
+            const [assignedSnapshot, orphan1Snapshot, orphan2Snapshot] = await Promise.all([
+                getDocs(assignedQuery),
+                getDocs(orphanQuery1),
+                getDocs(orphanQuery2)
+            ]);
+
+            const allCompaniesMap = new Map<string, Company>();
+
+            assignedSnapshot.docs.forEach(doc => allCompaniesMap.set(doc.id, { id: doc.id, ...doc.data() } as Company));
+            orphan1Snapshot.docs.forEach(doc => allCompaniesMap.set(doc.id, { id: doc.id, ...doc.data() } as Company));
+            orphan2Snapshot.docs.forEach(doc => allCompaniesMap.set(doc.id, { id: doc.id, ...doc.data() } as Company));
+
+            return Array.from(allCompaniesMap.values());
         }
 
         if (creatorId) {
@@ -291,15 +311,19 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>> & { cur
             address: userData.address || '',
             phone: userData.phone || '',
             password: passwordForDb,
-            vatNumber: userData.vatNumber,
-            taxCode: userData.taxCode,
-            uniqueCode: userData.uniqueCode,
-            logoUrl: userData.logoUrl,
             latitude: userData.latitude ?? null,
             longitude: userData.longitude ?? null,
             clientNotes: userData.clientNotes || '',
         };
         
+        // Add creator specific fields
+        if (newUserPayload.role === 'Creator') {
+            newUserPayload.vatNumber = userData.vatNumber;
+            newUserPayload.taxCode = userData.taxCode;
+            newUserPayload.uniqueCode = userData.uniqueCode;
+            newUserPayload.logoUrl = userData.logoUrl;
+        }
+
         if (newUserPayload.role === 'Operator') {
              newUserPayload.allowedSectors = userData.allowedSectors || ['interventions', 'surveys', 'maintenance'];
         } else {
@@ -1439,4 +1463,5 @@ export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
         return false;
     }
 }
+
 
