@@ -398,7 +398,7 @@ export async function generateExpiringInterventionsSummary(companyId: string): P
     
     const allUsers = await getUsers(companyId);
     const clients = allUsers.filter(u => u.role === 'Client');
-    const operators = allUsers.filter(u => u.role === 'Operator');
+    const operators = allUsers.filter(u => u.role === 'Operator' && u.email);
 
     const interventionDetails = interventions.map(i => {
         const client = clients.find(c => c.id === i.clientId);

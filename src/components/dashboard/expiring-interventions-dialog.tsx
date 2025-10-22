@@ -18,6 +18,7 @@ import { Loader, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 
 interface ExpiringInterventionsDialogProps {
@@ -56,11 +57,12 @@ export function ExpiringInterventionsDialog({ isOpen, setIsOpen }: ExpiringInter
 
         if (!isOpen) {
             setEmailContent(null);
+            setError(null);
         }
     }, [isOpen, currentCompany, emailContent]);
 
     const handleSendEmail = async () => {
-        if (!currentCompany || !emailContent) return;
+        if (!currentCompany || !emailContent || (emailContent.recipients && emailContent.recipients.length === 0)) return;
         
         setIsSending(true);
         const result = await sendExpiringInterventionsSummaryEmail(currentCompany.id, emailContent.subject, emailContent.body);
@@ -111,7 +113,11 @@ export function ExpiringInterventionsDialog({ isOpen, setIsOpen }: ExpiringInter
                         </div>
                          <div className="mb-4">
                             <h3 className="font-semibold">Destinatari:</h3>
-                            <p className="text-sm text-muted-foreground">{emailContent.recipients.length > 0 ? emailContent.recipients.join(', ') : 'Nessun operatore con email trovata.'}</p>
+                            {emailContent.recipients.length > 0 ? (
+                                <p className="text-sm text-muted-foreground">{emailContent.recipients.join(', ')}</p>
+                            ) : (
+                                <p className="text-sm text-destructive">Nessun destinatario trovato. Assicurati che ci siano operatori con indirizzi email validi.</p>
+                            )}
                         </div>
                         <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
                              <div dangerouslySetInnerHTML={{ __html: emailContent.body }} />
@@ -124,10 +130,23 @@ export function ExpiringInterventionsDialog({ isOpen, setIsOpen }: ExpiringInter
             <DialogClose asChild>
                 <Button variant="outline" disabled={isSending}>Annulla</Button>
             </DialogClose>
-            <Button onClick={handleSendEmail} disabled={isSending || isLoading || !!error || !emailContent || emailContent.recipients.length === 0}>
-                {isSending ? <Loader className="mr-2 animate-spin" /> : <Send />}
-                Invia Email agli Operatori
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                    <div tabIndex={0}> 
+                         <Button onClick={handleSendEmail} disabled={isSending || isLoading || !!error || !emailContent || emailContent.recipients.length === 0}>
+                            {isSending ? <Loader className="mr-2 animate-spin" /> : <Send />}
+                            Invia Email agli Operatori
+                        </Button>
+                    </div>
+                </TooltipTrigger>
+                {emailContent && emailContent.recipients.length === 0 && (
+                    <TooltipContent>
+                        <p>Nessun destinatario valido a cui inviare l'email.</p>
+                    </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
         </DialogFooter>
       </DialogContent>
     </Dialog>
