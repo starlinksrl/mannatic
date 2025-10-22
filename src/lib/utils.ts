@@ -16,6 +16,15 @@ export function generateShortId(length = 8) {
   return result;
 }
 
+export function createWhatsAppLink(phone: string | null | undefined): string {
+    if (!phone) return '';
+    const digitsOnly = phone.replace(/\D/g, '');
+    if (digitsOnly.startsWith('39')) {
+      return `https://wa.me/${digitsOnly}`;
+    }
+    return `https://wa.me/39${digitsOnly}`;
+};
+
 export function generateGoogleCalendarLink(appointment: Appointment): string {
   if (!appointment.date) return '';
 

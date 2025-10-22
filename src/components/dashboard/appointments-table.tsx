@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -35,8 +34,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddAppointmentForm } from './add-appointment-form';
 import { EditAppointmentForm } from './edit-appointment-form';
-import { generateGoogleCalendarLink } from '@/lib/utils';
+import { createWhatsAppLink, generateGoogleCalendarLink } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { WhatsAppIcon } from '../icons/whatsapp-icon';
 
 interface AppointmentsTableProps {
   appointments: Appointment[];
@@ -239,12 +239,17 @@ export function AppointmentsTable({ appointments: initialAppointments, currentUs
                     <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(appointment)}>{appointment.title}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>
                         {client ? (
-                            <div>
+                            <div className="flex flex-col gap-1">
                                 <span>{client.name}</span>
                                 {client.phone && (
-                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline">
-                                        <Phone className="h-3 w-3" /> {client.phone}
-                                    </a>
+                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
+                                            <Phone className="h-3 w-3" /> {client.phone}
+                                        </a>
+                                        <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-green-500">
+                                            <WhatsAppIcon className="h-4 w-4" />
+                                        </a>
+                                    </div>
                                 )}
                             </div>
                         ) : (

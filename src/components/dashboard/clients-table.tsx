@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -33,6 +32,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from '../ui/input';
+import { createWhatsAppLink } from '@/lib/utils';
+import { WhatsAppIcon } from '../icons/whatsapp-icon';
 
 interface ClientsTableProps {
   clients: User[];
@@ -152,9 +153,14 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                                 </a>
                             )}
                             {client.phone && (
-                                <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                    <Phone className="h-4 w-4 shrink-0" /> <span>{client.phone}</span>
-                                </a>
+                                <div className="flex items-center gap-2">
+                                    <a href={`tel:${client.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                        <Phone className="h-4 w-4 shrink-0" /> <span>{client.phone}</span>
+                                    </a>
+                                    <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-green-500">
+                                        <WhatsAppIcon className="h-4 w-4" />
+                                    </a>
+                                </div>
                             )}
                             {client.address && (
                                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-start gap-2 hover:underline">
@@ -230,10 +236,15 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                         </a>
                     )}
                      {client.phone && (
-                        <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                            <Phone className="h-4 w-4 text-muted-foreground" />
-                            <span>{client.phone}</span>
-                        </a>
+                        <div className="flex items-center gap-2">
+                           <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                <span>{client.phone}</span>
+                            </a>
+                            <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-green-500">
+                                <WhatsAppIcon className="h-4 w-4" />
+                            </a>
+                        </div>
                     )}
                 </div>
               </TableCell>
