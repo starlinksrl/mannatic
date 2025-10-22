@@ -301,9 +301,12 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   
   const createWhatsAppLink = (phone: string | null | undefined): string => {
     if (!phone) return '';
-    const cleanedPhone = phone.replace(/\s+/g, '');
-    const internationalPhone = cleanedPhone.startsWith('39') ? cleanedPhone : `39${cleanedPhone}`;
-    return `https://wa.me/${internationalPhone}`;
+    // Remove all non-digit characters, then check if it starts with 39.
+    const digitsOnly = phone.replace(/\D/g, '');
+    if (digitsOnly.startsWith('39')) {
+      return `https://wa.me/${digitsOnly}`;
+    }
+    return `https://wa.me/39${digitsOnly}`;
   };
 
   return (
