@@ -357,21 +357,21 @@ export default function DashboardPage() {
                             <AlertTriangle className="h-6 w-6 text-destructive" />
                             <div>
                                 <p className="text-2xl font-bold">{kpiData.urgentOpenCount || 0}</p>
-                                <p className="text-sm text-muted-foreground">Aperti Urgenti</p>
+                                <p className="text-sm text-muted-foreground">Interventi Urgenti</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=Nuovo')}>
                             <FilePlus className="h-6 w-6 text-blue-500" />
                             <div>
                                 <p className="text-2xl font-bold">{kpiData.newCount || 0}</p>
-                                <p className="text-sm text-muted-foreground">Nuovi</p>
+                                <p className="text-sm text-muted-foreground">Interventi Nuovi</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=In corso')}>
                             <Hourglass className="h-6 w-6 text-yellow-500" />
                             <div>
                                 <p className="text-2xl font-bold">{kpiData.inProgressCount || 0}</p>
-                                <p className="text-sm text-muted-foreground">In Corso</p>
+                                <p className="text-sm text-muted-foreground">Interventi in Corso</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/new-installations')}>
