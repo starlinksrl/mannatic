@@ -11,7 +11,6 @@ import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-notification';
-import { generateSummaryEmail } from '@/ai/flows/generate-summary-email';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById, getAppConfiguration, getInterventions, getUsers } from '@/lib/data';
 import { Company, User, Intervention, ScheduledMaintenance } from '@/lib/types';
 import { Resend } from 'resend';
@@ -22,7 +21,9 @@ import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationO
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
 import { generateShortId } from '@/lib/utils';
-import { addDays, isAfter, isBefore, startOfToday } from 'date-fns';
+import { addDays, isAfter, isBefore, startOfToday, format } from 'date-fns';
+import { it } from 'date-fns/locale';
+
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BAbd3o1jCl3s9l1nJqprnO6S52aP9J6kLo0up6b8P8r_28s8-IBPxIXvjAs7xJt5fXAyJEV7nh0C2MGM0z2Y24I';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'Zl2wTSSZ0Xp_pX1R_p3bT5pT-yL9a1xV6b8Z_0gY_xQ';
@@ -400,6 +401,15 @@ export async function generateExpiringInterventionsSummary(companyId: string): P
     const clients = allUsers.filter(u => u.role === 'Client');
     const operators = allUsers.filter(u => u.role === 'Operator' && u.email);
 
+    if (interventions.length === 0) {
+        return { 
+            success: true, 
+            subject: `Nessun intervento in scadenza per ${company.name}`, 
+            body: `<p>Oggi non ci sono interventi in scadenza nei prossimi 2 giorni.</p>`,
+            recipients: operators.map(o => o.email)
+        };
+    }
+
     const interventionDetails = interventions.map(i => {
         const client = clients.find(c => c.id === i.clientId);
         const operator = operators.find(o => o.id === i.assignedOperatorId);
@@ -407,24 +417,52 @@ export async function generateExpiringInterventionsSummary(companyId: string): P
             id: i.id,
             title: i.title,
             clientName: client?.name || 'N/D',
-            dueDate: i.dueDate!,
+            dueDate: format(new Date(i.dueDate!), 'dd/MM/yyyy HH:mm', { locale: it }),
             priority: i.priority,
-            operatorName: operator?.name || null,
+            operatorName: operator?.name || 'Non Assegnato',
         }
     });
 
-    try {
-        const emailContent = await generateSummaryEmail({ interventions: interventionDetails, companyName: company.name });
-        return { 
-            success: true, 
-            subject: emailContent.subject, 
-            body: emailContent.body, 
-            recipients: operators.map(o => o.email) 
-        };
-    } catch(e: any) {
-        console.error("Error generating summary email:", e);
-        return { success: false, error: e.message || "Impossibile generare l'email di riepilogo." };
-    }
+    const subject = `Riepilogo Interventi in Scadenza - MannaTic per ${company.name}`;
+    
+    const tableRows = interventionDetails.map(i => `
+        <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.id}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.title} <br><small>${i.clientName}</small></td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.dueDate}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.priority}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.operatorName}</td>
+        </tr>
+    `).join('');
+
+    const body = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Riepilogo Interventi in Scadenza</h2>
+            <p>Ciao team, ecco un riepilogo degli interventi che richiedono attenzione nei prossimi giorni.</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background-color: #f2f2f2;">
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">ID</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Titolo e Cliente</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Scadenza</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Priorità</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Operatore</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+            <p>Buon lavoro,<br>Il Team di MannaTic</p>
+        </div>
+    `;
+
+    return {
+        success: true,
+        subject,
+        body,
+        recipients: operators.map(o => o.email)
+    };
 }
 
 export async function sendExpiringInterventionsSummaryEmail(companyId: string, subject: string, body: string): Promise<{ success: boolean; error?: string }> {
