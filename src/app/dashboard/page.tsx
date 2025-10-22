@@ -187,9 +187,9 @@ export default function DashboardPage() {
     }
     
     // Operator specific KPIs
-    const urgentOpenCount = relevantInterventions.filter(i => (i.priority === 'Critica' || i.priority === 'Alta') && (i.status === 'Nuovo' || i.status === 'In corso')).length;
-    const newCount = relevantInterventions.filter(i => i.status === 'Nuovo').length;
-    const inProgressCount = relevantInterventions.filter(i => i.status === 'In corso').length;
+    const urgentOpenCount = relevantInterventions.filter(i => i.type !== 'new_installation' && (i.priority === 'Critica' || i.priority === 'Alta') && (i.status === 'Nuovo' || i.status === 'In corso')).length;
+    const newCount = relevantInterventions.filter(i => i.type !== 'new_installation' && i.status === 'Nuovo').length;
+    const inProgressCount = relevantInterventions.filter(i => i.type !== 'new_installation' && i.status === 'In corso').length;
 
 
     setKpiData({
@@ -352,7 +352,7 @@ export default function DashboardPage() {
                     <CardHeader>
                         <CardTitle className="font-headline">Riepilogo Interventi</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid gap-6 md:grid-cols-3">
+                    <CardContent className="grid gap-6 md:grid-cols-4">
                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=active&priority=Alta,Critica')}>
                             <AlertTriangle className="h-6 w-6 text-destructive" />
                             <div>
@@ -374,12 +374,19 @@ export default function DashboardPage() {
                                 <p className="text-sm text-muted-foreground">In Corso</p>
                             </div>
                         </div>
+                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/new-installations')}>
+                            <HardHat className="h-6 w-6 text-gray-500" />
+                            <div>
+                                <p className="text-2xl font-bold">{kpiData.openNewInstallations || 0}</p>
+                                <p className="text-sm text-muted-foreground">Nuovi Impianti Aperti</p>
+                            </div>
+                        </div>
                     </CardContent>
                   </Card>
                 )}
                 
                 {user.role !== 'Operator' && (
-                    <div className="lg:col-span-12 grid gap-6 md:grid-cols-2 lg:grid-cols-5 order-4 lg:order-3">
+                    <div className="lg:col-span-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4 order-4 lg:order-3">
                         <KpiCard
                             title="Adesione SLA"
                             value={`${kpiData.slaAdherencePercentage}%`}
@@ -401,16 +408,7 @@ export default function DashboardPage() {
                             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
                             description="Completati nell'ultimo mese"
                         />
-                        {user.role !== 'Client' && (
-                            <KpiCard
-                                title="Nuovi Impianti Aperti"
-                                value={kpiData.openNewInstallations}
-                                icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
-                                description="Installazioni da completare"
-                                onClick={() => router.push('/dashboard/new-installations')}
-                            />
-                        )}
-                        {user.role !== 'Client' && (user.role === 'Admin' || user.allowedSectors?.includes('appointments')) && (
+                        {(user.role === 'Admin' || user.allowedSectors?.includes('appointments')) && (
                             <KpiCard
                                 title="Appuntamenti Pianificati"
                                 value={kpiData.openAppointments}
