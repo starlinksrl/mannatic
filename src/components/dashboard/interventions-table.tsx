@@ -19,7 +19,7 @@ import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { AddInterventionForm } from './add-intervention-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { cn } from '@/lib/utils';
+import { ExpiringInterventionsDialog } from './expiring-interventions-dialog';
 
 
 interface InterventionsTableProps {
@@ -77,6 +78,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [interventionToDelete, setInterventionToDelete] = useState<Intervention | null>(null);
+  const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
   
   useEffect(() => {
     setStatusFilter(initialStatusFilter);
@@ -323,6 +325,12 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 </Select>
                 )}
             </div>
+             {currentUser.role === 'Admin' && (
+                <Button variant="outline" onClick={() => setIsSummaryDialogOpen(true)}>
+                    <Send />
+                    Invia Riepilogo Scadenze
+                </Button>
+            )}
       </div>
       <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
@@ -502,6 +510,10 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ExpiringInterventionsDialog
+        isOpen={isSummaryDialogOpen}
+        setIsOpen={setIsSummaryDialogOpen}
+      />
     </div>
   );
 }

@@ -11,8 +11,9 @@ import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-notification';
-import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById, getAppConfiguration } from '@/lib/data';
-import { Company, User } from '@/lib/types';
+import { generateSummaryEmail } from '@/ai/flows/generate-summary-email';
+import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById, getAppConfiguration, getInterventions, getUsers } from '@/lib/data';
+import { Company, User, Intervention, ScheduledMaintenance } from '@/lib/types';
 import { Resend } from 'resend';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
@@ -21,6 +22,7 @@ import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationO
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
 import { generateShortId } from '@/lib/utils';
+import { addDays, isAfter, isBefore, startOfToday } from 'date-fns';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BAbd3o1jCl3s9l1nJqprnO6S52aP9J6kLo0up6b8P8r_28s8-IBPxIXvjAs7xJt5fXAyJEV7nh0C2MGM0z2Y24I';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'Zl2wTSSZ0Xp_pX1R_p3bT5pT-yL9a1xV6b8Z_0gY_xQ';
@@ -211,56 +213,6 @@ export async function updateCompanySettings(companyId: string, settings: Partial
     }
 }
 
-interface TriggerExpiryNotificationInput {
-    recipientEmail: string;
-    interventionId: string;
-    interventionTitle: string;
-    clientName: string;
-    dueDate: string;
-    companyId: string;
-    resendConfig: {
-      apiKey: string;
-      from: string;
-    };
-}
-export async function triggerExpiryNotification(input: TriggerExpiryNotificationInput): Promise<{success: boolean, error?: string}> {
-    const { resendConfig, recipientEmail, interventionId, interventionTitle, clientName, dueDate } = input;
-    const emailSubject = `AVVISO: Intervento #${interventionId} in Scadenza`;
-    const emailBody = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-            <h2 style="color: #c0392b;">Promemoria Scadenza Intervento</h2>
-            <p>Questo è un avviso per l'intervento in scadenza:</p>
-            <ul>
-                <li><b>ID Intervento:</b> ${interventionId}</li>
-                <li><b>Titolo:</b> ${interventionTitle}</li>
-                <li><b>Cliente:</b> ${clientName}</li>
-                <li><b>Scadenza:</b> ${dueDate}</li>
-            </ul>
-            <p>Si prega di completare l'attività il prima possibile.</p>
-            <p>Cordiali saluti,<br>MannaTic System</p>
-        </div>
-    `;
-
-    try {
-        const resend = new Resend(resendConfig.apiKey);
-        const { data, error } = await resend.emails.send({
-            from: resendConfig.from,
-            to: [recipientEmail],
-            subject: emailSubject,
-            html: emailBody,
-        });
-
-        if (error) {
-            throw error;
-        }
-
-        return { success: true };
-
-    } catch (error: any) {
-        console.error(`[triggerExpiryNotification] FAILED for ${recipientEmail}:`, error.message);
-        return { success: false, error: error.message || 'An unknown error occurred.' };
-    }
-}
 
 export async function triggerNewInterventionNotification(input: SendNewInterventionNotificationInput): Promise<SendNewInterventionNotificationOutput> {
     try {
@@ -436,5 +388,71 @@ export async function handleRegistration(values: { companyName: string, name: st
     }
 }
 
+// Expiring Interventions Summary
+export async function generateExpiringInterventionsSummary(companyId: string): Promise<{ success: boolean; subject?: string; body?: string; error?: string; recipients?: string[] }> {
+    const company = await getCompanyById(companyId);
+    if (!company) return { success: false, error: 'Azienda non trovata.' };
+
+    const twoDaysFromNow = addDays(startOfToday(), 2);
+    const interventions = (await getInterventions(companyId)).filter(i => !i.isMaintenance && i.status !== 'Completato' && i.status !== 'Annullato' && i.dueDate && isBefore(new Date(i.dueDate), twoDaysFromNow) && isAfter(new Date(i.dueDate), new Date()));
     
+    const allUsers = await getUsers(companyId);
+    const clients = allUsers.filter(u => u.role === 'Client');
+    const operators = allUsers.filter(u => u.role === 'Operator');
+
+    const interventionDetails = interventions.map(i => {
+        const client = clients.find(c => c.id === i.clientId);
+        const operator = operators.find(o => o.id === i.assignedOperatorId);
+        return {
+            id: i.id,
+            title: i.title,
+            clientName: client?.name || 'N/D',
+            dueDate: i.dueDate!,
+            priority: i.priority,
+            operatorName: operator?.name || null,
+        }
+    });
+
+    try {
+        const emailContent = await generateSummaryEmail({ interventions: interventionDetails, companyName: company.name });
+        return { 
+            success: true, 
+            subject: emailContent.subject, 
+            body: emailContent.body, 
+            recipients: operators.map(o => o.email) 
+        };
+    } catch(e: any) {
+        console.error("Error generating summary email:", e);
+        return { success: false, error: e.message || "Impossibile generare l'email di riepilogo." };
+    }
+}
+
+export async function sendExpiringInterventionsSummaryEmail(companyId: string, subject: string, body: string): Promise<{ success: boolean; error?: string }> {
+    const company = await getCompanyById(companyId);
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        return { success: false, error: "Configurazione Resend per l'azienda non trovata." };
+    }
+
+    const operators = (await getUsers(companyId)).filter(u => u.role === 'Operator' && u.email);
+
+    if (operators.length === 0) {
+        return { success: true }; // No one to send to
+    }
+
+    try {
+        const resend = new Resend(company.resendApiKey);
+        await resend.emails.send({
+            from: company.senderEmail,
+            to: operators.map(o => o.email),
+            subject: subject,
+            html: body,
+        });
+        return { success: true };
+    } catch (e: any) {
+        console.error("Error sending summary email:", e);
+        return { success: false, error: e.message || "Impossibile inviare l'email di riepilogo." };
+    }
+}
+    
+
 
