@@ -487,83 +487,83 @@ export async function getOperator(operatorId: string) {
 
 // --- INTERVENTION & MAINTENANCE MANAGEMENT ---
 
-async function checkAndNotifyExpiringInterventions(companyId: string) {
-    if (!companyId) return;
+// async function checkAndNotifyExpiringInterventions(companyId: string) {
+//     if (!companyId) return;
     
-    const companyDoc = await getDoc(doc(db, 'companies', companyId));
-    if (!companyDoc.exists()) return;
-    const company = { id: companyDoc.id, ...companyDoc.data() } as Company;
+//     const companyDoc = await getDoc(doc(db, 'companies', companyId));
+//     if (!companyDoc.exists()) return;
+//     const company = { id: companyDoc.id, ...companyDoc.data() } as Company;
 
-    if (!company.resendApiKey || !company.senderEmail) {
-        console.log(`Skipping expiry notifications for company ${companyId}: Resend not configured.`);
-        return;
-    }
+//     if (!company.resendApiKey || !company.senderEmail) {
+//         console.log(`Skipping expiry notifications for company ${companyId}: Resend not configured.`);
+//         return;
+//     }
 
-    const now = new Date();
-    const expiryThreshold = addDays(now, 1);
+//     const now = new Date();
+//     const expiryThreshold = addDays(now, 1);
 
-    const qInterventions = query(collection(db, 'interventions'),
-        where("companyId", "==", companyId),
-        where("status", "in", ["Nuovo", "In corso"])
-    );
-    const interventionsSnapshot = await getDocs(qInterventions);
-    const openInterventions = interventionsSnapshot.docs
-        .map(d => ({ id: d.id, ...d.data() } as Intervention))
-        .filter(i => i.dueDate && !i.isMaintenance);
+//     const qInterventions = query(collection(db, 'interventions'),
+//         where("companyId", "==", companyId),
+//         where("status", "in", ["Nuovo", "In corso"])
+//     );
+//     const interventionsSnapshot = await getDocs(qInterventions);
+//     const openInterventions = interventionsSnapshot.docs
+//         .map(d => ({ id: d.id, ...d.data() } as Intervention))
+//         .filter(i => i.dueDate && !i.isMaintenance);
 
-    const allNotificationsSnapshot = await getDocs(query(collection(db, 'notifications'), where("companyId", "==", companyId)));
-    const allNotifications = allNotificationsSnapshot.docs.map(doc => doc.data());
+//     const allNotificationsSnapshot = await getDocs(query(collection(db, 'notifications'), where("companyId", "==", companyId)));
+//     const allNotifications = allNotificationsSnapshot.docs.map(doc => doc.data());
 
-    for (const intervention of openInterventions) {
-        if (!intervention.dueDate) continue;
-        const dueDate = new Date(intervention.dueDate);
+//     for (const intervention of openInterventions) {
+//         if (!intervention.dueDate) continue;
+//         const dueDate = new Date(intervention.dueDate);
 
-         const hasRecentNotification = allNotifications.some(n => 
-            n.relatedInterventionId === intervention.id && 
-            n.type === 'expiry' &&
-            differenceInHours(now, new Date(n.createdAt)) < 24
-        );
+//          const hasRecentNotification = allNotifications.some(n => 
+//             n.relatedInterventionId === intervention.id && 
+//             n.type === 'expiry' &&
+//             differenceInHours(now, new Date(n.createdAt)) < 24
+//         );
 
-        if (isAfter(dueDate, now) && isAfter(expiryThreshold, dueDate) && !hasRecentNotification) {
-             if (intervention.assignedOperatorId) {
-                const operator = await getOperator(intervention.assignedOperatorId);
-                const client = await getClient(intervention.clientId);
+//         if (isAfter(dueDate, now) && isAfter(expiryThreshold, dueDate) && !hasRecentNotification) {
+//              if (intervention.assignedOperatorId) {
+//                 const operator = await getOperator(intervention.assignedOperatorId);
+//                 const client = await getClient(intervention.clientId);
 
-                if (operator && operator.email && client) {
-                    console.log(`Sending expiry notification for intervention #${intervention.id} to ${operator.email}`);
+//                 if (operator && operator.email && client) {
+//                     console.log(`Sending expiry notification for intervention #${intervention.id} to ${operator.email}`);
                     
-                    await triggerExpiryNotification({
-                        recipientEmail: operator.email,
-                        interventionId: intervention.id,
-                        interventionTitle: intervention.title,
-                        clientName: client.name,
-                        dueDate: dueDate.toLocaleDateString('it-IT'),
-                        companyId: company.id,
-                        resendConfig: {
-                            apiKey: company.resendApiKey,
-                            from: company.senderEmail,
-                        }
-                    });
+//                     await triggerExpiryNotification({
+//                         recipientEmail: operator.email,
+//                         interventionId: intervention.id,
+//                         interventionTitle: intervention.title,
+//                         clientName: client.name,
+//                         dueDate: dueDate.toLocaleDateString('it-IT'),
+//                         companyId: company.id,
+//                         resendConfig: {
+//                             apiKey: company.resendApiKey,
+//                             from: company.senderEmail,
+//                         }
+//                     });
 
-                    if (operator.pushSubscriptions && operator.pushSubscriptions.length > 0) {
-                        const payload = JSON.stringify({
-                            title: 'Intervento in Scadenza',
-                            body: `L'intervento #${intervention.id}: "${intervention.title}" scade a breve.`,
-                            data: { url: `/dashboard/interventions?id=${intervention.id}` },
-                        });
-                        operator.pushSubscriptions.forEach(sub => sendPushNotification(sub, payload));
-                    }
-                }
-            }
-        }
-    }
-}
+//                     if (operator.pushSubscriptions && operator.pushSubscriptions.length > 0) {
+//                         const payload = JSON.stringify({
+//                             title: 'Intervento in Scadenza',
+//                             body: `L'intervento #${intervention.id}: "${intervention.title}" scade a breve.`,
+//                             data: { url: `/dashboard/interventions?id=${intervention.id}` },
+//                         });
+//                         operator.pushSubscriptions.forEach(sub => sendPushNotification(sub, payload));
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
 export async function getInterventions(companyId: string): Promise<(Intervention | ScheduledMaintenance)[]> {
     if (!companyId) return [];
     
-    await checkAndNotifyExpiringInterventions(companyId);
+    // await checkAndNotifyExpiringInterventions(companyId);
 
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
