@@ -49,6 +49,24 @@ interface InterventionsTableProps {
   initialPriorityFilter?: string;
 }
 
+const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+  </svg>
+);
+
+
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
 const statusOrder: Record<string, number> = { 'Nuovo': 1, 'In corso': 2, 'Archiviato': 3, 'Completato': 4, 'Da Fatturare': 5, 'Fatturato': 6, 'Annullato': 7 };
 
@@ -280,6 +298,13 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   ];
   
   const canDeleteIntervention = ['Admin', 'Client', 'Creator'].includes(currentUser.role);
+  
+  const createWhatsAppLink = (phone: string | null | undefined): string => {
+    if (!phone) return '';
+    const cleanedPhone = phone.replace(/\s+/g, '');
+    const internationalPhone = cleanedPhone.startsWith('39') ? cleanedPhone : `39${cleanedPhone}`;
+    return `https://wa.me/${internationalPhone}`;
+  };
 
   return (
     <div className="space-y-4">
@@ -345,10 +370,15 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                             <p className="font-medium break-words">{client.name}</p>
                              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                                 {client.phone && (
-                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                        <Phone className="h-4 w-4 text-muted-foreground" />
-                                        <span>{client.phone}</span>
-                                    </a>
+                                    <div className="flex items-center gap-2">
+                                        <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                            <Phone className="h-4 w-4 text-muted-foreground" />
+                                            <span>{client.phone}</span>
+                                        </a>
+                                        <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500">
+                                            <WhatsAppIcon className="h-4 w-4" />
+                                        </a>
+                                    </div>
                                 )}
                                  {client.address && (
                                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
@@ -444,10 +474,15 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                                 </a>
                             )}
                             {client.phone && (
-                                <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                    <Phone className="h-4 w-4 text-muted-foreground" />
-                                    <span>{client.phone}</span>
-                                </a>
+                                <div className="flex items-center gap-2">
+                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        <span>{client.phone}</span>
+                                    </a>
+                                     <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500">
+                                        <WhatsAppIcon className="h-4 w-4" />
+                                     </a>
+                                </div>
                             )}
                         </div>
                       )}
