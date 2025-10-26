@@ -359,41 +359,47 @@ export default function DashboardPage() {
                         <CardTitle className="font-headline">Riepilogo Attività</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-                       <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=active&priority=Alta,Critica')}>
-                            <AlertTriangle className="h-6 w-6 text-destructive" />
-                            <div>
-                                <p className="text-2xl font-bold">{kpiData.urgentOpenCount || 0}</p>
-                                <p className="text-sm text-muted-foreground">Interventi Urgenti</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=Nuovo')}>
-                            <FilePlus className="h-6 w-6 text-blue-500" />
-                            <div>
-                                <p className="text-2xl font-bold">{kpiData.newCount || 0}</p>
-                                <p className="text-sm text-muted-foreground">Interventi Nuovi</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=In corso')}>
-                            <Hourglass className="h-6 w-6 text-yellow-500" />
-                            <div>
-                                <p className="text-2xl font-bold">{kpiData.inProgressCount || 0}</p>
-                                <p className="text-sm text-muted-foreground">Interventi in Corso</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/interventions?status=active&assigned=true')}>
-                            <UserCheck className="h-6 w-6 text-green-500" />
-                            <div>
-                                <p className="text-2xl font-bold">{kpiData.assignedCount || 0}</p>
-                                <p className="text-sm text-muted-foreground">Interventi Assegnati</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted cursor-pointer hover:bg-muted/80" onClick={() => router.push('/dashboard/new-installations')}>
-                            <HardHat className="h-6 w-6 text-gray-500" />
-                            <div>
-                                <p className="text-2xl font-bold">{kpiData.openNewInstallations || 0}</p>
-                                <p className="text-sm text-muted-foreground">Nuovi Impianti Aperti</p>
-                            </div>
-                        </div>
+                       <KpiCard
+                            title="Interventi Urgenti"
+                            value={kpiData.urgentOpenCount || 0}
+                            icon={<AlertTriangle className="h-6 w-6 text-destructive" />}
+                            onClick={() => router.push('/dashboard/interventions?status=active&priority=Alta,Critica')}
+                            isLoading={loading}
+                        />
+                        <KpiCard
+                            title="Interventi Nuovi"
+                            value={kpiData.newCount || 0}
+                            icon={<FilePlus className="h-6 w-6 text-blue-500" />}
+                            onClick={() => router.push('/dashboard/interventions?status=Nuovo')}
+                            isLoading={loading}
+                        />
+                        <KpiCard
+                            title="Interventi in Corso"
+                            value={kpiData.inProgressCount || 0}
+                            icon={<Hourglass className="h-6 w-6 text-yellow-500" />}
+                            onClick={() => router.push('/dashboard/interventions?status=In corso')}
+                            isLoading={loading}
+                        />
+                        <KpiCard
+                            title="Interventi Assegnati"
+                            value={kpiData.assignedCount || 0}
+                            icon={<UserCheck className="h-6 w-6 text-green-500" />}
+                            onClick={() => {
+                                if (user.role === 'Operator') {
+                                    router.push(`/dashboard/interventions?status=active&operator=${user.id}`);
+                                } else {
+                                    router.push('/dashboard/interventions?status=active&assigned=true');
+                                }
+                            }}
+                            isLoading={loading}
+                        />
+                        <KpiCard
+                            title="Nuovi Impianti Aperti"
+                            value={kpiData.openNewInstallations || 0}
+                            icon={<HardHat className="h-6 w-6 text-gray-500" />}
+                            onClick={() => router.push('/dashboard/new-installations')}
+                            isLoading={loading}
+                        />
                     </CardContent>
                   </Card>
                 )}

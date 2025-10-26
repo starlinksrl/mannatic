@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -38,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { ExpiringInterventionsDialog } from './expiring-interventions-dialog';
 import { createWhatsAppLink } from '@/lib/utils';
 import { WhatsAppIcon } from '../icons/whatsapp-icon';
+import { useSearchParams } from 'next/navigation';
 
 
 interface InterventionsTableProps {
@@ -65,13 +67,18 @@ const isDueSoon = (dueDate: string | null | undefined): boolean => {
 export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onInterventionChange, initialStatusFilter = 'active', initialPriorityFilter = 'all' }: InterventionsTableProps) {
   const { toast } = useToast();
   const { openModal } = useInterventionModal();
+  const searchParams = useSearchParams();
+  
   const [interventions, setInterventions] = useState(initialInterventions);
   const [clients, setClients] = useState(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
+  
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [priorityFilter, setPriorityFilter] = useState(initialPriorityFilter);
   const [clientFilter, setClientFilter] = useState('all');
-  const [operatorFilter, setOperatorFilter] = useState('all');
+  const [operatorFilter, setOperatorFilter] = useState(searchParams.get('operator') || 'all');
+  const [assignedFilter, setAssignedFilter] = useState(searchParams.get('assigned') === 'true');
+
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator' | 'default'; direction: 'ascending' | 'descending' } | null>({ key: 'default', direction: 'ascending' });
   
   const [clientsMap, setClientsMap] = useState<Map<string, User>>(new Map());
@@ -177,9 +184,13 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     if (operatorFilter !== 'all') {
         filtered = filtered.filter(i => i.assignedOperatorId === operatorFilter);
     }
+    
+    if (assignedFilter) {
+      filtered = filtered.filter(i => !!i.assignedOperatorId);
+    }
 
     return filtered;
-  }, [roleBasedInterventions, searchTerm, statusFilter, priorityFilter, clientFilter, operatorFilter, currentUser.role, clientsMap]);
+  }, [roleBasedInterventions, searchTerm, statusFilter, priorityFilter, clientFilter, operatorFilter, assignedFilter, currentUser.role, clientsMap]);
   
   const sortedInterventions = useMemo(() => {
     let sortableItems = [...filteredInterventions];
@@ -322,6 +333,15 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                     <SelectContent>
                     <SelectItem value="all">Tutti i clienti</SelectItem>
                     {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                )}
+                 {currentUser.role === 'Admin' && (
+                    <Select value={operatorFilter} onValueChange={setOperatorFilter}>
+                    <SelectTrigger><SelectValue placeholder="Filtra per operatore" /></SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="all">Tutti gli operatori</SelectItem>
+                    {operators.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
                 )}
