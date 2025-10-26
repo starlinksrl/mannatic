@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -111,9 +112,11 @@ export default function DashboardPage() {
     setOperators(users.filter(u => u.role === 'Operator'));
     
     let relevantInterventionsForKpis: (Intervention | ScheduledMaintenance)[];
-
+    
     if (user.role === 'Operator') {
-        relevantInterventionsForKpis = allInterventions.filter(i => i.assignedOperatorId === user.id);
+        const operatorInterventions = allInterventions.filter(i => i.assignedOperatorId === user.id);
+        const unassignedInterventions = allInterventions.filter(i => !i.assignedOperatorId);
+        relevantInterventionsForKpis = [...operatorInterventions, ...unassignedInterventions];
     } else {
         relevantInterventionsForKpis = allInterventions;
     }
@@ -204,15 +207,17 @@ export default function DashboardPage() {
     
     let assignedCount: number;
     if (user.role === 'Operator') {
-        assignedCount = allActiveInterventions.filter(i => i.assignedOperatorId === user.id).length;
+        assignedCount = allInterventions.filter(i => i.assignedOperatorId === user.id && ['Nuovo', 'In corso'].includes(i.status)).length;
     } else {
-        assignedCount = allActiveInterventions.filter(i => !!i.assignedOperatorId).length;
+        assignedCount = allInterventions.filter(i => !!i.assignedOperatorId && ['Nuovo', 'In corso'].includes(i.status)).length;
     }
     
     const scheduleStartDate = startOfToday();
     const scheduleEndDate = addDays(scheduleStartDate, 7);
 
-    const scheduledInterventions: WeeklyScheduleItem[] = allInterventions
+    const operatorAllowedSectors = user.role === 'Operator' ? user.allowedSectors || [] : null;
+
+    let scheduledInterventions: WeeklyScheduleItem[] = allInterventions
       .filter(i => 
         i.dueDate && 
         isWithinInterval(new Date(i.dueDate), { start: scheduleStartDate, end: scheduleEndDate }) &&
@@ -220,13 +225,28 @@ export default function DashboardPage() {
       )
       .map(i => ({ ...i, itemType: 'intervention' }));
 
-    const scheduledAppointments: WeeklyScheduleItem[] = allAppointments
+    let scheduledAppointments: WeeklyScheduleItem[] = allAppointments
       .filter(a => 
         a.date && 
         isWithinInterval(new Date(a.date), { start: scheduleStartDate, end: scheduleEndDate }) &&
         a.status === 'Pianificato'
       )
       .map(a => ({ ...a, itemType: 'appointment' }));
+      
+    if (operatorAllowedSectors) {
+        scheduledInterventions = scheduledInterventions.filter(item => {
+            const intervention = item as Intervention;
+            if (intervention.isMaintenance) {
+                return operatorAllowedSectors.includes('maintenance');
+            }
+            if (intervention.type === 'new_installation') {
+                return operatorAllowedSectors.includes('new_installations');
+            }
+            return operatorAllowedSectors.includes('interventions');
+        });
+        
+        scheduledAppointments = scheduledAppointments.filter(() => operatorAllowedSectors.includes('appointments'));
+    }
 
     const weeklySchedule = [...scheduledInterventions, ...scheduledAppointments]
       .sort((a, b) => new Date(a.itemType === 'intervention' ? a.dueDate! : a.date!).getTime() - new Date(b.itemType === 'intervention' ? b.dueDate! : b.date!).getTime());
@@ -566,5 +586,6 @@ export default function DashboardPage() {
     </>
   );
 }
+
 
 
