@@ -1,11 +1,9 @@
-
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
 import { getInterventions, getUsers, getClients, updateUser, getAppointments, getSupportTickets } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointment, SupportTicket } from '@/lib/types';
-import { isAfter, addDays, startOfToday } from 'date-fns';
+import { isAfter, addDays, startOfToday, isWithinInterval, startOfDay } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
 import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck } from 'lucide-react';
@@ -30,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { Scratchpad } from '@/components/dashboard/scratchpad';
 import { CompanyScratchpad } from '@/components/dashboard/company-scratchpad';
 import { InterventionsTable } from '@/components/dashboard/interventions-table';
+import { EditAppointmentForm } from '@/components/dashboard/edit-appointment-form';
 
 
 export type EnrichedUpdate = InterventionUpdate & { 
@@ -37,6 +36,8 @@ export type EnrichedUpdate = InterventionUpdate & {
   interventionId: string;
   clientName: string;
 };
+
+type WeeklyScheduleItem = (Intervention | Appointment) & { itemType: 'intervention' | 'appointment' };
 
 type KpiData = GenerateKpiDashboardInput & { 
   openInterventions: number;
@@ -58,6 +59,7 @@ type KpiData = GenerateKpiDashboardInput & {
   newCount?: number;
   inProgressCount?: number;
   assignedCount?: number;
+  weeklySchedule: WeeklyScheduleItem[];
 };
 
 
@@ -71,6 +73,9 @@ export default function DashboardPage() {
   const [operators, setOperators] = useState<User[]>([]);
   const [clients, setClients] = useState<User[]>([]);
   const { intervention: interventionToEdit, isOpen, closeModal, openModal } = useInterventionModal();
+  const [appointmentToEdit, setAppointmentToEdit] = useState<Appointment | null>(null);
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+
 
   useEffect(() => {
     if (user?.role === 'Client') {
@@ -105,10 +110,14 @@ export default function DashboardPage() {
     setOperators(users.filter(u => u.role === 'Operator'));
     
     let relevantInterventions: (Intervention | ScheduledMaintenance)[];
-    if (user.role === 'Client') {
-        relevantInterventions = allInterventions.filter(i => i.clientId === user.id);
+    let relevantAppointments: Appointment[];
+
+    if (user.role === 'Operator') {
+        relevantInterventions = allInterventions.filter(i => i.assignedOperatorId === user.id);
+        relevantAppointments = allAppointments.filter(a => a.assignedOperatorId === user.id);
     } else {
         relevantInterventions = allInterventions;
+        relevantAppointments = allAppointments;
     }
     
     const activeInterventions = relevantInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
@@ -162,7 +171,7 @@ export default function DashboardPage() {
       .filter(i => i.clientAddress);
 
     const twoDaysFromNow = addDays(now, 2);
-    const sevenDaysFromNow = addDays(now, 7);
+    const sevenDaysFromNow = addDays(startOfToday(), 7);
 
     const standardInterventions = relevantInterventions.filter(i => !i.isMaintenance && i.type === 'standard') as Intervention[];
     const newInstallations = relevantInterventions.filter(i => !i.isMaintenance && i.type === 'new_installation') as Intervention[];
@@ -190,16 +199,32 @@ export default function DashboardPage() {
     }
     
     // KPIs for the summary box
-    const urgentOpenCount = activeInterventions.filter(i => i.type !== 'new_installation' && (i.priority === 'Critica' || i.priority === 'Alta')).length;
-    const newCount = activeInterventions.filter(i => i.type !== 'new_installation' && i.status === 'Nuovo').length;
-    const inProgressCount = activeInterventions.filter(i => i.type !== 'new_installation' && i.status === 'In corso').length;
+    const allActiveInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
+    const urgentOpenCount = allActiveInterventions.filter(i => i.type !== 'new_installation' && (i.priority === 'Critica' || i.priority === 'Alta')).length;
+    const newCount = allActiveInterventions.filter(i => i.type !== 'new_installation' && i.status === 'Nuovo').length;
+    const inProgressCount = allActiveInterventions.filter(i => i.type !== 'new_installation' && i.status === 'In corso').length;
     
     let assignedCount: number;
     if (user.role === 'Operator') {
-        assignedCount = activeInterventions.filter(i => i.assignedOperatorId === user.id).length;
+        assignedCount = allActiveInterventions.filter(i => i.assignedOperatorId === user.id).length;
     } else {
-        assignedCount = activeInterventions.filter(i => !!i.assignedOperatorId).length;
+        assignedCount = allActiveInterventions.filter(i => !!i.assignedOperatorId).length;
     }
+    
+     const scheduleStartDate = startOfToday();
+    const scheduleEndDate = addDays(scheduleStartDate, 7);
+
+    const scheduledInterventions: WeeklyScheduleItem[] = allInterventions
+      .filter(i => i.dueDate && isWithinInterval(new Date(i.dueDate), { start: scheduleStartDate, end: scheduleEndDate }))
+      .map(i => ({ ...i, itemType: 'intervention' }));
+
+    const scheduledAppointments: WeeklyScheduleItem[] = allAppointments
+      .filter(a => a.date && isWithinInterval(new Date(a.date), { start: scheduleStartDate, end: scheduleEndDate }))
+      .map(a => ({ ...a, itemType: 'appointment' }));
+
+    const weeklySchedule = [...scheduledInterventions, ...scheduledAppointments]
+      .sort((a, b) => new Date(a.itemType === 'intervention' ? a.dueDate! : a.date!).getTime() - new Date(b.itemType === 'intervention' ? b.dueDate! : b.date!).getTime());
+
 
 
     setKpiData({
@@ -220,7 +245,8 @@ export default function DashboardPage() {
       urgentOpenCount,
       newCount,
       inProgressCount,
-      assignedCount
+      assignedCount,
+      weeklySchedule,
     });
     setLoading(false);
   }
@@ -339,6 +365,72 @@ export default function DashboardPage() {
         </div>
       );
     }
+    
+    const WeeklyScheduleCard = ({ schedule }: { schedule: WeeklyScheduleItem[] }) => {
+      const groupedSchedule = schedule.reduce((acc, item) => {
+        const date = format(new Date(item.itemType === 'intervention' ? item.dueDate! : item.date!), 'yyyy-MM-dd');
+        if (!acc[date]) {
+          acc[date] = [];
+        }
+        acc[date].push(item);
+        return acc;
+      }, {} as Record<string, WeeklyScheduleItem[]>);
+
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Programmazione Settimanale</CardTitle>
+            <CardDescription>Attività pianificate per i prossimi 7 giorni.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-80">
+              <div className="space-y-4 pr-4">
+                {Object.keys(groupedSchedule).length > 0 ? (
+                  Object.entries(groupedSchedule).map(([date, items]) => (
+                    <div key={date}>
+                      <h4 className="font-semibold text-sm mb-2 sticky top-0 bg-background py-1">
+                        {format(new Date(date), 'eeee, dd MMMM', { locale: it })}
+                      </h4>
+                      <div className="space-y-3 pl-2 border-l-2">
+                        {items.map(item => {
+                          const clientName = clientsMap.get(item.clientId)?.name || 'N/D';
+                          const time = format(new Date(item.itemType === 'intervention' ? item.dueDate! : item.date!), 'HH:mm');
+                          const icon = item.itemType === 'intervention' 
+                            ? ((item as Intervention).type === 'new_installation' ? <HardHat className="h-5 w-5 text-blue-500" /> : <Wrench className="h-5 w-5 text-orange-500" />)
+                            : <ClipboardCheck className="h-5 w-5 text-purple-500" />;
+
+                           const handleClick = () => {
+                            if (item.itemType === 'intervention') {
+                                openModal(item as Intervention);
+                            } else {
+                                setAppointmentToEdit(item as Appointment);
+                                setIsAppointmentModalOpen(true);
+                            }
+                           };
+
+                          return (
+                            <div key={item.id} className="flex items-start gap-3 cursor-pointer group" onClick={handleClick}>
+                              <div className="flex-shrink-0 pt-1">{icon}</div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium group-hover:underline">{item.title}</p>
+                                <p className="text-xs text-muted-foreground">{clientName}</p>
+                              </div>
+                              <p className="text-sm font-mono">{time}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività programmata per i prossimi 7 giorni.</p>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      );
+    };
 
 
   return (
@@ -389,7 +481,7 @@ export default function DashboardPage() {
                             title="Interventi Assegnati"
                             value={kpiData.assignedCount || 0}
                             icon={<UserCheck className="h-6 w-6 text-green-500" />}
-                            onClick={() => {
+                           onClick={() => {
                                 if (user.role === 'Operator') {
                                     router.push(`/dashboard/interventions?status=active&operator=${user.id}`);
                                 } else {
@@ -416,47 +508,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="lg:col-span-8 flex flex-col gap-6">
-                         <div className="grid gap-6 md:grid-cols-2">
-                             <Card onClick={() => router.push('/dashboard/interventions')}>
-                                <CardHeader>
-                                <CardTitle className="font-headline">Interventi in Scadenza (48h)</CardTitle>
-                                <CardDescription>
-                                    Interventi standard che richiedono attenzione immediata.
-                                </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <ScrollArea className="h-40">
-                                        <div className="grid gap-6 pr-6">
-                                            {kpiData.dueSoonInterventions.length > 0 ? (
-                                                kpiData.dueSoonInterventions.map(task => <TaskItem key={task.id} task={task} icon={<Wrench className="h-5 w-5 text-muted-foreground" />} />)
-                                            ) : (
-                                                <p className="text-sm text-muted-foreground text-center py-4">Nessun intervento in scadenza nelle prossime 48 ore.</p>
-                                            )}
-                                        </div>
-                                    </ScrollArea>
-                                </CardContent>
-                            </Card>
-                            <Card onClick={() => router.push('/dashboard/new-installations')}>
-                                <CardHeader>
-                                    <CardTitle className="font-headline">Nuovi Impianti (7gg)</CardTitle>
-                                    <CardDescription>
-                                        Installazioni pianificate per la prossima settimana.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <ScrollArea className="h-40">
-                                        <div className="grid gap-6 pr-6">
-                                            {kpiData.dueSoonNewInstallations.length > 0 ? (
-                                                kpiData.dueSoonNewInstallations.map(task => <TaskItem key={task.id} task={task} icon={<HardHat className="h-5 w-5 text-muted-foreground" />} />)
-                                            ) : (
-                                                <p className="text-sm text-muted-foreground text-center py-4">Nessun nuovo impianto in programma per la prossima settimana.</p>
-                                            )}
-                                        </div>
-                                    </ScrollArea>
-                                </CardContent>
-                            </Card>
-                         </div>
-                         <ActivityFeed interventions={kpiData.allInterventions} latestUpdates={kpiData.latestUpdates} onUpdate={fetchKpiData} />
+                         <WeeklyScheduleCard schedule={kpiData.weeklySchedule} />
                     </div>
                 </div>
 
@@ -488,6 +540,24 @@ export default function DashboardPage() {
             setIsOpen={closeModal}
         />
       )}
+       <EditAppointmentForm
+        appointment={appointmentToEdit}
+        onAppointmentUpdated={() => {
+            fetchKpiData();
+            setIsAppointmentModalOpen(false);
+            setAppointmentToEdit(null);
+        }}
+        clients={clients}
+        operators={operators}
+        isOpen={isAppointmentModalOpen}
+        setIsOpen={(open) => {
+            setIsAppointmentModalOpen(open);
+            if (!open) {
+                setAppointmentToEdit(null);
+            }
+        }}
+      />
     </>
   );
 }
+
