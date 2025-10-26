@@ -1,8 +1,20 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck } from 'lucide-react';
 
 export const changelog = [
+    {
+        version: "0.24",
+        date: "2024-10-10",
+        title: "Dashboard Operatori Potenziata",
+        icon: UserCheck,
+        iconClass: "bg-green-500",
+        changes: [
+            { type: LayoutDashboard, description: "Aggiunto il riquadro 'Interventi Assegnati' al Riepilogo Attività per un monitoraggio rapido del carico di lavoro." },
+            { type: Wrench, description: "Differenziata la logica di visualizzazione: gli Admin vedono tutti gli interventi assegnati, mentre gli Operatori vedono solo i propri." },
+            { type: Search, description: "Corretto il link sulla card 'Interventi Assegnati' per filtrare correttamente l'elenco degli interventi specifici dell'operatore." },
+        ]
+    },
     {
         version: "0.23",
         date: "2024-10-09",
@@ -253,5 +265,7 @@ export const changelog = [
         ]
     }
 ];
+
+    
 
     
