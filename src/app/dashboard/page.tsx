@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -109,23 +110,20 @@ export default function DashboardPage() {
     setClients(allClients);
     setOperators(users.filter(u => u.role === 'Operator'));
     
-    let relevantInterventions: (Intervention | ScheduledMaintenance)[];
-    let relevantAppointments: Appointment[];
+    let relevantInterventionsForKpis: (Intervention | ScheduledMaintenance)[];
 
     if (user.role === 'Operator') {
-        relevantInterventions = allInterventions.filter(i => i.assignedOperatorId === user.id);
-        relevantAppointments = allAppointments.filter(a => a.assignedOperatorId === user.id);
+        relevantInterventionsForKpis = allInterventions.filter(i => i.assignedOperatorId === user.id);
     } else {
-        relevantInterventions = allInterventions;
-        relevantAppointments = allAppointments;
+        relevantInterventionsForKpis = allInterventions;
     }
     
-    const activeInterventions = relevantInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
+    const activeInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
 
     const openInterventions = activeInterventions.length;
-    const closedInterventions = relevantInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato' || i.status === 'Archiviato');
+    const closedInterventions = allInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato' || i.status === 'Archiviato');
     
-    const totalClosedOrInProgress = relevantInterventions.filter(i => i.status === 'Completato' || i.status === 'In corso');
+    const totalClosedOrInProgress = allInterventions.filter(i => i.status === 'Completato' || i.status === 'In corso');
     const onTime = totalClosedOrInProgress.filter(i => {
       if(i.completedAt) {
         return !isAfter(new Date(i.completedAt), new Date(i.dueDate!));
@@ -134,7 +132,7 @@ export default function DashboardPage() {
     });
     const slaAdherencePercentage = totalClosedOrInProgress.length > 0 ? Math.round((onTime.length / totalClosedOrInProgress.length) * 100) : 100;
 
-    const overdueMaintenanceTasks = relevantInterventions.filter(i => {
+    const overdueMaintenanceTasks = allInterventions.filter(i => {
       const isMaintenance = 'periodicity' in i;
       return isMaintenance && (i.status === 'Nuovo' || i.status === 'In corso') && isAfter(now, new Date(i.dueDate!));
     }).length;
@@ -146,9 +144,9 @@ export default function DashboardPage() {
 
     const operatorWorkloadData = Object.entries(operatorWorkload).map(([name, workload]) => ({ name, workload }));
 
-    const highPriorityInterventions = relevantInterventions.filter(i => i.priority === 'Alta' || i.priority === 'Critica').slice(0, 3);
+    const highPriorityInterventions = allInterventions.filter(i => i.priority === 'Alta' || i.priority === 'Critica').slice(0, 3);
     
-    const latestUpdates: EnrichedUpdate[] = relevantInterventions
+    const latestUpdates: EnrichedUpdate[] = allInterventions
       .flatMap(i => (i.updates || []).map(u => ({ 
           ...u, 
           interventionTitle: i.title,
@@ -173,8 +171,8 @@ export default function DashboardPage() {
     const twoDaysFromNow = addDays(now, 2);
     const sevenDaysFromNow = addDays(startOfToday(), 7);
 
-    const standardInterventions = relevantInterventions.filter(i => !i.isMaintenance && i.type === 'standard') as Intervention[];
-    const newInstallations = relevantInterventions.filter(i => !i.isMaintenance && i.type === 'new_installation') as Intervention[];
+    const standardInterventions = allInterventions.filter(i => !i.isMaintenance && i.type === 'standard') as Intervention[];
+    const newInstallations = allInterventions.filter(i => !i.isMaintenance && i.type === 'new_installation') as Intervention[];
 
     const dueSoonInterventions = standardInterventions.filter(i => 
         i.dueDate && new Date(i.dueDate) <= twoDaysFromNow && (i.status === 'Nuovo' || i.status === 'In corso')
@@ -211,15 +209,23 @@ export default function DashboardPage() {
         assignedCount = allActiveInterventions.filter(i => !!i.assignedOperatorId).length;
     }
     
-     const scheduleStartDate = startOfToday();
+    const scheduleStartDate = startOfToday();
     const scheduleEndDate = addDays(scheduleStartDate, 7);
 
     const scheduledInterventions: WeeklyScheduleItem[] = allInterventions
-      .filter(i => i.dueDate && isWithinInterval(new Date(i.dueDate), { start: scheduleStartDate, end: scheduleEndDate }))
+      .filter(i => 
+        i.dueDate && 
+        isWithinInterval(new Date(i.dueDate), { start: scheduleStartDate, end: scheduleEndDate }) &&
+        (i.status === 'Nuovo' || i.status === 'In corso')
+      )
       .map(i => ({ ...i, itemType: 'intervention' }));
 
     const scheduledAppointments: WeeklyScheduleItem[] = allAppointments
-      .filter(a => a.date && isWithinInterval(new Date(a.date), { start: scheduleStartDate, end: scheduleEndDate }))
+      .filter(a => 
+        a.date && 
+        isWithinInterval(new Date(a.date), { start: scheduleStartDate, end: scheduleEndDate }) &&
+        a.status === 'Pianificato'
+      )
       .map(a => ({ ...a, itemType: 'appointment' }));
 
     const weeklySchedule = [...scheduledInterventions, ...scheduledAppointments]
@@ -235,7 +241,7 @@ export default function DashboardPage() {
       operatorWorkloadData,
       highPriorityInterventions,
       latestUpdates,
-      allInterventions: relevantInterventions,
+      allInterventions: allInterventions,
       dueSoonInterventions,
       dueSoonNewInstallations,
       openNewInstallations,
@@ -349,7 +355,7 @@ export default function DashboardPage() {
             className="flex items-center gap-4 group cursor-pointer"
              onClick={(e) => {
                 e.stopPropagation();
-                router.push('/dashboard/support');
+                router.push('/dashboard/support?ticketId=${ticket.id}');
             }}
         >
           <div className="flex-1 grid gap-1">
@@ -477,7 +483,7 @@ export default function DashboardPage() {
                             onClick={() => router.push('/dashboard/interventions?status=In corso')}
                             isLoading={loading}
                         />
-                        <KpiCard
+                         <KpiCard
                             title="Interventi Assegnati"
                             value={kpiData.assignedCount || 0}
                             icon={<UserCheck className="h-6 w-6 text-green-500" />}
@@ -560,4 +566,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
 
