@@ -4,6 +4,19 @@ import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wren
 
 export const changelog = [
     {
+        version: "0.25",
+        date: "2024-10-11",
+        title: "Dashboard Personalizzata e Programmazione Settimanale",
+        icon: LayoutDashboard,
+        iconClass: "bg-blue-500",
+        changes: [
+            { type: LayoutDashboard, description: "Aggiunto un riquadro 'Programmazione Settimanale' in dashboard per una visione chiara degli impegni dei prossimi 7 giorni." },
+            { type: UserCheck, description: "Introdotta la card 'Interventi Assegnati' con logica differenziata: gli admin vedono il totale, gli operatori solo i propri." },
+            { type: Eye, description: "La programmazione settimanale degli operatori ora mostra solo le attività per cui sono abilitati, rendendo la vista più pulita e pertinente." },
+            { type: Wrench, description: "Migliorata la logica dei KPI nel 'Riepilogo Attività' per dare agli operatori una visione globale pur mantenendo un focus sui propri incarichi." },
+        ]
+    },
+    {
         version: "0.24",
         date: "2024-10-10",
         title: "Dashboard Operatori Potenziata",
