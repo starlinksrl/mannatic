@@ -601,7 +601,10 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                                 />
                                                 <Button
                                                     variant="ghost"
-                                                    onClick={() => field.onChange(null)}
+                                                    onClick={() => {
+                                                        field.onChange(null);
+                                                        form.setValue('dueTime', '');
+                                                    }}
                                                     className="w-full text-destructive hover:text-destructive"
                                                 >
                                                     <X className="mr-2 h-4 w-4" />
@@ -890,6 +893,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
 
 
 
