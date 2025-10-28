@@ -57,9 +57,6 @@ const formSchema = z.object({
   assignedOperatorId: z.string().nullable(),
   attachments: z.array(z.any()).optional(),
   notifyClient: z.boolean().default(false).optional(),
-}).refine(data => (data.dueDate && data.dueTime) || !data.dueDate, {
-    message: "L'ora è obbligatoria se la data è specificata.",
-    path: ["dueTime"],
 });
 
 interface AddInterventionFormProps {
@@ -122,14 +119,14 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
     
     setIsSubmitting(true);
     let finalDueDate: string | null = null;
-    if (values.dueDate && values.dueTime) {
-      const [hours, minutes] = values.dueTime.split(':').map(Number);
+    if (values.dueDate) {
       let date = values.dueDate;
-      date = setHours(date, hours);
-      date = setMinutes(date, minutes);
+      if (values.dueTime) {
+        const [hours, minutes] = values.dueTime.split(':').map(Number);
+        date = setHours(date, hours);
+        date = setMinutes(date, minutes);
+      }
       finalDueDate = date.toISOString();
-    } else if (values.dueDate) {
-      finalDueDate = values.dueDate.toISOString();
     }
     
     const clientIdentifier = values.clientId;

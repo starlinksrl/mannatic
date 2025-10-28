@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes, differenceInMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -55,8 +55,8 @@ const formSchema = z.object({
   description: z.string().min(10, { message: 'La descrizione deve contenere almeno 10 caratteri.' }),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   status: z.enum(['Nuovo', 'In corso', 'Archiviato', 'Completato', 'Annullato', 'Da Fatturare', 'Fatturato'], { required_error: 'Lo stato è obbligatorio.' }),
-  dueDate: z.date().optional(),
-  dueTime: z.string().optional(),
+  dueDate: z.date().optional().nullable(),
+  dueTime: z.string().optional().nullable(),
   assignedOperatorId: z.string().nullable(),
   newUpdate: z.string().optional(),
   timeSpent: z.coerce.number().positive({ message: 'Le ore impiegate devono essere un numero positivo.' }).optional(),
@@ -127,7 +127,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     loadConfig();
 
     if (intervention) {
-      const dueDate = intervention.dueDate ? new Date(intervention.dueDate) : undefined;
+      const dueDate = intervention.dueDate ? new Date(intervention.dueDate) : null;
       form.reset({
         ...intervention,
         type: intervention.type || 'standard',
@@ -180,18 +180,20 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         }, ...newUpdates];
     }
     
-    let finalDueDate: string | undefined;
+    let finalDueDate: string | null | undefined = values.dueDate ? values.dueDate.toISOString() : null;
+
     if (values.dueDate) {
-        try {
-            const [hours, minutes] = values.dueTime ? values.dueTime.split(':').map(Number) : [0,0];
-            let date = new Date(values.dueDate);
-            date = setHours(date, hours);
-            date = setMinutes(date, minutes);
-            finalDueDate = date.toISOString();
-        } catch(e) {
-            console.error("Invalid time value", e);
-            finalDueDate = new Date(values.dueDate).toISOString();
+        let date = new Date(values.dueDate);
+        if (values.dueTime) {
+            try {
+                const [hours, minutes] = values.dueTime.split(':').map(Number);
+                date = setHours(date, hours);
+                date = setMinutes(date, minutes);
+            } catch(e) {
+                console.error("Invalid time value", e);
+            }
         }
+        finalDueDate = date.toISOString();
     }
 
 
@@ -589,13 +591,23 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                         </FormControl>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={field.value}
-                                            onSelect={field.onChange}
-                                            initialFocus
-                                            locale={it}
-                                        />
+                                            <div className="flex flex-col items-center">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value}
+                                                    onSelect={field.onChange}
+                                                    initialFocus
+                                                    locale={it}
+                                                />
+                                                <Button
+                                                    variant="ghost"
+                                                    onClick={() => field.onChange(null)}
+                                                    className="w-full text-destructive hover:text-destructive"
+                                                >
+                                                    <X className="mr-2 h-4 w-4" />
+                                                    Rimuovi Data
+                                                </Button>
+                                            </div>
                                         </PopoverContent>
                                     </Popover>
                                     <FormMessage />
@@ -609,7 +621,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                     <FormItem className="flex flex-col">
                                     <FormLabel>Ora</FormLabel>
                                         <FormControl>
-                                            <Input type="time" {...field} />
+                                            <Input type="time" {...field} value={field.value || ''} />
                                         </FormControl>
                                     <FormMessage />
                                     </FormItem>
@@ -717,7 +729,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                        <div className="space-y-2">
                         {(attachments || []).map((att) => (
                            <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
-                                <button type="button" onClick={() => handleViewAttachment(att)} className="flex items-center gap-2 text-sm hover:underline truncate">
+                               <button type="button" onClick={() => handleViewAttachment(att)} className="flex items-center gap-2 text-sm hover:underline truncate">
                                     <AttachmentPreview att={att} />
                                     <span className="truncate">{att.name}</span>
                                 </button>
@@ -878,6 +890,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
+
 
 
 
