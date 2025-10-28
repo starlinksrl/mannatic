@@ -17,9 +17,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { deleteIntervention } from '@/lib/data';
+import { deleteIntervention, updateIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { AddInterventionForm } from './add-intervention-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
@@ -40,6 +40,7 @@ import { ExpiringInterventionsDialog } from './expiring-interventions-dialog';
 import { createWhatsAppLink } from '@/lib/utils';
 import { WhatsAppIcon } from '../icons/whatsapp-icon';
 import { useSearchParams } from 'next/navigation';
+import { Checkbox } from '../ui/checkbox';
 
 
 interface InterventionsTableProps {
@@ -140,6 +141,20 @@ export function InterventionsTable({ interventions: initialInterventions, curren
       setInterventionToDelete(null);
   }
 
+  const handleFeatureToggle = async (intervention: Intervention) => {
+    const newFeaturedState = !intervention.isFeatured;
+    const updatedIntervention = await updateIntervention(intervention.id, { isFeatured: newFeaturedState }, currentUser);
+    if (updatedIntervention) {
+        onInterventionChange();
+        toast({
+            title: newFeaturedState ? 'Intervento Evidenziato' : 'Intervento non più evidenziato',
+            description: `L'intervento "${intervention.title}" è stato aggiornato.`
+        })
+    } else {
+        toast({ variant: 'destructive', title: 'Errore', description: "Impossibile aggiornare l'intervento." });
+    }
+  }
+
 
   const roleBasedInterventions = useMemo(() => {
     if (!currentUser) return [];
@@ -200,6 +215,10 @@ export function InterventionsTable({ interventions: initialInterventions, curren
       if (sortConfig) {
           let aValue, bValue;
           switch(sortConfig.key) {
+              case 'isFeatured':
+                  aValue = a.isFeatured ? 1 : 0;
+                  bValue = b.isFeatured ? 1 : 0;
+                  return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
               case 'priority':
                   aValue = priorityOrder[a.priority];
                   bValue = priorityOrder[b.priority];
@@ -279,6 +298,7 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   };
 
   const tableHeaders = [
+    { key: 'isFeatured', label: '★', visible: currentUser.role === 'Admin' || currentUser.role === 'Creator', className: 'w-12'},
     { key: 'client', label: 'Cliente / Titolo', visible: currentUser.role !== 'Client', className: 'w-[30%]' },
     { key: 'title', label: 'Titolo', visible: currentUser.role === 'Client' },
     { key: 'contact', label: 'Contatti Cliente', visible: currentUser.role === 'Admin', className: 'hidden lg:table-cell' },
@@ -426,6 +446,11 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                  <TableHead key={header.key} className={header.className}>
                     {header.key === 'actions' ? (
                         <span className="sr-only">{header.label}</span>
+                    ) : header.key === 'isFeatured' ? (
+                         <Button variant="ghost" size="icon" onClick={() => requestSort('isFeatured')}>
+                            <Star className="h-4 w-4" />
+                            {getSortIcon('isFeatured')}
+                         </Button>
                     ) : (
                         <Button variant="ghost" onClick={() => requestSort(header.key as any)}>
                             {header.label}
@@ -443,6 +468,15 @@ export function InterventionsTable({ interventions: initialInterventions, curren
               const urgent = isDueSoon(intervention.dueDate);
               return (
                 <TableRow key={intervention.id} className={cn(urgent && "bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/60")}>
+                  {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
+                    <TableCell>
+                        <Checkbox
+                            checked={intervention.isFeatured}
+                            onCheckedChange={() => handleFeatureToggle(intervention)}
+                            aria-label="Evidenziato"
+                        />
+                    </TableCell>
+                  )}
                   {currentUser.role !== 'Client' ? (
                     <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                         <div className="flex flex-col break-words">

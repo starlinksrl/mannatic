@@ -8,7 +8,7 @@ import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointme
 import { isAfter, addDays, startOfToday, isWithinInterval, startOfDay } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck } from 'lucide-react';
+import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star } from 'lucide-react';
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -56,6 +56,7 @@ type KpiData = GenerateKpiDashboardInput & {
   openAppointments: number,
   openAppointmentsList: Appointment[],
   latestSupportTickets?: SupportTicket[],
+  featuredInterventions: Intervention[],
   // Operator specific
   urgentOpenCount?: number;
   newCount?: number;
@@ -122,6 +123,7 @@ export default function DashboardPage() {
     }
     
     const activeInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
+    const featuredInterventions = allInterventions.filter(i => i.isFeatured && !i.isMaintenance) as Intervention[];
 
     const openInterventions = activeInterventions.length;
     const closedInterventions = allInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato' || i.status === 'Archiviato');
@@ -268,6 +270,7 @@ export default function DashboardPage() {
       openAppointments,
       openAppointmentsList,
       latestSupportTickets,
+      featuredInterventions,
       urgentOpenCount,
       newCount,
       inProgressCount,
@@ -458,6 +461,51 @@ export default function DashboardPage() {
       );
     };
 
+    const FeaturedInterventionsCard = ({ interventions }: { interventions: Intervention[] }) => {
+        if (!interventions || interventions.length === 0) return null;
+
+        const getPriorityBadge = (priority: Intervention['priority']) => {
+            switch (priority) {
+            case 'Critica': return <Badge variant="destructive">Critica</Badge>;
+            case 'Alta': return <Badge className="bg-orange-500 text-white">Alta</Badge>;
+            case 'Media': return <Badge className="bg-yellow-500 text-white">Media</Badge>;
+            case 'Bassa': return <Badge variant="secondary">Bassa</Badge>;
+            }
+        };
+
+        return (
+            <Card className="lg:col-span-12 order-first">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 font-headline">
+                        <Star className="h-5 w-5 text-yellow-400 fill-current" />
+                        Interventi in Evidenza
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {interventions.map(intervention => (
+                        <div 
+                            key={intervention.id} 
+                            onClick={() => openModal(intervention)} 
+                            className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/80 transition-colors"
+                        >
+                            <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                    <p className="font-semibold">{intervention.title}</p>
+                                    <p className="text-sm text-muted-foreground">{clientsMap.get(intervention.clientId)?.name}</p>
+                                </div>
+                                {getPriorityBadge(intervention.priority)}
+                            </div>
+                             <div className="mt-2 text-sm text-muted-foreground">
+                                <p>Stato: {intervention.status}</p>
+                                {intervention.dueDate && <p>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yyyy HH:mm')}</p>}
+                            </div>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+        )
+    }
+
 
   return (
     <>
@@ -475,6 +523,10 @@ export default function DashboardPage() {
             </div>
           ) : (
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                {kpiData.featuredInterventions.length > 0 && (
+                    <FeaturedInterventionsCard interventions={kpiData.featuredInterventions} />
+                )}
 
                 {(user.role === 'Admin' || user.role === 'Operator') && (
                   <Card className="lg:col-span-12 order-1">
@@ -586,6 +638,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-
-

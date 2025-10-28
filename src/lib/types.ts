@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 import webpush from 'web-push';
 
@@ -156,6 +155,7 @@ export interface Intervention {
   workLogs?: WorkLog[];
   companyId: string;
   isMaintenance?: boolean;
+  isFeatured?: boolean;
 }
 
 export type ScheduledMaintenanceStatus = 'Pianificato' | 'In corso' | 'Completato' | 'Annullato';
@@ -286,6 +286,3 @@ export const SendSupportTicketNotificationOutputSchema = z.object({
   error: z.string().optional(),
 });
 export type SendSupportTicketNotificationOutput = z.infer<typeof SendSupportTicketNotificationOutputSchema>;
-
-
-    
