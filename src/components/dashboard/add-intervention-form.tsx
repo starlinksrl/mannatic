@@ -250,46 +250,6 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                 <Form {...form}>
                 <form id="add-intervention-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                         <FormItem>
-                            <FormLabel>Titolo</FormLabel>
-                            <FormControl>
-                                <Input 
-                                    placeholder="Es. Riparazione perdita..." 
-                                    {...field}
-                                    autoComplete="off"
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    
-                     <FormField
-                        control={form.control}
-                        name="type"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Tipo Intervento</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleziona un tipo" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="standard">Standard</SelectItem>
-                                    <SelectItem value="new_installation">Nuovo Impianto</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    
-                    <FormField
                         control={form.control}
                         name="clientId"
                         render={({ field }) => (
@@ -359,6 +319,46 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                             </FormItem>
                         )}
                         />
+                    <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                         <FormItem>
+                            <FormLabel>Titolo</FormLabel>
+                            <FormControl>
+                                <Input 
+                                    placeholder="Es. Riparazione perdita..." 
+                                    {...field}
+                                    autoComplete="off"
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    
+                     <FormField
+                        control={form.control}
+                        name="type"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Tipo Intervento</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleziona un tipo" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="standard">Standard</SelectItem>
+                                    <SelectItem value="new_installation">Nuovo Impianto</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    
 
                     <FormField
                     control={form.control}
