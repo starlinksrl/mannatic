@@ -595,6 +595,24 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
         return { success: false, error: e.message || "Impossibile inviare l'email di riepilogo settimanale." };
     }
 }
+
+export async function testDailySummaryAction(companyId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        return await sendExpiringInterventionsSummaryEmail(companyId);
+    } catch (error: any) {
+        console.error("Error manually triggering daily summary:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function testWeeklySummaryAction(companyId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        return await sendOverdueInterventionsSummaryEmail(companyId);
+    } catch (error: any) {
+        console.error("Error manually triggering weekly summary:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
     
 
     

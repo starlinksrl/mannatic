@@ -15,8 +15,8 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { sendTestEmailAction, updateCompanySettings } from '@/app/actions';
-import { Loader, AlertTriangle, Pencil, Save } from 'lucide-react';
+import { sendTestEmailAction, updateCompanySettings, testDailySummaryAction, testWeeklySummaryAction } from '@/app/actions';
+import { Loader, AlertTriangle, Pencil, Save, Send } from 'lucide-react';
 import { Company, User } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -412,6 +412,10 @@ function ResendSettingsForm({ company, onSave, onTest }: { company: Company, onS
 }
 
 function NotificationsForm({ company, operators, onSave }: { company: Company; operators: User[]; onSave: (data: Partial<Company>) => void }) {
+  const { toast } = useToast();
+  const [isTestingDaily, setIsTestingDaily] = useState(false);
+  const [isTestingWeekly, setIsTestingWeekly] = useState(false);
+
   const form = useForm<z.infer<typeof notificationsFormSchema>>({
     resolver: zodResolver(notificationsFormSchema),
     defaultValues: {
@@ -423,62 +427,104 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
     onSave({ cronJobRecipients: data.cronJobRecipients });
   }
 
+  const handleTestDaily = async () => {
+    setIsTestingDaily(true);
+    const result = await testDailySummaryAction(company.id);
+    if (result.success) {
+      toast({ title: 'Test Riepilogo Giornaliero Inviato', description: 'Controlla la casella di posta dei destinatari.' });
+    } else {
+      toast({ variant: 'destructive', title: 'Errore nel Test', description: result.error || 'Si è verificato un errore sconosciuto.' });
+    }
+    setIsTestingDaily(false);
+  };
+
+  const handleTestWeekly = async () => {
+    setIsTestingWeekly(true);
+    const result = await testWeeklySummaryAction(company.id);
+    if (result.success) {
+      toast({ title: 'Test Riepilogo Settimanale Inviato', description: 'Controlla la casella di posta degli admin.' });
+    } else {
+      toast({ variant: 'destructive', title: 'Errore nel Test', description: result.error || 'Si è verificato un errore sconosciuto.' });
+    }
+    setIsTestingWeekly(false);
+  };
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Notifiche Automatiche</CardTitle>
-            <CardDescription>
-              Seleziona quali operatori devono ricevere i riepiloghi via email. Se nessuno è selezionato, verranno inviati a tutti gli operatori (riepilogo giornaliero) e a tutti gli admin (riepilogo settimanale).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="cronJobRecipients"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Destinatari Riepiloghi Email</FormLabel>
-                  <div className="space-y-2">
-                    {operators.map((operator) => (
-                      <FormField
-                        key={operator.id}
-                        control={form.control}
-                        name="cronJobRecipients"
-                        render={({ field }) => {
-                          return (
-                            <FormItem key={operator.id} className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value?.includes(operator.id)}
-                                  onCheckedChange={(checked) => {
-                                    return checked
-                                      ? field.onChange([...(field.value || []), operator.id])
-                                      : field.onChange(field.value?.filter((value) => value !== operator.id));
-                                  }}
-                                />
-                              </FormControl>
-                              <FormLabel className="font-normal">{operator.name} ({operator.email})</FormLabel>
-                            </FormItem>
-                          );
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          <CardFooter className="flex justify-end">
-            <Button type="submit">
-              <Save className="mr-2" /> Salva Destinatari
-            </Button>
-          </CardFooter>
-        </Card>
-      </form>
-    </Form>
+    <div className="space-y-6">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Destinatari Notifiche</CardTitle>
+              <CardDescription>
+                Seleziona quali operatori devono ricevere i riepiloghi via email. Se nessuno è selezionato, verranno inviati a tutti gli operatori (riepilogo giornaliero) e a tutti gli admin (riepilogo settimanale).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="cronJobRecipients"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Destinatari Riepiloghi Email (Operatori)</FormLabel>
+                    <div className="space-y-2">
+                      {operators.map((operator) => (
+                        <FormField
+                          key={operator.id}
+                          control={form.control}
+                          name="cronJobRecipients"
+                          render={({ field }) => {
+                            return (
+                              <FormItem key={operator.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(operator.id)}
+                                    onCheckedChange={(checked) => {
+                                      return checked
+                                        ? field.onChange([...(field.value || []), operator.id])
+                                        : field.onChange(field.value?.filter((value) => value !== operator.id));
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="font-normal">{operator.name} ({operator.email})</FormLabel>
+                              </FormItem>
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button type="submit">
+                <Save className="mr-2" /> Salva Destinatari
+              </Button>
+            </CardFooter>
+          </Card>
+        </form>
+      </Form>
+      <Card>
+        <CardHeader>
+          <CardTitle>Test Manuale Cron Job</CardTitle>
+          <CardDescription>
+            Esegui manualmente i cron job per testare l'invio delle email di riepilogo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row gap-4">
+          <Button onClick={handleTestDaily} disabled={isTestingDaily || isTestingWeekly} className="w-full sm:w-auto">
+            {isTestingDaily ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+            Testa Riepilogo Giornaliero
+          </Button>
+          <Button onClick={handleTestWeekly} disabled={isTestingDaily || isTestingWeekly} className="w-full sm:w-auto">
+            {isTestingWeekly ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+            Testa Riepilogo Settimanale
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
