@@ -510,9 +510,12 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
     let admins: User[];
 
     if (company.cronJobRecipients && company.cronJobRecipients.length > 0) {
-        const operatorRecipients = await Promise.all(company.cronJobRecipients.map(id => getUserById(id)));
-        admins = operatorRecipients.filter(u => u && u.role === 'Admin' && u.email) as User[];
-        // If specific recipients are set but none are admins, fall back to all admins
+        const recipientUsers = (await Promise.all(
+            company.cronJobRecipients.map(id => getUserById(id))
+        )).filter((u): u is User => u !== null);
+        
+        admins = recipientUsers.filter(u => u.role === 'Admin' && u.email);
+        
         if (admins.length === 0) {
             admins = allUsers.filter(u => u.role === 'Admin' && u.email);
         }
@@ -598,5 +601,7 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
 
 
 
+
+    
 
     

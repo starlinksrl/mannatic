@@ -16,8 +16,10 @@ export async function GET() {
     }
     
     return NextResponse.json({ success: true, message: `Weekly cron job completed for ${companies.length} companies.` });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Weekly cron job failed:', error);
-    return NextResponse.json({ success: false, error: 'Weekly cron job failed' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || 'Weekly cron job failed' }, { status: 500 });
   }
 }
+
+    
