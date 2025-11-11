@@ -1,8 +1,20 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings } from 'lucide-react';
 
 export const changelog = [
+    {
+        version: "0.26",
+        date: "2024-10-12",
+        title: "Personalizzazione Notifiche Cron Job",
+        icon: MailCheckIcon,
+        iconClass: "bg-orange-500",
+        changes: [
+            { type: Settings, description: "Aggiunta una nuova scheda 'Notifiche' nelle Impostazioni dell'azienda per personalizzare i destinatari delle email automatiche." },
+            { type: UsersIcon, description: "Gli amministratori possono ora selezionare quali operatori specifici riceveranno i riepiloghi via email generati dai cron job." },
+            { type: Wrench, description: "Aggiornata la logica di invio dei cron job per rispettare i destinatari personalizzati, con un fallback al comportamento predefinito se non viene specificato nessuno." },
+        ]
+    },
     {
         version: "0.25",
         date: "2024-10-11",
