@@ -87,7 +87,6 @@ export function InterventionsTable({ interventions: initialInterventions, curren
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [interventionToDelete, setInterventionToDelete] = useState<Intervention | null>(null);
-  const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
   
   useEffect(() => {
     setStatusFilter(initialStatusFilter);
@@ -366,12 +365,6 @@ export function InterventionsTable({ interventions: initialInterventions, curren
                 </Select>
                 )}
             </div>
-             {currentUser.role === 'Admin' && (
-                <Button variant="outline" onClick={() => setIsSummaryDialogOpen(true)}>
-                    <Send />
-                    Invia Riepilogo Scadenze
-                </Button>
-            )}
       </div>
       <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
@@ -575,10 +568,6 @@ export function InterventionsTable({ interventions: initialInterventions, curren
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <ExpiringInterventionsDialog
-        isOpen={isSummaryDialogOpen}
-        setIsOpen={setIsSummaryDialogOpen}
-      />
     </div>
   );
 }

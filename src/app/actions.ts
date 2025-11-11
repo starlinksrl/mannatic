@@ -390,7 +390,7 @@ export async function handleRegistration(values: { companyName: string, name: st
 }
 
 // Expiring Interventions Summary
-export async function generateExpiringInterventionsSummary(companyId: string): Promise<{ success: boolean; subject?: string; body?: string; error?: string; recipients?: string[] }> {
+async function generateExpiringInterventionsSummary(companyId: string): Promise<{ success: boolean; subject?: string; body?: string; error?: string; recipients?: string[] }> {
     const company = await getCompanyById(companyId);
     if (!company) return { success: false, error: 'Azienda non trovata.' };
 
@@ -465,25 +465,31 @@ export async function generateExpiringInterventionsSummary(companyId: string): P
     };
 }
 
-export async function sendExpiringInterventionsSummaryEmail(companyId: string, subject: string, body: string): Promise<{ success: boolean; error?: string }> {
+export async function sendExpiringInterventionsSummaryEmail(companyId: string): Promise<{ success: boolean; error?: string }> {
+    const summaryResult = await generateExpiringInterventionsSummary(companyId);
+    if (!summaryResult.success) {
+        return { success: false, error: summaryResult.error };
+    }
+
+    const { subject, body, recipients } = summaryResult;
+
+    if (!recipients || recipients.length === 0) {
+        return { success: true }; // No one to send to
+    }
+    
     const company = await getCompanyById(companyId);
     if (!company || !company.resendApiKey || !company.senderEmail) {
         return { success: false, error: "Configurazione Resend per l'azienda non trovata." };
     }
 
-    const operators = (await getUsers(companyId)).filter(u => u.role === 'Operator' && u.email);
-
-    if (operators.length === 0) {
-        return { success: true }; // No one to send to
-    }
 
     try {
         const resend = new Resend(company.resendApiKey);
         await resend.emails.send({
             from: company.senderEmail,
-            to: operators.map(o => o.email),
-            subject: subject,
-            html: body,
+            to: recipients,
+            subject: subject!,
+            html: body!,
         });
         return { success: true };
     } catch (e: any) {
@@ -494,4 +500,5 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string, s
     
 
     
+
 
