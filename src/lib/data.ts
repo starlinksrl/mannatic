@@ -1363,10 +1363,14 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
     };
 
     const updatedMessages = [...ticket.messages, newMessage];
+    
+    const isClientReply = sender.role === 'Client';
+    const newStatus: SupportTicketStatus = isClientReply ? 'Aperto' : 'In Lavorazione';
+
     const updatedTicketData = {
         messages: updatedMessages,
         updatedAt: now,
-        status: 'Aperto' as SupportTicketStatus,
+        status: newStatus,
     };
 
     await updateDoc(ticketRef, updatedTicketData);

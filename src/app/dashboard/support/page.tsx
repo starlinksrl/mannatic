@@ -13,6 +13,7 @@ import { AddSupportTicketForm } from '@/components/dashboard/add-support-ticket-
 import { SupportTicketsTable } from '@/components/dashboard/support-tickets-table';
 import { SupportTicketConversation } from '@/components/dashboard/support-ticket-conversation';
 import { useSearchParams } from 'next/navigation';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 function SupportPageComponent() {
   const { user, currentCompany } = useUser();
@@ -20,6 +21,7 @@ function SupportPageComponent() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const fetchData = async (ticketToUpdateId?: string) => {
     if (!currentCompany || !user) return;
@@ -48,6 +50,11 @@ function SupportPageComponent() {
     }
   }, [user, currentCompany, searchParams]);
 
+  const filteredTickets = tickets.filter(ticket => {
+    if (statusFilter === 'all') return true;
+    return ticket.status === statusFilter;
+  });
+
   if (isLoading || !user || !currentCompany) {
     return (
       <>
@@ -73,18 +80,29 @@ function SupportPageComponent() {
     <>
       <Header title="Supporto Tecnico" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
-        {user.role === 'Client' && (
-          <div className="flex justify-end">
-            <AddSupportTicketForm onTicketAdded={() => fetchData()}>
-              <Button>
-                <PlusCircle className="mr-2" />
-                Apri un nuovo ticket
-              </Button>
-            </AddSupportTicketForm>
-          </div>
-        )}
+        <div className="flex justify-between items-center">
+             <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filtra per stato" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Tutti gli stati</SelectItem>
+                    <SelectItem value="Aperto">Aperto</SelectItem>
+                    <SelectItem value="In Lavorazione">In Lavorazione</SelectItem>
+                    <SelectItem value="Chiuso">Chiuso</SelectItem>
+                </SelectContent>
+            </Select>
+            {user.role === 'Client' && (
+                <AddSupportTicketForm onTicketAdded={() => fetchData()}>
+                <Button>
+                    <PlusCircle className="mr-2" />
+                    Apri un nuovo ticket
+                </Button>
+                </AddSupportTicketForm>
+            )}
+        </div>
         <SupportTicketsTable
-          tickets={tickets}
+          tickets={filteredTickets}
           onTicketSelect={setSelectedTicket}
           currentUser={user}
           onTicketDeleted={() => fetchData()}

@@ -199,7 +199,7 @@ export interface Notification {
   type: NotificationType;
 }
 
-export type SupportTicketStatus = 'Aperto' | 'Chiuso';
+export type SupportTicketStatus = 'Aperto' | 'In Lavorazione' | 'Chiuso';
 
 export interface SupportMessage {
   id: string;

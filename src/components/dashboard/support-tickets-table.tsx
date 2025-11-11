@@ -40,10 +40,12 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
   const [ticketToDelete, setTicketToDelete] = useState<SupportTicket | null>(null);
 
 
-  const getStatusBadge = (status: 'Aperto' | 'Chiuso') => {
+  const getStatusBadge = (status: 'Aperto' | 'In Lavorazione' | 'Chiuso') => {
     switch (status) {
       case 'Aperto':
         return <Badge className="bg-green-100 text-green-800">Aperto</Badge>;
+      case 'In Lavorazione':
+          return <Badge className="bg-yellow-100 text-yellow-800">In Lavorazione</Badge>;
       case 'Chiuso':
         return <Badge variant="secondary">Chiuso</Badge>;
       default:

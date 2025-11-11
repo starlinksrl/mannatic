@@ -3,7 +3,7 @@
 'use client';
 
 import { useState } from 'react';
-import { SupportTicket, User } from '@/lib/types';
+import { SupportTicket, User, SupportTicketStatus } from '@/lib/types';
 import { Header } from './header';
 import { Button } from '../ui/button';
 import { ArrowLeft, Loader, Send, Trash2 } from 'lucide-react';
@@ -60,7 +60,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
     }
   };
 
-  const handleStatusChange = async (newStatus: 'Aperto' | 'Chiuso') => {
+  const handleStatusChange = async (newStatus: SupportTicketStatus) => {
     setIsSubmitting(true);
      try {
       await updateSupportTicketStatus(ticket.id, newStatus);
@@ -115,12 +115,13 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
                 </div>
                  <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">Stato:</span>
-                    <Select onValueChange={handleStatusChange} defaultValue={ticket.status} disabled={isSubmitting || user.role === 'Client'}>
+                    <Select onValueChange={(value) => handleStatusChange(value as SupportTicketStatus)} defaultValue={ticket.status} disabled={isSubmitting || user.role === 'Client'}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Cambia stato" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="Aperto">Aperto</SelectItem>
+                            <SelectItem value="In Lavorazione">In Lavorazione</SelectItem>
                             <SelectItem value="Chiuso">Chiuso</SelectItem>
                         </SelectContent>
                     </Select>
