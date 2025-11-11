@@ -38,6 +38,7 @@ export interface Company {
   resendApiKey?: string;
   senderEmail?: string;
   companyScratchpad?: string;
+  cronJobRecipients?: string[];
 }
 
 export type AllowedSector = 'interventions' | 'new_installations' | 'appointments' | 'maintenance';

@@ -406,20 +406,26 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
         isAfter(new Date(i.dueDate), new Date())
     );
     
-    const allUsers = await getUsers(companyId);
-    const clients = allUsers.filter(u => u.role === 'Client');
-    const operators = allUsers.filter(u => u.role === 'Operator' && u.email);
-
-    if (operators.length === 0) {
-        console.log(`Nessun operatore con email trovato per l'azienda ${company.name}. Salto invio riepilogo.`);
-        return { success: true }; // No one to send to, but not an error.
-    }
-
     if (interventions.length === 0) {
         console.log(`Nessun intervento in scadenza per l'azienda ${company.name}. Salto invio riepilogo.`);
         return { success: true };
     }
 
+    const allUsers = await getUsers(companyId);
+    let operators: User[];
+
+    if (company.cronJobRecipients && company.cronJobRecipients.length > 0) {
+        operators = allUsers.filter(u => company.cronJobRecipients!.includes(u.id) && u.role === 'Operator' && u.email);
+    } else {
+        operators = allUsers.filter(u => u.role === 'Operator' && u.email);
+    }
+
+    if (operators.length === 0) {
+        console.log(`Nessun operatore destinatario trovato per l'azienda ${company.name}. Salto invio riepilogo.`);
+        return { success: true }; // No one to send to, but not an error.
+    }
+
+    const clients = allUsers.filter(u => u.role === 'Client');
     const interventionDetails = interventions.map(i => {
         const client = clients.find(c => c.id === i.clientId);
         const operator = operators.find(o => o.id === i.assignedOperatorId);
@@ -501,9 +507,21 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
     }
     
     const allUsers = await getUsers(companyId);
+    let admins: User[];
+
+    if (company.cronJobRecipients && company.cronJobRecipients.length > 0) {
+        const operatorRecipients = await Promise.all(company.cronJobRecipients.map(id => getUserById(id)));
+        admins = operatorRecipients.filter(u => u && u.role === 'Admin' && u.email) as User[];
+        // If specific recipients are set but none are admins, fall back to all admins
+        if (admins.length === 0) {
+            admins = allUsers.filter(u => u.role === 'Admin' && u.email);
+        }
+    } else {
+        admins = allUsers.filter(u => u.role === 'Admin' && u.email);
+    }
+    
     const clients = allUsers.filter(u => u.role === 'Client');
     const operators = allUsers.filter(u => u.role === 'Operator');
-    const admins = allUsers.filter(u => u.role === 'Admin' && u.email);
 
     if (admins.length === 0) {
         console.log(`Nessun admin con email trovato per l'azienda ${company.name}. Salto invio riepilogo settimanale.`);

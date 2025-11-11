@@ -16,8 +16,8 @@ import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { sendTestEmailAction, updateCompanySettings } from '@/app/actions';
-import { Loader, AlertTriangle, Pencil } from 'lucide-react';
-import { Company } from '@/lib/types';
+import { Loader, AlertTriangle, Pencil, Save } from 'lucide-react';
+import { Company, User } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,6 +28,8 @@ import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ManualPageContent from '@/components/dashboard/manual-page-content';
 import { FontSwitcher } from '@/components/dashboard/font-switcher';
+import { getUsers } from '@/lib/data';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const resendFormSchema = z.object({
@@ -46,6 +48,10 @@ const profileFormSchema = z.object({
   uniqueCode: z.string().optional(),
   email: z.string().email({ message: 'Email non valida' }).optional(),
   platformUrl: z.string().url({ message: "L'URL non è valido" }).optional().or(z.literal('')),
+});
+
+const notificationsFormSchema = z.object({
+  cronJobRecipients: z.array(z.string()).optional(),
 });
 
 
@@ -334,7 +340,7 @@ function ResendSettingsForm({ company, onSave, onTest }: { company: Company, onS
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Configurazione Notifiche Email (Resend)</CardTitle>
+            <CardTitle>Configurazione Invio Email (Resend)</CardTitle>
             <CardDescription>
               Inserisci la tua API Key di Resend e l'email mittente verificata.
             </CardDescription>
@@ -405,18 +411,97 @@ function ResendSettingsForm({ company, onSave, onTest }: { company: Company, onS
   )
 }
 
+function NotificationsForm({ company, operators, onSave }: { company: Company; operators: User[]; onSave: (data: Partial<Company>) => void }) {
+  const form = useForm<z.infer<typeof notificationsFormSchema>>({
+    resolver: zodResolver(notificationsFormSchema),
+    defaultValues: {
+      cronJobRecipients: company.cronJobRecipients || [],
+    },
+  });
+
+  function onSubmit(data: z.infer<typeof notificationsFormSchema>) {
+    onSave({ cronJobRecipients: data.cronJobRecipients });
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifiche Automatiche</CardTitle>
+            <CardDescription>
+              Seleziona quali operatori devono ricevere i riepiloghi via email. Se nessuno è selezionato, verranno inviati a tutti gli operatori (riepilogo giornaliero) e a tutti gli admin (riepilogo settimanale).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="cronJobRecipients"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Destinatari Riepiloghi Email</FormLabel>
+                  <div className="space-y-2">
+                    {operators.map((operator) => (
+                      <FormField
+                        key={operator.id}
+                        control={form.control}
+                        name="cronJobRecipients"
+                        render={({ field }) => {
+                          return (
+                            <FormItem key={operator.id} className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(operator.id)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...(field.value || []), operator.id])
+                                      : field.onChange(field.value?.filter((value) => value !== operator.id));
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">{operator.name} ({operator.email})</FormLabel>
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+          <CardFooter className="flex justify-end">
+            <Button type="submit">
+              <Save className="mr-2" /> Salva Destinatari
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
+    </Form>
+  );
+}
+
+
 export default function SettingsPage() {
   const { user, currentCompany, setCurrentCompany } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [operators, setOperators] = useState<User[]>([]);
 
   useEffect(() => {
     if (user && user.role !== 'Admin') {
       router.push('/dashboard');
+      return;
     }
-  }, [user, router]);
+    if (user && currentCompany) {
+      getUsers(currentCompany.id).then(allUsers => {
+        setOperators(allUsers.filter(u => u.role === 'Operator'));
+      });
+    }
+  }, [user, router, currentCompany]);
   
   if (!user || user.role !== 'Admin' || !currentCompany) {
     return null;
@@ -458,9 +543,10 @@ export default function SettingsPage() {
       <Header title="Impostazioni" />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-            <TabsTrigger value="profile">Profilo Azienda</TabsTrigger>
-            <TabsTrigger value="resend">Notifiche (Resend)</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+            <TabsTrigger value="profile">Profilo</TabsTrigger>
+            <TabsTrigger value="resend">Email</TabsTrigger>
+            <TabsTrigger value="notifications">Notifiche</TabsTrigger>
             <TabsTrigger value="appearance">Aspetto</TabsTrigger>
             <TabsTrigger value="changelog">Changelog</TabsTrigger>
             <TabsTrigger value="manual">Manuale</TabsTrigger>
@@ -470,6 +556,9 @@ export default function SettingsPage() {
           </TabsContent>
           <TabsContent value="resend">
              <ResendSettingsForm company={currentCompany} onSave={handleSave} onTest={handleTestResult} />
+          </TabsContent>
+          <TabsContent value="notifications">
+            <NotificationsForm company={currentCompany} operators={operators} onSave={handleSave} />
           </TabsContent>
            <TabsContent value="appearance">
             <Card>
