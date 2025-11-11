@@ -21,7 +21,7 @@ function SupportPageComponent() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('Aperto');
 
   const fetchData = async (ticketToUpdateId?: string) => {
     if (!currentCompany || !user) return;
@@ -52,6 +52,7 @@ function SupportPageComponent() {
 
   const filteredTickets = tickets.filter(ticket => {
     if (statusFilter === 'all') return true;
+    if (statusFilter === 'Aperto') return ticket.status === 'Aperto' || ticket.status === 'In Lavorazione';
     return ticket.status === statusFilter;
   });
 
@@ -86,10 +87,9 @@ function SupportPageComponent() {
                     <SelectValue placeholder="Filtra per stato" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">Tutti gli stati</SelectItem>
-                    <SelectItem value="Aperto">Aperto</SelectItem>
-                    <SelectItem value="In Lavorazione">In Lavorazione</SelectItem>
-                    <SelectItem value="Chiuso">Chiuso</SelectItem>
+                    <SelectItem value="Aperto">Aperti</SelectItem>
+                    <SelectItem value="Chiuso">Chiusi</SelectItem>
+                    <SelectItem value="all">Tutti</SelectItem>
                 </SelectContent>
             </Select>
             {user.role === 'Client' && (
