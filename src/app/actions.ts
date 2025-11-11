@@ -21,7 +21,7 @@ import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationO
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
 import { generateShortId } from '@/lib/utils';
-import { addDays, isAfter, isBefore, startOfToday, format } from 'date-fns';
+import { addDays, isAfter, isBefore, startOfToday, format, subDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 
@@ -479,6 +479,99 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
     } catch (e: any) {
         console.error(`Error sending summary email for company ${companyId}:`, e);
         return { success: false, error: e.message || "Impossibile inviare l'email di riepilogo." };
+    }
+}
+
+export async function sendOverdueInterventionsSummaryEmail(companyId: string): Promise<{ success: boolean; error?: string }> {
+    const company = await getCompanyById(companyId);
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        return { success: false, error: `Configurazione Resend per l'azienda ${company?.name || companyId} non trovata.` };
+    }
+
+    const sevenDaysAgo = subDays(startOfToday(), 7);
+    const interventions = (await getInterventions(companyId)).filter(i => 
+        !i.isMaintenance && 
+        ['Nuovo', 'In corso'].includes(i.status) &&
+        isBefore(new Date(i.createdAt), sevenDaysAgo)
+    );
+    
+    if (interventions.length === 0) {
+        console.log(`Nessun intervento aperto da più di 7 giorni per l'azienda ${company.name}. Salto invio riepilogo settimanale.`);
+        return { success: true };
+    }
+    
+    const allUsers = await getUsers(companyId);
+    const clients = allUsers.filter(u => u.role === 'Client');
+    const operators = allUsers.filter(u => u.role === 'Operator');
+    const admins = allUsers.filter(u => u.role === 'Admin' && u.email);
+
+    if (admins.length === 0) {
+        console.log(`Nessun admin con email trovato per l'azienda ${company.name}. Salto invio riepilogo settimanale.`);
+        return { success: true };
+    }
+
+    const interventionDetails = interventions.map(i => {
+        const client = clients.find(c => c.id === i.clientId);
+        const operator = operators.find(o => o.id === i.assignedOperatorId);
+        return {
+            id: i.id,
+            title: i.title,
+            clientName: client?.name || 'N/D',
+            createdAt: format(new Date(i.createdAt), 'dd/MM/yyyy', { locale: it }),
+            priority: i.priority,
+            status: i.status,
+            operatorName: operator?.name || 'Non Assegnato',
+        }
+    });
+
+    const subject = `Riepilogo Settimanale: Interventi Aperti da Oltre 7 Giorni - MannaTic per ${company.name}`;
+    
+    const tableRows = interventionDetails.map(i => `
+        <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.id}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.title} <br><small>${i.clientName}</small></td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.createdAt}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.status}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.priority}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.operatorName}</td>
+        </tr>
+    `).join('');
+
+    const body = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Riepilogo Settimanale: Interventi Aperti da Oltre 7 Giorni</h2>
+            <p>Ciao team, ecco un riepilogo degli interventi che sono aperti da più di una settimana e potrebbero richiedere attenzione.</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background-color: #f2f2f2;">
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">ID</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Titolo e Cliente</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Data Creazione</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Stato</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Priorità</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Operatore</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+            <p>Buona settimana,<br>Il Team di MannaTic</p>
+        </div>
+    `;
+
+    try {
+        const resend = new Resend(company.resendApiKey);
+        await resend.emails.send({
+            from: company.senderEmail,
+            to: admins.map(a => a.email!),
+            subject: subject!,
+            html: body!,
+        });
+        return { success: true };
+    } catch (e: any) {
+        console.error(`Error sending weekly summary email for company ${companyId}:`, e);
+        return { success: false, error: e.message || "Impossibile inviare l'email di riepilogo settimanale." };
     }
 }
     
