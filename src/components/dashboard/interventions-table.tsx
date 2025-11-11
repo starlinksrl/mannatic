@@ -38,7 +38,7 @@ import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { cn } from '@/lib/utils';
 import { createWhatsAppLink } from '@/lib/utils';
 import { WhatsAppIcon } from '../icons/whatsapp-icon';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
 
 
@@ -50,6 +50,8 @@ interface InterventionsTableProps {
   onInterventionChange: () => void;
   initialStatusFilter?: string;
   initialPriorityFilter?: string;
+  initialOperatorFilter?: string;
+  initialAssignedFilter?: boolean;
 }
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
@@ -64,10 +66,20 @@ const isDueSoon = (dueDate: string | null | undefined): boolean => {
     return isBefore(dueDateObj, twoDaysFromNow) && isBefore(startOfToday(), addDays(dueDateObj, 1));
 };
 
-export function InterventionsTable({ interventions: initialInterventions, currentUser, clients: initialClients, operators, onInterventionChange, initialStatusFilter = 'active', initialPriorityFilter = 'all' }: InterventionsTableProps) {
+export function InterventionsTable({ 
+    interventions: initialInterventions, 
+    currentUser, 
+    clients: initialClients, 
+    operators, 
+    onInterventionChange, 
+    initialStatusFilter = 'active', 
+    initialPriorityFilter = 'all',
+    initialOperatorFilter = 'all',
+    initialAssignedFilter = false
+}: InterventionsTableProps) {
   const { toast } = useToast();
   const { openModal } = useInterventionModal();
-  const searchParams = useSearchParams();
+  const router = useRouter();
   
   const [interventions, setInterventions] = useState(initialInterventions);
   const [clients, setClients] = useState(initialClients);
@@ -76,8 +88,8 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [priorityFilter, setPriorityFilter] = useState(initialPriorityFilter);
   const [clientFilter, setClientFilter] = useState('all');
-  const [operatorFilter, setOperatorFilter] = useState(searchParams.get('operator') || 'all');
-  const [assignedFilter, setAssignedFilter] = useState(searchParams.get('assigned') === 'true');
+  const [operatorFilter, setOperatorFilter] = useState(initialOperatorFilter);
+  const [assignedFilter, setAssignedFilter] = useState(initialAssignedFilter);
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator' | 'default'; direction: 'ascending' | 'descending' } | null>({ key: 'default', direction: 'ascending' });
   
@@ -87,11 +99,6 @@ export function InterventionsTable({ interventions: initialInterventions, curren
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [interventionToDelete, setInterventionToDelete] = useState<Intervention | null>(null);
   
-  useEffect(() => {
-    setStatusFilter(initialStatusFilter);
-    setPriorityFilter(initialPriorityFilter);
-  }, [initialStatusFilter, initialPriorityFilter]);
-
   useEffect(() => {
     setInterventions(initialInterventions);
   }, [initialInterventions]);
@@ -109,6 +116,16 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     clients.forEach(c => cliMap.set(c.id, c));
     setClientsMap(cliMap);
   }, [operators, clients]);
+  
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== 'active') params.set('status', statusFilter);
+    if (priorityFilter !== 'all') params.set('priority', priorityFilter);
+    if (operatorFilter !== 'all') params.set('operator', operatorFilter);
+    if (assignedFilter) params.set('assigned', 'true');
+    // Using replace to not add to browser history
+    router.replace(`/dashboard/interventions?${params.toString()}`);
+  }, [statusFilter, priorityFilter, operatorFilter, assignedFilter, router]);
 
   const handleEditClick = (intervention: Intervention) => {
     openModal(intervention);
