@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { cn } from '@/lib/utils';
-import { ExpiringInterventionsDialog } from './expiring-interventions-dialog';
 import { createWhatsAppLink } from '@/lib/utils';
 import { WhatsAppIcon } from '../icons/whatsapp-icon';
 import { useSearchParams } from 'next/navigation';
@@ -571,3 +570,5 @@ export function InterventionsTable({ interventions: initialInterventions, curren
     </div>
   );
 }
+
+    

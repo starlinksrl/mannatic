@@ -389,25 +389,35 @@ export async function handleRegistration(values: { companyName: string, name: st
     }
 }
 
-// Expiring Interventions Summary
-async function generateExpiringInterventionsSummary(companyId: string): Promise<{ success: boolean; subject?: string; body?: string; error?: string; recipients?: string[] }> {
+// Expiring Interventions Summary Email Action
+export async function sendExpiringInterventionsSummaryEmail(companyId: string): Promise<{ success: boolean; error?: string }> {
     const company = await getCompanyById(companyId);
-    if (!company) return { success: false, error: 'Azienda non trovata.' };
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        return { success: false, error: `Configurazione Resend per l'azienda ${company?.name || companyId} non trovata.` };
+    }
 
     const twoDaysFromNow = addDays(startOfToday(), 2);
-    const interventions = (await getInterventions(companyId)).filter(i => !i.isMaintenance && i.status !== 'Completato' && i.status !== 'Annullato' && i.dueDate && isBefore(new Date(i.dueDate), twoDaysFromNow) && isAfter(new Date(i.dueDate), new Date()));
+    const interventions = (await getInterventions(companyId)).filter(i => 
+        !i.isMaintenance && 
+        i.status !== 'Completato' && 
+        i.status !== 'Annullato' && 
+        i.dueDate && 
+        isBefore(new Date(i.dueDate), twoDaysFromNow) && 
+        isAfter(new Date(i.dueDate), new Date())
+    );
     
     const allUsers = await getUsers(companyId);
     const clients = allUsers.filter(u => u.role === 'Client');
     const operators = allUsers.filter(u => u.role === 'Operator' && u.email);
 
+    if (operators.length === 0) {
+        console.log(`Nessun operatore con email trovato per l'azienda ${company.name}. Salto invio riepilogo.`);
+        return { success: true }; // No one to send to, but not an error.
+    }
+
     if (interventions.length === 0) {
-        return { 
-            success: true, 
-            subject: `Nessun intervento in scadenza per ${company.name}`, 
-            body: `<p>Oggi non ci sono interventi in scadenza nei prossimi 2 giorni.</p>`,
-            recipients: operators.map(o => o.email)
-        };
+        console.log(`Nessun intervento in scadenza per l'azienda ${company.name}. Salto invio riepilogo.`);
+        return { success: true };
     }
 
     const interventionDetails = interventions.map(i => {
@@ -457,43 +467,17 @@ async function generateExpiringInterventionsSummary(companyId: string): Promise<
         </div>
     `;
 
-    return {
-        success: true,
-        subject,
-        body,
-        recipients: operators.map(o => o.email)
-    };
-}
-
-export async function sendExpiringInterventionsSummaryEmail(companyId: string): Promise<{ success: boolean; error?: string }> {
-    const summaryResult = await generateExpiringInterventionsSummary(companyId);
-    if (!summaryResult.success) {
-        return { success: false, error: summaryResult.error };
-    }
-
-    const { subject, body, recipients } = summaryResult;
-
-    if (!recipients || recipients.length === 0) {
-        return { success: true }; // No one to send to
-    }
-    
-    const company = await getCompanyById(companyId);
-    if (!company || !company.resendApiKey || !company.senderEmail) {
-        return { success: false, error: "Configurazione Resend per l'azienda non trovata." };
-    }
-
-
     try {
         const resend = new Resend(company.resendApiKey);
         await resend.emails.send({
             from: company.senderEmail,
-            to: recipients,
+            to: operators.map(o => o.email!),
             subject: subject!,
             html: body!,
         });
         return { success: true };
     } catch (e: any) {
-        console.error("Error sending summary email:", e);
+        console.error(`Error sending summary email for company ${companyId}:`, e);
         return { success: false, error: e.message || "Impossibile inviare l'email di riepilogo." };
     }
 }
@@ -502,3 +486,6 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
     
 
 
+
+
+    
