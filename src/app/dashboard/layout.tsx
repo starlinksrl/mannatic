@@ -35,12 +35,7 @@ export default function DashboardLayout({
       router.push('/login');
       return;
     }
-
-    // If a non-creator user somehow ends up without a company, redirect.
-    if (user.role !== 'Creator' && !currentCompany) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router, currentCompany]);
+  }, [user, isLoading, router]);
 
   if (isLoading || !user) {
     return (

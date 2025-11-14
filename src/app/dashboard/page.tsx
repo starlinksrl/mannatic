@@ -593,7 +593,7 @@ export default function DashboardPage() {
                 <div className="lg:col-span-12 order-3">
                    <InterventionsTable 
                         key={searchParams.toString()}
-                        interventions={user.role === 'Operator' ? kpiData.allInterventions.filter(i => i.assignedOperatorId === user.id) as Intervention[] : kpiData.allInterventions as Intervention[]} 
+                        interventions={kpiData.allInterventions.filter(i => !i.isMaintenance) as Intervention[]}
                         currentUser={user} 
                         clients={clients} 
                         operators={operators}
