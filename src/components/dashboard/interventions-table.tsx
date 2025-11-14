@@ -38,7 +38,7 @@ import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { cn } from '@/lib/utils';
 import { createWhatsAppLink } from '@/lib/utils';
 import { WhatsAppIcon } from '../icons/whatsapp-icon';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
 
 
@@ -80,6 +80,7 @@ export function InterventionsTable({
   const { toast } = useToast();
   const { openModal } = useInterventionModal();
   const router = useRouter();
+  const pathname = usePathname();
   
   const [interventions, setInterventions] = useState(initialInterventions);
   const [clients, setClients] = useState(initialClients);
@@ -118,14 +119,16 @@ export function InterventionsTable({
   }, [operators, clients]);
   
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (statusFilter !== 'active') params.set('status', statusFilter);
-    if (priorityFilter !== 'all') params.set('priority', priorityFilter);
-    if (operatorFilter !== 'all') params.set('operator', operatorFilter);
-    if (assignedFilter) params.set('assigned', 'true');
-    // Using replace to not add to browser history
-    router.replace(`/dashboard/interventions?${params.toString()}`);
-  }, [statusFilter, priorityFilter, operatorFilter, assignedFilter, router]);
+    // Only update URL if we are on the dedicated interventions page
+    if (pathname === '/dashboard/interventions') {
+        const params = new URLSearchParams();
+        if (statusFilter !== 'active') params.set('status', statusFilter);
+        if (priorityFilter !== 'all') params.set('priority', priorityFilter);
+        if (operatorFilter !== 'all') params.set('operator', operatorFilter);
+        if (assignedFilter) params.set('assigned', 'true');
+        router.replace(`/dashboard/interventions?${params.toString()}`);
+    }
+  }, [statusFilter, priorityFilter, operatorFilter, assignedFilter, router, pathname]);
 
   const handleEditClick = (intervention: Intervention) => {
     openModal(intervention);

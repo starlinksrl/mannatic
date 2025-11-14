@@ -291,7 +291,7 @@ export default function DashboardPage() {
     } else if (!user || !currentCompany) {
         setLoading(false);
     }
-  }, [user, currentCompany, router]);
+  }, [user, currentCompany]);
 
   const NoCompanySelected = () => (
     <div className="flex flex-1 flex-col items-center justify-center text-center">
