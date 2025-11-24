@@ -4,6 +4,19 @@ import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wren
 
 export const changelog = [
     {
+        version: "0.27",
+        date: "2024-10-13",
+        title: "Statistiche Operatore e Notifiche Assegnazione",
+        icon: LayoutDashboard,
+        iconClass: "bg-teal-500",
+        changes: [
+            { type: LayoutDashboard, description: "Potenziato il box 'Carico di Lavoro Operatori' con un grafico a barre per interventi aperti/chiusi e l'aggiunta del tempo medio di chiusura per operatore." },
+            { type: MailCheck, description: "Implementata una notifica email automatica inviata a un operatore quando gli viene assegnato un nuovo intervento." },
+            { type: Bug, description: "Risolto un problema con l'ordinamento per 'interventi evidenziati', che ora funziona correttamente." },
+            { type: GitMerge, description: "Aggiunto un identificatore di checkpoint specifico accanto al numero di versione nella barra laterale." },
+        ]
+    },
+    {
         version: "0.26",
         date: "2024-10-12",
         title: "Personalizzazione Notifiche Cron Job",
@@ -294,3 +307,4 @@ export const changelog = [
     
 
     
+
