@@ -590,20 +590,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                <div className="lg:col-span-12 order-3">
-                   <InterventionsTable 
-                        key={searchParams.toString()}
-                        interventions={kpiData.allInterventions.filter(i => !i.isMaintenance) as Intervention[]}
-                        currentUser={user} 
-                        clients={clients} 
-                        operators={operators}
-                        onInterventionChange={fetchKpiData}
-                        initialStatusFilter={searchParams.get('status') || 'active'}
-                        initialPriorityFilter={searchParams.get('priority') || 'all'}
-                        initialOperatorFilter={searchParams.get('operator') || 'all'}
-                        initialAssignedFilter={searchParams.get('assigned') === 'true'}
-                    />
-                </div>
               </div>
           )}
         </main>
