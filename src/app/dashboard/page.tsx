@@ -5,7 +5,7 @@
 import { Header } from '@/components/dashboard/header';
 import { getInterventions, getUsers, getClients, updateUser, getAppointments, getSupportTickets } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointment, SupportTicket } from '@/lib/types';
-import { isAfter, addDays, startOfToday, isWithinInterval, startOfDay, subMonths } from 'date-fns';
+import { isAfter, addDays, startOfToday, isWithinInterval, startOfDay, subMonths, differenceInHours } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
 import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star } from 'lucide-react';
@@ -43,6 +43,7 @@ type OperatorWorkload = {
   name: string;
   open: number;
   closed: number;
+  avgClosingTimeHours?: number | null;
 };
 
 type WeeklyScheduleItem = (Intervention | Appointment) & { itemType: 'intervention' | 'appointment' };
@@ -151,10 +152,22 @@ export default function DashboardPage() {
       const assignedInterventions = allInterventions.filter(i => i.assignedOperatorIds?.includes(op.id));
       const open = assignedInterventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso').length;
       const closed = assignedInterventions.filter(i => i.status !== 'Nuovo' && i.status !== 'In corso' && i.status !== 'Annullato').length;
+      
+      const completedInterventions = assignedInterventions.filter(i => i.status === 'Completato' && i.completedAt);
+      let avgClosingTimeHours = null;
+      if (completedInterventions.length > 0) {
+        const totalDuration = completedInterventions.reduce((acc, i) => {
+            const duration = differenceInHours(new Date(i.completedAt!), new Date(i.createdAt));
+            return acc + duration;
+        }, 0);
+        avgClosingTimeHours = totalDuration / completedInterventions.length;
+      }
+
       return {
           name: op.name,
-          open: open,
-          closed: closed,
+          open,
+          closed,
+          avgClosingTimeHours
       };
     });
 
@@ -518,6 +531,25 @@ export default function DashboardPage() {
     const OperatorWorkloadCard = ({ data }: { data: OperatorWorkload[] }) => {
         const totalOpen = data.reduce((acc, op) => acc + op.open, 0);
 
+        const CustomTooltip = ({ active, payload, label }: any) => {
+          if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+              <div className="p-2 bg-background border rounded-md shadow-lg">
+                <p className="font-semibold">{label}</p>
+                <p className="text-sm text-chart-2">Aperti: {data.open}</p>
+                <p className="text-sm text-chart-1">Chiusi: {data.closed}</p>
+                {data.avgClosingTimeHours !== null && (
+                    <p className="text-sm text-muted-foreground">
+                        Tempo medio chiusura: {data.avgClosingTimeHours.toFixed(1)} ore
+                    </p>
+                )}
+              </div>
+            );
+          }
+          return null;
+        };
+
         return (
             <Card>
                 <CardHeader>
@@ -541,10 +573,7 @@ export default function DashboardPage() {
                             />
                             <Tooltip
                                 cursor={{ fill: 'hsl(var(--muted))' }}
-                                contentStyle={{
-                                    backgroundColor: 'hsl(var(--background))',
-                                    borderColor: 'hsl(var(--border))',
-                                }}
+                                content={<CustomTooltip />}
                             />
                             <Legend wrapperStyle={{fontSize: '0.8rem'}}/>
                             <Bar dataKey="open" fill="hsl(var(--chart-2))" name="Aperti" stackId="a" />
