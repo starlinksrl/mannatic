@@ -92,7 +92,7 @@ export function InterventionsTable({
   const [operatorFilter, setOperatorFilter] = useState(initialOperatorFilter);
   const [assignedFilter, setAssignedFilter] = useState(initialAssignedFilter);
 
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator' | 'default'; direction: 'ascending' | 'descending' } | null>({ key: 'default', direction: 'ascending' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'createdAt', direction: 'descending' });
   
   const [clientsMap, setClientsMap] = useState<Map<string, User>>(new Map());
   const [operatorsMap, setOperatorsMap] = useState<Map<string, string>>(new Map());
@@ -227,57 +227,42 @@ export function InterventionsTable({
   
   const sortedInterventions = useMemo(() => {
     let sortableItems = [...filteredInterventions];
-    
-    // Custom sort function
-    const customSort = (a: Intervention, b: Intervention) => {
-      if (sortConfig) {
-          let aValue, bValue;
-          switch(sortConfig.key) {
-              case 'isFeatured':
-                  aValue = a.isFeatured ? 1 : 0;
-                  bValue = b.isFeatured ? 1 : 0;
-                  return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
-              case 'priority':
-                  aValue = priorityOrder[a.priority];
-                  bValue = priorityOrder[b.priority];
-                  break;
-              case 'status':
-                  aValue = statusOrder[a.status];
-                  bValue = statusOrder[b.status];
-                  break;
-              case 'client':
-                  aValue = clientsMap.get(a.clientId)?.name || '';
-                  bValue = clientsMap.get(b.clientId)?.name || '';
-                  break;
-               case 'operator':
-                  aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
-                  bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
-                  break;
-               case 'default':
-                   const priorityComparison = priorityOrder[b.priority] - priorityOrder[a.priority];
-                   if (priorityComparison !== 0) return priorityComparison;
-                   return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-              default:
-                  aValue = a[sortConfig.key as keyof Intervention];
-                  bValue = b[sortConfig.key as keyof Intervention];
-          }
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch(sortConfig.key) {
+            case 'priority':
+                aValue = priorityOrder[a.priority];
+                bValue = priorityOrder[b.priority];
+                break;
+            case 'status':
+                aValue = statusOrder[a.status];
+                bValue = statusOrder[b.status];
+                break;
+            case 'client':
+                aValue = clientsMap.get(a.clientId)?.name || '';
+                bValue = clientsMap.get(b.clientId)?.name || '';
+                break;
+             case 'operator':
+                aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
+                bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
+                break;
+            default:
+                aValue = a[sortConfig.key as keyof Intervention];
+                bValue = b[sortConfig.key as keyof Intervention];
+        }
 
-          if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
-          if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
-      }
-      return 0;
-    };
-    
-    // Separate urgent interventions
-    const dueSoonItems = sortableItems.filter(i => isDueSoon(i.dueDate));
-    const otherItems = sortableItems.filter(i => !isDueSoon(i.dueDate));
-    
-    // Sort each group individually
-    dueSoonItems.sort(customSort);
-    otherItems.sort(customSort);
-
-    // Combine them
-    return [...dueSoonItems, ...otherItems];
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
   }, [filteredInterventions, sortConfig, operatorsMap, clientsMap]);
 
   const requestSort = (key: keyof Intervention | 'client' | 'operator') => {
