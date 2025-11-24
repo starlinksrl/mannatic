@@ -134,7 +134,7 @@ export function SidebarNav() {
                         variant="secondary" 
                         className="cursor-pointer hover:ring-1 hover:ring-ring"
                     >
-                        v{latestVersion}
+                        v{latestVersion} (c461eb7)
                     </Badge>
                 </Link>
             </div>
