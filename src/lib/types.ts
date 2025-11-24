@@ -143,7 +143,7 @@ export interface Intervention {
   priority: InterventionPriority;
   sla: string; // e.g., '4h', '8h', '24h'
   status: InterventionStatus;
-  assignedOperatorId: string | null;
+  assignedOperatorIds: string[];
   createdAt: string;
   dueDate?: string | null;
   completedAt?: string | null;

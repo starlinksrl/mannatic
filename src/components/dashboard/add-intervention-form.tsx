@@ -54,7 +54,7 @@ const formSchema = z.object({
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   dueDate: z.date().optional(),
   dueTime: z.string().optional(),
-  assignedOperatorId: z.string().nullable(),
+  assignedOperatorIds: z.array(z.string()).default([]),
   attachments: z.array(z.any()).optional(),
   notifyClient: z.boolean().default(false).optional(),
 });
@@ -83,7 +83,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       title: '',
       description: '',
       type: defaultType,
-      assignedOperatorId: null,
+      assignedOperatorIds: [],
       priority: 'Bassa',
       clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
       dueTime: '',
@@ -100,7 +100,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
             title: '',
             description: '',
             type: defaultType,
-            assignedOperatorId: null,
+            assignedOperatorIds: [],
             priority: 'Bassa',
             clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
             dueTime: '',
@@ -489,29 +489,77 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                     </div>
 
                     {currentUser.role === 'Admin' && (
-                        <FormField
+                         <FormField
                             control={form.control}
-                            name="assignedOperatorId"
-                            render={({ field }) => (
+                            name="assignedOperatorIds"
+                            render={() => (
                                 <FormItem>
-                                <FormLabel>Assegna a Operatore</FormLabel>
-                                <Select 
-                                    onValueChange={(value) => field.onChange(value === 'null' ? null : value)} 
-                                    value={field.value || 'null'}
-                                >
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Assegna a un operatore (opzionale)" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    <SelectItem value="null">Non assegnato</SelectItem>
-                                    {operators.map(operator => (
-                                        <SelectItem key={operator.id} value={operator.id}>{operator.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
+                                    <FormLabel>Assegna a Operatori</FormLabel>
+                                     <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className="w-full justify-between"
+                                                >
+                                                    <span className="truncate">
+                                                        {form.getValues('assignedOperatorIds').length > 0
+                                                        ? `${form.getValues('assignedOperatorIds').length} operatori selezionati`
+                                                        : "Seleziona operatori..."}
+                                                    </span>
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Cerca operatore..." />
+                                                <CommandList>
+                                                    <CommandEmpty>Nessun operatore trovato.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {operators.map((operator) => (
+                                                            <FormField
+                                                                key={operator.id}
+                                                                control={form.control}
+                                                                name="assignedOperatorIds"
+                                                                render={({ field }) => {
+                                                                    return (
+                                                                        <CommandItem
+                                                                            key={operator.id}
+                                                                            onSelect={() => {
+                                                                                const selected = field.value || [];
+                                                                                const isSelected = selected.includes(operator.id);
+                                                                                const newSelection = isSelected
+                                                                                    ? selected.filter((id) => id !== operator.id)
+                                                                                    : [...selected, operator.id];
+                                                                                field.onChange(newSelection);
+                                                                            }}
+                                                                        >
+                                                                            <Checkbox
+                                                                                className="mr-2"
+                                                                                checked={field.value?.includes(operator.id)}
+                                                                                onCheckedChange={(checked) => {
+                                                                                     const selected = field.value || [];
+                                                                                     const isSelected = selected.includes(operator.id);
+                                                                                     const newSelection = isSelected
+                                                                                         ? selected.filter((id) => id !== operator.id)
+                                                                                         : [...selected, operator.id];
+                                                                                     field.onChange(newSelection);
+                                                                                }}
+                                                                            />
+                                                                            {operator.name}
+                                                                        </CommandItem>
+                                                                    );
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />

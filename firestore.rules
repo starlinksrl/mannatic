@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -55,7 +56,7 @@ service cloud.firestore {
         allow read: if isCreator() || (isSignedIn() && isUserInCompany(resource.data.companyId));
         allow create, update: if isCreator() || (isSignedIn() && (
             isCompanyAdmin(resource.data.companyId) ||
-            (getUserRole(request.auth.uid) == 'Operator' && request.auth.uid == resource.data.assignedOperatorId) ||
+            (getUserRole(request.auth.uid) == 'Operator' && request.auth.uid in resource.data.assignedOperatorIds) ||
             (getUserRole(request.auth.uid) == 'Client' && request.auth.uid == resource.data.clientId)
         ));
         allow delete: if isCreator() || isCompanyAdmin(resource.data.companyId);
