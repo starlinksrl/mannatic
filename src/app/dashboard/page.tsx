@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -24,8 +23,8 @@ import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { KpiCard } from '@/components/dashboard/kpi-card';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
-import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { QuoteOfTheDay } from '@/components/dashboard/quote_of_the_day';
 import { Badge } from '@/components/ui/badge';
 import { Scratchpad } from '@/components/dashboard/scratchpad';
 import { CompanyScratchpad } from '@/components/dashboard/company-scratchpad';
@@ -115,8 +114,8 @@ export default function DashboardPage() {
     let relevantInterventionsForKpis: (Intervention | ScheduledMaintenance)[];
     
     if (user.role === 'Operator') {
-        const operatorInterventions = allInterventions.filter(i => i.assignedOperatorId === user.id);
-        const unassignedInterventions = allInterventions.filter(i => !i.assignedOperatorId);
+        const operatorInterventions = allInterventions.filter(i => i.assignedOperatorIds.includes(user.id));
+        const unassignedInterventions = allInterventions.filter(i => i.assignedOperatorIds.length === 0);
         relevantInterventionsForKpis = [...operatorInterventions, ...unassignedInterventions];
     } else {
         relevantInterventionsForKpis = allInterventions;
@@ -144,7 +143,7 @@ export default function DashboardPage() {
     
     const operatorWorkload: Record<string, number> = {};
     users.filter(u => u.role === 'Operator').forEach(op => {
-      operatorWorkload[op.name] = allInterventions.filter(i => i.assignedOperatorId === op.id && (i.status === 'Nuovo' || i.status === 'In corso')).length;
+      operatorWorkload[op.name] = allInterventions.filter(i => i.assignedOperatorIds.includes(op.id) && (i.status === 'Nuovo' || i.status === 'In corso')).length;
     });
 
     const operatorWorkloadData = Object.entries(operatorWorkload).map(([name, workload]) => ({ name, workload }));
@@ -209,9 +208,9 @@ export default function DashboardPage() {
     
     let assignedCount: number;
     if (user.role === 'Operator') {
-        assignedCount = allInterventions.filter(i => i.assignedOperatorId === user.id && ['Nuovo', 'In corso'].includes(i.status)).length;
+        assignedCount = allInterventions.filter(i => i.assignedOperatorIds.includes(user.id) && ['Nuovo', 'In corso'].includes(i.status)).length;
     } else {
-        assignedCount = allInterventions.filter(i => !!i.assignedOperatorId && ['Nuovo', 'In corso'].includes(i.status)).length;
+        assignedCount = allInterventions.filter(i => i.assignedOperatorIds.length > 0 && ['Nuovo', 'In corso'].includes(i.status)).length;
     }
     
     const scheduleStartDate = startOfToday();
@@ -506,6 +505,39 @@ export default function DashboardPage() {
         )
     }
 
+    const OperatorWorkloadCard = ({ data }: { data: { name: string, workload: number }[] }) => (
+      <Card>
+          <CardHeader>
+              <CardTitle className="font-headline">Carico di Lavoro Operatori</CardTitle>
+              <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
+          </CardHeader>
+          <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={data} layout="vertical" margin={{ left: 10, right: 10 }}>
+                      <XAxis type="number" hide />
+                      <YAxis
+                          dataKey="name"
+                          type="category"
+                          tickLine={false}
+                          axisLine={false}
+                          stroke="hsl(var(--muted-foreground))"
+                          fontSize={12}
+                          width={80}
+                      />
+                      <Tooltip
+                          cursor={{ fill: 'hsl(var(--muted))' }}
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                          }}
+                      />
+                      <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+              </ResponsiveContainer>
+          </CardContent>
+      </Card>
+    );
+
 
   return (
     <>
@@ -587,6 +619,7 @@ export default function DashboardPage() {
 
                     <div className="lg:col-span-8 flex flex-col gap-6">
                          <WeeklyScheduleCard schedule={kpiData.weeklySchedule} />
+                         {user.role === 'Admin' && kpiData.operatorWorkloadData.length > 0 && <OperatorWorkloadCard data={kpiData.operatorWorkloadData} />}
                     </div>
                 </div>
 
