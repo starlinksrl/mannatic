@@ -287,3 +287,23 @@ export const SendSupportTicketNotificationOutputSchema = z.object({
   error: z.string().optional(),
 });
 export type SendSupportTicketNotificationOutput = z.infer<typeof SendSupportTicketNotificationOutputSchema>;
+
+
+export const SendAssignedInterventionNotificationInputSchema = z.object({
+  recipientEmail: z.string().email().describe('The email address of the recipient (operator).'),
+  interventionId: z.string().describe('The ID of the intervention.'),
+  interventionTitle: z.string().describe('The title of the intervention.'),
+  interventionPriority: z.string().describe('The priority of the intervention.'),
+  interventionDueDate: z.string().optional().describe('The due date of the intervention.'),
+  clientName: z.string().describe('The name of the client for the intervention.'),
+  assignerName: z.string().describe('The name of the user who assigned the intervention.'),
+  resendConfig: ResendConfigSchema.describe('Resend configuration for sending the email.'),
+  companyId: z.string().describe('The ID of the company.'),
+});
+export type SendAssignedInterventionNotificationInput = z.infer<typeof SendAssignedInterventionNotificationInputSchema>;
+
+export const SendAssignedInterventionNotificationOutputSchema = z.object({
+  success: z.boolean().describe('Whether the email was sent successfully.'),
+  error: z.string().optional().describe('Error message if sending failed.'),
+});
+export type SendAssignedInterventionNotificationOutput = z.infer<typeof SendAssignedInterventionNotificationOutputSchema>;

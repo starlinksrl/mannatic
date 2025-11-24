@@ -4,7 +4,7 @@ import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRol
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter, differenceInMinutes, addHours } from 'date-fns';
 import { db, auth } from './firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc, writeBatch, documentId, setDoc, collectionGroup, Query, queryEqual, deleteField, orderBy } from 'firebase/firestore';
-import { triggerExpiryNotification, triggerNewInterventionNotification, sendClientUpdateEmail, triggerSupportTicketNotification, sendPushNotification } from '@/app/actions';
+import { triggerNewInterventionNotification, sendClientUpdateEmail, triggerSupportTicketNotification, sendPushNotification, triggerAssignedInterventionNotification } from '@/app/actions';
 import { generateShortId } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToGcs } from '@/ai/flows/upload-file-to-gcs';
@@ -764,10 +764,11 @@ export async function addIntervention(interventionData: AddInterventionParams): 
             const qAdmins = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Admin"));
             const adminsSnapshot = await getDocs(qAdmins);
             const admins = adminsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as User));
-            let operatorName: string | undefined;
-            if (newInterventionData.assignedOperatorId) {
-                const operator = await getOperator(newInterventionData.assignedOperatorId);
-                if (operator) operatorName = operator.name;
+            let operatorNames: string[] = [];
+            if (newInterventionData.assignedOperatorIds) {
+                 const operatorPromises = newInterventionData.assignedOperatorIds.map(id => getOperator(id));
+                 const operators = await Promise.all(operatorPromises);
+                 operatorNames = operators.filter(op => op !== null).map(op => op!.name);
             }
             
             for (const admin of admins) {
@@ -781,7 +782,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
                         interventionDueDate: newInterventionData.dueDate,
                         clientName: clientName,
                         creatorName: creatorName,
-                        assignedOperatorName: operatorName,
+                        assignedOperatorName: operatorNames.join(', '),
                         companyId: company.id,
                         resendConfig: {
                             apiKey: company.resendApiKey,
@@ -923,14 +924,44 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
             latestUpdateMessage = `Lo stato è stato aggiornato a: ${dataToUpdate.status}`;
         }
         
+        const oldOperatorIds = new Set(originalIntervention.assignedOperatorIds || []);
+        const newOperatorIds = new Set(dataToUpdate.assignedOperatorIds || []);
+        const newlyAssignedIds = [...newOperatorIds].filter(id => !oldOperatorIds.has(id));
+
         await updateDoc(docRef, dataToUpdate as any);
         const interventionForNotif = { ...originalIntervention, ...dataToUpdate } as Intervention;
+
+        const company = await getCompanyById(interventionForNotif.companyId);
+
+        if (company && company.resendApiKey && company.senderEmail) {
+            for (const operatorId of newlyAssignedIds) {
+                const operator = await getOperator(operatorId);
+                if (operator && operator.email) {
+                    await triggerAssignedInterventionNotification({
+                        recipientEmail: operator.email,
+                        interventionId: interventionForNotif.id,
+                        interventionTitle: interventionForNotif.title,
+                        interventionPriority: interventionForNotif.priority,
+                        interventionDueDate: interventionForNotif.dueDate,
+                        clientName: (await getClient(interventionForNotif.clientId))?.name || 'N/D',
+                        assignerName: updater.name,
+                        companyId: company.id,
+                        resendConfig: {
+                            apiKey: company.resendApiKey,
+                            from: company.senderEmail,
+                        }
+                    });
+                }
+            }
+        }
 
 
         if (statusChanged || commentAdded) {
             const internalRecipients: string[] = [];
-            if (interventionForNotif.assignedOperatorId && interventionForNotif.assignedOperatorId !== updater.id) {
-                internalRecipients.push(interventionForNotif.assignedOperatorId);
+            if (interventionForNotif.assignedOperatorIds) {
+                interventionForNotif.assignedOperatorIds.forEach(opId => {
+                    if (opId !== updater.id) internalRecipients.push(opId);
+                })
             }
             if (['Client', 'Operator'].includes(updater.role)) {
                 const qAdmins = query(collection(db, 'users'), where("companyId", "==", interventionForNotif.companyId), where("role", "==", "Admin"));
@@ -970,26 +1001,21 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
 
             if (notifyClient) {
                 const client = await getUserById(interventionForNotif.clientId);
-                const companyDocRef = doc(db, 'companies', interventionForNotif.companyId);
-                const companyDoc = await getDoc(companyDocRef);
 
-                if (client && client.email && companyDoc.exists()) {
-                    const company: Company = {id: companyDoc.id, ...companyDoc.data()};
-                    if(company.resendApiKey && company.senderEmail) {
-                        const autologinToken = await createAutologinToken(client.id);
-                        const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
-                         await sendClientUpdateEmail({
-                            recipientEmail: client.email,
-                            clientName: client.name,
-                            interventionId: id,
-                            interventionTitle: interventionForNotif.title,
-                            interventionStatus: interventionForNotif.status,
-                            updateMessage: latestUpdateMessage,
-                            company: company,
-                            interventionLink: `${baseUrl}/login?autologin_token=${autologinToken}`,
-                            notifyClient: true
-                        });
-                    }
+                if (client && client.email && company && company.resendApiKey && company.senderEmail) {
+                    const autologinToken = await createAutologinToken(client.id);
+                    const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
+                     await sendClientUpdateEmail({
+                        recipientEmail: client.email,
+                        clientName: client.name,
+                        interventionId: id,
+                        interventionTitle: interventionForNotif.title,
+                        interventionStatus: interventionForNotif.status,
+                        updateMessage: latestUpdateMessage,
+                        company: company,
+                        interventionLink: `${baseUrl}/login?autologin_token=${autologinToken}`,
+                        notifyClient: true
+                    });
                 }
             }
         }

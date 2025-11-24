@@ -11,13 +11,14 @@ import { sendTestEmail } from '@/ai/flows/send-test-email';
 import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-connection';
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-notification';
+import { sendAssignedInterventionNotification } from '@/ai/flows/send-assigned-intervention-notification';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById, getAppConfiguration, getInterventions, getUsers } from '@/lib/data';
 import { Company, User, Intervention, ScheduledMaintenance } from '@/lib/types';
 import { Resend } from 'resend';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
 import type { SendCredentialsEmailInput, SendCredentialsEmailOutput } from '@/ai/flows/send-credentials-email';
-import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput } from '@/lib/types';
+import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput, SendAssignedInterventionNotificationInput, SendAssignedInterventionNotificationOutput } from '@/lib/types';
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
 import { generateShortId } from '@/lib/utils';
@@ -221,6 +222,16 @@ export async function triggerNewInterventionNotification(input: SendNewIntervent
         return result;
     } catch (error: any) {
         console.error("Error sending new intervention notification email:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function triggerAssignedInterventionNotification(input: SendAssignedInterventionNotificationInput): Promise<SendAssignedInterventionNotificationOutput> {
+    try {
+        const result = await sendAssignedInterventionNotification(input);
+        return result;
+    } catch (error: any) {
+        console.error("Error sending assigned intervention notification email:", error);
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }
@@ -623,3 +634,5 @@ export async function testWeeklySummaryAction(companyId: string): Promise<{ succ
     
 
     
+
+
