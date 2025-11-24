@@ -150,7 +150,7 @@ export default function DashboardPage() {
     const operatorWorkloadData = users.filter(u => u.role === 'Operator').map(op => {
       const assignedInterventions = allInterventions.filter(i => i.assignedOperatorIds?.includes(op.id));
       const open = assignedInterventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso').length;
-      const closed = assignedInterventions.filter(i => i.status !== 'Nuovo' && i.status !== 'In corso').length;
+      const closed = assignedInterventions.filter(i => i.status !== 'Nuovo' && i.status !== 'In corso' && i.status !== 'Annullato').length;
       return {
           name: op.name,
           open: open,
