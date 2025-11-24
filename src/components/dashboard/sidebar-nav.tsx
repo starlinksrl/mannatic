@@ -31,6 +31,7 @@ import { AllowedSector, User as UserType } from '@/lib/types';
 import { Separator } from '../ui/separator';
 import { changelog } from '@/lib/changelog';
 import { Badge } from '../ui/badge';
+import { format } from 'date-fns';
 
 const isMainCreator = (user: UserType | null) => user?.email === 'creator@mannatic.com';
 
@@ -97,7 +98,9 @@ export function SidebarNav() {
     return false;
   }
   
-  const latestVersion = changelog[0]?.version;
+  const latestEntry = changelog[0];
+  const latestVersion = latestEntry?.version;
+  const latestDate = latestEntry?.date ? format(new Date(latestEntry.date), 'dd/MM/yyyy') : null;
   const isMain = isMainCreator(user);
 
   return (
@@ -139,7 +142,7 @@ export function SidebarNav() {
                     </Badge>
                 </Link>
                  <span className="text-xs text-muted-foreground">
-                    {new Date().toLocaleDateString('it-IT')}
+                    {latestDate}
                 </span>
             </div>
         )}
