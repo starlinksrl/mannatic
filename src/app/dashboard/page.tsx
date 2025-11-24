@@ -113,8 +113,8 @@ export default function DashboardPage() {
     let relevantInterventionsForKpis: (Intervention | ScheduledMaintenance)[];
     
     if (user.role === 'Operator') {
-        const operatorInterventions = allInterventions.filter(i => i.assignedOperatorIds.includes(user.id));
-        const unassignedInterventions = allInterventions.filter(i => i.assignedOperatorIds.length === 0);
+        const operatorInterventions = allInterventions.filter(i => i.assignedOperatorIds?.includes(user.id));
+        const unassignedInterventions = allInterventions.filter(i => !i.assignedOperatorIds || i.assignedOperatorIds.length === 0);
         relevantInterventionsForKpis = [...operatorInterventions, ...unassignedInterventions];
     } else {
         relevantInterventionsForKpis = allInterventions;
@@ -142,7 +142,7 @@ export default function DashboardPage() {
     
     const operatorWorkload: Record<string, number> = {};
     users.filter(u => u.role === 'Operator').forEach(op => {
-      operatorWorkload[op.name] = allInterventions.filter(i => i.assignedOperatorIds.includes(op.id) && (i.status === 'Nuovo' || i.status === 'In corso')).length;
+      operatorWorkload[op.name] = allInterventions.filter(i => i.assignedOperatorIds?.includes(op.id) && (i.status === 'Nuovo' || i.status === 'In corso')).length;
     });
 
     const operatorWorkloadData = Object.entries(operatorWorkload).map(([name, workload]) => ({ name, workload }));
@@ -207,9 +207,9 @@ export default function DashboardPage() {
     
     let assignedCount: number;
     if (user.role === 'Operator') {
-        assignedCount = allInterventions.filter(i => i.assignedOperatorIds.includes(user.id) && ['Nuovo', 'In corso'].includes(i.status)).length;
+        assignedCount = allInterventions.filter(i => i.assignedOperatorIds?.includes(user.id) && ['Nuovo', 'In corso'].includes(i.status)).length;
     } else {
-        assignedCount = allInterventions.filter(i => i.assignedOperatorIds.length > 0 && ['Nuovo', 'In corso'].includes(i.status)).length;
+        assignedCount = allInterventions.filter(i => i.assignedOperatorIds && i.assignedOperatorIds.length > 0 && ['Nuovo', 'In corso'].includes(i.status)).length;
     }
     
     const scheduleStartDate = startOfToday();
