@@ -4,7 +4,7 @@
 import { Header } from '@/components/dashboard/header';
 import { getInterventions, getUsers, getClients, updateUser, getAppointments, getSupportTickets } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointment, SupportTicket } from '@/lib/types';
-import { isAfter, addDays, startOfToday, isWithinInterval, startOfDay } from 'date-fns';
+import { isAfter, addDays, startOfToday, isWithinInterval, startOfDay, subMonths } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
 import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star } from 'lucide-react';
@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { KpiCard } from '@/components/dashboard/kpi-card';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
 import { Badge } from '@/components/ui/badge';
 import { Scratchpad } from '@/components/dashboard/scratchpad';
@@ -38,6 +38,12 @@ export type EnrichedUpdate = InterventionUpdate & {
   clientName: string;
 };
 
+type OperatorWorkload = {
+  name: string;
+  open: number;
+  closed: number;
+};
+
 type WeeklyScheduleItem = (Intervention | Appointment) & { itemType: 'intervention' | 'appointment' };
 
 type KpiData = GenerateKpiDashboardInput & { 
@@ -45,7 +51,7 @@ type KpiData = GenerateKpiDashboardInput & {
   closedInterventions: number;
   slaAdherencePercentage: number;
   overdueMaintenanceTasks: number;
-  operatorWorkloadData: { name: string, workload: number }[],
+  operatorWorkloadData: OperatorWorkload[],
   highPriorityInterventions: (Intervention | ScheduledMaintenance)[],
   latestUpdates: EnrichedUpdate[],
   allInterventions: (Intervention | ScheduledMaintenance)[],
@@ -140,12 +146,15 @@ export default function DashboardPage() {
       return isMaintenance && (i.status === 'Nuovo' || i.status === 'In corso') && isAfter(now, new Date(i.dueDate!));
     }).length;
     
-    const operatorWorkload: Record<string, number> = {};
-    users.filter(u => u.role === 'Operator').forEach(op => {
-      operatorWorkload[op.name] = allInterventions.filter(i => i.assignedOperatorIds?.includes(op.id) && (i.status === 'Nuovo' || i.status === 'In corso')).length;
+    const oneMonthAgo = subMonths(now, 1);
+    const operatorWorkloadData = users.filter(u => u.role === 'Operator').map(op => {
+        const assignedInterventions = allInterventions.filter(i => i.assignedOperatorIds?.includes(op.id));
+        return {
+            name: op.name,
+            open: assignedInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status)).length,
+            closed: assignedInterventions.filter(i => i.status === 'Completato' && i.completedAt && new Date(i.completedAt) >= oneMonthAgo).length,
+        }
     });
-
-    const operatorWorkloadData = Object.entries(operatorWorkload).map(([name, workload]) => ({ name, workload }));
 
     const highPriorityInterventions = allInterventions.filter(i => i.priority === 'Alta' || i.priority === 'Critica').slice(0, 3);
     
@@ -504,38 +513,58 @@ export default function DashboardPage() {
         )
     }
 
-    const OperatorWorkloadCard = ({ data }: { data: { name: string, workload: number }[] }) => (
-      <Card>
-          <CardHeader>
-              <CardTitle className="font-headline">Carico di Lavoro Operatori</CardTitle>
-              <CardDescription>Numero di interventi aperti per operatore.</CardDescription>
-          </CardHeader>
-          <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={data} layout="vertical" margin={{ left: 10, right: 10 }}>
-                      <XAxis type="number" hide />
-                      <YAxis
-                          dataKey="name"
-                          type="category"
-                          tickLine={false}
-                          axisLine={false}
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                          width={80}
-                      />
-                      <Tooltip
-                          cursor={{ fill: 'hsl(var(--muted))' }}
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            borderColor: 'hsl(var(--border))',
-                          }}
-                      />
-                      <Bar dataKey="workload" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-              </ResponsiveContainer>
-          </CardContent>
-      </Card>
-    );
+    const OperatorWorkloadCard = ({ data }: { data: OperatorWorkload[] }) => {
+        const totalOpen = data.reduce((acc, op) => acc + op.open, 0);
+
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Carico di Lavoro Operatori</CardTitle>
+                    <CardDescription>
+                        Attualmente ci sono {data.length} operatori con un totale di {totalOpen} interventi aperti.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={data} layout="vertical" margin={{ left: 10, right: 10 }} stackOffset="expand">
+                            <XAxis type="number" hide />
+                            <YAxis
+                                dataKey="name"
+                                type="category"
+                                tickLine={false}
+                                axisLine={false}
+                                stroke="hsl(var(--muted-foreground))"
+                                fontSize={12}
+                                width={80}
+                            />
+                            <Tooltip
+                                cursor={{ fill: 'hsl(var(--muted))' }}
+                                contentStyle={{
+                                    backgroundColor: 'hsl(var(--background))',
+                                    borderColor: 'hsl(var(--border))',
+                                }}
+                                formatter={(value, name, props) => [`${value} interventi`, name === 'open' ? 'Aperti' : 'Chiusi (30gg)']}
+                            />
+                             <Legend
+                                content={({ payload }) => (
+                                    <div className="flex justify-center gap-4 text-xs text-muted-foreground mt-2">
+                                        {payload?.map((entry, index) => (
+                                            <div key={`item-${index}`} className="flex items-center gap-1.5">
+                                                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                                                <span>{entry.value === 'open' ? 'Aperti' : 'Chiusi (30gg)'}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            />
+                            <Bar dataKey="open" fill="hsl(var(--primary))" stackId="a" name="Aperti" />
+                            <Bar dataKey="closed" fill="hsl(var(--chart-2))" stackId="a" name="Chiusi (30gg)" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+        )
+    };
 
 
   return (
