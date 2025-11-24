@@ -10,7 +10,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star } from 'lucide-react';
 import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { ActivityFeed } from '@/components/dashboard/activity-feed';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
@@ -69,7 +69,6 @@ export default function DashboardPage() {
   const { user, setUser, currentCompany, setCurrentCompany } = useUser();
   const router = useRouter();
   const { toast } = useToast();
-  const searchParams = useSearchParams();
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [operators, setOperators] = useState<User[]>([]);
