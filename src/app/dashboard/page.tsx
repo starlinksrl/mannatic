@@ -146,13 +146,12 @@ export default function DashboardPage() {
       return isMaintenance && (i.status === 'Nuovo' || i.status === 'In corso') && isAfter(now, new Date(i.dueDate!));
     }).length;
     
-    const oneMonthAgo = subMonths(now, 1);
     const operatorWorkloadData = users.filter(u => u.role === 'Operator').map(op => {
         const assignedInterventions = allInterventions.filter(i => i.assignedOperatorIds?.includes(op.id));
         return {
             name: op.name,
             open: assignedInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status)).length,
-            closed: assignedInterventions.filter(i => i.status === 'Completato' && i.completedAt && new Date(i.completedAt) >= oneMonthAgo).length,
+            closed: assignedInterventions.filter(i => !['Nuovo', 'In corso'].includes(i.status)).length,
         }
     });
 
@@ -543,7 +542,7 @@ export default function DashboardPage() {
                                     backgroundColor: 'hsl(var(--background))',
                                     borderColor: 'hsl(var(--border))',
                                 }}
-                                formatter={(value, name, props) => [`${value} interventi`, name === 'open' ? 'Aperti' : 'Chiusi (30gg)']}
+                                formatter={(value, name, props) => [`${value} interventi`, name === 'open' ? 'Aperti' : 'Chiusi']}
                             />
                              <Legend
                                 content={({ payload }) => (
@@ -551,14 +550,14 @@ export default function DashboardPage() {
                                         {payload?.map((entry, index) => (
                                             <div key={`item-${index}`} className="flex items-center gap-1.5">
                                                 <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                                                <span>{entry.value === 'open' ? 'Aperti' : 'Chiusi (30gg)'}</span>
+                                                <span>{entry.value === 'open' ? 'Aperti' : 'Chiusi'}</span>
                                             </div>
                                         ))}
                                     </div>
                                 )}
                             />
                             <Bar dataKey="open" fill="hsl(var(--primary))" stackId="a" name="Aperti" />
-                            <Bar dataKey="closed" fill="hsl(var(--chart-2))" stackId="a" name="Chiusi (30gg)" />
+                            <Bar dataKey="closed" fill="hsl(var(--chart-2))" stackId="a" name="Chiusi" />
                         </BarChart>
                     </ResponsiveContainer>
                 </CardContent>
