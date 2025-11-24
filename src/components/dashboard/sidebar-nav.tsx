@@ -128,7 +128,8 @@ export function SidebarNav() {
             Created by F. Mannarini on Google Cloud
         </p>
          {latestVersion && (
-            <div className="text-center">
+            <div className="text-center flex justify-between items-center">
+                <span/>
                 <Link href="/dashboard/changelog">
                     <Badge 
                         variant="secondary" 
@@ -137,6 +138,9 @@ export function SidebarNav() {
                         v{latestVersion} (c461eb7)
                     </Badge>
                 </Link>
+                 <span className="text-xs text-muted-foreground">
+                    {new Date().toLocaleDateString('it-IT')}
+                </span>
             </div>
         )}
       </div>
