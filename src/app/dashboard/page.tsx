@@ -24,7 +24,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import { QuoteOfTheDay } from '@/components/dashboard/quote_of_the_day';
+import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
 import { Badge } from '@/components/ui/badge';
 import { Scratchpad } from '@/components/dashboard/scratchpad';
 import { CompanyScratchpad } from '@/components/dashboard/company-scratchpad';
