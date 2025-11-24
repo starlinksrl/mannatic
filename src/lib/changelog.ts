@@ -5,7 +5,7 @@ import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wren
 export const changelog = [
     {
         version: "0.27",
-        date: "2024-10-13",
+        date: "2024-10-27",
         title: "Statistiche Operatore e Notifiche Assegnazione",
         icon: LayoutDashboard,
         iconClass: "bg-teal-500",
