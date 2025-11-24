@@ -41,7 +41,8 @@ export type EnrichedUpdate = InterventionUpdate & {
 
 type OperatorWorkload = {
   name: string;
-  total: number;
+  open: number;
+  closed: number;
 };
 
 type WeeklyScheduleItem = (Intervention | Appointment) & { itemType: 'intervention' | 'appointment' };
@@ -147,11 +148,14 @@ export default function DashboardPage() {
     }).length;
     
     const operatorWorkloadData = users.filter(u => u.role === 'Operator').map(op => {
-        const assignedInterventions = allInterventions.filter(i => i.assignedOperatorIds?.includes(op.id));
-        return {
-            name: op.name,
-            total: assignedInterventions.length,
-        }
+      const assignedInterventions = allInterventions.filter(i => i.assignedOperatorIds?.includes(op.id));
+      const open = assignedInterventions.filter(i => i.status === 'Nuovo' || i.status === 'In corso').length;
+      const closed = assignedInterventions.filter(i => i.status !== 'Nuovo' && i.status !== 'In corso').length;
+      return {
+          name: op.name,
+          open: open,
+          closed: closed,
+      };
     });
 
     const highPriorityInterventions = allInterventions.filter(i => i.priority === 'Alta' || i.priority === 'Critica').slice(0, 3);
@@ -512,19 +516,19 @@ export default function DashboardPage() {
     }
 
     const OperatorWorkloadCard = ({ data }: { data: OperatorWorkload[] }) => {
-        const totalAssigned = data.reduce((acc, op) => acc + op.total, 0);
+        const totalOpen = data.reduce((acc, op) => acc + op.open, 0);
 
         return (
             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline">Carico di Lavoro Operatori</CardTitle>
                     <CardDescription>
-                        Totale di {totalAssigned} interventi assegnati a {data.length} operatori.
+                        Totale di {totalOpen} interventi aperti su {data.length} operatori.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={data} layout="vertical" margin={{ left: 10, right: 10 }}>
+                        <BarChart data={data} layout="vertical" margin={{ left: 10, right: 10 }} stackOffset="sign">
                             <XAxis type="number" hide />
                             <YAxis
                                 dataKey="name"
@@ -541,9 +545,10 @@ export default function DashboardPage() {
                                     backgroundColor: 'hsl(var(--background))',
                                     borderColor: 'hsl(var(--border))',
                                 }}
-                                formatter={(value) => [`${value} interventi`, 'Totale Assegnati']}
                             />
-                            <Bar dataKey="total" fill="hsl(var(--primary))" name="Totale Assegnati" />
+                            <Legend wrapperStyle={{fontSize: '0.8rem'}}/>
+                            <Bar dataKey="open" fill="hsl(var(--chart-2))" name="Aperti" stackId="a" />
+                            <Bar dataKey="closed" fill="hsl(var(--chart-1))" name="Chiusi" stackId="a" />
                         </BarChart>
                     </ResponsiveContainer>
                 </CardContent>
