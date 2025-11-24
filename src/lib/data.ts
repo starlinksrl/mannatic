@@ -15,6 +15,7 @@ import { CREATOR_USER_ID } from './constants';
 // --- APP CONFIGURATION ---
 
 export async function getAppConfiguration(): Promise<AppConfiguration | null> {
+    if (!db) return null;
     try {
         const docRef = doc(db, 'appConfiguration', 'global');
         const docSnap = await getDoc(docRef);
@@ -26,6 +27,7 @@ export async function getAppConfiguration(): Promise<AppConfiguration | null> {
 }
 
 export async function updateAppConfiguration(config: Partial<Omit<AppConfiguration, 'id'>>): Promise<AppConfiguration | null> {
+    if (!db) return null;
     try {
         const docRef = doc(db, 'appConfiguration', 'global');
         
@@ -52,6 +54,7 @@ export async function updateAppConfiguration(config: Partial<Omit<AppConfigurati
 
 // --- GENERIC DOCUMENT MANAGEMENT ---
 export async function updateDocument(collectionName: string, docId: string, data: Partial<any>): Promise<void> {
+    if (!db) throw new Error("Firebase non configurato.");
     try {
         const docRef = doc(db, collectionName, docId);
         await updateDoc(docRef, data);
@@ -65,6 +68,7 @@ export async function updateDocument(collectionName: string, docId: string, data
 // --- COMPANY MANAGEMENT ---
 
 export async function getCompanies(creatorId?: string, fetchAll: boolean = false): Promise<Company[]> {
+    if (!db) return [];
     try {
         // If fetchAll is true (specifically for Main Creator), get all companies regardless of creatorId.
         if (fetchAll) {
@@ -89,6 +93,7 @@ export async function getCompanies(creatorId?: string, fetchAll: boolean = false
 
 
 export async function getCompanyById(companyId: string): Promise<Company | null> {
+    if (!db) return null;
     try {
         const docRef = doc(db, 'companies', companyId);
         const docSnap = await getDoc(docRef);
@@ -101,6 +106,7 @@ export async function getCompanyById(companyId: string): Promise<Company | null>
 
 
 export async function getCompanyByUserId(userId: string): Promise<Company | null> {
+    if (!db) return null;
     const user = await getUserById(userId);
     if (!user || user.role === 'Creator') return null;
 
@@ -115,6 +121,7 @@ export async function getCompanyByUserId(userId: string): Promise<Company | null
 }
 
 export async function addCompany(companyData: Partial<Company> & { adminName: string, email: string, password?: string, creatorId?: string | null }): Promise<{ company: Company, adminUser: User }> {
+    if (!db) throw new Error("Firebase non configurato.");
     const existingUser = await getUserByEmail(companyData.email!);
     if (existingUser) {
         throw new Error('Un utente con questa email esiste già.');
@@ -165,6 +172,7 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
 }
 
 export async function updateCompany(id: string, updatedData: Partial<Company>): Promise<Company | null> {
+    if (!db) return null;
     try {
         const docRef = doc(db, 'companies', id);
         
@@ -183,6 +191,7 @@ export async function updateCompany(id: string, updatedData: Partial<Company>): 
 }
 
 export async function deleteCompanyAndSubcollections(companyId: string): Promise<void> {
+    if (!db) throw new Error("Firebase non configurato.");
     const collectionsToDelete = ['users', 'interventions', 'notifications', 'appointments', 'passwordResetTokens', 'supportTickets'];
     const batch = writeBatch(db);
 
@@ -205,6 +214,7 @@ export async function deleteCompanyAndSubcollections(companyId: string): Promise
 // --- USER MANAGEMENT ---
 
 export async function getUsers(companyId?: string): Promise<User[]> {
+  if (!db) return [];
   try {
     let q;
     if (companyId) {
@@ -222,6 +232,7 @@ export async function getUsers(companyId?: string): Promise<User[]> {
 }
 
 export async function getAllUsers(): Promise<User[]> {
+   if (!db) return [];
    try {
     const usersCol = collection(db, 'users');
     const userSnapshot = await getDocs(usersCol);
@@ -234,6 +245,7 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
+  if (!db) return null;
   try {
     const q = query(collection(db, "users"), where("email", "==", email.toLowerCase()));
     const querySnapshot = await getDocs(q);
@@ -249,7 +261,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 }
 
 export async function getUserById(id: string): Promise<User | null> {
-    if (!id) return null;
+    if (!id || !db) return null;
     try {
         const userDocRef = doc(db, 'users', id);
         const userDoc = await getDoc(userDocRef);
@@ -264,6 +276,7 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promise<User> {
+    if (!db) throw new Error("Firebase non configurato.");
     if (!userData.email) {
         throw new Error("Email is required to add a user.");
     }
@@ -315,6 +328,7 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
 
 
 export async function updateUser(id: string, updatedData: Partial<User>): Promise<User | null> {
+    if (!db) return null;
     try {
         const userDocRef = doc(db, 'users', id);
         
@@ -360,6 +374,7 @@ export async function updateUser(id: string, updatedData: Partial<User>): Promis
 }
 
 export async function deleteUser(id: string): Promise<boolean> {
+    if (!db) return false;
     try {
         await deleteDoc(doc(db, 'users', id));
         return true;
@@ -371,6 +386,7 @@ export async function deleteUser(id: string): Promise<boolean> {
 
 // --- PASSWORD RESET & AUTOLOGIN ---
 export async function createPasswordResetToken(userId: string): Promise<string> {
+    if (!db) throw new Error("Firebase non configurato.");
     const token = uuidv4();
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1); // Token expires in 1 hour
@@ -389,6 +405,7 @@ export async function createPasswordResetToken(userId: string): Promise<string> 
 }
 
 export async function resetUserPassword(token: string, newPassword: string):Promise<{ success: boolean, message: string }> {
+    if (!db) return { success: false, message: "Firebase non configurato."};
     const q = query(collection(db, "passwordResetTokens"), where("token", "==", token));
     const querySnapshot = await getDocs(q);
 
@@ -412,6 +429,7 @@ export async function resetUserPassword(token: string, newPassword: string):Prom
 }
 
 export async function createAutologinToken(userId: string): Promise<string> {
+    if (!db) throw new Error("Firebase non configurato.");
     const token = uuidv4();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10); // Token expires in 10 minutes
@@ -430,6 +448,7 @@ export async function createAutologinToken(userId: string): Promise<string> {
 }
 
 export async function consumeAutologinToken(token: string): Promise<User | null> {
+    if (!db) return null;
     const q = query(collection(db, "autologinTokens"), where("token", "==", token));
     const querySnapshot = await getDocs(q);
 
@@ -455,7 +474,7 @@ export async function consumeAutologinToken(token: string): Promise<User | null>
 // --- CLIENT & EQUIPMENT MANAGEMENT ---
 
 export async function getClients(companyId: string): Promise<User[]> {
-  if (!companyId) return [];
+  if (!companyId || !db) return [];
   try {
     const q = query(collection(db, 'users'), where("companyId", "==", companyId), where("role", "==", "Client"));
     const querySnapshot = await getDocs(q);
@@ -467,6 +486,7 @@ export async function getClients(companyId: string): Promise<User[]> {
 }
 
 export async function getClient(clientId: string): Promise<User | null> {
+    if (!db) return null;
     const user = await getUserById(clientId);
     if (user && user.role === 'Client') {
         return user;
@@ -475,6 +495,7 @@ export async function getClient(clientId: string): Promise<User | null> {
 }
 
 export async function getOperator(operatorId: string) {
+    if (!db) return null;
     try {
         const user = await getUserById(operatorId);
         return user && user.role === 'Operator' ? user : null;
@@ -561,7 +582,7 @@ export async function getOperator(operatorId: string) {
 
 
 export async function getInterventions(companyId: string): Promise<(Intervention | ScheduledMaintenance)[]> {
-    if (!companyId) return [];
+    if (!companyId || !db) return [];
     
     // await checkAndNotifyExpiringInterventions(companyId);
 
@@ -615,6 +636,7 @@ export async function getInterventions(companyId: string): Promise<(Intervention
 }
 
 export async function getAllInterventions(): Promise<(Intervention | ScheduledMaintenance)[]> {
+    if (!db) return [];
     try {
         const snapshot = await getDocs(collection(db, 'interventions'));
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Intervention | ScheduledMaintenance)));
@@ -625,7 +647,7 @@ export async function getAllInterventions(): Promise<(Intervention | ScheduledMa
 }
 
 export async function getInterventionTitles(companyId: string): Promise<string[]> {
-    if (!companyId) return [];
+    if (!companyId || !db) return [];
     
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
@@ -635,7 +657,7 @@ export async function getInterventionTitles(companyId: string): Promise<string[]
 }
 
 export async function getScheduledMaintenance(companyId: string): Promise<ScheduledMaintenance[]> {
-    if (!companyId) return [];
+    if (!companyId || !db) return [];
 
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId), where("isMaintenance", "==", true));
     const snapshot = await getDocs(q);
@@ -645,6 +667,7 @@ export async function getScheduledMaintenance(companyId: string): Promise<Schedu
 type AddInterventionParams = Omit<Intervention, 'id' | 'status' | 'sla' | 'createdAt' | 'updates'> & { creatorName: string, notifyClient: boolean };
 
 export async function addIntervention(interventionData: AddInterventionParams): Promise<Intervention> {
+    if (!db) throw new Error("Firebase non configurato.");
     const { creatorName, clientId, companyId, attachments, notifyClient, ...restOfData } = interventionData;
     
     const existingUser = await getUserById(clientId);
@@ -808,6 +831,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
 
 export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMaintenance, 'id' | 'status' | 'sla' | 'createdAt' | 'isMaintenance' | 'nextDueDate' | 'updates'>): Promise<ScheduledMaintenance> {
+    if (!db) throw new Error("Firebase non configurato.");
     const nextDueDate = new Date().toISOString();
     
     const newId = generateShortId();
@@ -830,6 +854,7 @@ export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMai
 
 
 export async function updateIntervention(id: string, updatedData: Partial<Intervention> & { notifyClient?: boolean }, updater: User): Promise<Intervention | null> {
+    if (!db) return null;
     try {
         const docRef = doc(db, 'interventions', id);
         const originalDocSnap = await getDoc(docRef);
@@ -978,6 +1003,7 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
 }
 
 export async function markInterventionUpdateAsRead(interventionId: string, updateDate: string, userId: string): Promise<boolean> {
+    if (!db) return false;
     try {
         const docRef = doc(db, 'interventions', interventionId);
         const docSnap = await getDoc(docRef);
@@ -1009,6 +1035,7 @@ export async function markInterventionUpdateAsRead(interventionId: string, updat
 }
 
 export async function updateScheduledMaintenance(id: string, updatedData: Partial<ScheduledMaintenance>): Promise<ScheduledMaintenance | null> {
+    if (!db) return null;
     try {
         const docRef = doc(db, 'interventions', id);
         
@@ -1045,6 +1072,7 @@ export async function updateScheduledMaintenance(id: string, updatedData: Partia
 }
 
 export async function deleteIntervention(id: string): Promise<boolean> {
+    if (!db) return false;
     try {
         const batch = writeBatch(db);
 
@@ -1066,6 +1094,7 @@ export async function deleteIntervention(id: string): Promise<boolean> {
 }
 
 export async function deleteScheduledMaintenance(id: string): Promise<boolean> {
+    if (!db) return false;
      try {
         const batch = writeBatch(db);
 
@@ -1089,6 +1118,7 @@ export async function deleteScheduledMaintenance(id: string): Promise<boolean> {
 // --- APPOINTMENTS MANAGEMENT ---
 
 async function migrateSurveysToAppointments() {
+    if (!db) return;
     try {
         const surveysSnapshot = await getDocs(collection(db, 'surveys'));
         if (surveysSnapshot.empty) {
@@ -1129,7 +1159,7 @@ async function migrateSurveysToAppointments() {
 }
 
 export async function getAppointments(companyId: string): Promise<Appointment[]> {
-    if (!companyId) return [];
+    if (!companyId || !db) return [];
     
     await migrateSurveysToAppointments();
 
@@ -1146,6 +1176,7 @@ export async function getAppointments(companyId: string): Promise<Appointment[]>
 }
 
 export async function getAllAppointments(): Promise<Appointment[]> {
+    if (!db) return [];
     try {
         const appointmentsSnapshot = await getDocs(collection(db, 'appointments'));
         const appointments = appointmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
@@ -1158,6 +1189,7 @@ export async function getAllAppointments(): Promise<Appointment[]> {
 }
 
 export async function addAppointment(appointmentData: Omit<Appointment, 'id' | 'status' | 'createdAt'>): Promise<Appointment> {
+    if (!db) throw new Error("Firebase non configurato.");
     const { clientId, companyId, ...restOfData } = appointmentData;
 
     const existingClient = await getUserById(clientId);
@@ -1200,6 +1232,7 @@ export async function addAppointment(appointmentData: Omit<Appointment, 'id' | '
 }
 
 export async function updateAppointment(id: string, updatedData: Partial<Appointment>): Promise<Appointment | null> {
+    if (!db) return null;
     try {
         let docRef = doc(db, 'appointments', id);
         let docSnap = await getDoc(docRef);
@@ -1219,6 +1252,7 @@ export async function updateAppointment(id: string, updatedData: Partial<Appoint
 }
 
 export async function deleteAppointment(id: string): Promise<boolean> {
+    if (!db) return false;
     try {
         let docRef = doc(db, 'appointments', id);
         let docSnap = await getDoc(docRef);
@@ -1241,7 +1275,7 @@ export async function deleteAppointment(id: string): Promise<boolean> {
 // --- NOTIFICATIONS ---
 
 export async function getNotifications(companyId: string): Promise<Notification[]> {
-    if (!companyId) return [];
+    if (!companyId || !db) return [];
     try {
         const q = query(collection(db, 'notifications'), where("companyId", "==", companyId));
         const snapshot = await getDocs(q);
@@ -1255,6 +1289,7 @@ export async function getNotifications(companyId: string): Promise<Notification[
 }
 
 export async function getAllNotifications(): Promise<Notification[]> {
+    if (!db) return [];
     try {
         const snapshot = await getDocs(collection(db, 'notifications'));
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
@@ -1266,7 +1301,7 @@ export async function getAllNotifications(): Promise<Notification[]> {
 
 
 export async function markNotificationsAsRead(notificationIds: string[]): Promise<boolean> {
-    if (notificationIds.length === 0) return true;
+    if (notificationIds.length === 0 || !db) return true;
     try {
         const batch = writeBatch(db);
         notificationIds.forEach(id => {
@@ -1285,7 +1320,7 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 // --- SUPPORT TICKETS ---
 
 export async function getSupportTickets(companyId: string, clientId?: string): Promise<SupportTicket[]> {
-    if (!companyId) return [];
+    if (!companyId || !db) return [];
     try {
         let q: Query;
         if (clientId) {
@@ -1302,6 +1337,7 @@ export async function getSupportTickets(companyId: string, clientId?: string): P
 }
 
 export async function getAllSupportTickets(): Promise<SupportTicket[]> {
+    if (!db) return [];
     try {
         const snapshot = await getDocs(collection(db, 'supportTickets'));
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportTicket));
@@ -1313,6 +1349,7 @@ export async function getAllSupportTickets(): Promise<SupportTicket[]> {
 
 
 export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'messages'> & { initialMessage: string, sender: User }): Promise<SupportTicket> {
+    if (!db) throw new Error("Firebase non configurato.");
     const newId = generateShortId();
     const now = new Date().toISOString();
 
@@ -1345,6 +1382,7 @@ export async function addSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'c
 }
 
 export async function addSupportMessage(ticketId: string, sender: User, messageText: string): Promise<void> {
+    if (!db) throw new Error("Firebase non configurato.");
     const ticketRef = doc(db, 'supportTickets', ticketId);
     const ticketSnap = await getDoc(ticketRef);
     if (!ticketSnap.exists()) {
@@ -1382,6 +1420,7 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
 }
 
 async function sendSupportTicketEmailNotification(companyId: string, ticket: SupportTicket, isNewTicket: boolean) {
+    if (!db) return;
     const company = await getCompanyById(companyId);
     if (!company || !company.resendApiKey || !company.senderEmail) {
         console.error(`Cannot send support email for company ${companyId}: Resend not configured.`);
@@ -1457,6 +1496,7 @@ async function sendSupportTicketEmailNotification(companyId: string, ticket: Sup
 
 
 export async function updateSupportTicketStatus(ticketId: string, status: SupportTicketStatus): Promise<void> {
+    if (!db) return;
     const ticketRef = doc(db, 'supportTickets', ticketId);
     await updateDoc(ticketRef, {
         status: status,
@@ -1465,6 +1505,7 @@ export async function updateSupportTicketStatus(ticketId: string, status: Suppor
 }
 
 export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
+    if (!db) return false;
     try {
         const batch = writeBatch(db);
 
