@@ -248,6 +248,10 @@ export function InterventionsTable({
                 aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
                 bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
                 break;
+            case 'isFeatured':
+                aValue = a.isFeatured ? 1 : 0;
+                bValue = b.isFeatured ? 1 : 0;
+                break;
             default:
                 aValue = a[sortConfig.key as keyof Intervention];
                 bValue = b[sortConfig.key as keyof Intervention];
@@ -577,3 +581,4 @@ export function InterventionsTable({
 }
 
     
+
