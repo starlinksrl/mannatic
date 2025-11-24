@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -29,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X, ChevronsUpDown, Check } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes, differenceInMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -45,6 +44,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Image from 'next/image';
 import { fetchAttachmentAction } from '@/app/actions';
 import { Checkbox } from '../ui/checkbox';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -57,7 +57,7 @@ const formSchema = z.object({
   status: z.enum(['Nuovo', 'In corso', 'Archiviato', 'Completato', 'Annullato', 'Da Fatturare', 'Fatturato'], { required_error: 'Lo stato è obbligatorio.' }),
   dueDate: z.date().optional().nullable(),
   dueTime: z.string().optional().nullable(),
-  assignedOperatorId: z.string().nullable(),
+  assignedOperatorIds: z.array(z.string()).default([]),
   newUpdate: z.string().optional(),
   timeSpent: z.coerce.number().positive({ message: 'Le ore impiegate devono essere un numero positivo.' }).optional(),
   materialsUsed: z.string().optional(),
@@ -135,7 +135,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         dueTime: intervention.dueDate ? format(new Date(intervention.dueDate), 'HH:mm') : '',
         priority: intervention.priority,
         status: intervention.status,
-        assignedOperatorId: intervention.assignedOperatorId || null,
+        assignedOperatorIds: intervention.assignedOperatorIds || [],
         newUpdate: '',
         timeSpent: intervention.timeSpent ?? undefined,
         materialsUsed: intervention.materialsUsed ?? '',
@@ -377,8 +377,8 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                 form.setValue('workLogs', [...currentLogs, newLog]);
                 
                 // Auto-assign if not already assigned
-                if (!form.getValues('assignedOperatorId')) {
-                    form.setValue('assignedOperatorId', currentUser.id);
+                if (!form.getValues('assignedOperatorIds')?.includes(currentUser.id)) {
+                    form.setValue('assignedOperatorIds', [...(form.getValues('assignedOperatorIds') || []), currentUser.id]);
                 }
                 
                 toast({ title: 'Entrata registrata', description: 'Hai iniziato il lavoro per questo intervento.' });
@@ -636,27 +636,58 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                     {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
                         <FormField
                             control={form.control}
-                            name="assignedOperatorId"
+                            name="assignedOperatorIds"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Assegna a Operatore</FormLabel>
-                                <Select 
-                                    onValueChange={(value) => field.onChange(value === 'null' ? null : value)} 
-                                    value={field.value || 'null'}
-                                >
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Assegna a un operatore (opzionale)" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    <SelectItem value="null">Non assegnato</SelectItem>
-                                    {operators.map(operator => (
-                                        <SelectItem key={operator.id} value={operator.id}>{operator.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
+                                    <FormLabel>Assegna a Operatori</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className="w-full justify-between"
+                                                >
+                                                    <span className="truncate">
+                                                        {field.value && field.value.length > 0
+                                                        ? `${field.value.length} operatori selezionati`
+                                                        : "Seleziona operatori..."}
+                                                    </span>
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Cerca operatore..." />
+                                                <CommandList>
+                                                    <CommandEmpty>Nessun operatore trovato.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {operators.map((operator) => (
+                                                            <CommandItem
+                                                                key={operator.id}
+                                                                onSelect={() => {
+                                                                    const selected = field.value || [];
+                                                                    const isSelected = selected.includes(operator.id);
+                                                                    const newSelection = isSelected
+                                                                        ? selected.filter((id) => id !== operator.id)
+                                                                        : [...selected, operator.id];
+                                                                    field.onChange(newSelection);
+                                                                }}
+                                                            >
+                                                                <Checkbox
+                                                                    className="mr-2"
+                                                                    checked={field.value?.includes(operator.id)}
+                                                                />
+                                                                {operator.name}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
@@ -893,10 +924,3 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     </>
   );
 }
-
-
-
-
-
-
-
