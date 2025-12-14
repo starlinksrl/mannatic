@@ -5,7 +5,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/contexts/user-context';
-import { LayoutDashboard, Wrench, Users, Settings, LifeBuoy, Palette, GitMerge, Eye, Calendar, User, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, Wrench, Users, Settings, LifeBuoy, Palette, GitMerge, Eye, Calendar, User, HelpCircle, Bot, Star } from 'lucide-react';
 
 const adminGuide = [
     {
@@ -13,8 +13,8 @@ const adminGuide = [
         icon: LayoutDashboard,
         items: [
             { title: "Riepilogo Attività", description: "Monitora in tempo reale il carico di lavoro con i contatori degli interventi (Urgenti, Nuovi, In Corso, Assegnati) e dei nuovi impianti aperti. Ogni riquadro è cliccabile per accedere direttamente alla vista filtrata." },
+            { title: "Interventi in Evidenza", icon: Star, description: "Una sezione speciale in cima alla dashboard che mostra gli interventi che hai marcato come importanti. Un intervento viene rimosso automaticamente da questa sezione quando viene completato." },
             { title: "Programmazione Settimanale", description: "Visualizza tutte le attività (interventi, appuntamenti, manutenzioni) pianificate nei prossimi 7 giorni, raggruppate per data, per una pianificazione efficiente." },
-            { title: "Elenco Interventi", description: "Consulta e gestisci rapidamente gli interventi direttamente dalla dashboard, con filtri e ordinamento per una visione personalizzata." },
             { title: "Promemoria Personale e Aziendale", description: "Usa il blocco note personale per i tuoi appunti e quello aziendale per comunicazioni visibili a tutto il team. Le note vengono salvate automaticamente." },
         ]
     },
@@ -37,6 +37,13 @@ const adminGuide = [
             { title: "Supporto", description: "Un sistema di ticketing integrato per gestire le richieste di assistenza dei clienti. Comunica, rispondi e traccia ogni conversazione fino alla risoluzione." },
         ]
     },
+     {
+        category: "Intelligenza Artificiale (Temporaneamente Disattivata)",
+        icon: Bot,
+        items: [
+            { title: "Dashboard Analitica e Notifiche Email", description: "Le funzionalità AI, come l'analisi automatica della dashboard e la generazione di contenuti per le email, sono temporaneamente disattivate per garantire la stabilità dell'applicazione. Saranno reintrodotte in una versione futura." },
+        ]
+    },
     {
         category: "Strumenti e Impostazioni",
         icon: Settings,
@@ -55,8 +62,8 @@ const operatorGuide = [
         icon: LayoutDashboard,
         items: [
             { title: "Riepilogo Attività", description: "Visualizza un riepilogo del carico di lavoro totale dell'azienda (Urgenti, Nuovi, In Corso) e un contatore dedicato ai soli interventi assegnati a te." },
+             { title: "Interventi in Evidenza", icon: Star, description: "Visualizza rapidamente gli interventi più importanti che sono stati evidenziati dall'amministratore." },
             { title: "Programmazione Settimanale", description: "Consulta le tue attività pianificate per i prossimi 7 giorni. Vengono mostrate solo le attività relative ai settori per cui sei abilitato (es. solo manutenzioni)." },
-            { title: "I Tuoi Interventi", description: "Accedi rapidamente all'elenco degli interventi che ti sono stati assegnati. La tabella è pre-filtrata per mostrarti solo il tuo lavoro." },
         ]
     },
     {
@@ -183,3 +190,5 @@ export default function ManualPageContent() {
          ) : null
     );
 }
+
+    

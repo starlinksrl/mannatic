@@ -1,8 +1,20 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings, Star } from 'lucide-react';
 
 export const changelog = [
+     {
+        version: "0.29",
+        date: "2025-12-12",
+        title: "Miglioramenti Dashboard e Stabilità",
+        icon: Rocket,
+        iconClass: "bg-green-500",
+        changes: [
+            { type: Star, description: "Gli interventi in evidenza vengono rimossi automaticamente dalla dashboard una volta completati, mantenendo la sezione focalizzata sulle vere priorità." },
+            { type: Bug, description: "Risolto un problema critico che impediva l'avvio dell'applicazione a causa di conflitti con le dipendenze di Intelligenza Artificiale." },
+            { type: Wrench, description: "Disattivate temporaneamente tutte le funzionalità basate su AI (Genkit) per garantire la stabilità e l'avvio del progetto. Saranno reintrodotte in una versione futura." },
+        ]
+    },
     {
         version: "0.28",
         date: "2025-12-11",
@@ -320,5 +332,7 @@ export const changelog = [
     
 
 
+
+    
 
     
