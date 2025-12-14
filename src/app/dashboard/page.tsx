@@ -9,7 +9,7 @@ import { isAfter, addDays, startOfToday, isWithinInterval, startOfDay, subMonths
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
 import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star } from 'lucide-react';
-import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
+// import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ActivityFeed } from '@/components/dashboard/activity-feed';
@@ -48,7 +48,7 @@ type OperatorWorkload = {
 
 type WeeklyScheduleItem = (Intervention | Appointment) & { itemType: 'intervention' | 'appointment' };
 
-type KpiData = GenerateKpiDashboardInput & { 
+type KpiData = /*GenerateKpiDashboardInput &*/ { 
   openInterventions: number;
   closedInterventions: number;
   slaAdherencePercentage: number;
@@ -129,7 +129,7 @@ export default function DashboardPage() {
     }
     
     const activeInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
-    const featuredInterventions = allInterventions.filter(i => i.isFeatured && !i.isMaintenance) as Intervention[];
+    const featuredInterventions = allInterventions.filter(i => i.isFeatured && !i.isMaintenance && i.status !== 'Completato') as Intervention[];
 
     const openInterventions = activeInterventions.length;
     const closedInterventions = allInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato' || i.status === 'Archiviato');
