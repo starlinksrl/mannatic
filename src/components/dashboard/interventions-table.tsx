@@ -436,7 +436,7 @@ export function InterventionsTable({
                         <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
-                         {canArchiveIntervention && (intervention.status === 'Nuovo' || intervention.status === 'In corso') && (
+                         {canArchiveIntervention && (
                             <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
                                 <Archive className="mr-2" /> Archivia
                             </DropdownMenuItem>
@@ -562,7 +562,7 @@ export function InterventionsTable({
                          <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                              <Pencil className="mr-2" /> Modifica
                          </DropdownMenuItem>
-                         {canArchiveIntervention && (intervention.status === 'Nuovo' || intervention.status === 'In corso') && (
+                         {canArchiveIntervention && (
                             <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
                                 <Archive className="mr-2" /> Archivia
                             </DropdownMenuItem>
@@ -605,6 +605,7 @@ export function InterventionsTable({
 }
 
     
+
 
 
 
