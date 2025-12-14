@@ -4,6 +4,17 @@ import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wren
 
 export const changelog = [
     {
+        version: "0.28",
+        date: "2025-12-11",
+        title: "Stabilità Applicazione e Rimozione Funzionalità AI",
+        icon: Bug,
+        iconClass: "bg-red-500",
+        changes: [
+            { type: Bug, description: "Risolto un problema critico che impediva l'avvio dell'applicazione a causa di conflitti con le dipendenze di Intelligenza Artificiale." },
+            { type: Wrench, description: "Disattivate temporaneamente tutte le funzionalità basate su AI (Genkit) per garantire la stabilità e l'avvio del progetto. Saranno reintrodotte in una versione futura." },
+        ]
+    },
+    {
         version: "0.27",
         date: "2024-10-27",
         title: "Statistiche Operatore e Notifiche Assegnazione",
@@ -208,7 +219,7 @@ export const changelog = [
         changes: [
             { type: Paperclip, description: "Aggiunta la possibilità di caricare e gestire file allegati direttamente negli interventi." },
             { type: Database, description: "Implementato un Data Explorer per gli Admin, con visibilità limitata ai soli dati della propria azienda." },
-            { type: Bug, description: "Risolto un bug critico che impediva il salvataggio dei log delle email a causa di un errore di riferimento." },
+            { type: Bug, description: "Risolto un bug critico che non salvava i log delle email a causa di un errore di riferimento." },
             { type: Wrench, description: "Rimosso l'autocompletamento del titolo durante la creazione di un intervento per migliorare la fluidità." },
             { type: Bug, description: "Corretti diversi errori di importazione e di gestione dati che causavano instabilità." },
         ]
@@ -308,3 +319,6 @@ export const changelog = [
 
     
 
+
+
+    

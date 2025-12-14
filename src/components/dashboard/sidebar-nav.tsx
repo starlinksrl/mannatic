@@ -138,7 +138,7 @@ export function SidebarNav() {
                         variant="secondary" 
                         className="cursor-pointer hover:ring-1 hover:ring-ring"
                     >
-                        v{latestVersion} (c461eb7)
+                        v{latestVersion}
                     </Badge>
                 </Link>
                  <span className="text-xs text-muted-foreground">
@@ -150,3 +150,5 @@ export function SidebarNav() {
     </div>
   );
 }
+
+    
