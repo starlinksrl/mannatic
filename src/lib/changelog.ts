@@ -1,8 +1,19 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings, Star } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings, Star, Archive } from 'lucide-react';
 
 export const changelog = [
+     {
+        version: "0.30",
+        date: "2025-12-13",
+        title: "Gestione Archivio Flessibile",
+        icon: Archive,
+        iconClass: "bg-gray-500",
+        changes: [
+            { type: Archive, description: "Aggiunto il pulsante 'Archivia' al menu azioni di ogni intervento, visibile per Admin e Creator." },
+            { type: Eye, description: "Il pulsante 'Archivia' è ora disponibile per tutti gli interventi, indipendentemente dal loro stato, per una maggiore flessibilità." },
+        ]
+    },
      {
         version: "0.29",
         date: "2025-12-12",
