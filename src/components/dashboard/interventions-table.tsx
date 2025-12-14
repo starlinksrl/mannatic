@@ -19,7 +19,7 @@ import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention, updateIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { AddInterventionForm } from './add-intervention-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
@@ -172,6 +172,19 @@ export function InterventionsTable({
         toast({ variant: 'destructive', title: 'Errore', description: "Impossibile aggiornare l'intervento." });
     }
   }
+  
+  const handleArchiveClick = async (intervention: Intervention) => {
+    const updatedIntervention = await updateIntervention(intervention.id, { status: 'Archiviato' }, currentUser);
+     if (updatedIntervention) {
+        onInterventionChange();
+        toast({
+            title: 'Intervento Archiviato',
+            description: `L'intervento "${intervention.title}" è stato archiviato.`
+        })
+    } else {
+        toast({ variant: 'destructive', title: 'Errore', description: "Impossibile archiviare l'intervento." });
+    }
+  }
 
 
   const roleBasedInterventions = useMemo(() => {
@@ -319,6 +332,7 @@ export function InterventionsTable({
   ];
   
   const canDeleteIntervention = ['Admin', 'Client', 'Creator'].includes(currentUser.role);
+  const canArchiveIntervention = currentUser.role === 'Admin' || currentUser.role === 'Creator';
   
   return (
     <div className="space-y-4">
@@ -422,6 +436,11 @@ export function InterventionsTable({
                         <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
+                         {canArchiveIntervention && (intervention.status === 'Nuovo' || intervention.status === 'In corso') && (
+                            <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
+                                <Archive className="mr-2" /> Archivia
+                            </DropdownMenuItem>
+                        )}
                         {canDeleteIntervention && (
                             <>
                                 <DropdownMenuSeparator />
@@ -543,6 +562,11 @@ export function InterventionsTable({
                          <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                              <Pencil className="mr-2" /> Modifica
                          </DropdownMenuItem>
+                         {canArchiveIntervention && (intervention.status === 'Nuovo' || intervention.status === 'In corso') && (
+                            <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
+                                <Archive className="mr-2" /> Archivia
+                            </DropdownMenuItem>
+                        )}
                          {canDeleteIntervention && (
                             <>
                                 <DropdownMenuSeparator />
@@ -581,4 +605,5 @@ export function InterventionsTable({
 }
 
     
+
 
