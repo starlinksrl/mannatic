@@ -1,8 +1,21 @@
 
+
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings, Star, Archive } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings, Star, Archive, Send } from 'lucide-react';
 
 export const changelog = [
+    {
+        version: "0.31",
+        date: "2025-12-14",
+        title: "Sollecito Operatori e Miglioramenti UX",
+        icon: Send,
+        iconClass: "bg-blue-500",
+        changes: [
+            { type: Send, description: "Aggiunto un pulsante 'Sollecita' per inviare un'email di promemoria agli operatori per la compilazione dei dettagli intervento." },
+            { type: LinkIcon, description: "L'email di sollecito contiene un link diretto che apre l'app e la finestra di modifica dell'intervento specifico." },
+            { type: Bug, description: "Corretto un bug per cui il pulsante 'Archivia' non era visibile su tutti gli interventi come previsto." },
+        ]
+    },
      {
         version: "0.30",
         date: "2025-12-13",
@@ -347,3 +360,4 @@ export const changelog = [
     
 
     
+
