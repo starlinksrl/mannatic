@@ -12,3 +12,4 @@ import '@/ai/flows/fetch-file-from-gcs.ts';
 import '@/ai/flows/send-credentials-email.ts';
 import '@/ai/flows/send-support-ticket-notification.ts';
 import '@/ai/flows/send-assigned-intervention-notification.ts';
+import '@/ai/flows/send-intervention-reminder-email.ts';

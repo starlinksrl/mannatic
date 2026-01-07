@@ -22,8 +22,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Wrench, Loader } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '../ui/dropdown-menu';
+import { convertSupportTicketToIntervention } from '@/app/actions';
 
 
 interface SupportTicketsTableProps {
@@ -38,6 +39,7 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
   const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState<SupportTicket | null>(null);
+  const [isConverting, setIsConverting] = useState<string | null>(null);
 
 
   const getStatusBadge = (status: 'Aperto' | 'In Lavorazione' | 'Chiuso') => {
@@ -57,6 +59,27 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
     e.stopPropagation();
     setTicketToDelete(ticket);
     setIsDeleteDialogOpen(true);
+  }
+  
+  const handleConvertToIntervention = async (e: React.MouseEvent | Event, ticket: SupportTicket) => {
+    e.stopPropagation();
+    if(currentUser.role !== 'Admin') return;
+    setIsConverting(ticket.id);
+    const result = await convertSupportTicketToIntervention(ticket.id, currentUser);
+    if (result.success && result.intervention) {
+      toast({
+        title: "Ticket convertito!",
+        description: `È stato creato l'intervento #${result.intervention.id}.`
+      });
+      onTicketDeleted(); // This will refetch data
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Conversione fallita",
+        description: result.error || "Si è verificato un errore sconosciuto."
+      });
+    }
+    setIsConverting(null);
   }
 
   const confirmDelete = async () => {
@@ -126,6 +149,10 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
                         </DropdownMenuItem>
                         {currentUser.role === 'Admin' && (
                             <>
+                                <DropdownMenuItem onSelect={(e) => handleConvertToIntervention(e, ticket)} disabled={isConverting === ticket.id}>
+                                    {isConverting === ticket.id ? <Loader className="mr-2 animate-spin" /> : <Wrench className="mr-2" />}
+                                    Crea Intervento
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                     className="text-destructive focus:text-destructive"
@@ -173,6 +200,10 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
                             </DropdownMenuItem>
                              {currentUser.role === 'Admin' && (
                                 <>
+                                     <DropdownMenuItem onSelect={(e) => handleConvertToIntervention(e, ticket)} disabled={isConverting === ticket.id}>
+                                        {isConverting === ticket.id ? <Loader className="mr-2 animate-spin" /> : <Wrench className="mr-2" />}
+                                        Crea Intervento
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
                                         className="text-destructive focus:text-destructive"

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { SupportTicket, User, SupportTicketStatus } from '@/lib/types';
 import { Header } from './header';
 import { Button } from '../ui/button';
-import { ArrowLeft, Loader, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader, Send, Trash2, Wrench } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Textarea } from '../ui/textarea';
 import { useUser } from '@/contexts/user-context';
@@ -27,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { convertSupportTicketToIntervention } from '@/app/actions';
 
 interface SupportTicketConversationProps {
   ticket: SupportTicket;
@@ -39,6 +40,8 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
 
@@ -72,9 +75,28 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
       setIsSubmitting(false);
     }
   }
+  
+  const handleConvertToIntervention = async () => {
+    setIsConverting(true);
+    const result = await convertSupportTicketToIntervention(ticket.id, user);
+    if (result.success && result.intervention) {
+      toast({
+        title: "Ticket convertito!",
+        description: `È stato creato l'intervento #${result.intervention.id}. Il ticket è ora chiuso.`
+      });
+      onTicketUpdated(); // Refreshes the ticket data to show it as closed
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Conversione fallita",
+        description: result.error || "Si è verificato un errore sconosciuto."
+      });
+    }
+    setIsConverting(false);
+  }
 
   const confirmDelete = async () => {
-    setIsSubmitting(true);
+    setIsDeleting(true);
     const success = await deleteSupportTicket(ticket.id);
     if (success) {
         onTicketUpdated();
@@ -83,7 +105,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
     } else {
         toast({ variant: 'destructive', title: "Errore", description: "Impossibile eliminare il ticket." });
     }
-    setIsSubmitting(false);
+    setIsDeleting(false);
     setIsDeleteDialogOpen(false);
   }
 
@@ -91,16 +113,22 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
     <>
       <Header title="Conversazione Supporto" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-2 flex-wrap">
             <Button variant="outline" onClick={onBack}>
             <ArrowLeft className="mr-2" />
             Torna ai ticket
             </Button>
-             {user.role === 'Admin' && (
-                <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
-                    <Trash2 className="mr-2" />
-                    Elimina Conversazione
-                </Button>
+            {user.role === 'Admin' && (
+                <div className="flex gap-2">
+                    <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting}>
+                        {isDeleting ? <Loader className="mr-2 animate-spin" /> : <Trash2 className="mr-2" />}
+                        Elimina
+                    </Button>
+                     <Button variant="secondary" onClick={handleConvertToIntervention} disabled={isConverting}>
+                        {isConverting ? <Loader className="mr-2 animate-spin" /> : <Wrench className="mr-2" />}
+                        Crea Intervento
+                    </Button>
+                </div>
             )}
         </div>
 
@@ -168,7 +196,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
               />
               <div className="flex justify-end">
                 <Button onClick={handleSendMessage} disabled={isSubmitting || newMessage.trim() === '' || ticket.status === 'Chiuso'}>
-                  {isSubmitting && !isDeleteDialogOpen ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                  {isSubmitting && !isDeleting && !isConverting ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
                   Invia
                 </Button>
               </div>
@@ -185,9 +213,9 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90" disabled={isSubmitting}>
-                 {isSubmitting && <Loader className="mr-2 animate-spin" />}
+            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90" disabled={isDeleting}>
+                 {isDeleting && <Loader className="mr-2 animate-spin" />}
                 Elimina
             </AlertDialogAction>
             </AlertDialogFooter>

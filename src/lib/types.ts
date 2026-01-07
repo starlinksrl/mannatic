@@ -307,3 +307,20 @@ export const SendAssignedInterventionNotificationOutputSchema = z.object({
   error: z.string().optional().describe('Error message if sending failed.'),
 });
 export type SendAssignedInterventionNotificationOutput = z.infer<typeof SendAssignedInterventionNotificationOutputSchema>;
+
+export const SendInterventionReminderEmailInputSchema = z.object({
+  recipientEmail: z.string().email(),
+  operatorName: z.string(),
+  interventionId: z.string(),
+  interventionTitle: z.string(),
+  clientName: z.string(),
+  autologinUrl: z.string().url(),
+  resendConfig: ResendConfigSchema,
+});
+export type SendInterventionReminderEmailInput = z.infer<typeof SendInterventionReminderEmailInputSchema>;
+
+export const SendInterventionReminderEmailOutputSchema = z.object({
+  success: z.boolean(),
+  error: z.string().optional(),
+});
+export type SendInterventionReminderEmailOutput = z.infer<typeof SendInterventionReminderEmailOutputSchema>;

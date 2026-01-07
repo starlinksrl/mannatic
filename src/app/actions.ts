@@ -12,13 +12,14 @@ import { testGcsConnection as testGcsConnectionFlow } from '@/ai/flows/test-gcs-
 import { fetchFileFromGcs as fetchFileFromGcsFlow } from '@/ai/flows/fetch-file-from-gcs';
 import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-notification';
 import { sendAssignedInterventionNotification } from '@/ai/flows/send-assigned-intervention-notification';
-import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById, getAppConfiguration, getInterventions, getUsers } from '@/lib/data';
+import { sendInterventionReminderEmail } from '@/ai/flows/send-intervention-reminder-email';
+import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById, getAppConfiguration, getInterventions, getUsers, addIntervention, getSupportTicketById, addSupportMessage, updateSupportTicketStatus } from '@/lib/data';
 import { Company, User, Intervention, ScheduledMaintenance } from '@/lib/types';
 import { Resend } from 'resend';
-import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
+import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/lib/types';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
 import type { SendCredentialsEmailInput, SendCredentialsEmailOutput } from '@/ai/flows/send-credentials-email';
-import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput, SendAssignedInterventionNotificationInput, SendAssignedInterventionNotificationOutput } from '@/lib/types';
+import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput, SendAssignedInterventionNotificationInput, SendAssignedInterventionNotificationOutput, SendInterventionReminderEmailInput, SendInterventionReminderEmailOutput } from '@/lib/types';
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
 import { generateShortId } from '@/lib/utils';
@@ -232,6 +233,16 @@ export async function triggerAssignedInterventionNotification(input: SendAssigne
         return result;
     } catch (error: any) {
         console.error("Error sending assigned intervention notification email:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function triggerInterventionReminderEmail(input: SendInterventionReminderEmailInput): Promise<SendInterventionReminderEmailOutput> {
+    try {
+        const result = await sendInterventionReminderEmail(input);
+        return result;
+    } catch (error: any) {
+        console.error("Error sending intervention reminder email:", error);
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }
@@ -624,6 +635,43 @@ export async function testWeeklySummaryAction(companyId: string): Promise<{ succ
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }
+
+
+export async function convertSupportTicketToIntervention(ticketId: string, adminUser: User): Promise<{ success: boolean, intervention?: Intervention, error?: string }> {
+    if (!adminUser || adminUser.role !== 'Admin') {
+        return { success: false, error: "Azione non autorizzata." };
+    }
+
+    try {
+        const ticket = await getSupportTicketById(ticketId);
+        if (!ticket) {
+            return { success: false, error: "Ticket di supporto non trovato." };
+        }
+
+        const firstMessage = ticket.messages[0]?.text || "Vedi ticket di supporto correlato.";
+        
+        const newIntervention = await addIntervention({
+            title: ticket.subject,
+            description: firstMessage,
+            clientId: ticket.clientId,
+            companyId: ticket.companyId,
+            priority: 'Media',
+            creatorName: adminUser.name,
+            assignedOperatorIds: [],
+            notifyClient: true,
+        });
+
+        // Add a message to the support ticket and close it
+        const updateMessage = `Questo ticket è stato convertito nell'intervento #${newIntervention.id}.`;
+        await addSupportMessage(ticket.id, adminUser, updateMessage);
+        await updateSupportTicketStatus(ticket.id, 'Chiuso');
+
+        return { success: true, intervention: newIntervention };
+    } catch (error: any) {
+        console.error("Error converting support ticket to intervention:", error);
+        return { success: false, error: error.message || "Si è verificato un errore sconosciuto." };
+    }
+}
     
 
     
@@ -634,5 +682,7 @@ export async function testWeeklySummaryAction(companyId: string): Promise<{ succ
     
 
     
+
+
 
 

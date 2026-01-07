@@ -1345,6 +1345,18 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 
 // --- SUPPORT TICKETS ---
 
+export async function getSupportTicketById(ticketId: string): Promise<SupportTicket | null> {
+    if (!db) return null;
+    try {
+        const docRef = doc(db, 'supportTickets', ticketId);
+        const docSnap = await getDoc(docRef);
+        return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as SupportTicket : null;
+    } catch (error) {
+        console.error(`Error fetching support ticket ${ticketId}:`, error);
+        return null;
+    }
+}
+
 export async function getSupportTickets(companyId: string, clientId?: string): Promise<SupportTicket[]> {
     if (!companyId || !db) return [];
     try {
@@ -1429,9 +1441,9 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
     const updatedMessages = [...ticket.messages, newMessage];
     
     const isClientReply = sender.role === 'Client';
-    const newStatus: SupportTicketStatus = isClientReply ? 'Aperto' : 'In Lavorazione';
+    const newStatus: SupportTicketStatus = ticket.status === 'Chiuso' && isClientReply ? 'Aperto' : ticket.status;
 
-    const updatedTicketData = {
+    const updatedTicketData: Partial<SupportTicket> = {
         messages: updatedMessages,
         updatedAt: now,
         status: newStatus,
@@ -1439,7 +1451,7 @@ export async function addSupportMessage(ticketId: string, sender: User, messageT
 
     await updateDoc(ticketRef, updatedTicketData);
     
-    const updatedTicket = { ...ticket, ...updatedTicketData };
+    const updatedTicket = { ...ticket, ...updatedTicketData } as SupportTicket;
     
     // Send notifications after adding the message
     await sendSupportTicketEmailNotification(ticket.companyId, updatedTicket, false);
