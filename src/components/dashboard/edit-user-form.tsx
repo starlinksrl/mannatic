@@ -51,6 +51,7 @@ const formSchema = z.object({
   avatarUrl: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
+  website: z.string().url({ message: "L'URL del sito web non è valido." }).optional().or(z.literal('')),
   allowedSectors: z.array(z.string()).optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
@@ -98,6 +99,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             avatarUrl: user.avatarUrl,
             address: user.address || '',
             phone: user.phone || '',
+            website: user.website || '',
             allowedSectors: user.allowedSectors || [],
             latitude: user.latitude || null,
             longitude: user.longitude || null,
@@ -123,6 +125,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             avatarUrl: values.avatarUrl,
             address: values.address,
             phone: values.phone,
+            website: values.website,
             allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined,
             latitude: values.latitude,
             longitude: values.longitude,
@@ -480,19 +483,34 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                 />
               </div>
                {role === 'Client' && (
-                  <FormField
-                    control={form.control}
-                    name="clientNotes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Appunti Cliente</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Note varie sul cliente..." {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="website"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sito Web</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://esempio.com" {...field} value={field.value ?? ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="clientNotes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Appunti Cliente</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Note varie sul cliente..." {...field} value={field.value ?? ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
                 )}
           </form>
         </Form>
@@ -511,4 +529,5 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     </Dialog>
   );
 }
+
 

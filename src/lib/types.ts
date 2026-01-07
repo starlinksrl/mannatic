@@ -1,4 +1,5 @@
 
+
 import { z } from 'zod';
 import webpush from 'web-push';
 
@@ -52,6 +53,7 @@ export interface User {
   companyId: string;
   address?: string | null;
   phone?: string | null;
+  website?: string;
   password?: string;
   allowedSectors?: AllowedSector[];
   latitude?: number | null;

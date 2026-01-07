@@ -49,6 +49,7 @@ const formSchema = z.object({
   password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}).optional().or(z.literal('')),
   address: z.string().optional(),
   phone: z.string().optional(),
+  website: z.string().url({ message: "L'URL del sito web non è valido." }).optional().or(z.literal('')),
   allowedSectors: z.array(z.string()).optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
@@ -87,6 +88,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       password: '',
       address: '',
       phone: '',
+      website: '',
       role: defaultRole,
       allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'], // Default to all for new operators
       clientNotes: '',
@@ -101,6 +103,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
           password: '',
           address: '',
           phone: '',
+          website: '',
           role: defaultRole,
           allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'],
           clientNotes: '',
@@ -136,6 +139,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             companyId: values.role === 'Creator' ? 'none' : currentCompany!.id,
             address: values.address,
             phone: values.phone,
+            website: values.website,
             password: values.password || 'starlink74',
             allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined,
             latitude: values.latitude,
@@ -254,6 +258,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
               password: '',
               address: '',
               phone: '',
+              website: '',
               role: defaultRole,
               allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'],
               clientNotes: '',
@@ -452,19 +457,34 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                   )}
                 />
                  {isClientForm && (
-                  <FormField
-                    control={form.control}
-                    name="clientNotes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Appunti Cliente</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Aggiungi note sul cliente..." {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                   <>
+                    <FormField
+                        control={form.control}
+                        name="website"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Sito Web (Opzionale)</FormLabel>
+                            <FormControl>
+                            <Input placeholder="https://esempio.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="clientNotes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Appunti Cliente</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Aggiungi note sul cliente..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
                 )}
             </>}
             <DialogFooter className="flex-col-reverse sm:flex-row pt-4">
@@ -482,4 +502,5 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     </Dialog>
   );
 }
+
 

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -13,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound, LogIn } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound, LogIn, ExternalLink } from 'lucide-react';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { EditUserForm } from './edit-user-form';
@@ -162,6 +163,11 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                                     </a>
                                 </div>
                             )}
+                             {client.website && (
+                                <a href={client.website} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                    <ExternalLink className="h-4 w-4 shrink-0" /> <span>{client.website}</span>
+                                </a>
+                            )}
                             {client.address && (
                                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-start gap-2 hover:underline">
                                     <MapPin className="h-4 w-4 mt-0.5 shrink-0" /> <span className="break-words">{client.address}</span>
@@ -246,6 +252,12 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                             </a>
                         </div>
                     )}
+                     {client.website && (
+                        <a href={client.website} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                            <span>{client.website}</span>
+                        </a>
+                     )}
                 </div>
               </TableCell>
               <TableCell onClick={() => handleEditClick(client)} className="hidden md:table-cell text-xs cursor-pointer">

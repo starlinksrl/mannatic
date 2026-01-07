@@ -301,6 +301,7 @@ export async function addUser(userData: Partial<Omit<User, 'avatarUrl'>>): Promi
             avatarUrl: `https://i.pravatar.cc/150?u=${userId}`,
             address: userData.address || '',
             phone: userData.phone || '',
+            website: userData.website || '',
             password: passwordForDb,
             latitude: userData.latitude ?? null,
             longitude: userData.longitude ?? null,
