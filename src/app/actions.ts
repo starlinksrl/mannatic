@@ -1,7 +1,6 @@
 
 
 'use server';
-import 'dotenv/config';
 
 import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOutput } from '@/ai/flows/generate-kpi-dashboard';
 import { sendNewInterventionNotification } from '@/ai/flows/send-new-intervention-notification';
@@ -682,6 +681,7 @@ export async function convertSupportTicketToIntervention(ticketId: string, admin
     
 
     
+
 
 
 
