@@ -834,19 +834,49 @@ export async function addIntervention(interventionData: AddInterventionParams): 
 
 export async function addScheduledMaintenance(maintenanceData: Omit<ScheduledMaintenance, 'id' | 'status' | 'sla' | 'createdAt' | 'isMaintenance' | 'nextDueDate' | 'updates'>): Promise<ScheduledMaintenance> {
     if (!db) throw new Error("Firebase non configurato.");
+
+    const { clientId, companyId, ...restOfData } = maintenanceData;
+    
+    const existingClient = await getUserById(clientId);
+    let finalClientId = existingClient ? existingClient.id : null;
+    
+    if (!finalClientId) {
+        console.log(`Client "${clientId}" not found by ID. Creating new client.`);
+
+        const clientNameNormalized = clientId.split(" ").join(".").toLowerCase();
+        
+        const clientEmail = `${clientNameNormalized}@mannatec.it`;
+
+        const newClient = await addUser({
+            name: clientId,
+            email: clientEmail, 
+            role: 'Client',
+            companyId: companyId,
+            address: 'Indirizzo da definire',
+            phone: 'Telefono da definire',
+        });
+        if (!newClient) {
+             throw new Error(`Non è stato possibile creare il cliente. L'email ${clientEmail} potrebbe essere già in uso.`);
+        }
+        finalClientId = newClient.id;
+    }
+
+
     const nextDueDate = new Date().toISOString();
     
     const newId = generateShortId();
     const newMaintenanceData: ScheduledMaintenance = {
-        ...maintenanceData,
+        ...restOfData,
         id: newId,
+        clientId: finalClientId,
+        companyId: companyId,
         status: 'Pianificato',
         sla: '48h',
         createdAt: new Date().toISOString(),
         isMaintenance: true,
         nextDueDate,
         updates: [{ date: new Date().toISOString(), description: 'Manutenzione programmata creata.', userName: 'Sistema' }],
-        dueDate: maintenanceData.dueDate || null,
+        dueDate: restOfData.dueDate || null,
         type: 'standard'
     };
 
