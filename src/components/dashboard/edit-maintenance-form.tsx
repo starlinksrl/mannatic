@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -27,15 +26,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { CalendarIcon, MessageSquarePlus } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ScheduledMaintenance, User, InterventionPriority, ScheduledMaintenanceStatus } from '@/lib/types';
+import { ScheduledMaintenance, User, InterventionPriority, ScheduledMaintenanceStatus, InterventionUpdate } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { updateScheduledMaintenance } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
+import { Separator } from '../ui/separator';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -46,6 +46,7 @@ const formSchema = z.object({
   dueDate: z.date({ required_error: 'La data di esecuzione è obbligatoria.' }),
   assignedOperatorId: z.string().nullable(),
   recurrenceMonths: z.coerce.number().min(1, 'La ricorrenza deve essere di almeno 1 mese.'),
+  newUpdate: z.string().optional(),
 });
 
 interface EditMaintenanceFormProps {
@@ -59,7 +60,7 @@ interface EditMaintenanceFormProps {
 
 export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients, operators, isOpen, setIsOpen }: EditMaintenanceFormProps) {
   const { toast } = useToast();
-  const { currentCompany } = useUser();
+  const { user: currentUser } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -74,15 +75,25 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
         priority: maintenance.priority,
         status: maintenance.status,
         assignedOperatorId: maintenance.assignedOperatorId || null,
+        newUpdate: '',
       });
     }
   }, [maintenance, form]);
 
-  if (!maintenance) return null;
+  if (!maintenance || !currentUser) return null;
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const isBeingCompleted = values.status === 'Completato' && maintenance?.status !== 'Completato';
+    
+    let newUpdates: InterventionUpdate[] = maintenance?.updates || [];
+    if(values.newUpdate && values.newUpdate.trim() !== '') {
+        newUpdates = [{ 
+            date: new Date().toISOString(), 
+            description: values.newUpdate.trim(),
+            userName: currentUser!.name,
+        }, ...newUpdates];
+    }
     
     const updatedMaintenanceData = {
         ...maintenance,
@@ -90,7 +101,8 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
         description: values.description || '',
         priority: values.priority as InterventionPriority,
         status: values.status as ScheduledMaintenanceStatus,
-        dueDate: isBeingCompleted ? new Date().toISOString() : values.dueDate.toISOString()
+        dueDate: isBeingCompleted ? new Date().toISOString() : values.dueDate.toISOString(),
+        updates: newUpdates
     };
     
     const updated = await updateScheduledMaintenance(maintenance!.id, updatedMaintenanceData);
@@ -301,6 +313,45 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
                                 </FormItem>
                             )}
                         />
+                    </div>
+
+                     <Separator />
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-medium">Storico Manutenzione</h4>
+                         <FormField
+                            control={form.control}
+                            name="newUpdate"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Aggiungi aggiornamento</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="Scrivi un aggiornamento sull'attività svolta..." {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <div className="space-y-4 max-h-48 overflow-y-auto pr-2">
+                            {maintenance.updates && maintenance.updates.length > 0 ? (
+                                maintenance.updates.map((update, index) => (
+                                    <div key={index} className="flex items-start gap-3 text-sm">
+                                        <MessageSquarePlus className="w-4 h-4 mt-1 text-muted-foreground" />
+                                        <div className="flex-1">
+                                            <p className="text-muted-foreground">
+                                                <span className="font-semibold">{update.userName}</span>
+                                                {' - '}
+                                                {formatDistanceToNow(new Date(update.date), { addSuffix: true, locale: it })}
+                                            </p>
+                                            <p>{update.description}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">Nessun aggiornamento.</p>
+                            )}
+                        </div>
                     </div>
 
                 </form>
