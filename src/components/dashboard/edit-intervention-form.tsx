@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -413,6 +414,12 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>Modifica intervento #{intervention.id}</DialogTitle>
         </DialogHeader>
+        
+        <Button size="icon" type="submit" form="edit-intervention-form" className="md:hidden fixed top-4 right-16 z-50 shadow-lg bg-primary text-primary-foreground">
+            <Check className="h-4 w-4" />
+            <span className="sr-only">Salva</span>
+        </Button>
+
         <ScrollArea className="h-full">
             <div className="p-6">
                 <Form {...form}>
@@ -854,7 +861,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             </div>
         </ScrollArea>
 
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
+        <DialogFooter className="hidden md:flex flex-col-reverse sm:flex-row p-6 pt-0 border-t">
             <DialogClose asChild>
                 <Button variant="outline">Annulla</Button>
             </DialogClose>
