@@ -173,9 +173,22 @@ export function InterventionsTable({
     }
   }
   
-  const handleArchiveClick = (intervention: Intervention) => {
+  const handleArchiveClick = async (intervention: Intervention) => {
     if (currentUser.role === 'Admin' || currentUser.role === 'Creator') {
-        openModal(intervention as Intervention);
+        const updated = await updateIntervention(intervention.id, { status: 'Archiviato' }, currentUser);
+        if (updated) {
+            onInterventionChange();
+            toast({
+                title: 'Intervento archiviato',
+                description: `L'intervento "${intervention.title}" è stato spostato in archivio.`,
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Errore',
+                description: "Impossibile archiviare l'intervento.",
+            });
+        }
     }
   }
 
@@ -656,7 +669,7 @@ export function InterventionsTable({
                                     <Pencil className="mr-2" /> Modifica
                                 </DropdownMenuItem>
                                 {canArchiveIntervention && (
-                                    <DropdownMenuItem onSelect={() => handleArchiveClick(intervention)}>
+                                    <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
                                         <Archive className="mr-2" /> Archivia
                                     </DropdownMenuItem>
                                 )}
