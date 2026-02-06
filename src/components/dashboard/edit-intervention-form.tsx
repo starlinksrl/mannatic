@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -29,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X, ChevronsUpDown, Check } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X, ChevronsUpDown, Check, Archive } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes, differenceInMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -107,6 +106,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const [isFetchingAttachment, setIsFetchingAttachment] = useState(false);
   const [attachmentDataUri, setAttachmentDataUri] = useState<string | null>(null);
   const [appConfig, setAppConfig] = useState<AppConfiguration | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
 
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -228,6 +228,23 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             title: 'Errore',
             description: "Impossibile aggiornare l'intervento.",
         });
+    }
+  }
+
+  const handleQuickArchive = async () => {
+    if (!intervention) return;
+    setIsArchiving(true);
+    try {
+        const updated = await updateIntervention(intervention.id, { status: 'Archiviato' }, currentUser);
+        if (updated) {
+            onInterventionUpdated();
+            toast({ title: 'Intervento archiviato', description: `L'intervento #${intervention.id} è stato archiviato.` });
+            setIsOpen(false);
+        }
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Errore', description: 'Impossibile archiviare l\'intervento.' });
+    } finally {
+        setIsArchiving(false);
     }
   }
   
@@ -395,6 +412,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   
   const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
   const isOperator = currentUser.role === 'Operator';
+  const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
   
   const AttachmentPreview = ({ att }: { att: Attachment }) => {
     if (att.type.startsWith('image/')) {
@@ -861,10 +879,18 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             </div>
         </ScrollArea>
 
-        <DialogFooter className="hidden md:flex flex-col-reverse sm:flex-row p-6 pt-0 border-t">
-            <DialogClose asChild>
-                <Button variant="outline">Annulla</Button>
-            </DialogClose>
+        <DialogFooter className="hidden md:flex flex-col-reverse sm:flex-row p-6 pt-0 border-t justify-between gap-2">
+            <div className="flex gap-2">
+                <DialogClose asChild>
+                    <Button variant="outline">Annulla</Button>
+                </DialogClose>
+                {isAdmin && (
+                    <Button variant="secondary" onClick={handleQuickArchive} disabled={isArchiving}>
+                        {isArchiving ? <Loader className="mr-2 animate-spin" /> : <Archive className="mr-2" />}
+                        Archivia
+                    </Button>
+                )}
+            </div>
             <Button type="submit" form="edit-intervention-form">Salva modifiche</Button>
         </DialogFooter>
       </DialogContent>

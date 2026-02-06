@@ -77,7 +77,7 @@ export function InterventionsTable({
     initialViewMode = 'table'
 }: InterventionsTableProps) {
   const { toast } = useToast();
-  const { openModal } = useInterventionModal();
+  const { openModal, closeModal } = useInterventionModal();
   const router = useRouter();
   const pathname = usePathname();
   
@@ -175,12 +175,11 @@ export function InterventionsTable({
             const updated = await updateIntervention(intervention.id, { status: 'Archiviato' }, currentUser);
             if (updated) {
                 onInterventionChange();
+                closeModal(); // Ensure modal is closed
                 toast({
                     title: 'Intervento archiviato',
                     description: `L'intervento "${intervention.title}" è stato spostato in archivio.`,
                 });
-            } else {
-                throw new Error("Update failed");
             }
         } catch (error) {
             console.error("Archive failed:", error);
@@ -483,17 +482,17 @@ export function InterventionsTable({
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(intervention as Intervention); }}>
                                             <Pencil className="mr-2" /> Modifica
                                         </DropdownMenuItem>
                                         {currentUser.role === 'Admin' && (
-                                            <DropdownMenuItem onSelect={() => handleSendReminder(intervention as Intervention)} disabled={isSendingReminder === intervention.id}>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendReminder(intervention as Intervention); }} disabled={isSendingReminder === intervention.id}>
                                                 {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                                 Sollecita
                                             </DropdownMenuItem>
                                         )}
                                         {canArchiveIntervention && (
-                                            <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchiveClick(intervention as Intervention); }}>
                                                 <Archive className="mr-2" /> Archivia
                                             </DropdownMenuItem>
                                         )}
@@ -502,7 +501,7 @@ export function InterventionsTable({
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem 
                                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                                    onSelect={() => handleDeleteClick(intervention as Intervention)}>
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(intervention as Intervention); }}>
                                                     <Trash2 className="mr-2" /> Elimina
                                                 </DropdownMenuItem>
                                             </>
@@ -583,17 +582,17 @@ export function InterventionsTable({
                                 <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}><MoreHorizontal /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(intervention as Intervention); }}>
                                     <Pencil className="mr-2" /> Modifica
                                 </DropdownMenuItem>
                                 {currentUser.role === 'Admin' && (
-                                    <DropdownMenuItem onSelect={() => handleSendReminder(intervention as Intervention)} disabled={isSendingReminder === intervention.id}>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendReminder(intervention as Intervention); }} disabled={isSendingReminder === intervention.id}>
                                         {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                         Sollecita
                                     </DropdownMenuItem>
                                 )}
                                 {canArchiveIntervention && (
-                                    <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchiveClick(intervention as Intervention); }}>
                                         <Archive className="mr-2" /> Archivia
                                     </DropdownMenuItem>
                                 )}
@@ -602,7 +601,7 @@ export function InterventionsTable({
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem 
                                             className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                            onSelect={() => handleDeleteClick(intervention as Intervention)}>
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteClick(intervention as Intervention); }}>
                                             <Trash2 className="mr-2" /> Elimina
                                         </DropdownMenuItem>
                                     </>
@@ -715,17 +714,17 @@ export function InterventionsTable({
                                 <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}><MoreHorizontal /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(intervention as Intervention); }}>
                                     <Pencil className="mr-2" /> Modifica
                                 </DropdownMenuItem>
                                 {currentUser.role === 'Admin' && (
-                                    <DropdownMenuItem onSelect={() => handleSendReminder(intervention as Intervention)} disabled={isSendingReminder === intervention.id}>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendReminder(intervention as Intervention); }} disabled={isSendingReminder === intervention.id}>
                                         {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                         Sollecita
                                     </DropdownMenuItem>
                                 )}
                                 {canArchiveIntervention && (
-                                    <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchiveClick(intervention as Intervention); }}>
                                         <Archive className="mr-2" /> Archivia
                                     </DropdownMenuItem>
                                 )}
@@ -734,7 +733,7 @@ export function InterventionsTable({
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem 
                                             className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                            onSelect={() => handleDeleteClick(intervention as Intervention)}>
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteClick(intervention as Intervention); }}>
                                             <Trash2 className="mr-2" /> Elimina
                                         </DropdownMenuItem>
                                     </>
