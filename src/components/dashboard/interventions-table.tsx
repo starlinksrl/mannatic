@@ -34,11 +34,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
-import { cn } from '@/lib/utils';
-import { createWhatsAppLink } from '@/lib/utils';
+import { cn, createWhatsAppLink } from '@/lib/utils';
 import { WhatsAppIcon } from '../icons/whatsapp-icon';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
+import { triggerInterventionReminderEmail, createClientAutologinUrl } from '@/app/actions';
 
 
 interface InterventionsTableProps {
@@ -51,6 +51,7 @@ interface InterventionsTableProps {
   initialPriorityFilter?: string;
   initialOperatorFilter?: string;
   initialAssignedFilter?: boolean;
+  initialViewMode?: 'table' | 'grid';
 }
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
@@ -61,7 +62,6 @@ const isDueSoon = (dueDate: string | null | undefined): boolean => {
     const now = new Date();
     const dueDateObj = new Date(dueDate);
     const twoDaysFromNow = addDays(now, 2);
-    // is due soon if it's before 2 days from now AND it's after or on today
     return isBefore(dueDateObj, twoDaysFromNow) && isBefore(startOfToday(), addDays(dueDateObj, 1));
 };
 
@@ -74,7 +74,8 @@ export function InterventionsTable({
     initialStatusFilter = 'active', 
     initialPriorityFilter = 'all',
     initialOperatorFilter = 'all',
-    initialAssignedFilter = false
+    initialAssignedFilter = false,
+    initialViewMode = 'table'
 }: InterventionsTableProps) {
   const { toast } = useToast();
   const { openModal } = useInterventionModal();
@@ -90,7 +91,7 @@ export function InterventionsTable({
   const [clientFilter, setClientFilter] = useState('all');
   const [operatorFilter, setOperatorFilter] = useState(initialOperatorFilter);
   const [assignedFilter, setAssignedFilter] = useState(initialAssignedFilter);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>(initialViewMode);
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'createdAt', direction: 'descending' });
   
@@ -99,6 +100,7 @@ export function InterventionsTable({
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [interventionToDelete, setInterventionToDelete] = useState<Intervention | null>(null);
+  const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
   
   useEffect(() => {
     setInterventions(initialInterventions);
@@ -119,16 +121,16 @@ export function InterventionsTable({
   }, [operators, clients]);
   
   useEffect(() => {
-    // Only update URL if we are on the dedicated interventions page
     if (pathname === '/dashboard/interventions') {
         const params = new URLSearchParams();
         if (statusFilter !== 'active') params.set('status', statusFilter);
         if (priorityFilter !== 'all') params.set('priority', priorityFilter);
         if (operatorFilter !== 'all') params.set('operator', operatorFilter);
         if (assignedFilter) params.set('assigned', 'true');
+        if (viewMode !== 'table') params.set('view', viewMode);
         router.replace(`/dashboard/interventions?${params.toString()}`);
     }
-  }, [statusFilter, priorityFilter, operatorFilter, assignedFilter, router, pathname]);
+  }, [statusFilter, priorityFilter, operatorFilter, assignedFilter, viewMode, router, pathname]);
 
   const handleEditClick = (intervention: Intervention) => {
     openModal(intervention);
@@ -192,6 +194,47 @@ export function InterventionsTable({
     }
   }
 
+  const handleSendReminder = async (intervention: Intervention) => {
+    if (intervention.assignedOperatorIds.length === 0) {
+        toast({ variant: 'destructive', title: 'Nessun Operatore', description: "Assegna almeno un operatore prima di inviare un sollecito." });
+        return;
+    }
+
+    setIsSendingReminder(intervention.id);
+    try {
+        const client = clientsMap.get(intervention.clientId);
+        
+        for (const opId of intervention.assignedOperatorIds) {
+            const operator = operators.find(o => o.id === opId);
+            if (!operator || !operator.email) continue;
+
+            const loginResult = await createClientAutologinUrl(opId);
+            if (!loginResult.success || !loginResult.url) continue;
+
+            const reminderUrl = `${loginResult.url}&interventionId=${intervention.id}`;
+
+            await triggerInterventionReminderEmail({
+                recipientEmail: operator.email,
+                operatorName: operator.name,
+                interventionId: intervention.id,
+                interventionTitle: intervention.title,
+                clientName: client?.name || 'N/D',
+                autologinUrl: reminderUrl,
+                resendConfig: {
+                    apiKey: 'placeholder', // This is handled on server side
+                    from: 'placeholder',
+                }
+            });
+        }
+        
+        toast({ title: 'Sollecito Inviato', description: 'Email di promemoria inviata agli operatori assegnati.' });
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Errore', description: 'Impossibile inviare il sollecito.' });
+    } finally {
+        setIsSendingReminder(null);
+    }
+  };
+
 
   const roleBasedInterventions = useMemo(() => {
     if (!currentUser) return [];
@@ -234,15 +277,15 @@ export function InterventionsTable({
         filtered = filtered.filter(i => i.clientId === clientFilter);
     }
     if (operatorFilter !== 'all') {
-        filtered = filtered.filter(i => i.assignedOperatorId === operatorFilter);
+        filtered = filtered.filter(i => i.assignedOperatorIds?.includes(operatorFilter));
     }
     
     if (assignedFilter) {
-      filtered = filtered.filter(i => !!i.assignedOperatorId);
+      filtered = filtered.filter(i => i.assignedOperatorIds && i.assignedOperatorIds.length > 0);
     }
 
     return filtered;
-  }, [roleBasedInterventions, searchTerm, statusFilter, priorityFilter, clientFilter, operatorFilter, assignedFilter, currentUser.role, clientsMap]);
+  }, [roleBasedInterventions, searchTerm, statusFilter, priorityFilter, clientFilter, operatorFilter, assignedFilter, clientsMap]);
   
   const sortedInterventions = useMemo(() => {
     let sortableItems = [...filteredInterventions];
@@ -263,11 +306,7 @@ export function InterventionsTable({
                 aValue = clientsMap.get(a.clientId)?.name || '';
                 bValue = clientsMap.get(b.clientId)?.name || '';
                 break;
-             case 'operator':
-                aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
-                bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
-                break;
-            case 'isFeatured':
+             case 'isFeatured':
                 aValue = a.isFeatured ? 1 : 0;
                 bValue = b.isFeatured ? 1 : 0;
                 break;
@@ -286,7 +325,7 @@ export function InterventionsTable({
       });
     }
     return sortableItems;
-  }, [filteredInterventions, sortConfig, operatorsMap, clientsMap]);
+  }, [filteredInterventions, sortConfig, clientsMap]);
 
   const requestSort = (key: keyof Intervention | 'client' | 'operator') => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -448,6 +487,12 @@ export function InterventionsTable({
                                         <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                                             <Pencil className="mr-2" /> Modifica
                                         </DropdownMenuItem>
+                                        {currentUser.role === 'Admin' && (
+                                            <DropdownMenuItem onSelect={() => handleSendReminder(intervention as Intervention)} disabled={isSendingReminder === intervention.id}>
+                                                {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                                Sollecita
+                                            </DropdownMenuItem>
+                                        )}
                                         {canArchiveIntervention && (
                                             <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
                                                 <Archive className="mr-2" /> Archivia
@@ -542,6 +587,12 @@ export function InterventionsTable({
                                 <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                                     <Pencil className="mr-2" /> Modifica
                                 </DropdownMenuItem>
+                                {currentUser.role === 'Admin' && (
+                                    <DropdownMenuItem onSelect={() => handleSendReminder(intervention as Intervention)} disabled={isSendingReminder === intervention.id}>
+                                        {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                        Sollecita
+                                    </DropdownMenuItem>
+                                )}
                                 {canArchiveIntervention && (
                                     <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
                                         <Archive className="mr-2" /> Archivia
@@ -590,7 +641,7 @@ export function InterventionsTable({
                 <TableBody>
                     {sortedInterventions.map((intervention) => {
                     const client = clientsMap.get(intervention.clientId);
-                    const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
+                    const operatorNames = (intervention.assignedOperatorIds || []).map(id => operatorsMap.get(id)).filter(Boolean).join(', ');
                     const urgent = isDueSoon(intervention.dueDate);
                     return (
                         <TableRow key={intervention.id} className={cn(urgent && "bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/60")}>
@@ -658,7 +709,7 @@ export function InterventionsTable({
                         <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getPriorityBadge(intervention.priority)}</TableCell>
                         <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.createdAt ? format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
                         <TableCell className={cn("hidden md:table-cell cursor-pointer", urgent && "font-bold")} onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
-                        {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{operatorName || 'Non assegnato'}</TableCell>}
+                        {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{operatorNames || 'Non assegnato'}</TableCell>}
                         <TableCell className="text-right">
                             <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -668,6 +719,12 @@ export function InterventionsTable({
                                 <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
                                     <Pencil className="mr-2" /> Modifica
                                 </DropdownMenuItem>
+                                {currentUser.role === 'Admin' && (
+                                    <DropdownMenuItem onSelect={() => handleSendReminder(intervention as Intervention)} disabled={isSendingReminder === intervention.id}>
+                                        {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                        Sollecita
+                                    </DropdownMenuItem>
+                                )}
                                 {canArchiveIntervention && (
                                     <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
                                         <Archive className="mr-2" /> Archivia

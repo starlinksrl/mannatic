@@ -27,6 +27,7 @@ export default function InterventionsPage() {
 
     const initialStatusFilter = useMemo(() => searchParams.get('status') || 'active', [searchParams]);
     const initialPriorityFilter = useMemo(() => searchParams.get('priority') || 'all', [searchParams]);
+    const initialViewMode = useMemo(() => (searchParams.get('view') as 'table' | 'grid') || 'table', [searchParams]);
 
 
     const fetchData = async () => {
@@ -41,7 +42,7 @@ export default function InterventionsPage() {
 
         setOperators(allUsers.filter(u => u.role === 'Operator'));
         setClients(allClients);
-        setInterventions(allInterventions.filter(i => !i.isMaintenance && i.type !== 'new_installation'));
+        setInterventions(allInterventions.filter(i => !i.isMaintenance && i.type !== 'new_installation') as Intervention[]);
         setLoading(false);
     }
 
@@ -99,6 +100,7 @@ export default function InterventionsPage() {
             onInterventionChange={handleInterventionChange}
             initialStatusFilter={initialStatusFilter}
             initialPriorityFilter={initialPriorityFilter}
+            initialViewMode={initialViewMode}
         />
       </main>
       {interventionToEdit && user && (
