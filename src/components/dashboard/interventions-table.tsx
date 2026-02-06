@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -19,8 +18,8 @@ import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention, updateIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AddInterventionForm } from './add-intervention-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -91,6 +90,7 @@ export function InterventionsTable({
   const [clientFilter, setClientFilter] = useState('all');
   const [operatorFilter, setOperatorFilter] = useState(initialOperatorFilter);
   const [assignedFilter, setAssignedFilter] = useState(initialAssignedFilter);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'createdAt', direction: 'descending' });
   
@@ -310,6 +310,16 @@ export function InterventionsTable({
     }
   };
 
+  const getPostItColor = (priority: string) => {
+    switch (priority) {
+        case 'Critica': return 'bg-red-100 border-red-300 dark:bg-red-900/40 dark:border-red-800';
+        case 'Alta': return 'bg-orange-100 border-orange-300 dark:bg-orange-900/40 dark:border-orange-800';
+        case 'Media': return 'bg-yellow-100 border-yellow-300 dark:bg-yellow-900/40 dark:border-yellow-800';
+        case 'Bassa': return 'bg-green-100 border-green-300 dark:bg-green-900/40 dark:border-green-800';
+        default: return 'bg-card';
+    }
+  }
+
   const tableHeaders = [
     { key: 'isFeatured', label: '★', visible: currentUser.role === 'Admin' || currentUser.role === 'Creator', className: 'w-12'},
     { key: 'client', label: 'Cliente / Titolo', visible: currentUser.role !== 'Client', className: 'w-[30%]' },
@@ -370,215 +380,307 @@ export function InterventionsTable({
                     </SelectContent>
                 </Select>
                 )}
-                 {currentUser.role === 'Admin' && (
-                    <Select value={operatorFilter} onValueChange={setOperatorFilter}>
-                    <SelectTrigger><SelectValue placeholder="Filtra per operatore" /></SelectTrigger>
-                    <SelectContent>
-                    <SelectItem value="all">Tutti gli operatori</SelectItem>
-                    {operators.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                )}
+            </div>
+            <div className="flex items-center gap-2 border rounded-md p-1 bg-muted/50 self-start md:self-center">
+                <Button 
+                    variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setViewMode('table')}
+                    className="h-8 px-2"
+                >
+                    <List className="h-4 w-4 mr-1" /> Tabella
+                </Button>
+                <Button 
+                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setViewMode('grid')}
+                    className="h-8 px-2"
+                >
+                    <LayoutGrid className="h-4 w-4 mr-1" /> Post-it
+                </Button>
             </div>
       </div>
-      <Card className="lg:hidden">
-        <CardContent className="p-2 space-y-2">
-            {sortedInterventions.map((intervention) => {
-              const client = clientsMap.get(intervention.clientId);
-              const urgent = isDueSoon(intervention.dueDate);
-              return (
-                 <div key={intervention.id} className={cn("p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start", urgent && "bg-amber-100 dark:bg-amber-900/50")}>
-                    <div className="flex-1 space-y-2 pr-4 break-words cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                        {currentUser.role !== 'Client' && client && (
-                          <div className="space-y-1 text-sm">
-                            <p className="font-medium break-words">{client.name}</p>
-                             <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                                {client.phone && (
-                                    <div className="flex items-center gap-2">
-                                        <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                            <Phone className="h-4 w-4 text-muted-foreground" />
-                                            <span>{client.phone}</span>
-                                        </a>
-                                        <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500">
-                                            <WhatsAppIcon className="h-4 w-4" />
-                                        </a>
+
+      {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {sortedInterventions.map((intervention) => {
+                  const client = clientsMap.get(intervention.clientId);
+                  const urgent = isDueSoon(intervention.dueDate);
+                  return (
+                      <Card 
+                        key={intervention.id} 
+                        className={cn(
+                            "relative overflow-hidden cursor-pointer hover:shadow-md transition-all h-full min-h-[200px] flex flex-col border-t-4", 
+                            getPostItColor(intervention.priority)
+                        )}
+                        onClick={() => handleEditClick(intervention as Intervention)}
+                      >
+                          <CardHeader className="p-4 pb-2 space-y-0">
+                              <div className="flex justify-between items-start">
+                                  <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                                          {client?.name || 'Cliente Sconosciuto'}
+                                      </p>
+                                      <CardTitle className="text-sm font-semibold line-clamp-2 leading-tight">
+                                          {intervention.title}
+                                      </CardTitle>
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2" onClick={e => e.stopPropagation()}>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
+                                            <Pencil className="mr-2" /> Modifica
+                                        </DropdownMenuItem>
+                                        {canArchiveIntervention && (
+                                            <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
+                                                <Archive className="mr-2" /> Archivia
+                                            </DropdownMenuItem>
+                                        )}
+                                        {canDeleteIntervention && (
+                                            <>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem 
+                                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                    onSelect={() => handleDeleteClick(intervention as Intervention)}>
+                                                    <Trash2 className="mr-2" /> Elimina
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                              </div>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-0 flex-1 flex flex-col justify-between">
+                              <div className="space-y-2 mt-2">
+                                  <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[10px] text-muted-foreground font-mono">ID: {intervention.id}</span>
+                                      {getStatusBadge(intervention.status)}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground">
+                                      {intervention.dueDate ? (
+                                          <p className={cn("flex items-center gap-1", urgent && "text-red-600 font-bold")}>
+                                              <ChevronDown className="h-3 w-3" /> Scade: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm')}
+                                          </p>
+                                      ) : (
+                                          <p>Nessuna scadenza</p>
+                                      )}
+                                  </div>
+                              </div>
+                              <div className="mt-4 flex items-center justify-between">
+                                  {getPriorityBadge(intervention.priority)}
+                                  {intervention.isFeatured && <Star className="h-4 w-4 text-yellow-500 fill-current" />}
+                              </div>
+                          </CardContent>
+                      </Card>
+                  )
+              })}
+          </div>
+      ) : (
+        <>
+            <Card className="lg:hidden">
+                <CardContent className="p-2 space-y-2">
+                    {sortedInterventions.map((intervention) => {
+                    const client = clientsMap.get(intervention.clientId);
+                    const urgent = isDueSoon(intervention.dueDate);
+                    return (
+                        <div key={intervention.id} className={cn("p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start", urgent && "bg-amber-100 dark:bg-amber-900/50")}>
+                            <div className="flex-1 space-y-2 pr-4 break-words cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
+                                {currentUser.role !== 'Client' && client && (
+                                <div className="space-y-1 text-sm">
+                                    <p className="font-medium break-words">{client.name}</p>
+                                    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                                        {client.phone && (
+                                            <div className="flex items-center gap-2">
+                                                <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                                    <Phone className="h-4 w-4 text-muted-foreground" />
+                                                    <span>{client.phone}</span>
+                                                </a>
+                                                <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500">
+                                                    <WhatsAppIcon className="h-4 w-4" />
+                                                </a>
+                                            </div>
+                                        )}
+                                        {client.address && (
+                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                                <span>{client.address}</span>
+                                            </a>
+                                        )}
                                     </div>
+                                </div>
                                 )}
-                                 {client.address && (
-                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                                        <span>{client.address}</span>
-                                    </a>
-                                 )}
-                             </div>
-                          </div>
-                        )}
-                        <p className="font-semibold break-words">{intervention.title}</p>
-                        {intervention.createdAt && <p className="text-sm text-muted-foreground break-words">Creato: {format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>}
-                        {intervention.dueDate && <p className={cn("text-sm text-muted-foreground break-words", urgent && "font-bold text-amber-700 dark:text-amber-300")}>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
-                        <div className="flex items-center gap-2 pt-1">
-                            {getPriorityBadge(intervention.priority)}
-                            {getStatusBadge(intervention.status)}
-                        </div>
-                    </div>
-                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
-                            <Pencil className="mr-2" /> Modifica
-                        </DropdownMenuItem>
-                         {canArchiveIntervention && (
-                            <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
-                                <Archive className="mr-2" /> Archivia
-                            </DropdownMenuItem>
-                        )}
-                        {canDeleteIntervention && (
-                            <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                    onSelect={() => handleDeleteClick(intervention as Intervention)}>
-                                    <Trash2 className="mr-2" /> Elimina
+                                <p className="font-semibold break-words">{intervention.title}</p>
+                                {intervention.createdAt && <p className="text-sm text-muted-foreground break-words">Creato: {format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>}
+                                {intervention.dueDate && <p className={cn("text-sm text-muted-foreground break-words", urgent && "font-bold text-amber-700 dark:text-amber-300")}>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
+                                <div className="flex items-center gap-2 pt-1">
+                                    {getPriorityBadge(intervention.priority)}
+                                    {getStatusBadge(intervention.status)}
+                                </div>
+                            </div>
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
+                                    <Pencil className="mr-2" /> Modifica
                                 </DropdownMenuItem>
-                            </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                 </div>
-              )
-            })}
-        </CardContent>
-      </Card>
-      <Card className="hidden lg:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {tableHeaders.filter(h => h.visible).map(header => (
-                 <TableHead key={header.key} className={header.className}>
-                    {header.key === 'actions' ? (
-                        <span className="sr-only">{header.label}</span>
-                    ) : header.key === 'isFeatured' ? (
-                         <Button variant="ghost" size="icon" onClick={() => requestSort('isFeatured')}>
-                            <Star className="h-4 w-4" />
-                            {getSortIcon('isFeatured')}
-                         </Button>
-                    ) : (
-                        <Button variant="ghost" onClick={() => requestSort(header.key as any)}>
-                            {header.label}
-                            {getSortIcon(header.key as any)}
-                        </Button>
-                    )}
-                 </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedInterventions.map((intervention) => {
-              const client = clientsMap.get(intervention.clientId);
-              const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
-              const urgent = isDueSoon(intervention.dueDate);
-              return (
-                <TableRow key={intervention.id} className={cn(urgent && "bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/60")}>
-                  {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
-                    <TableCell>
-                        <Checkbox
-                            checked={intervention.isFeatured}
-                            onCheckedChange={() => handleFeatureToggle(intervention)}
-                            aria-label="Evidenziato"
-                        />
-                    </TableCell>
-                  )}
-                  {currentUser.role !== 'Client' ? (
-                    <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                        <div className="flex flex-col break-words">
-                            <span className="break-words font-semibold">{client ? client.name : '-'}</span>
-                            <span className="text-xs text-muted-foreground">{intervention.title}</span>
-                            <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
+                                {canArchiveIntervention && (
+                                    <DropdownMenuItem onSelect={() => handleArchiveClick(intervention as Intervention)}>
+                                        <Archive className="mr-2" /> Archivia
+                                    </DropdownMenuItem>
+                                )}
+                                {canDeleteIntervention && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                            onSelect={() => handleDeleteClick(intervention as Intervention)}>
+                                            <Trash2 className="mr-2" /> Elimina
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
-                    </TableCell>
-                  ) : (
-                     <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                        <div className="flex flex-col break-words">
-                            <span className="break-words">{intervention.title}</span>
-                            <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
-                        </div>
-                    </TableCell>
-                  )}
-                   {currentUser.role === 'Admin' && (
-                    <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                      {client && (
-                         <div className="flex flex-col gap-1 text-xs">
-                            {client.email && (
-                                <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                    <Mail className="h-4 w-4 text-muted-foreground" />
-                                    <span>{client.email}</span>
-                                </a>
+                    )
+                    })}
+                </CardContent>
+            </Card>
+            <Card className="hidden lg:block">
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    {tableHeaders.filter(h => h.visible).map(header => (
+                        <TableHead key={header.key} className={header.className}>
+                            {header.key === 'actions' ? (
+                                <span className="sr-only">{header.label}</span>
+                            ) : header.key === 'isFeatured' ? (
+                                <Button variant="ghost" size="icon" onClick={() => requestSort('isFeatured')}>
+                                    <Star className="h-4 w-4" />
+                                    {getSortIcon('isFeatured')}
+                                </Button>
+                            ) : (
+                                <Button variant="ghost" onClick={() => requestSort(header.key as any)}>
+                                    {header.label}
+                                    {getSortIcon(header.key as any)}
+                                </Button>
                             )}
-                            {client.phone && (
-                                <div className="flex items-center gap-2">
-                                    <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                        <Phone className="h-4 w-4 text-muted-foreground" />
-                                        <span>{client.phone}</span>
-                                    </a>
-                                     <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500">
-                                        <WhatsAppIcon className="h-4 w-4" />
-                                     </a>
+                        </TableHead>
+                    ))}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {sortedInterventions.map((intervention) => {
+                    const client = clientsMap.get(intervention.clientId);
+                    const operatorName = intervention.assignedOperatorId ? operatorsMap.get(intervention.assignedOperatorId) : null;
+                    const urgent = isDueSoon(intervention.dueDate);
+                    return (
+                        <TableRow key={intervention.id} className={cn(urgent && "bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/60")}>
+                        {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
+                            <TableCell>
+                                <Checkbox
+                                    checked={intervention.isFeatured}
+                                    onCheckedChange={() => handleFeatureToggle(intervention)}
+                                    aria-label="Evidenziato"
+                                />
+                            </TableCell>
+                        )}
+                        {currentUser.role !== 'Client' ? (
+                            <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
+                                <div className="flex flex-col break-words">
+                                    <span className="break-words font-semibold">{client ? client.name : '-'}</span>
+                                    <span className="text-xs text-muted-foreground">{intervention.title}</span>
+                                    <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
+                                </div>
+                            </TableCell>
+                        ) : (
+                            <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
+                                <div className="flex flex-col break-words">
+                                    <span className="break-words">{intervention.title}</span>
+                                    <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
+                                </div>
+                            </TableCell>
+                        )}
+                        {currentUser.role === 'Admin' && (
+                            <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
+                            {client && (
+                                <div className="flex flex-col gap-1 text-xs">
+                                    {client.email && (
+                                        <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                            <Mail className="h-4 w-4 text-muted-foreground" />
+                                            <span>{client.email}</span>
+                                        </a>
+                                    )}
+                                    {client.phone && (
+                                        <div className="flex items-center gap-2">
+                                            <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                                <span>{client.phone}</span>
+                                            </a>
+                                            <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500">
+                                                <WhatsAppIcon className="h-4 w-4" />
+                                            </a>
+                                        </div>
+                                    )}
                                 </div>
                             )}
-                        </div>
-                      )}
-                    </TableCell>
-                   )}
-                   {currentUser.role === 'Admin' && (
-                    <TableCell className="hidden xl:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                      {client && client.address && (
-                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs hover:underline">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span>{client.address}</span>
-                        </a>
-                      )}
-                    </TableCell>
-                   )}
-                  <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getStatusBadge(intervention.status)}</TableCell>
-                  <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getPriorityBadge(intervention.priority)}</TableCell>
-                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.createdAt ? format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
-                  <TableCell className={cn("hidden md:table-cell cursor-pointer", urgent && "font-bold")} onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
-                  {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{operatorName || 'Non assegnato'}</TableCell>}
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                         <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
-                             <Pencil className="mr-2" /> Modifica
-                         </DropdownMenuItem>
-                         {canArchiveIntervention && (
-                            <DropdownMenuItem onSelect={() => handleArchiveClick(intervention)}>
-                                <Archive className="mr-2" /> Archivia
-                            </DropdownMenuItem>
+                            </TableCell>
                         )}
-                         {canDeleteIntervention && (
-                            <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                    onSelect={() => handleDeleteClick(intervention as Intervention)}>
-                                    <Trash2 className="mr-2" /> Elimina
+                        {currentUser.role === 'Admin' && (
+                            <TableCell className="hidden xl:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
+                            {client && client.address && (
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs hover:underline">
+                                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                                    <span>{client.address}</span>
+                                </a>
+                            )}
+                            </TableCell>
+                        )}
+                        <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getStatusBadge(intervention.status)}</TableCell>
+                        <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getPriorityBadge(intervention.priority)}</TableCell>
+                        <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.createdAt ? format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
+                        <TableCell className={cn("hidden md:table-cell cursor-pointer", urgent && "font-bold")} onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
+                        {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{operatorName || 'Non assegnato'}</TableCell>}
+                        <TableCell className="text-right">
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
+                                    <Pencil className="mr-2" /> Modifica
                                 </DropdownMenuItem>
-                            </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </Card>
+                                {canArchiveIntervention && (
+                                    <DropdownMenuItem onSelect={() => handleArchiveClick(intervention)}>
+                                        <Archive className="mr-2" /> Archivia
+                                    </DropdownMenuItem>
+                                )}
+                                {canDeleteIntervention && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                            onSelect={() => handleDeleteClick(intervention as Intervention)}>
+                                            <Trash2 className="mr-2" /> Elimina
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                        </TableRow>
+                    );
+                    })}
+                </TableBody>
+                </Table>
+            </Card>
+        </>
+      )}
        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -596,10 +698,3 @@ export function InterventionsTable({
     </div>
   );
 }
-
-    
-
-
-
-
-

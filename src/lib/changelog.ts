@@ -1,9 +1,19 @@
 
-
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings, Star, Archive, Send } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings, Star, Archive, Send, LayoutGrid, List } from 'lucide-react';
 
 export const changelog = [
+    {
+        version: "0.32",
+        date: "2025-12-15",
+        title: "Visualizzazione Post-it",
+        icon: LayoutGrid,
+        iconClass: "bg-yellow-400",
+        changes: [
+            { type: LayoutGrid, description: "Aggiunta una nuova modalità di visualizzazione 'Post-it' per l'elenco interventi, che permette di vedere le attività in un formato a griglia colorata." },
+            { type: List, description: "Possibilità di passare rapidamente dalla vista a Tabella alla vista Post-it tramite un selettore dedicato." },
+        ]
+    },
     {
         version: "0.31",
         date: "2025-12-14",
@@ -96,7 +106,7 @@ export const changelog = [
         iconClass: "bg-green-500",
         changes: [
             { type: LayoutDashboard, description: "Aggiunto il riquadro 'Interventi Assegnati' al Riepilogo Attività per un monitoraggio rapido del carico di lavoro." },
-            { type: Wrench, description: "Differenziata la logica di visualizzazione: gli Admin vedono tutti gli interventi assegnati, mentre gli Operatori vedono solo i propri." },
+            { type: Wrench, description: "Differenziata la logica di visualizzazione: gli Admin vedono il totale, gli operatori solo i propri." },
             { type: Search, description: "Corretto il link sulla card 'Interventi Assegnati' per filtrare correttamente l'elenco degli interventi specifici dell'operatore." },
         ]
     },
@@ -121,7 +131,7 @@ export const changelog = [
         icon: NotebookPen,
         iconClass: "bg-yellow-500",
         changes: [
-            { type: NotebookPen, description: "Aggiunto un riquadro 'Promemoria Personale' sulla dashboard, dove ogni utente può salvare i propri appunti privati." },
+            { type: NotebookPen, description: "Aggiunto un riquadro 'Promemoria Personale' sulla dashboard, induve ogni utente può salvare i propri appunti privati." },
             { type: Building, description: "Introdotto un 'Promemoria Aziendale' condiviso, visibile a tutti gli utenti dell'azienda ma modificabile solo dagli Admin, per comunicazioni importanti." },
             { type: Wrench, description: "Entrambi i promemoria salvano automaticamente il testo durante la digitazione per non perdere nessuna informazione." },
         ]
@@ -350,14 +360,3 @@ export const changelog = [
         ]
     }
 ];
-
-    
-
-    
-
-
-
-    
-
-    
-
