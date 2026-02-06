@@ -18,9 +18,8 @@ import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention, updateIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AddInterventionForm } from './add-intervention-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -83,7 +82,6 @@ export function InterventionsTable({
   const pathname = usePathname();
   
   const [interventions, setInterventions] = useState(initialInterventions);
-  const [clients, setClients] = useState(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
   
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
@@ -107,18 +105,14 @@ export function InterventionsTable({
   }, [initialInterventions]);
 
   useEffect(() => {
-    setClients(initialClients);
-  }, [initialClients]);
-
-  useEffect(() => {
     const opMap = new Map<string, string>();
     operators.forEach(op => opMap.set(op.id, op.name));
     setOperatorsMap(opMap);
 
     const cliMap = new Map<string, User>();
-    clients.forEach(c => cliMap.set(c.id, c));
+    initialClients.forEach(c => cliMap.set(c.id, c));
     setClientsMap(cliMap);
-  }, [operators, clients]);
+  }, [operators, initialClients]);
   
   useEffect(() => {
     if (pathname === '/dashboard/interventions') {
@@ -177,14 +171,19 @@ export function InterventionsTable({
   
   const handleArchiveClick = async (intervention: Intervention) => {
     if (currentUser.role === 'Admin' || currentUser.role === 'Creator') {
-        const updated = await updateIntervention(intervention.id, { status: 'Archiviato' }, currentUser);
-        if (updated) {
-            onInterventionChange();
-            toast({
-                title: 'Intervento archiviato',
-                description: `L'intervento "${intervention.title}" è stato spostato in archivio.`,
-            });
-        } else {
+        try {
+            const updated = await updateIntervention(intervention.id, { status: 'Archiviato' }, currentUser);
+            if (updated) {
+                onInterventionChange();
+                toast({
+                    title: 'Intervento archiviato',
+                    description: `L'intervento "${intervention.title}" è stato spostato in archivio.`,
+                });
+            } else {
+                throw new Error("Update failed");
+            }
+        } catch (error) {
+            console.error("Archive failed:", error);
             toast({
                 variant: 'destructive',
                 title: 'Errore',
@@ -221,7 +220,7 @@ export function InterventionsTable({
                 clientName: client?.name || 'N/D',
                 autologinUrl: reminderUrl,
                 resendConfig: {
-                    apiKey: 'placeholder', // This is handled on server side
+                    apiKey: 'placeholder', // Handled on server
                     from: 'placeholder',
                 }
             });
@@ -311,8 +310,8 @@ export function InterventionsTable({
                 bValue = b.isFeatured ? 1 : 0;
                 break;
             default:
-                aValue = a[sortConfig.key as keyof Intervention];
-                bValue = b[sortConfig.key as keyof Intervention];
+                aValue = a[sortConfig.key as keyof Intervention] ?? '';
+                bValue = b[sortConfig.key as keyof Intervention] ?? '';
         }
 
         if (aValue < bValue) {
@@ -428,7 +427,7 @@ export function InterventionsTable({
                     <SelectTrigger><SelectValue placeholder="Filtra per cliente" /></SelectTrigger>
                     <SelectContent>
                     <SelectItem value="all">Tutti i clienti</SelectItem>
-                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    {Array.from(clientsMap.values()).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
                 )}
@@ -581,7 +580,7 @@ export function InterventionsTable({
                             </div>
                             <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                                <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}><MoreHorizontal /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
@@ -713,7 +712,7 @@ export function InterventionsTable({
                         <TableCell className="text-right">
                             <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                                <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}><MoreHorizontal /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuItem onSelect={() => handleEditClick(intervention as Intervention)}>
