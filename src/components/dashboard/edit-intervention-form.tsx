@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X, ChevronsUpDown, Check, Archive } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X, ChevronsUpDown, Check, Archive, CheckCircle2 } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes, differenceInMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -45,6 +45,16 @@ import Image from 'next/image';
 import { fetchAttachmentAction } from '@/app/actions';
 import { Checkbox } from '../ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -59,14 +69,14 @@ const formSchema = z.object({
   dueTime: z.string().optional().nullable(),
   assignedOperatorIds: z.array(z.string()).default([]),
   newUpdate: z.string().optional(),
-  timeSpent: z.coerce.number().positive({ message: 'Le ore impiegate devono essere un numero positivo.' }).optional(),
+  timeSpent: z.coerce.number().min(0, { message: 'Le ore impiegate non possono essere negative.' }).optional(),
   materialsUsed: z.string().optional(),
   attachments: z.array(z.any()).optional(),
   workLogs: z.array(z.any()).optional(),
   notifyClient: z.boolean().default(false),
 }).superRefine((data, ctx) => {
     if (data.status === 'Completato') {
-        if (!data.timeSpent) {
+        if (data.timeSpent === undefined || data.timeSpent === null) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['timeSpent'],
@@ -107,6 +117,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const [attachmentDataUri, setAttachmentDataUri] = useState<string | null>(null);
   const [appConfig, setAppConfig] = useState<AppConfiguration | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isCompleteConfirmOpen, setIsCompleteConfirmOpen] = useState(false);
 
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -206,7 +217,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         status: values.status as InterventionStatus,
         dueDate: finalDueDate,
         updates: newUpdates,
-        timeSpent: values.timeSpent || null,
+        timeSpent: values.timeSpent === undefined ? null : values.timeSpent,
         materialsUsed: values.materialsUsed || null,
         completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt || null,
         attachments: values.attachments,
@@ -246,6 +257,30 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     } finally {
         setIsArchiving(false);
     }
+  }
+
+  const handleQuickComplete = () => {
+    const hours = form.getValues('timeSpent');
+    const materials = form.getValues('materialsUsed');
+
+    if (hours === undefined || hours === null || !materials || materials.trim() === '') {
+        setIsCompleteConfirmOpen(true);
+    } else {
+        form.setValue('status', 'Completato');
+        form.handleSubmit(onSubmit)();
+    }
+  };
+
+  const onConfirmCompleteWithoutDetails = () => {
+    if (form.getValues('timeSpent') === undefined || form.getValues('timeSpent') === null) {
+        form.setValue('timeSpent', 0);
+    }
+    if (!form.getValues('materialsUsed') || form.getValues('materialsUsed')?.trim() === '') {
+        form.setValue('materialsUsed', 'N/D');
+    }
+    form.setValue('status', 'Completato');
+    form.handleSubmit(onSubmit)();
+    setIsCompleteConfirmOpen(false);
   }
   
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -773,6 +808,15 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                             </FormItem>
                         )}
                     />
+
+                    {intervention.status !== 'Completato' && (
+                        <div className="pt-4">
+                            <Button type="button" variant="default" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={handleQuickComplete}>
+                                <CheckCircle2 className="mr-2 h-5 w-5" />
+                                Chiudi Intervento (Completato)
+                            </Button>
+                        </div>
+                    )}
                     
                     <Separator />
 
@@ -902,6 +946,23 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         setIsOpen={setIsClientEditOpen}
     />
     
+    <AlertDialog open={isCompleteConfirmOpen} onOpenChange={setIsCompleteConfirmOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Conferma Completamento</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Vuoi salvare l'intervento come <b>Completato</b> senza inserire ore e materiali?
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                <AlertDialogAction onClick={onConfirmCompleteWithoutDetails} className="bg-green-600 hover:bg-green-700">
+                    Sì, Completa
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+
     {attachmentToView && (
       <Dialog open={!!attachmentToView} onOpenChange={(open) => {
         if (!open) {
