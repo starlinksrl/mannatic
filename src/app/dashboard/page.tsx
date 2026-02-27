@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -8,7 +7,7 @@ import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointme
 import { isAfter, addDays, startOfToday, isWithinInterval, startOfDay, subMonths, differenceInHours } from 'date-fns';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star } from 'lucide-react';
+import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2 } from 'lucide-react';
 // import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -64,6 +63,7 @@ type KpiData = /*GenerateKpiDashboardInput &*/ {
   openAppointmentsList: Appointment[],
   latestSupportTickets?: SupportTicket[],
   featuredInterventions: Intervention[],
+  toInvoiceInterventions: Intervention[],
   // Operator specific
   urgentOpenCount?: number;
   newCount?: number;
@@ -130,6 +130,15 @@ export default function DashboardPage() {
     
     const activeInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
     const featuredInterventions = allInterventions.filter(i => i.isFeatured && !i.isMaintenance && i.status !== 'Completato') as Intervention[];
+    
+    const toInvoiceInterventions = allInterventions.filter(i => 
+        (i.status === 'Completato' || i.status === 'Da Fatturare') && 
+        !i.isMaintenance
+    ).sort((a, b) => {
+        const dateA = a.completedAt || a.createdAt;
+        const dateB = b.completedAt || b.createdAt;
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+    }) as Intervention[];
 
     const openInterventions = activeInterventions.length;
     const closedInterventions = allInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato' || i.status === 'Archiviato');
@@ -293,6 +302,7 @@ export default function DashboardPage() {
       openAppointmentsList,
       latestSupportTickets,
       featuredInterventions,
+      toInvoiceInterventions,
       urgentOpenCount,
       newCount,
       inProgressCount,
@@ -400,7 +410,7 @@ export default function DashboardPage() {
             className="flex items-center gap-4 group cursor-pointer"
              onClick={(e) => {
                 e.stopPropagation();
-                router.push('/dashboard/support?ticketId=${ticket.id}');
+                router.push(`/dashboard/support?ticketId=${ticket.id}`);
             }}
         >
           <div className="flex-1 grid gap-1">
@@ -528,6 +538,56 @@ export default function DashboardPage() {
         )
     }
 
+    const AdminReviewCard = ({ interventions }: { interventions: Intervention[] }) => {
+        if (!interventions || interventions.length === 0) return null;
+
+        return (
+            <Card className="lg:col-span-12">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 font-headline">
+                        <ReceiptEuro className="h-5 w-5 text-purple-500" />
+                        Controllo e Fatturazione
+                    </CardTitle>
+                    <CardDescription>Interventi completati dai tecnici che richiedono fatturazione o chiusura definitiva.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {interventions.map(intervention => (
+                            <div 
+                                key={intervention.id} 
+                                onClick={() => openModal(intervention)} 
+                                className="p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group"
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex-1 min-w-0 mr-2">
+                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{clientsMap.get(intervention.clientId)?.name || 'Cliente N/D'}</p>
+                                        <p className="font-semibold text-sm line-clamp-1 group-hover:underline">{intervention.title}</p>
+                                    </div>
+                                    {intervention.status === 'Completato' ? (
+                                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                                            <CheckCircle2 className="h-3 w-3 mr-1" /> Completato
+                                        </Badge>
+                                    ) : (
+                                        <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                                            <ReceiptEuro className="h-3 w-3 mr-1" /> Da Fatturare
+                                        </Badge>
+                                    )}
+                                </div>
+                                <div className="flex justify-between items-center text-[11px] text-muted-foreground">
+                                    <span>ID: {intervention.id}</span>
+                                    <span>Ore: {intervention.timeSpent || '0'}h</span>
+                                    {intervention.completedAt && (
+                                        <span>Chiuso il: {format(new Date(intervention.completedAt), 'dd/MM/yy')}</span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
     const OperatorWorkloadCard = ({ data }: { data: OperatorWorkload[] }) => {
         const totalOpen = data.reduce((acc, op) => acc + op.open, 0);
 
@@ -605,6 +665,10 @@ export default function DashboardPage() {
 
                 {kpiData.featuredInterventions.length > 0 && (
                     <FeaturedInterventionsCard interventions={kpiData.featuredInterventions} />
+                )}
+
+                {(user.role === 'Admin' || user.role === 'Creator') && kpiData.toInvoiceInterventions.length > 0 && (
+                    <AdminReviewCard interventions={kpiData.toInvoiceInterventions} />
                 )}
 
                 {(user.role === 'Admin' || user.role === 'Operator') && (
