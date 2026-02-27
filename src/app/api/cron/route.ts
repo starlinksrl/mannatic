@@ -1,6 +1,6 @@
-
 import { NextResponse } from 'next/server';
-import { getCompanies, sendExpiringInterventionsSummaryEmail } from '@/app/actions';
+import { sendExpiringInterventionsSummaryEmail } from '@/app/actions';
+import { getCompanies } from '@/lib/data';
 
 export async function GET() {
   try {

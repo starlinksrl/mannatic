@@ -1,6 +1,6 @@
-
 import { NextResponse } from 'next/server';
-import { getCompanies, sendOverdueInterventionsSummaryEmail } from '@/app/actions';
+import { sendOverdueInterventionsSummaryEmail } from '@/app/actions';
+import { getCompanies } from '@/lib/data';
 
 export async function GET() {
   try {
@@ -21,5 +21,3 @@ export async function GET() {
     return NextResponse.json({ success: false, error: error.message || 'Weekly cron job failed' }, { status: 500 });
   }
 }
-
-    

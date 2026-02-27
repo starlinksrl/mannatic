@@ -1,34 +1,26 @@
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
 import { getInterventions, getUsers, getClients, updateUser, getAppointments, getSupportTickets } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointment, SupportTicket } from '@/lib/types';
-import { isAfter, addDays, startOfToday, isWithinInterval, startOfDay, subMonths, differenceInHours } from 'date-fns';
+import { isAfter, addDays, startOfToday, isWithinInterval, subMonths, differenceInHours, format, formatDistanceToNow } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, PlusCircle, Wrench, HardHat, Check, AlertOctagon, Clock, Activity, Settings, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2 } from 'lucide-react';
-// import { GenerateKpiDashboardInput } from '@/ai/flows/generate-kpi-dashboard';
+import { Loader, Wrench, HardHat, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2 } from 'lucide-react';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { ActivityFeed } from '@/components/dashboard/activity-feed';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow } from 'date-fns';
-import { it } from 'date-fns/locale';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { QuoteOfTheDay } from '@/components/dashboard/quote-of-the-day';
 import { Badge } from '@/components/ui/badge';
 import { Scratchpad } from '@/components/dashboard/scratchpad';
 import { CompanyScratchpad } from '@/components/dashboard/company-scratchpad';
-import { InterventionsTable } from '@/components/dashboard/interventions-table';
 import { EditAppointmentForm } from '@/components/dashboard/edit-appointment-form';
 
 
@@ -47,7 +39,7 @@ type OperatorWorkload = {
 
 type WeeklyScheduleItem = (Intervention | Appointment) & { itemType: 'intervention' | 'appointment' };
 
-type KpiData = /*GenerateKpiDashboardInput &*/ { 
+type KpiData = { 
   openInterventions: number;
   closedInterventions: number;
   slaAdherencePercentage: number;
@@ -76,7 +68,6 @@ type KpiData = /*GenerateKpiDashboardInput &*/ {
 export default function DashboardPage() {
   const { user, setUser, currentCompany, setCurrentCompany } = useUser();
   const router = useRouter();
-  const { toast } = useToast();
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [operators, setOperators] = useState<User[]>([]);
@@ -118,16 +109,6 @@ export default function DashboardPage() {
     setClients(allClients);
     setOperators(users.filter(u => u.role === 'Operator'));
     
-    let relevantInterventionsForKpis: (Intervention | ScheduledMaintenance)[];
-    
-    if (user.role === 'Operator') {
-        const operatorInterventions = allInterventions.filter(i => i.assignedOperatorIds?.includes(user.id));
-        const unassignedInterventions = allInterventions.filter(i => !i.assignedOperatorIds || i.assignedOperatorIds.length === 0);
-        relevantInterventionsForKpis = [...operatorInterventions, ...unassignedInterventions];
-    } else {
-        relevantInterventionsForKpis = allInterventions;
-    }
-    
     const activeInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
     const featuredInterventions = allInterventions.filter(i => i.isFeatured && !i.isMaintenance && i.status !== 'Completato') as Intervention[];
     
@@ -153,7 +134,7 @@ export default function DashboardPage() {
     const slaAdherencePercentage = totalClosedOrInProgress.length > 0 ? Math.round((onTime.length / totalClosedOrInProgress.length) * 100) : 100;
 
     const overdueMaintenanceTasks = allInterventions.filter(i => {
-      const isMaintenance = 'periodicity' in i;
+      const isMaintenance = i.isMaintenance === true;
       return isMaintenance && (i.status === 'Nuovo' || i.status === 'In corso') && isAfter(now, new Date(i.dueDate!));
     }).length;
     
@@ -191,18 +172,6 @@ export default function DashboardPage() {
       })))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
-      
-    const openInterventionsWithLocation = activeInterventions
-      .map(i => {
-          const client = localClientsMap.get(i.clientId);
-          return {
-              id: i.id,
-              title: i.title,
-              clientName: client?.name || 'Sconosciuto',
-              clientAddress: client?.address,
-          };
-      })
-      .filter(i => i.clientAddress);
 
     const twoDaysFromNow = addDays(now, 2);
     const sevenDaysFromNow = addDays(startOfToday(), 7);
@@ -232,7 +201,6 @@ export default function DashboardPage() {
         .slice(0,3);
     }
     
-    // KPIs for the summary box
     const allActiveInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
     const urgentOpenCount = allActiveInterventions.filter(i => i.type !== 'new_installation' && (i.priority === 'Critica' || i.priority === 'Alta')).length;
     const newCount = allActiveInterventions.filter(i => i.type !== 'new_installation' && i.status === 'Nuovo').length;
@@ -354,79 +322,6 @@ export default function DashboardPage() {
         setClients(prevClients => prevClients.map(c => c.id === updatedClient.id ? updatedClient : c));
     }
 
-
-    const TaskItem = ({ task, icon }: { task: Intervention, icon: React.ReactNode }) => (
-        <div 
-            className="flex items-center gap-4 group cursor-pointer"
-            onClick={(e) => {
-                e.stopPropagation();
-                openModal(task);
-            }}
-        >
-          {icon}
-          <div className="grid gap-1">
-            <p className="text-sm font-medium leading-none group-hover:underline">{task.title}</p>
-            <p className="text-sm text-muted-foreground">
-              per {clientsMap.get(task.clientId)?.name || 'Sconosciuto'} - Scade {formatDistanceToNow(new Date(task.dueDate!), { addSuffix: true, locale: it })}
-            </p>
-          </div>
-          <div className="ml-auto font-medium text-sm">{format(new Date(task.dueDate!), 'dd/MM')}</div>
-        </div>
-    );
-    
-    const AppointmentTaskItem = ({ task }: { task: Appointment }) => (
-        <div 
-            className="flex items-center gap-4 group cursor-pointer"
-             onClick={(e) => {
-                e.stopPropagation();
-                router.push('/dashboard/appointments');
-            }}
-        >
-          <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
-          <div className="grid gap-1">
-            <p className="text-sm font-medium leading-none group-hover:underline">{task.title}</p>
-            <p className="text-sm text-muted-foreground">
-              per {clientsMap.get(task.clientId)?.name || 'Sconosciuto'}
-            </p>
-          </div>
-          <div className="ml-auto font-medium text-sm">{format(new Date(task.date!), 'dd/MM')}</div>
-        </div>
-    );
-    
-    const SupportTicketItem = ({ ticket }: { ticket: SupportTicket }) => {
-       const getStatusBadge = (status: 'Aperto' | 'Chiuso') => {
-        switch (status) {
-          case 'Aperto':
-            return <Badge className="bg-green-100 text-green-800">Aperto</Badge>;
-          case 'Chiuso':
-            return <Badge variant="secondary">Chiuso</Badge>;
-          default:
-            return <Badge>{status}</Badge>;
-        }
-      };
-
-      return (
-        <div 
-            className="flex items-center gap-4 group cursor-pointer"
-             onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/dashboard/support?ticketId=${ticket.id}`);
-            }}
-        >
-          <div className="flex-1 grid gap-1">
-            <div className="flex justify-between items-start">
-              <p className="text-sm font-medium leading-none group-hover:underline pr-2">{ticket.subject}</p>
-              {getStatusBadge(ticket.status)}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {user?.role !== 'Client' && `Per: ${ticket.clientName} - `}
-              Ultimo agg.: {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true, locale: it })}
-            </p>
-          </div>
-        </div>
-      );
-    }
-    
     const WeeklyScheduleCard = ({ schedule }: { schedule: WeeklyScheduleItem[] }) => {
       const groupedSchedule = schedule.reduce((acc, item) => {
         const date = format(new Date(item.itemType === 'intervention' ? item.dueDate! : item.date!), 'yyyy-MM-dd');
