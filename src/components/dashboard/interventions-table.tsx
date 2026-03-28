@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -18,7 +17,7 @@ import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention, updateIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -333,6 +332,12 @@ export function InterventionsTable({
     return sortableItems;
   }, [filteredInterventions, sortConfig, clientsMap]);
 
+  const totalToInvoice = useMemo(() => {
+    return filteredInterventions
+        .filter(i => i.status === 'Da Fatturare')
+        .reduce((acc, i) => acc + (i.cost || 0), 0);
+  }, [filteredInterventions]);
+
   const requestSort = (key: keyof Intervention | 'client' | 'operator') => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -409,6 +414,8 @@ export function InterventionsTable({
   const canDeleteIntervention = ['Admin', 'Client', 'Creator'].includes(currentUser.role);
   const canArchiveIntervention = currentUser.role === 'Admin' || currentUser.role === 'Creator';
   
+  const isAdminOrCreator = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+
   return (
     <div className="space-y-4">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
@@ -472,6 +479,16 @@ export function InterventionsTable({
                 </Button>
             </div>
       </div>
+
+      {isAdminOrCreator && totalToInvoice > 0 && (
+          <div className="flex justify-end">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 shadow-sm animate-in fade-in slide-in-from-top-2">
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                  <span className="text-xs font-bold text-purple-600 uppercase tracking-tight">Valore da Fatturare (Filtrato):</span>
+                  <span className="text-sm font-black text-purple-700 dark:text-purple-400">€ {totalToInvoice.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
+              </div>
+          </div>
+      )}
 
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

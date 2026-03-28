@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -8,7 +7,7 @@ import { isAfter, addDays, startOfToday, isWithinInterval, subMonths, difference
 import { it } from 'date-fns/locale';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, Wrench, HardHat, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2 } from 'lucide-react';
+import { Loader, Wrench, HardHat, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2, TrendingUp } from 'lucide-react';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
@@ -57,6 +56,7 @@ type KpiData = {
   latestSupportTickets?: SupportTicket[],
   featuredInterventions: Intervention[],
   toInvoiceInterventions: Intervention[],
+  totalToInvoiceValue: number,
   // Operator specific
   urgentOpenCount?: number;
   newCount?: number;
@@ -121,6 +121,10 @@ export default function DashboardPage() {
         const dateB = b.completedAt || b.createdAt;
         return new Date(dateB).getTime() - new Date(dateA).getTime();
     }) as Intervention[];
+
+    const totalToInvoiceValue = toInvoiceInterventions
+        .filter(i => i.status === 'Da Fatturare')
+        .reduce((acc, i) => acc + (i.cost || 0), 0);
 
     const openInterventions = activeInterventions.length;
     const closedInterventions = allInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato' || i.status === 'Archiviato');
@@ -272,6 +276,7 @@ export default function DashboardPage() {
       latestSupportTickets,
       featuredInterventions,
       toInvoiceInterventions,
+      totalToInvoiceValue,
       urgentOpenCount,
       newCount,
       inProgressCount,
@@ -434,17 +439,28 @@ export default function DashboardPage() {
         )
     }
 
-    const AdminReviewCard = ({ interventions }: { interventions: Intervention[] }) => {
+    const AdminReviewCard = ({ interventions, totalValue }: { interventions: Intervention[], totalValue: number }) => {
         if (!interventions || interventions.length === 0) return null;
 
         return (
             <Card className="lg:col-span-12">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 font-headline">
-                        <ReceiptEuro className="h-5 w-5 text-purple-500" />
-                        Controllo e Fatturazione
-                    </CardTitle>
-                    <CardDescription>Interventi completati dai tecnici che richiedono fatturazione o chiusura definitiva.</CardDescription>
+                <CardHeader className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <div>
+                        <CardTitle className="flex items-center gap-2 font-headline">
+                            <ReceiptEuro className="h-5 w-5 text-purple-500" />
+                            Controllo e Fatturazione
+                        </CardTitle>
+                        <CardDescription>Interventi completati dai tecnici che richiedono fatturazione o chiusura definitiva.</CardDescription>
+                    </div>
+                    {totalValue > 0 && (
+                        <div className="flex items-center gap-3 bg-purple-50 dark:bg-purple-900/20 px-4 py-2 rounded-lg border border-purple-100 dark:border-purple-800">
+                            <TrendingUp className="h-5 w-5 text-purple-600" />
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-purple-600 tracking-wider leading-none mb-1">Totale da Fatturare</p>
+                                <p className="text-xl font-bold text-purple-700 dark:text-purple-400">€ {totalValue.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</p>
+                            </div>
+                        </div>
+                    )}
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -569,7 +585,7 @@ export default function DashboardPage() {
                 )}
 
                 {(user.role === 'Admin' || user.role === 'Creator') && kpiData.toInvoiceInterventions.length > 0 && (
-                    <AdminReviewCard interventions={kpiData.toInvoiceInterventions} />
+                    <AdminReviewCard interventions={kpiData.toInvoiceInterventions} totalValue={kpiData.totalToInvoiceValue} />
                 )}
 
                 {(user.role === 'Admin' || user.role === 'Operator') && (
