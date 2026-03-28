@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -47,7 +46,11 @@ export default function ClientRequestsPage() {
         setOperators(allUsers.filter(u => u.role === 'Operator'));
         setClients(allClients.filter(c => c.id === user.id));
         setInterventions(allInterventions.filter(i => i.clientId === user.id));
-        setSupportTickets(allTickets);
+        
+        // Filtra solo i ticket aperti o in lavorazione per la dashboard
+        const activeTickets = allTickets.filter(t => t.status === 'Aperto' || t.status === 'In Lavorazione');
+        setSupportTickets(activeTickets);
+        
         setLoading(false);
     }
 
@@ -113,7 +116,7 @@ export default function ClientRequestsPage() {
                 <div className="flex justify-between items-center">
                     <div>
                         <CardTitle>Ticket di Supporto</CardTitle>
-                        <CardDescription>Le tue richieste di assistenza tecnica o amministrativa.</CardDescription>
+                        <CardDescription>Le tue richieste attive di assistenza tecnica o amministrativa.</CardDescription>
                     </div>
                     <AddSupportTicketForm onTicketAdded={fetchData}>
                         <Button size="sm">
@@ -131,6 +134,11 @@ export default function ClientRequestsPage() {
                     onTicketDeleted={fetchData}
                     isDashboardView={true}
                 />
+                {supportTickets.length === 0 && (
+                    <p className="text-center text-sm text-muted-foreground py-4">
+                        Non hai ticket di supporto attivi al momento.
+                    </p>
+                )}
             </CardContent>
         </Card>
 
