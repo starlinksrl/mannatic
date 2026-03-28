@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/user-context';
 import { Button } from '@/components/ui/button';
@@ -25,11 +24,13 @@ function LoginFormComponent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const autologinProcessed = useRef(false);
 
   useEffect(() => {
     const handleAutologin = async () => {
       const token = searchParams.get('autologin_token');
-      if (token) {
+      if (token && !autologinProcessed.current) {
+        autologinProcessed.current = true;
         setIsLoading(true);
         try {
           const user = await consumeAutologinToken(token);
@@ -37,14 +38,19 @@ function LoginFormComponent() {
             await login(user);
             toast({
               title: 'Accesso effettuato',
-              description: `Login automatico in corso...`,
+              description: `Accesso automatico in corso come ${user.name}...`,
             });
-            router.replace('/dashboard/requests');
+            // Redirect based on role
+            if (user.role === 'Client') {
+                router.replace('/dashboard/requests');
+            } else {
+                router.replace('/dashboard');
+            }
           } else {
             toast({
               variant: 'destructive',
               title: 'Accesso fallito',
-              description: 'Il link di accesso non è valido o è scaduto.',
+              description: 'Il link di accesso non è più valido o è scaduto.',
             });
             router.replace('/login');
           }

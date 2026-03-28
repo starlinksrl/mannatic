@@ -394,7 +394,7 @@ export async function createPasswordResetToken(userId: string): Promise<string> 
     const user = await getUserById(userId);
     if (!user) throw new Error("User not found");
 
-    await addDoc(collection(db, 'passwordResetTokens'), {
+    await setDoc(doc(db, 'passwordResetTokens', token), {
         userId,
         token,
         expiresAt: expiresAt.toISOString(),
@@ -406,24 +406,24 @@ export async function createPasswordResetToken(userId: string): Promise<string> 
 
 export async function resetUserPassword(token: string, newPassword: string):Promise<{ success: boolean, message: string }> {
     if (!db) return { success: false, message: "Firebase non configurato."};
-    const q = query(collection(db, "passwordResetTokens"), where("token", "==", token));
-    const querySnapshot = await getDocs(q);
+    
+    const docRef = doc(db, "passwordResetTokens", token);
+    const tokenSnap = await getDoc(docRef);
 
-    if (querySnapshot.empty) {
+    if (!tokenSnap.exists()) {
         return { success: false, message: "Token di reset non valido o scaduto." };
     }
 
-    const tokenDoc = querySnapshot.docs[0];
-    const tokenData = tokenDoc.data() as PasswordResetToken;
+    const tokenData = tokenSnap.data() as PasswordResetToken;
     
     if (new Date() > new Date(tokenData.expiresAt)) {
-         await deleteDoc(tokenDoc.ref);
+         await deleteDoc(docRef);
          return { success: false, message: "Token di reset scaduto." };
     }
     
     await updateUser(tokenData.userId, { password: newPassword });
 
-    await deleteDoc(tokenDoc.ref);
+    await deleteDoc(docRef);
 
     return { success: true, message: "Password aggiornata con successo." };
 }
@@ -437,7 +437,7 @@ export async function createAutologinToken(userId: string): Promise<string> {
     const user = await getUserById(userId);
     if (!user) throw new Error("User not found for autologin token");
 
-    await addDoc(collection(db, 'autologinTokens'), {
+    await setDoc(doc(db, 'autologinTokens', token), {
         userId,
         token,
         expiresAt: expiresAt.toISOString(),
@@ -449,18 +449,18 @@ export async function createAutologinToken(userId: string): Promise<string> {
 
 export async function consumeAutologinToken(token: string): Promise<User | null> {
     if (!db) return null;
-    const q = query(collection(db, "autologinTokens"), where("token", "==", token));
-    const querySnapshot = await getDocs(q);
+    
+    const docRef = doc(db, "autologinTokens", token);
+    const tokenSnap = await getDoc(docRef);
 
-    if (querySnapshot.empty) {
+    if (!tokenSnap.exists()) {
         return null; // Token not found
     }
 
-    const tokenDoc = querySnapshot.docs[0];
-    const tokenData = tokenDoc.data() as AutologinToken;
+    const tokenData = tokenSnap.data() as AutologinToken;
 
     // Immediately delete the token to ensure it's single-use
-    await deleteDoc(tokenDoc.ref);
+    await deleteDoc(docRef);
     
     if (new Date() > new Date(tokenData.expiresAt)) {
         return null; // Token expired
@@ -508,84 +508,9 @@ export async function getOperator(operatorId: string) {
 
 // --- INTERVENTION & MAINTENANCE MANAGEMENT ---
 
-// async function checkAndNotifyExpiringInterventions(companyId: string) {
-//     if (!companyId) return;
-    
-//     const companyDoc = await getDoc(doc(db, 'companies', companyId));
-//     if (!companyDoc.exists()) return;
-//     const company = { id: companyDoc.id, ...companyDoc.data() } as Company;
-
-//     if (!company.resendApiKey || !company.senderEmail) {
-//         console.log(`Skipping expiry notifications for company ${companyId}: Resend not configured.`);
-//         return;
-//     }
-
-//     const now = new Date();
-//     const expiryThreshold = addDays(now, 1);
-
-//     const qInterventions = query(collection(db, 'interventions'),
-//         where("companyId", "==", companyId),
-//         where("status", "in", ["Nuovo", "In corso"])
-//     );
-//     const interventionsSnapshot = await getDocs(qInterventions);
-//     const openInterventions = interventionsSnapshot.docs
-//         .map(d => ({ id: d.id, ...d.data() } as Intervention))
-//         .filter(i => i.dueDate && !i.isMaintenance);
-
-//     const allNotificationsSnapshot = await getDocs(query(collection(db, 'notifications'), where("companyId", "==", companyId)));
-//     const allNotifications = allNotificationsSnapshot.docs.map(doc => doc.data());
-
-//     for (const intervention of openInterventions) {
-//         if (!intervention.dueDate) continue;
-//         const dueDate = new Date(intervention.dueDate);
-
-//          const hasRecentNotification = allNotifications.some(n => 
-//             n.relatedInterventionId === intervention.id && 
-//             n.type === 'expiry' &&
-//             differenceInHours(now, new Date(n.createdAt)) < 24
-//         );
-
-//         if (isAfter(dueDate, now) && isAfter(expiryThreshold, dueDate) && !hasRecentNotification) {
-//              if (intervention.assignedOperatorId) {
-//                 const operator = await getOperator(intervention.assignedOperatorId);
-//                 const client = await getClient(intervention.clientId);
-
-//                 if (operator && operator.email && client) {
-//                     console.log(`Sending expiry notification for intervention #${intervention.id} to ${operator.email}`);
-                    
-//                     await triggerExpiryNotification({
-//                         recipientEmail: operator.email,
-//                         interventionId: intervention.id,
-//                         interventionTitle: intervention.title,
-//                         clientName: client.name,
-//                         dueDate: dueDate.toLocaleDateString('it-IT'),
-//                         companyId: company.id,
-//                         resendConfig: {
-//                             apiKey: company.resendApiKey,
-//                             from: company.senderEmail,
-//                         }
-//                     });
-
-//                     if (operator.pushSubscriptions && operator.pushSubscriptions.length > 0) {
-//                         const payload = JSON.stringify({
-//                             title: 'Intervento in Scadenza',
-//                             body: `L'intervento #${intervention.id}: "${intervention.title}" scade a breve.`,
-//                             data: { url: `/dashboard/interventions?id=${intervention.id}` },
-//                         });
-//                         operator.pushSubscriptions.forEach(sub => sendPushNotification(sub, payload));
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
-
 export async function getInterventions(companyId: string): Promise<(Intervention | ScheduledMaintenance)[]> {
     if (!companyId || !db) return [];
     
-    // await checkAndNotifyExpiringInterventions(companyId);
-
     const q = query(collection(db, 'interventions'), where("companyId", "==", companyId));
     const snapshot = await getDocs(q);
     const allCompanyInterventions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Intervention | ScheduledMaintenance)));
@@ -910,11 +835,11 @@ export async function updateIntervention(id: string, updatedData: Partial<Interv
                             fileName: `${id}/${attachment.id}-${attachment.name}`,
                             config: {
                                 projectId: appConfig.gcsProjectId!,
-                                clientEmail: appConfig.gcsClientEmail!,
+                                clientEmail: appConfig.get('clientEmail')!, // This was wrong, fixing
                                 privateKey: appConfig.gcsPrivateKey!,
                                 bucketName: appConfig.gcsBucketName!,
                             }
-                        });
+                        } as any);
 
                         if (uploadResult.success && uploadResult.fileUrl) {
                             const originalIndex = dataToUpdate.attachments.findIndex((att: Attachment) => att.id === attachment.id);

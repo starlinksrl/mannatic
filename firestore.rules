@@ -84,13 +84,13 @@ service cloud.firestore {
     }
     
     match /passwordResetTokens/{tokenId} {
-        // No one should be able to read/write these tokens directly. They are managed by the server.
-        allow read, write: if false;
+        allow get, create, delete: if true;
+        allow list: if false;
     }
 
      match /autologinTokens/{tokenId} {
-        // No one should be able to read/write these tokens directly. They are managed by the server.
-        allow read, write: if false;
+        allow get, create, delete: if true;
+        allow list: if false;
     }
   }
 }

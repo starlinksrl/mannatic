@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { generateKpiDashboard, GenerateKpiDashboardInput, GenerateKpiDashboardOutput } from '@/ai/flows/generate-kpi-dashboard';
@@ -24,6 +23,7 @@ import webpush from 'web-push';
 import { generateShortId } from '@/lib/utils';
 import { addDays, isAfter, isBefore, startOfToday, format, subDays } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { headers } from 'next/headers';
 
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BAbd3o1jCl3s9l1nJqprnO6S52aP9J6kLo0up6b8P8r_28s8-IBPxIXvjAs7xJt5fXAyJEV7nh0C2MGM0z2Y24I';
@@ -270,7 +270,9 @@ export async function handlePasswordResetRequest(email: string): Promise<{ succe
 
     try {
         const token = await createPasswordResetToken(user.id);
-        const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
+        const host = (await headers()).get('host');
+        const protocol = host?.includes('localhost') || host?.includes('.workstations.google.com') ? 'http' : 'https';
+        const baseUrl = `${protocol}://${host}`;
         const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
         const input: SendPasswordResetEmailInput = {
@@ -323,7 +325,10 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
     }
 
     try {
-        const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
+        const host = (await headers()).get('host');
+        const protocol = host?.includes('localhost') || host?.includes('.workstations.google.com') ? 'http' : 'https';
+        const baseUrl = `${protocol}://${host}`;
+        
         const input: SendCredentialsEmailInput = {
             recipientEmail: user.email,
             userName: user.name,
@@ -347,18 +352,20 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
 
 export async function createClientAutologinUrl(clientId: string): Promise<{ success: boolean; url?: string; error?: string }> {
     const client = await getUserById(clientId);
-    if (!client || client.role !== 'Client') {
-        return { success: false, error: 'Utente non trovato o non è un cliente.' };
+    if (!client) {
+        return { success: false, error: 'Utente non trovato.' };
     }
 
     const company = await getCompanyByUserId(clientId);
-    if (!company) {
+    if (!company && client.role !== 'Creator') {
         return { success: false, error: 'Impossibile trovare l\'azienda associata.' };
     }
 
     try {
         const token = await createAutologinToken(clientId);
-        const baseUrl = company.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it';
+        const host = (await headers()).get('host');
+        const protocol = host?.includes('localhost') || host?.includes('.workstations.google.com') ? 'http' : 'https';
+        const baseUrl = `${protocol}://${host}`;
         const url = `${baseUrl}/login?autologin_token=${token}`;
         return { success: true, url };
     } catch (error: any) {
@@ -389,12 +396,16 @@ export async function handleRegistration(values: { companyName: string, name: st
             return { success: true, user: adminUser };
         }
 
+        const host = (await headers()).get('host');
+        const protocol = host?.includes('localhost') || host?.includes('.workstations.google.com') ? 'http' : 'https';
+        const baseUrl = `${protocol}://${host}`;
+
         const input: SendCredentialsEmailInput = {
             recipientEmail: adminUser.email,
             userName: adminUser.name,
             userEmail: adminUser.email,
             userPassword: adminUser.password!,
-            loginLink: company.platformUrl || 'https://work.mannatec.it',
+            loginLink: baseUrl,
             companyId: company.id,
             resendConfig: {
                 apiKey: appConfig.resendApiKey,
@@ -671,18 +682,3 @@ export async function convertSupportTicketToIntervention(ticketId: string, admin
         return { success: false, error: error.message || "Si è verificato un errore sconosciuto." };
     }
 }
-    
-
-    
-
-
-
-
-    
-
-    
-
-
-
-
-
