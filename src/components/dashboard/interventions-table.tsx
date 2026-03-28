@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -366,12 +367,12 @@ export function InterventionsTable({
 
   const renderStatus = (intervention: Intervention) => {
     const badge = getStatusBadge(intervention.status);
-    const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
-    if (intervention.status === 'Da Fatturare' && isAdmin && intervention.cost !== null && intervention.cost !== undefined) {
+    const canSeeCost = ['Admin', 'Creator', 'Client'].includes(currentUser.role);
+    if (intervention.status === 'Da Fatturare' && canSeeCost && intervention.cost !== null && intervention.cost !== undefined) {
         return (
             <div className="flex flex-col items-start gap-0.5">
                 {badge}
-                <span className="text-[10px] font-bold text-purple-700 whitespace-nowrap">€ {intervention.cost.toFixed(2)}</span>
+                <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400 whitespace-nowrap">€ {intervention.cost.toFixed(2)}</span>
             </div>
         );
     }
@@ -414,7 +415,7 @@ export function InterventionsTable({
   const canDeleteIntervention = ['Admin', 'Client', 'Creator'].includes(currentUser.role);
   const canArchiveIntervention = currentUser.role === 'Admin' || currentUser.role === 'Creator';
   
-  const isAdminOrCreator = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+  const canSeeFinancialSummary = ['Admin', 'Creator', 'Client'].includes(currentUser.role);
 
   return (
     <div className="space-y-4">
@@ -480,7 +481,7 @@ export function InterventionsTable({
             </div>
       </div>
 
-      {isAdminOrCreator && totalToInvoice > 0 && (
+      {canSeeFinancialSummary && totalToInvoice > 0 && (
           <div className="flex justify-end">
               <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 shadow-sm animate-in fade-in slide-in-from-top-2">
                   <TrendingUp className="h-4 w-4 text-purple-600" />
@@ -516,7 +517,7 @@ export function InterventionsTable({
                                   </div>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2" onClick={e => e.stopPropagation()}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2" onClick={e => { e.stopPropagation(); }}>
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
