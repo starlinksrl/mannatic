@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 import webpush from 'web-push';
 
@@ -151,6 +150,7 @@ export interface Intervention {
   completedAt?: string | null;
   timeSpent?: number | null; // in hours
   materialsUsed?: string | null;
+  cost?: number | null;
   photos?: string[];
   clientSignature?: string;
   updates?: InterventionUpdate[];

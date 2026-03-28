@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -57,6 +56,7 @@ const formSchema = z.object({
   assignedOperatorIds: z.array(z.string()).default([]),
   attachments: z.array(z.any()).optional(),
   notifyClient: z.boolean().default(false).optional(),
+  cost: z.coerce.number().min(0).optional().nullable(),
 });
 
 interface AddInterventionFormProps {
@@ -77,6 +77,8 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   
+  const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -89,6 +91,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       dueTime: '',
       attachments: [],
       notifyClient: false,
+      cost: null,
     },
   });
   
@@ -106,6 +109,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
             dueTime: '',
             attachments: [],
             notifyClient: false,
+            cost: null,
         });
     }
   }, [isOpen, defaultType, currentUser, form]);
@@ -143,6 +147,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
         creatorName: currentUser.name,
         attachments: values.attachments,
         notifyClient: values.notifyClient || false,
+        cost: isAdmin ? values.cost : null,
     });
     
     onInterventionAdded(newIntervention);
@@ -373,6 +378,22 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                         </FormItem>
                     )}
                     />
+
+                    {isAdmin && (
+                        <FormField
+                            control={form.control}
+                            name="cost"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Costo Previsto (€)</FormLabel>
+                                <FormControl>
+                                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value ?? ''} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
 
                     <div className="space-y-4">
                       <h4 className="text-sm font-medium">Allegati</h4>

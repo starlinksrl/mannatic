@@ -1,5 +1,4 @@
 
-
 import { User, Client, Intervention, ScheduledMaintenance, Notification, UserRole, InterventionPriority, InterventionStatus, Company, Appointment, AppointmentStatus, PasswordResetToken, AllowedSector, InterventionUpdate, AppConfiguration, Attachment, InterventionType, WorkLog, AutologinToken, SupportTicket, SupportMessage, SupportTicketStatus } from './types';
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter, differenceInMinutes, addHours } from 'date-fns';
 import { db, auth } from './firebase';
@@ -752,6 +751,7 @@ export async function addIntervention(interventionData: AddInterventionParams): 
         isMaintenance: false,
         type: restOfData.type || 'standard',
         attachments: finalAttachments,
+        cost: restOfData.cost || null,
     };
 
     await setDoc(doc(db, 'interventions', newId), newInterventionData);

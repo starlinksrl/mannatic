@@ -74,6 +74,7 @@ const formSchema = z.object({
   attachments: z.array(z.any()).optional(),
   workLogs: z.array(z.any()).optional(),
   notifyClient: z.boolean().default(false),
+  cost: z.coerce.number().min(0).optional().nullable(),
 }).superRefine((data, ctx) => {
     if (data.status === 'Completato') {
         if (data.timeSpent === undefined || data.timeSpent === null) {
@@ -128,6 +129,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
       attachments: [],
       workLogs: [],
       notifyClient: false,
+      cost: null,
     }
   });
 
@@ -154,6 +156,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         attachments: intervention.attachments || [],
         workLogs: intervention.workLogs || [],
         notifyClient: false,
+        cost: intervention.cost ?? null,
       });
     }
   }, [intervention, form]);
@@ -222,6 +225,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt || null,
         attachments: values.attachments,
         workLogs: values.workLogs,
+        cost: isAdmin ? values.cost : intervention.cost,
     };
     
     const updated = await updateIntervention(intervention!.id, updatedInterventionData, currentUser);
@@ -794,6 +798,21 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                 </FormItem>
                             )}
                         />
+                        {isAdmin && (
+                            <FormField
+                                control={form.control}
+                                name="cost"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Costo Intervento (€)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                     </div>
                     <FormField
                         control={form.control}
