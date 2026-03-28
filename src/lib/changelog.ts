@@ -1,8 +1,24 @@
 
 import { format } from 'date-fns';
-import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings, Star, Archive, Send, LayoutGrid, List } from 'lucide-react';
+import { Smartphone, Tablet, Phone, Monitor, Eye, Paperclip, Bug, Database, Wrench, Mail, MailCheck, Link as LinkIcon, AlertCircle, Shield, Building, MailCheck as MailCheckIcon, Users as UsersIcon, Contact, Rocket, LayoutDashboard, Camera, ShieldCheck, ClipboardCheck, GitMerge, KeyRound, MapPin, Bot, Search, LifeBuoy, Trash2, Map, Bell, NotebookPen, UserCheck, Settings, Star, Archive, Send, LayoutGrid, List, ReceiptEuro, CheckCircle2 } from 'lucide-react';
 
 export const changelog = [
+    {
+        version: "0.33",
+        date: "2025-12-16",
+        title: "Gestione Economica e Persistenza",
+        icon: ReceiptEuro,
+        iconClass: "bg-purple-600",
+        changes: [
+            { type: ReceiptEuro, description: "Introdotto il campo 'Costo' negli interventi, gestibile dagli Admin e visibile ai Clienti in fase di fatturazione." },
+            { type: LayoutDashboard, description: "Aggiunto il calcolo del 'Totale da Fatturare' nella dashboard Admin e Cliente per un controllo finanziario immediato." },
+            { type: Search, description: "Implementata la persistenza totale dei filtri e della modalità di visualizzazione nell'elenco interventi tramite sincronizzazione URL." },
+            { type: CheckCircle2, description: "Nuovo pulsante 'Chiudi Intervento' rapido con controllo intelligente sulla compilazione di ore e materiali." },
+            { type: KeyRound, description: "Risolto il malfunzionamento della funzione 'Entra come Cliente', ora pienamente operativa in tutti gli ambienti." },
+            { type: Bug, description: "Filtrati i ticket di supporto nella dashboard cliente per mostrare solo le richieste attive (Aperto/In Lavorazione)." },
+            { type: Wrench, description: "Ottimizzate le dipendenze e risolti i conflitti di compilazione relativi alla gestione delle date." },
+        ]
+    },
     {
         version: "0.32",
         date: "2025-12-15",
@@ -92,7 +108,7 @@ export const changelog = [
         icon: LayoutDashboard,
         iconClass: "bg-blue-500",
         changes: [
-            { type: LayoutDashboard, description: "Aggiunto un riquadro 'Programmazione Settimanale' in dashboard per una visione chiara degli impegni dei prossimi 7 giorni." },
+            { type: LayoutDashboard, description: "Aggiunto un riquadro 'Programmazione Settimanale' in dashboard per una visione chiara degli impegni dei primi 7 giorni." },
             { type: UserCheck, description: "Introdotta la card 'Interventi Assegnati' con logica differenziata: gli admin vedono il totale, gli operatori solo i propri." },
             { type: Eye, description: "La programmazione settimanale degli operatori ora mostra solo le attività per cui sono abilitati, rendendo la vista più pulita e pertinente." },
             { type: Wrench, description: "Migliorata la logica dei KPI nel 'Riepilogo Attività' per dare agli operatori una visione globale pur mantenendo un focus sui propri incarichi." },
@@ -170,7 +186,7 @@ export const changelog = [
         iconClass: "bg-purple-500",
         changes: [
             { type: Map, description: "Aggiunto un filtro dedicato sulla Mappa Operativa per visualizzare separatamente Interventi, Sopralluoghi e Clienti." },
-            { type: MapPin, description: "I sopralluoghi ora hanno coordinate geografiche proprie, indipendenti da quelle del cliente, per una localizzazione precisa." },
+            { type: MapPin, description: "I sopralluoghi ora have coordinate geografiche proprie, indipendenti da quelle del cliente, per una localizzazione precisa." },
             { type: Wrench, description: "Migliorata l'iconografia sulla mappa, utilizzando un puntatore viola per i sopralluoghi per coerenza visiva." },
             { type: Bug, description: "Risolto un bug che impediva la visualizzazione dei sopralluoghi sulla mappa." },
         ]
