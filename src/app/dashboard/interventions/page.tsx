@@ -25,9 +25,14 @@ export default function InterventionsPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    // Legge tutti i filtri dall'URL per garantirne la persistenza
     const initialStatusFilter = useMemo(() => searchParams.get('status') || 'active', [searchParams]);
     const initialPriorityFilter = useMemo(() => searchParams.get('priority') || 'all', [searchParams]);
     const initialViewMode = useMemo(() => (searchParams.get('view') as 'table' | 'grid') || 'table', [searchParams]);
+    const initialSearchTerm = useMemo(() => searchParams.get('search') || '', [searchParams]);
+    const initialClientFilter = useMemo(() => searchParams.get('client') || 'all', [searchParams]);
+    const initialOperatorFilter = useMemo(() => searchParams.get('operator') || 'all', [searchParams]);
+    const initialAssignedFilter = useMemo(() => searchParams.get('assigned') === 'true', [searchParams]);
 
 
     const fetchData = async () => {
@@ -101,6 +106,10 @@ export default function InterventionsPage() {
             initialStatusFilter={initialStatusFilter}
             initialPriorityFilter={initialPriorityFilter}
             initialViewMode={initialViewMode}
+            initialSearchTerm={initialSearchTerm}
+            initialClientFilter={initialClientFilter}
+            initialOperatorFilter={initialOperatorFilter}
+            initialAssignedFilter={initialAssignedFilter}
         />
       </main>
       {interventionToEdit && user && (

@@ -51,6 +51,8 @@ interface InterventionsTableProps {
   initialOperatorFilter?: string;
   initialAssignedFilter?: boolean;
   initialViewMode?: 'table' | 'grid';
+  initialSearchTerm?: string;
+  initialClientFilter?: string;
 }
 
 const priorityOrder: Record<string, number> = { 'Critica': 4, 'Alta': 3, 'Media': 2, 'Bassa': 1 };
@@ -74,7 +76,9 @@ export function InterventionsTable({
     initialPriorityFilter = 'all',
     initialOperatorFilter = 'all',
     initialAssignedFilter = false,
-    initialViewMode = 'table'
+    initialViewMode = 'table',
+    initialSearchTerm = '',
+    initialClientFilter = 'all'
 }: InterventionsTableProps) {
   const { toast } = useToast();
   const { openModal, closeModal } = useInterventionModal();
@@ -82,11 +86,11 @@ export function InterventionsTable({
   const pathname = usePathname();
   
   const [interventions, setInterventions] = useState(initialInterventions);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [priorityFilter, setPriorityFilter] = useState(initialPriorityFilter);
-  const [clientFilter, setClientFilter] = useState('all');
+  const [clientFilter, setClientFilter] = useState(initialClientFilter);
   const [operatorFilter, setOperatorFilter] = useState(initialOperatorFilter);
   const [assignedFilter, setAssignedFilter] = useState(initialAssignedFilter);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>(initialViewMode);
@@ -114,17 +118,22 @@ export function InterventionsTable({
     setClientsMap(cliMap);
   }, [operators, initialClients]);
   
+  // Sincronizza lo stato dei filtri con l'URL per permettere il ripristino tornando indietro
   useEffect(() => {
     if (pathname === '/dashboard/interventions') {
         const params = new URLSearchParams();
         if (statusFilter !== 'active') params.set('status', statusFilter);
         if (priorityFilter !== 'all') params.set('priority', priorityFilter);
         if (operatorFilter !== 'all') params.set('operator', operatorFilter);
+        if (clientFilter !== 'all') params.set('client', clientFilter);
+        if (searchTerm !== '') params.set('search', searchTerm);
         if (assignedFilter) params.set('assigned', 'true');
         if (viewMode !== 'table') params.set('view', viewMode);
-        router.replace(`/dashboard/interventions?${params.toString()}`);
+        
+        const queryString = params.toString();
+        router.replace(queryString ? `${pathname}?${queryString}` : pathname);
     }
-  }, [statusFilter, priorityFilter, operatorFilter, assignedFilter, viewMode, router, pathname]);
+  }, [statusFilter, priorityFilter, operatorFilter, clientFilter, searchTerm, assignedFilter, viewMode, router, pathname]);
 
   const handleEditClick = (intervention: Intervention) => {
     openModal(intervention);
@@ -175,7 +184,7 @@ export function InterventionsTable({
             const updated = await updateIntervention(intervention.id, { status: 'Archiviato' }, currentUser);
             if (updated) {
                 onInterventionChange();
-                closeModal(); // Ensure modal is closed
+                closeModal(); 
                 toast({
                     title: 'Intervento archiviato',
                     description: `L'intervento "${intervention.title}" è stato spostato in archivio.`,
@@ -219,7 +228,7 @@ export function InterventionsTable({
                 clientName: client?.name || 'N/D',
                 autologinUrl: reminderUrl,
                 resendConfig: {
-                    apiKey: 'placeholder', // Handled on server
+                    apiKey: 'placeholder', 
                     from: 'placeholder',
                 }
             });
