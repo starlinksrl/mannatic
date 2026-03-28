@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -463,9 +464,14 @@ export default function DashboardPage() {
                                             <CheckCircle2 className="h-3 w-3 mr-1" /> Completato
                                         </Badge>
                                     ) : (
-                                        <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-                                            <ReceiptEuro className="h-3 w-3 mr-1" /> Da Fatturare
-                                        </Badge>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                                                <ReceiptEuro className="h-3 w-3 mr-1" /> Da Fatturare
+                                            </Badge>
+                                            {intervention.cost !== null && intervention.cost !== undefined && (
+                                                <span className="text-xs font-bold text-purple-700">€ {intervention.cost.toFixed(2)}</span>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                                 <div className="flex justify-between items-center text-[11px] text-muted-foreground">

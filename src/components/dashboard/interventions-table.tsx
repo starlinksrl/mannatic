@@ -118,7 +118,6 @@ export function InterventionsTable({
     setClientsMap(cliMap);
   }, [operators, initialClients]);
   
-  // Sincronizza lo stato dei filtri con l'URL per permettere il ripristino tornando indietro
   useEffect(() => {
     if (pathname === '/dashboard/interventions') {
         const params = new URLSearchParams();
@@ -360,6 +359,20 @@ export function InterventionsTable({
     }
   };
 
+  const renderStatus = (intervention: Intervention) => {
+    const badge = getStatusBadge(intervention.status);
+    const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+    if (intervention.status === 'Da Fatturare' && isAdmin && intervention.cost !== null && intervention.cost !== undefined) {
+        return (
+            <div className="flex flex-col items-start gap-0.5">
+                {badge}
+                <span className="text-[10px] font-bold text-purple-700 whitespace-nowrap">€ {intervention.cost.toFixed(2)}</span>
+            </div>
+        );
+    }
+    return badge;
+  };
+
   const getPriorityBadge = (priority: Intervention['priority']) => {
     switch (priority) {
       case 'Critica': return <Badge variant="destructive">Critica</Badge>;
@@ -523,7 +536,7 @@ export function InterventionsTable({
                               <div className="space-y-2 mt-2">
                                   <div className="flex items-center justify-between gap-2">
                                       <span className="text-[10px] text-muted-foreground font-mono">ID: {intervention.id}</span>
-                                      {getStatusBadge(intervention.status)}
+                                      {renderStatus(intervention as Intervention)}
                                   </div>
                                   <div className="text-[11px] text-muted-foreground">
                                       {intervention.dueDate ? (
@@ -583,7 +596,7 @@ export function InterventionsTable({
                                 {intervention.dueDate && <p className={cn("text-sm text-muted-foreground break-words", urgent && "font-bold text-amber-700 dark:text-amber-300")}>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                                 <div className="flex items-center gap-2 pt-1">
                                     {getPriorityBadge(intervention.priority)}
-                                    {getStatusBadge(intervention.status)}
+                                    {renderStatus(intervention as Intervention)}
                                 </div>
                             </div>
                             <DropdownMenu>
@@ -712,7 +725,7 @@ export function InterventionsTable({
                             )}
                             </TableCell>
                         )}
-                        <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getStatusBadge(intervention.status)}</TableCell>
+                        <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{renderStatus(intervention as Intervention)}</TableCell>
                         <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getPriorityBadge(intervention.priority)}</TableCell>
                         <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.createdAt ? format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
                         <TableCell className={cn("hidden md:table-cell cursor-pointer", urgent && "font-bold")} onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
