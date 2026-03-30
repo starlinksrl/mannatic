@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -6,13 +5,13 @@ import { InterventionsTable } from '@/components/dashboard/interventions-table';
 import { getInterventions, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { User, Intervention } from '@/lib/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Loader, PlusCircle } from 'lucide-react';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 
 export default function NewInstallationsPage() {
@@ -23,7 +22,13 @@ export default function NewInstallationsPage() {
     const [loading, setLoading] = useState(true);
     const { intervention: interventionToEdit, isOpen, closeModal } = useInterventionModal();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
+    const initialStatusFilter = useMemo(() => searchParams.get('status') || 'active', [searchParams]);
+    const initialPriorityFilter = useMemo(() => searchParams.get('priority') || 'all', [searchParams]);
+    const initialViewMode = useMemo(() => (searchParams.get('view') as 'table' | 'grid') || 'grid', [searchParams]);
+    const initialSearchTerm = useMemo(() => searchParams.get('search') || '', [searchParams]);
+    const initialClientFilter = useMemo(() => searchParams.get('client') || 'all', [searchParams]);
 
     const fetchData = async () => {
         if (!user || !currentCompany) return;
@@ -38,7 +43,7 @@ export default function NewInstallationsPage() {
         setOperators(allUsers.filter(u => u.role === 'Operator'));
         setClients(allClients);
         // Filter for new installations
-        setInterventions(allInterventions.filter(i => !i.isMaintenance && i.type === 'new_installation'));
+        setInterventions(allInterventions.filter(i => !i.isMaintenance && i.type === 'new_installation') as Intervention[]);
         setLoading(false);
     }
 
@@ -95,9 +100,14 @@ export default function NewInstallationsPage() {
             clients={clients} 
             operators={operators}
             onInterventionChange={handleInterventionChange}
+            initialStatusFilter={initialStatusFilter}
+            initialPriorityFilter={initialPriorityFilter}
+            initialViewMode={initialViewMode}
+            initialSearchTerm={initialSearchTerm}
+            initialClientFilter={initialClientFilter}
         />
       </main>
-      {interventionToEdit && (
+      {interventionToEdit && user && (
         <EditInterventionForm
             intervention={interventionToEdit}
             onInterventionUpdated={handleInterventionChange}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -76,7 +75,7 @@ export function InterventionsTable({
     initialPriorityFilter = 'all',
     initialOperatorFilter = 'all',
     initialAssignedFilter = false,
-    initialViewMode = 'table',
+    initialViewMode = 'grid',
     initialSearchTerm = '',
     initialClientFilter = 'all'
 }: InterventionsTableProps) {
@@ -119,7 +118,7 @@ export function InterventionsTable({
   }, [operators, initialClients]);
   
   useEffect(() => {
-    if (pathname === '/dashboard/interventions') {
+    if (pathname === '/dashboard/interventions' || pathname === '/dashboard/new-installations') {
         const params = new URLSearchParams();
         if (statusFilter !== 'active') params.set('status', statusFilter);
         if (priorityFilter !== 'all') params.set('priority', priorityFilter);
@@ -127,7 +126,7 @@ export function InterventionsTable({
         if (clientFilter !== 'all') params.set('client', clientFilter);
         if (searchTerm !== '') params.set('search', searchTerm);
         if (assignedFilter) params.set('assigned', 'true');
-        if (viewMode !== 'table') params.set('view', viewMode);
+        if (viewMode !== 'grid') params.set('view', viewMode);
         
         const queryString = params.toString();
         router.replace(queryString ? `${pathname}?${queryString}` : pathname);
