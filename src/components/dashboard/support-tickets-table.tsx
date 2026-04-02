@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { SupportTicket, User } from '@/lib/types';
@@ -105,7 +104,7 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
             <div key={ticket.id} className="p-3 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => onTicketSelect(ticket)}>
                <div className="flex-1">
                   <div className="flex justify-between items-start">
-                    <p className="font-semibold break-words pr-2">{ticket.subject}</p>
+                    <p className="font-semibold break-words pr-2 uppercase">{ticket.subject}</p>
                     {getStatusBadge(ticket.status)}
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
@@ -128,11 +127,11 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
             <div key={ticket.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
                <div className="flex-1 cursor-pointer" onClick={() => onTicketSelect(ticket)}>
                   <div className="flex justify-between items-start">
-                    <p className="font-semibold break-words pr-2">{ticket.subject}</p>
+                    <p className="font-semibold break-words pr-2 uppercase">{ticket.subject}</p>
                     {getStatusBadge(ticket.status)}
                   </div>
                   <div className="text-sm text-muted-foreground mt-2">
-                    {currentUser.role === 'Admin' && <p>Cliente: {ticket.clientName}</p>}
+                    {currentUser.role === 'Admin' && <p className="uppercase">Cliente: {ticket.clientName}</p>}
                     <p>Creato: {format(new Date(ticket.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>
                     <p>Ultimo aggiorn.: {format(new Date(ticket.updatedAt), 'dd/MM/yy HH:mm', { locale: it })}</p>
                   </div>
@@ -182,8 +181,8 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
           <TableBody>
             {sortedTickets.map((ticket) => (
               <TableRow key={ticket.id} onClick={() => onTicketSelect(ticket)} className="cursor-pointer">
-                <TableCell className="font-medium">{ticket.subject}</TableCell>
-                {currentUser.role === 'Admin' && <TableCell>{ticket.clientName}</TableCell>}
+                <TableCell className="font-medium uppercase">{ticket.subject}</TableCell>
+                {currentUser.role === 'Admin' && <TableCell className="uppercase">{ticket.clientName}</TableCell>}
                 <TableCell>{getStatusBadge(ticket.status)}</TableCell>
                 <TableCell>{format(new Date(ticket.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>
                 <TableCell>{format(new Date(ticket.updatedAt), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>

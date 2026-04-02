@@ -567,7 +567,7 @@ export function InterventionsTable({
                                       <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                                           {client?.name || 'Cliente Sconosciuto'}
                                       </p>
-                                      <CardTitle className="text-sm font-semibold line-clamp-2 leading-tight">
+                                      <CardTitle className="text-sm font-semibold line-clamp-2 leading-tight uppercase">
                                           {intervention.title}
                                       </CardTitle>
                                   </div>
@@ -643,7 +643,7 @@ export function InterventionsTable({
                             <div className="flex-1 space-y-2 pr-4 break-words cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                                 {currentUser.role !== 'Client' && client && (
                                 <div className="space-y-1 text-sm">
-                                    <p className="font-medium break-words">{client.name}</p>
+                                    <p className="font-medium break-words uppercase">{client.name}</p>
                                     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                                         {client.phone && (
                                             <div className="flex items-center gap-2">
@@ -665,7 +665,7 @@ export function InterventionsTable({
                                     </div>
                                 </div>
                                 )}
-                                <p className="font-semibold break-words">{intervention.title}</p>
+                                <p className="font-semibold break-words uppercase">{intervention.title}</p>
                                 {intervention.createdAt && <p className="text-sm text-muted-foreground break-words">Creato: {format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                                 {intervention.dueDate && <p className={cn("text-sm text-muted-foreground break-words", urgent && "font-bold text-amber-700 dark:text-amber-300")}>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
                                 <div className="flex items-center gap-2 pt-1">
@@ -751,15 +751,15 @@ export function InterventionsTable({
                         {currentUser.role !== 'Client' ? (
                             <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                                 <div className="flex flex-col break-words">
-                                    <span className="break-words font-semibold">{client ? client.name : '-'}</span>
-                                    <span className="text-xs text-muted-foreground">{intervention.title}</span>
+                                    <span className="break-words font-semibold uppercase">{client ? client.name : '-'}</span>
+                                    <span className="text-xs text-muted-foreground uppercase">{intervention.title}</span>
                                     <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
                                 </div>
                             </TableCell>
                         ) : (
                             <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                                 <div className="flex flex-col break-words">
-                                    <span className="break-words">{intervention.title}</span>
+                                    <span className="break-words uppercase">{intervention.title}</span>
                                     <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
                                 </div>
                             </TableCell>
@@ -872,7 +872,7 @@ export function InterventionsTable({
                                             }
                                         }}
                                     />
-                                    <Label htmlFor={`op-${operator.id}`} className="font-normal cursor-pointer">
+                                    <Label htmlFor={`op-${operator.id}`} className="font-normal cursor-pointer uppercase">
                                         {operator.name} {operator.email ? `(${operator.email})` : '(No Email)'}
                                     </Label>
                                 </div>

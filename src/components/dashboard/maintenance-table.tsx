@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -274,8 +273,8 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
               return (
                  <div key={task.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
                     <div className="flex-1 space-y-1 cursor-pointer" onClick={() => handleEditClick(task)}>
-                        <p className="font-medium">{task.title}</p>
-                        {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground">{clientName}</p>}
+                        <p className="font-medium uppercase">{task.title}</p>
+                        {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground uppercase">{clientName}</p>}
                         <p className="text-sm text-muted-foreground">Prossima scadenza: {format(new Date(task.nextDueDate), 'dd MMM yyyy', { locale: it })}</p>
                         <div className="flex items-center gap-2 pt-1">
                             {getStatusBadge(task)}
@@ -340,11 +339,11 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                 <TableRow key={task.id}>
                     <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(task)}>
                         <div className="flex flex-col">
-                            <span>{task.title}</span>
+                            <span className="uppercase">{task.title}</span>
                             <span className="text-xs text-muted-foreground">ID: {task.id}</span>
                         </div>
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{clientName}</TableCell>
+                    <TableCell className="cursor-pointer uppercase" onClick={() => handleEditClick(task)}>{clientName}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{getStatusBadge(task)}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{getPeriodicityText(task)}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>
@@ -353,7 +352,7 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                             ({formatDistanceToNow(new Date(task.nextDueDate), { locale: it, addSuffix: true })})
                         </p>
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{operatorName || 'Non assegnato'}</TableCell>
+                    <TableCell className="cursor-pointer uppercase" onClick={() => handleEditClick(task)}>{operatorName || 'Non assegnato'}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -407,5 +406,3 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     </div>
   );
 }
-
-    

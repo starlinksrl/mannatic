@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -146,7 +145,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                         <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 space-y-1 min-w-0">
-                        <p className="font-medium break-words">{client.name}</p>
+                        <p className="font-medium break-words uppercase">{client.name}</p>
                         <div className="space-y-1 text-sm text-muted-foreground break-all">
                              {client.email && (
                                 <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
@@ -230,7 +229,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                     <AvatarImage src={client.avatarUrl} alt={client.name} />
                     <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <span className="font-medium">{client.name}</span>
+                  <span className="font-medium uppercase">{client.name}</span>
                 </div>
               </TableCell>
               <TableCell onClick={() => handleEditClick(client)} className="hidden sm:table-cell cursor-pointer">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -374,8 +375,8 @@ export default function DashboardPage() {
                             <div key={item.id} className="flex items-start gap-3 cursor-pointer group" onClick={handleClick}>
                               <div className="flex-shrink-0 pt-1">{icon}</div>
                               <div className="flex-1">
-                                <p className="text-sm font-medium group-hover:underline">{item.title}</p>
-                                <p className="text-xs text-muted-foreground">{clientName}</p>
+                                <p className="text-sm font-medium group-hover:underline uppercase">{item.title}</p>
+                                <p className="text-xs text-muted-foreground uppercase">{clientName}</p>
                               </div>
                               <p className="text-sm font-mono">{time}</p>
                             </div>
@@ -423,8 +424,8 @@ export default function DashboardPage() {
                         >
                             <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                    <p className="font-semibold">{intervention.title}</p>
-                                    <p className="text-sm text-muted-foreground">{clientsMap.get(intervention.clientId)?.name}</p>
+                                    <p className="font-semibold uppercase">{intervention.title}</p>
+                                    <p className="text-sm text-muted-foreground uppercase">{clientsMap.get(intervention.clientId)?.name}</p>
                                 </div>
                                 {getPriorityBadge(intervention.priority)}
                             </div>
@@ -473,7 +474,7 @@ export default function DashboardPage() {
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex-1 min-w-0 mr-2">
                                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{clientsMap.get(intervention.clientId)?.name || 'Cliente N/D'}</p>
-                                        <p className="font-semibold text-sm line-clamp-1 group-hover:underline">{intervention.title}</p>
+                                        <p className="font-semibold text-sm line-clamp-1 group-hover:underline uppercase">{intervention.title}</p>
                                     </div>
                                     {intervention.status === 'Completato' ? (
                                         <Badge className="bg-green-100 text-green-800 border-green-200">

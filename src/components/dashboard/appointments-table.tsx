@@ -179,8 +179,8 @@ export function AppointmentsTable({ appointments: initialAppointments, currentUs
               return (
                  <div key={appointment.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
                     <div className="flex-1 space-y-1 cursor-pointer" onClick={() => handleEditClick(appointment)}>
-                        <p className="font-medium">{appointment.title}</p>
-                        <p className="text-sm text-muted-foreground">{client?.name}</p>
+                        <p className="font-medium uppercase">{appointment.title}</p>
+                        <p className="text-sm text-muted-foreground uppercase">{client?.name}</p>
                         {appointment.address && <p className="text-sm text-muted-foreground">{appointment.address}</p>}
                         {appointment.date ? (
                             <p className="text-sm text-muted-foreground">Data: {format(new Date(appointment.date), 'dd/MM/yy HH:mm', { locale: it })}</p>
@@ -236,11 +236,11 @@ export function AppointmentsTable({ appointments: initialAppointments, currentUs
               const calendarLink = generateGoogleCalendarLink(appointment);
               return (
                 <TableRow key={appointment.id}>
-                    <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(appointment)}>{appointment.title}</TableCell>
+                    <TableCell className="font-medium cursor-pointer uppercase" onClick={() => handleEditClick(appointment)}>{appointment.title}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>
                         {client ? (
                             <div className="flex flex-col gap-1">
-                                <span>{client.name}</span>
+                                <span className="uppercase">{client.name}</span>
                                 {client.phone && (
                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
@@ -284,7 +284,7 @@ export function AppointmentsTable({ appointments: initialAppointments, currentUs
                            )}
                         </div>
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>{operatorName || 'Non assegnato'}</TableCell>
+                    <TableCell className="cursor-pointer uppercase" onClick={() => handleEditClick(appointment)}>{operatorName || 'Non assegnato'}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>{getStatusBadge(appointment.status)}</TableCell>
                     <TableCell className="text-right">
                         <DropdownMenu>
