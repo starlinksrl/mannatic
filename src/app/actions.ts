@@ -682,3 +682,79 @@ export async function convertSupportTicketToIntervention(ticketId: string, admin
         return { success: false, error: error.message || "Si è verificato un errore sconosciuto." };
     }
 }
+
+export async function sendFilteredInterventionsSummaryEmail(
+    companyId: string, 
+    interventions: Intervention[], 
+    recipientEmails: string[],
+    adminName: string
+): Promise<{ success: boolean; error?: string }> {
+    const company = await getCompanyById(companyId);
+    if (!company || !company.resendApiKey || !company.senderEmail) {
+        return { success: false, error: "Configurazione email aziendale incompleta." };
+    }
+
+    if (recipientEmails.length === 0) {
+        return { success: false, error: "Nessun destinatario selezionato." };
+    }
+
+    const allUsers = await getUsers(companyId);
+    const clients = allUsers.filter(u => u.role === 'Client');
+    const operators = allUsers.filter(u => u.role === 'Operator');
+
+    const tableRows = interventions.map(i => {
+        const client = clients.find(c => c.id === i.clientId);
+        const opNames = i.assignedOperatorIds.map(id => operators.find(o => o.id === id)?.name).filter(Boolean).join(', ');
+        const dueDate = i.dueDate ? format(new Date(i.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D';
+        
+        return `
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">${i.id}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;"><b>${client?.name || 'N/D'}</b><br>${i.title}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${i.status}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${i.priority}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${dueDate}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${opNames || 'Non assegnato'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const subject = `Riepilogo Interventi Selezionati - Inviato da ${adminName}`;
+    const body = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Riepilogo Interventi</h2>
+            <p>Ciao, ecco un riepilogo degli interventi selezionati e filtrati dall'amministratore <b>${adminName}</b>.</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background-color: #f2f2f2;">
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">ID</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Cliente e Titolo</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Stato</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Priorità</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Scadenza</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Operatori</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+            <p style="margin-top: 20px;">Accedi a MannaTic per gestire le attività.</p>
+            <p>Saluti,<br>Il Team di MannaTic</p>
+        </div>
+    `;
+
+    try {
+        const resend = new Resend(company.resendApiKey);
+        await resend.emails.send({
+            from: company.senderEmail,
+            to: recipientEmails,
+            subject: subject,
+            html: body,
+        });
+        return { success: true };
+    } catch (e: any) {
+        console.error("Error sending filtered summary email:", e);
+        return { success: false, error: e.message || "Impossibile inviare l'email." };
+    }
+}

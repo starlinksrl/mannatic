@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -17,7 +18,7 @@ import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention, updateIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader, TrendingUp, MailPlus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -31,12 +32,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { cn, createWhatsAppLink } from '@/lib/utils';
 import { WhatsAppIcon } from '../icons/whatsapp-icon';
 import { useRouter, usePathname } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
-import { triggerInterventionReminderEmail, createClientAutologinUrl } from '@/app/actions';
+import { Label } from '../ui/label';
+import { triggerInterventionReminderEmail, createClientAutologinUrl, sendFilteredInterventionsSummaryEmail } from '@/app/actions';
+import { ScrollArea } from '../ui/scroll-area';
 
 
 interface InterventionsTableProps {
@@ -102,6 +114,11 @@ export function InterventionsTable({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [interventionToDelete, setInterventionToDelete] = useState<Intervention | null>(null);
   const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
+
+  // Send Summary Dialog States
+  const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
+  const [isSendingSummary, setIsSendingSummary] = useState(false);
   
   useEffect(() => {
     setInterventions(initialInterventions);
@@ -397,6 +414,34 @@ export function InterventionsTable({
     }
   }
 
+  const handleSendSummaryEmail = async () => {
+    if (selectedRecipients.length === 0) {
+        toast({ variant: 'destructive', title: 'Nessun destinatario', description: 'Seleziona almeno un operatore a cui inviare il riepilogo.' });
+        return;
+    }
+
+    setIsSendingSummary(true);
+    const recipientEmails = operators
+        .filter(op => selectedRecipients.includes(op.id) && op.email)
+        .map(op => op.email!);
+
+    const result = await sendFilteredInterventionsSummaryEmail(
+        currentUser.companyId,
+        sortedInterventions as Intervention[],
+        recipientEmails,
+        currentUser.name
+    );
+
+    if (result.success) {
+        toast({ title: 'Riepilogo Inviato', description: `L'email è stata inviata a ${recipientEmails.length} operatori.` });
+        setIsSummaryDialogOpen(false);
+        setSelectedRecipients([]);
+    } else {
+        toast({ variant: 'destructive', title: 'Errore di invio', description: result.error || 'Si è verificato un errore.' });
+    }
+    setIsSendingSummary(false);
+  };
+
   const tableHeaders = [
     { key: 'isFeatured', label: '★', visible: currentUser.role === 'Admin' || currentUser.role === 'Creator', className: 'w-12'},
     { key: 'client', label: 'Cliente / Titolo', visible: currentUser.role !== 'Client', className: 'w-[30%]' },
@@ -413,6 +458,7 @@ export function InterventionsTable({
   
   const canDeleteIntervention = ['Admin', 'Client', 'Creator'].includes(currentUser.role);
   const canArchiveIntervention = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+  const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
   
   const canSeeFinancialSummary = ['Admin', 'Creator', 'Client'].includes(currentUser.role);
 
@@ -461,6 +507,17 @@ export function InterventionsTable({
                 )}
             </div>
             <div className="flex items-center gap-2 border rounded-md p-1 bg-muted/50 self-start md:self-center">
+                {isAdmin && (
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setIsSummaryDialogOpen(true)}
+                        className="h-8 px-2 border-primary/50 text-primary hover:bg-primary/10"
+                        title="Invia riepilogo filtrato via email"
+                    >
+                        <MailPlus className="h-4 w-4 mr-1" /> Riepilogo
+                    </Button>
+                )}
                 <Button 
                     variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
                     size="sm" 
@@ -788,6 +845,59 @@ export function InterventionsTable({
             </Card>
         </>
       )}
+
+       {/* Send Summary Dialog */}
+       <Dialog open={isSummaryDialogOpen} onOpenChange={setIsSummaryDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Invia Riepilogo Interventi</DialogTitle>
+                    <DialogDescription>
+                        Verrà inviata un'email con l'elenco degli interventi attualmente filtrati ({sortedInterventions.length}) agli operatori selezionati.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label className="mb-2 block">Seleziona Operatori Destinatari</Label>
+                    <ScrollArea className="h-60 border rounded-md p-4">
+                        <div className="space-y-3">
+                            {operators.map((operator) => (
+                                <div key={operator.id} className="flex items-center space-x-3">
+                                    <Checkbox 
+                                        id={`op-${operator.id}`} 
+                                        checked={selectedRecipients.includes(operator.id)}
+                                        onCheckedChange={(checked) => {
+                                            if (checked) {
+                                                setSelectedRecipients(prev => [...prev, operator.id]);
+                                            } else {
+                                                setSelectedRecipients(prev => prev.filter(id => id !== operator.id));
+                                            }
+                                        }}
+                                    />
+                                    <Label htmlFor={`op-${operator.id}`} className="font-normal cursor-pointer">
+                                        {operator.name} {operator.email ? `(${operator.email})` : '(No Email)'}
+                                    </Label>
+                                </div>
+                            ))}
+                            {operators.length === 0 && (
+                                <p className="text-sm text-muted-foreground italic">Nessun operatore configurato.</p>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </div>
+                <DialogFooter className="sm:justify-between gap-2">
+                    <DialogClose asChild>
+                        <Button variant="outline">Annulla</Button>
+                    </DialogClose>
+                    <Button 
+                        onClick={handleSendSummaryEmail} 
+                        disabled={isSendingSummary || selectedRecipients.length === 0}
+                    >
+                        {isSendingSummary ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Invia Email
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+       </Dialog>
+
        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
