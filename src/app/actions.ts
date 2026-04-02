@@ -460,14 +460,16 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
     const clients = allUsers.filter(u => u.role === 'Client');
     const interventionDetails = interventions.map(i => {
         const client = clients.find(c => c.id === i.clientId);
-        const operator = operators.find(o => o.id === i.assignedOperatorId);
+        const opIds = i.assignedOperatorIds || [];
+        const operatorNames = opIds.map(id => allUsers.find(o => o.id === id)?.name).filter(Boolean).join(', ');
+        
         return {
             id: i.id,
             title: i.title,
             clientName: client?.name || 'N/D',
             dueDate: format(new Date(i.dueDate!), 'dd/MM/yyyy HH:mm', { locale: it }),
             priority: i.priority,
-            operatorName: operator?.name || 'Non Assegnato',
+            operatorNames: operatorNames || 'Non Assegnato',
         }
     });
 
@@ -479,7 +481,7 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
             <td style="padding: 8px; border: 1px solid #ddd;">${i.title} <br><small>${i.clientName}</small></td>
             <td style="padding: 8px; border: 1px solid #ddd;">${i.dueDate}</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${i.priority}</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${i.operatorName}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.operatorNames}</td>
         </tr>
     `).join('');
 
@@ -494,7 +496,7 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
                         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Titolo e Cliente</th>
                         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Scadenza</th>
                         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Priorità</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Operatore</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Operatori</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -565,7 +567,9 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
 
     const interventionDetails = interventions.map(i => {
         const client = clients.find(c => c.id === i.clientId);
-        const operator = operators.find(o => o.id === i.assignedOperatorId);
+        const opIds = i.assignedOperatorIds || [];
+        const operatorNames = opIds.map(id => operators.find(o => o.id === id)?.name).filter(Boolean).join(', ');
+        
         return {
             id: i.id,
             title: i.title,
@@ -573,7 +577,7 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
             createdAt: format(new Date(i.createdAt), 'dd/MM/yyyy', { locale: it }),
             priority: i.priority,
             status: i.status,
-            operatorName: operator?.name || 'Non Assegnato',
+            operatorNames: operatorNames || 'Non Assegnato',
         }
     });
 
@@ -586,7 +590,7 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
             <td style="padding: 8px; border: 1px solid #ddd;">${i.createdAt}</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${i.status}</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${i.priority}</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${i.operatorName}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${i.operatorNames}</td>
         </tr>
     `).join('');
 
@@ -602,7 +606,7 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
                         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Data Creazione</th>
                         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Stato</th>
                         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Priorità</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Operatore</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Operatori</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -704,7 +708,8 @@ export async function sendFilteredInterventionsSummaryEmail(
 
     const tableRows = interventions.map(i => {
         const client = clients.find(c => c.id === i.clientId);
-        const opNames = i.assignedOperatorIds.map(id => operators.find(o => o.id === id)?.name).filter(Boolean).join(', ');
+        const opIds = i.assignedOperatorIds || [];
+        const opNames = opIds.map(id => operators.find(o => o.id === id)?.name).filter(Boolean).join(', ');
         const dueDate = i.dueDate ? format(new Date(i.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D';
         
         return `
