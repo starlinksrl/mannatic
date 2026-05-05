@@ -113,11 +113,11 @@ export default function DashboardPage() {
     
     const activeInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
     
-    // Featured interventions: explicitly marked as featured OR high/critical priority, excluding completed
+    // Featured interventions: explicitly marked as featured OR high/critical priority, only for ACTIVE interventions
     const featuredInterventions = allInterventions.filter(i => 
         (i.isFeatured || i.priority === 'Alta' || i.priority === 'Critica') && 
         !i.isMaintenance && 
-        i.status !== 'Completato'
+        ['Nuovo', 'In corso'].includes(i.status)
     ) as Intervention[];
     
     const toInvoiceInterventions = allInterventions.filter(i => 
