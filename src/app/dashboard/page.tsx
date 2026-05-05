@@ -112,7 +112,13 @@ export default function DashboardPage() {
     setOperators(users.filter(u => u.role === 'Operator'));
     
     const activeInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
-    const featuredInterventions = allInterventions.filter(i => i.isFeatured && !i.isMaintenance && i.status !== 'Completato') as Intervention[];
+    
+    // Featured interventions: explicitly marked as featured OR high/critical priority, excluding completed
+    const featuredInterventions = allInterventions.filter(i => 
+        (i.isFeatured || i.priority === 'Alta' || i.priority === 'Critica') && 
+        !i.isMaintenance && 
+        i.status !== 'Completato'
+    ) as Intervention[];
     
     const toInvoiceInterventions = allInterventions.filter(i => 
         (i.status === 'Completato' || i.status === 'Da Fatturare') && 
@@ -412,7 +418,7 @@ export default function DashboardPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 font-headline">
                         <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                        Interventi in Evidenza
+                        Interventi in Evidenza e Urgenze
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
