@@ -35,7 +35,7 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Appointment, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addAppointment } from '@/lib/data';
+import { addAppointment, addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { ScrollArea } from '../ui/scroll-area';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
@@ -88,7 +88,6 @@ export function AddAppointmentForm({ children, onAppointmentAdded, clients, oper
   useEffect(() => {
     setClientList(clients);
   }, [clients]);
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany) return;
     
@@ -104,35 +103,58 @@ export function AddAppointmentForm({ children, onAppointmentAdded, clients, oper
         finalDate = values.date.toISOString();
     }
 
-    const newAppointment = await addAppointment({
-        ...values,
-        notes: values.notes || '',
-        address: values.address || null,
-        date: finalDate,
-        companyId: currentCompany.id,
-    });
-    
-    onAppointmentAdded(newAppointment);
-
-    // Check if a new client was created and update the local list
-    const isNewClient = !clients.some(c => c.id === newAppointment.clientId);
-    if (isNewClient) {
-        const client = {
-            id: newAppointment.clientId,
-            name: values.clientId,
-            companyId: currentCompany.id,
-            address: values.address
-        } as User;
-        setClientList(prev => [...prev, client]);
+    let finalClientId = values.clientId;
+    const existingClient = clients.find(c => c.id === values.clientId || c.name.toLowerCase() === values.clientId.toLowerCase());
+    if (existingClient) {
+        finalClientId = existingClient.id;
+    } else if (values.clientId && values.clientId.trim() !== '') {
+        try {
+            const newClientUser = await addUser({
+                name: values.clientId.trim(),
+                role: 'Client',
+                companyId: currentCompany.id,
+                email: '',
+                address: values.address || '',
+            });
+            if (newClientUser?.id) {
+                finalClientId = newClientUser.id;
+                setClientList(prev => [...prev, newClientUser]);
+            }
+        } catch (clientErr) {
+            console.error("Error creating inline client for appointment:", clientErr);
+        }
     }
-    
-    toast({
-      title: 'Appuntamento creato',
-      description: `L'appuntamento "${values.title}" è stato creato con successo.`,
-    });
-    setIsSubmitting(false);
-    setIsOpen(false);
-    form.reset();
+
+    try {
+        const newAppointment = await addAppointment({
+            title: values.title,
+            clientId: finalClientId,
+            assignedOperatorId: values.assignedOperatorId,
+            notes: values.notes || '',
+            address: values.address || null,
+            date: finalDate,
+            companyId: currentCompany.id,
+            status: 'Pianificato',
+        });
+        
+        onAppointmentAdded(newAppointment);
+
+        toast({
+          title: 'Appuntamento creato',
+          description: `L'appuntamento "${values.title}" è stato creato con successo.`,
+        });
+        form.reset();
+        setIsOpen(false);
+    } catch (err: any) {
+        console.error("Failed to add appointment:", err);
+        toast({
+            variant: 'destructive',
+            title: 'Errore',
+            description: "Impossibile creare l'appuntamento.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
   
   const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -205,12 +227,12 @@ export function AddAppointmentForm({ children, onAppointmentAdded, clients, oper
         setAddressSuggestions([]);
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="sm:max-w-2xl flex flex-col p-0 max-h-[calc(100dvh-1.5rem)] md:max-h-[90vh] h-[calc(100dvh-1.5rem)] md:h-auto w-[calc(100%-1rem)] sm:w-full rounded-2xl md:rounded-lg overflow-hidden">
+        <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-0 shrink-0 pr-12">
           <DialogTitle>Crea nuovo appuntamento</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="h-full">
-            <div className="p-6">
+        <ScrollArea className="flex-1 min-h-0 h-auto overflow-y-auto">
+            <div className="p-4 sm:p-6">
                 <Form {...form}>
                 <form id="add-appointment-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
@@ -466,7 +488,7 @@ export function AddAppointmentForm({ children, onAppointmentAdded, clients, oper
                 </Form>
             </div>
         </ScrollArea>
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-4 sm:p-6 gap-2 border-t shrink-0 bg-background">
             <DialogClose asChild>
                 <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, ChevronsUpDown, User as UserIcon, Building } from 'lucide-react';
+import { LogOut, ChevronsUpDown, User as UserIcon, Building, Smartphone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { EditUserForm } from './edit-user-form';
@@ -71,6 +71,13 @@ export function UserSwitcher() {
             <DropdownMenuItem onSelect={() => setIsProfileModalOpen(true)}>
                 <UserIcon className="mr-2" />
                 Profilo
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild>
+              <a href="/mannatic.apk" download="mannatic.apk" className="flex items-center cursor-pointer text-emerald-600 dark:text-emerald-400">
+                <Smartphone className="mr-2 h-4 w-4 text-emerald-500" />
+                Scarica App Android
+              </a>
             </DropdownMenuItem>
 
             <DropdownMenuSeparator/>

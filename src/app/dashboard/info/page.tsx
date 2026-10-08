@@ -11,19 +11,19 @@ import { Building, Users, UserCog, User, Wrench, ShieldCheck, ClipboardCheck, Bo
 
 const features = [
     {
-        category: "Architettura Multi-Creator e Multi-Azienda",
+        category: "Architettura Multi-Creator e Multi-Installatore",
         icon: Building,
         items: [
-            { title: "Ruolo Main Creator", description: "Un 'Super Admin' globale (creator@mannatic.com) che può creare altri Creator e importare aziende esistenti." },
-            { title: "Ruolo Creator", description: "Un ruolo amministrativo che può creare e gestire molteplici aziende indipendenti." },
-            { title: "Isolamento Dati", description: "Ogni azienda opera in un contesto isolato, con i propri utenti, clienti e dati operativi." },
+            { title: "Ruolo Main Creator", description: "Un 'Super Admin' globale (creator@mannatic.com) che può creare altri Creator e importare installatori esistenti." },
+            { title: "Ruolo Creator", description: "Un ruolo amministrativo che può creare e gestire molteplici installatori indipendenti." },
+            { title: "Isolamento Dati", description: "Ogni installatore opera in un contesto isolato, con i propri utenti, clienti e dati operativi." },
         ]
     },
     {
         category: "Gestione Utenti e Ruoli (RBAC)",
         icon: Users,
         items: [
-            { title: "Admin", icon: UserCog, description: "Gestisce utenti, clienti e impostazioni della propria azienda. Ha visibilità su tutti i dati aziendali." },
+            { title: "Admin", icon: UserCog, description: "Gestisce utenti, clienti e impostazioni del proprio installatore. Ha visibilità su tutti i dati dell'installatore." },
             { title: "Operator", icon: User, description: "L'utente operativo. Visualizza e gestisce solo gli interventi a cui è assegnato, con la possibilità di tracciare le ore di lavoro." },
             { title: "Client", icon: User, description: "Il cliente finale. Può aprire nuove richieste di intervento e ticket di supporto, e visualizzare lo stato delle proprie richieste." },
         ]
@@ -36,14 +36,14 @@ const features = [
             { title: "Appuntamenti (ex Sopralluoghi)", icon: ClipboardCheck, description: "Gestione delle visite preliminari, con indirizzo geolocalizzato, data, operatore assegnato e note." },
             { title: "Manutenzioni Programmate", icon: ShieldCheck, description: "Impostazione di interventi ricorrenti (es. mensili) legati a specifiche attrezzature del cliente." },
             { title: "Supporto Tecnico", icon: LifeBuoy, description: "Un sistema di ticketing per la comunicazione tra clienti e amministratori per richieste non legate a interventi specifici." },
-            { title: "Promemoria", icon: NotebookPen, description: "Blocchi note integrati nella dashboard per appunti personali (privati) e aziendali (condivisi)." },
+            { title: "Promemoria", icon: NotebookPen, description: "Blocchi note integrati nella dashboard per appunti personali (privati) e condivisi col team." },
         ]
     },
     {
         category: "Strumenti e Dati",
         icon: Database,
         items: [
-            { title: "Data Explorer (Admin)", description: "Gli Admin possono visualizzare e modificare direttamente i dati della propria azienda (interventi, utenti, etc.) attraverso un'interfaccia tabellare." },
+            { title: "Data Explorer (Admin)", description: "Gli Admin possono visualizzare e modificare direttamente i dati della propria installatore (interventi, utenti, etc.) attraverso un'interfaccia tabellare." },
             { title: "Data Explorer (Creator)", description: "Il Main Creator ha una vista globale su tutti i dati di tutte le collezioni del database." },
         ]
     },
@@ -60,7 +60,7 @@ const features = [
         icon: Server,
         items: [
             { title: "Frontend", icon: Palette, description: "Next.js con App Router, React, TypeScript. Componenti UI realizzati con ShadCN e Tailwind CSS." },
-            { title: "Backend & Dati", icon: Server, description: "Firebase Firestore come database NoSQL per la persistenza di tutti i dati applicativi." },
+            { title: "Backend & Dati", icon: Server, description: "Supabase (PostgreSQL) come database relazionale con RLS per la persistenza e le funzionalità in tempo reale." },
         ]
     }
 ];
@@ -79,8 +79,7 @@ export default function InfoPage() {
         return null; // Render nothing or a loader while redirecting
     }
 
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'studio-9888219348-aa634';
-
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://supabase.com/dashboard';
 
     return (
         <>
@@ -120,31 +119,21 @@ export default function InfoPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-3">
                                 <HardDrive className="h-6 w-6" />
-                                Monitoraggio Risorse Firebase
+                                Monitoraggio Risorse Supabase
                             </CardTitle>
                              <CardDescription>
-                                Accedi alla console Firebase per visualizzare i consumi, i dati e i log.
+                                Accedi alla console Supabase per visualizzare la struttura delle tabelle, i dati e i log di rete.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ul className="space-y-4">
                                  <li className="flex items-start gap-4">
-                                    <FolderArchive className="h-5 w-5 mt-1 text-primary" />
-                                    <div className="flex-1">
-                                        <p className="font-semibold">Gestione Allegati (Cloud Storage)</p>
-                                        <p className="text-sm text-muted-foreground">Abilita e gestisci lo spazio di archiviazione per gli allegati degli interventi.</p>
-                                        <a href={`https://console.firebase.google.com/project/${projectId}/storage`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
-                                            Vai a Cloud Storage <ExternalLink className="h-3 w-3" />
-                                        </a>
-                                    </div>
-                                </li>
-                                 <li className="flex items-start gap-4">
                                     <Database className="h-5 w-5 mt-1 text-primary" />
                                     <div className="flex-1">
-                                        <p className="font-semibold">Database (Firestore)</p>
-                                        <p className="text-sm text-muted-foreground">Esplora e gestisci direttamente i dati salvati nel database.</p>
-                                        <a href={`https://console.firebase.google.com/project/${projectId}/firestore/data`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
-                                            Vai a Firestore <ExternalLink className="h-3 w-3" />
+                                        <p className="font-semibold">Database (Supabase PostgreSQL)</p>
+                                        <p className="text-sm text-muted-foreground">Esplora e gestisci direttamente le tabelle e le politiche RLS nel database.</p>
+                                        <a href={supabaseUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
+                                            Vai alla Dashboard Supabase <ExternalLink className="h-3 w-3" />
                                         </a>
                                     </div>
                                 </li>
@@ -153,7 +142,7 @@ export default function InfoPage() {
                                     <div className="flex-1">
                                         <p className="font-semibold">Log Applicazione (Cloud Logging)</p>
                                         <p className="text-sm text-muted-foreground">Visualizza i log del server, incluse le operazioni AI e l'invio delle email.</p>
-                                        <a href={`https://console.cloud.google.com/logs/viewer?project=${projectId}&resource=app_hosting_backend`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
+                                        <a href={supabaseUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1">
                                             Vai ai Log <ExternalLink className="h-3 w-3" />
                                         </a>
                                     </div>

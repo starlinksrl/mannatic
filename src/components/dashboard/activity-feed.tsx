@@ -34,7 +34,7 @@ export function ActivityFeed({ interventions, latestUpdates, onUpdate, className
             openModal(targetIntervention);
             
             if (!update.readBy?.includes(user.id)) {
-                 await markInterventionUpdateAsRead(update.interventionId, update.date, user.id);
+                 await markInterventionUpdateAsRead(update.interventionId, user.id);
                  onUpdate(); // Re-fetch data to get the latest read status
             }
         }

@@ -87,14 +87,14 @@ export function AppointmentsTable({ appointments: initialAppointments, currentUs
 
   const confirmDelete = async () => {
       if (!appointmentToDelete) return;
-      const success = await deleteAppointment(appointmentToDelete.id);
-      if (success) {
+      try {
+          await deleteAppointment(appointmentToDelete.id);
           onAppointmentChange();
           toast({
               title: 'Appuntamento eliminato',
               description: `L'appuntamento "${appointmentToDelete.title}" è stato eliminato.`,
           });
-      } else {
+      } catch {
            toast({
               variant: 'destructive',
               title: 'Errore',
@@ -216,103 +216,105 @@ export function AppointmentsTable({ appointments: initialAppointments, currentUs
             })}
         </CardContent>
       </Card>
-      <Card className="hidden lg:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Titolo</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Indirizzo</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead>Operatore</TableHead>
-              <TableHead>Stato</TableHead>
-              <TableHead className="w-12 text-right">Azioni</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAppointments.map((appointment) => {
-              const client = clientsMap.get(appointment.clientId);
-              const operatorName = appointment.assignedOperatorId ? operatorsMap.get(appointment.assignedOperatorId) : null;
-              const calendarLink = generateGoogleCalendarLink(appointment);
-              return (
-                <TableRow key={appointment.id}>
-                    <TableCell className="font-medium cursor-pointer uppercase" onClick={() => handleEditClick(appointment)}>{appointment.title}</TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>
-                        {client ? (
-                            <div className="flex flex-col gap-1">
-                                <span className="uppercase">{client.name}</span>
-                                {client.phone && (
-                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
-                                            <Phone className="h-3 w-3" /> {client.phone}
-                                        </a>
-                                        <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-green-500">
-                                            <WhatsAppIcon className="h-4 w-4" />
-                                        </a>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <span>-</span>
-                        )}
-                    </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>
-                         {appointment.address ? (
-                           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
-                                <MapPin className="h-4 w-4 shrink-0" /> <span>{appointment.address}</span>
-                            </a>
-                         ) : (
-                            <span>N/D</span>
-                         )}
-                    </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>
-                        <div className="flex items-center gap-2">
-                           <span>{appointment.date ? format(new Date(appointment.date), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</span>
-                           {calendarLink && (
-                             <TooltipProvider>
-                               <Tooltip>
-                                 <TooltipTrigger asChild>
-                                   <a href={calendarLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                                     <CalendarIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                                   </a>
-                                 </TooltipTrigger>
-                                 <TooltipContent>
-                                   <p>Aggiungi a Google Calendar</p>
-                                 </TooltipContent>
-                               </Tooltip>
-                             </TooltipProvider>
+      <Card className="hidden lg:block w-full overflow-hidden border shadow-sm">
+        <div className="overflow-x-auto w-full">
+          <Table className="w-full min-w-[800px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Titolo</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Indirizzo</TableHead>
+                <TableHead>Data</TableHead>
+                <TableHead>Operatore</TableHead>
+                <TableHead>Stato</TableHead>
+                <TableHead className="w-14 text-right sticky right-0 bg-card z-20 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]">Azioni</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAppointments.map((appointment) => {
+                const client = clientsMap.get(appointment.clientId);
+                const operatorName = appointment.assignedOperatorId ? operatorsMap.get(appointment.assignedOperatorId) : null;
+                const calendarLink = generateGoogleCalendarLink(appointment);
+                return (
+                  <TableRow key={appointment.id} className="group">
+                      <TableCell className="font-medium cursor-pointer uppercase" onClick={() => handleEditClick(appointment)}>{appointment.title}</TableCell>
+                      <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>
+                          {client ? (
+                              <div className="flex flex-col gap-1">
+                                  <span className="uppercase font-semibold">{client.name}</span>
+                                  {client.phone && (
+                                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                          <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
+                                              <Phone className="h-3 w-3" /> {client.phone}
+                                          </a>
+                                          <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-green-500">
+                                              <WhatsAppIcon className="h-4 w-4" />
+                                          </a>
+                                      </div>
+                                  )}
+                              </div>
+                          ) : (
+                              <span>-</span>
+                          )}
+                      </TableCell>
+                      <TableCell className="cursor-pointer max-w-[200px]" onClick={() => handleEditClick(appointment)}>
+                           {appointment.address ? (
+                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline truncate">
+                                  <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" /> <span className="truncate">{appointment.address}</span>
+                              </a>
+                           ) : (
+                              <span>N/D</span>
                            )}
-                        </div>
-                    </TableCell>
-                    <TableCell className="cursor-pointer uppercase" onClick={() => handleEditClick(appointment)}>{operatorName || 'Non assegnato'}</TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => handleEditClick(appointment)}>{getStatusBadge(appointment.status)}</TableCell>
-                    <TableCell className="text-right">
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onSelect={() => handleEditClick(appointment)}>
-                                <Pencil className="mr-2" /> Modifica
-                            </DropdownMenuItem>
-                            {currentUser.role === 'Admin' && (
-                                <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                        onSelect={() => handleDeleteClick(appointment)}>
-                                        <Trash2 className="mr-2" /> Elimina
-                                    </DropdownMenuItem>
-                                </>
-                            )}
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                      </TableCell>
+                      <TableCell className="cursor-pointer whitespace-nowrap" onClick={() => handleEditClick(appointment)}>
+                          <div className="flex items-center gap-2">
+                             <span>{appointment.date ? format(new Date(appointment.date), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</span>
+                             {calendarLink && (
+                               <TooltipProvider>
+                                 <Tooltip>
+                                   <TooltipTrigger asChild>
+                                     <a href={calendarLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                                       <CalendarIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                     </a>
+                                   </TooltipTrigger>
+                                   <TooltipContent>
+                                     <p>Aggiungi a Google Calendar</p>
+                                   </TooltipContent>
+                                 </Tooltip>
+                               </TooltipProvider>
+                             )}
+                          </div>
+                      </TableCell>
+                      <TableCell className="cursor-pointer uppercase text-xs" onClick={() => handleEditClick(appointment)}>{operatorName || 'Non assegnato'}</TableCell>
+                      <TableCell className="cursor-pointer whitespace-nowrap" onClick={() => handleEditClick(appointment)}>{getStatusBadge(appointment.status)}</TableCell>
+                      <TableCell className="text-right sticky right-0 bg-card group-hover:bg-muted/50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]">
+                          <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                              <DropdownMenuItem onSelect={() => handleEditClick(appointment)}>
+                                  <Pencil className="mr-2" /> Modifica
+                              </DropdownMenuItem>
+                              {currentUser.role === 'Admin' && (
+                                  <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem 
+                                          className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                          onSelect={() => handleDeleteClick(appointment)}>
+                                          <Trash2 className="mr-2" /> Elimina
+                                      </DropdownMenuItem>
+                                  </>
+                              )}
+                          </DropdownMenuContent>
+                          </DropdownMenu>
+                      </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
       <EditAppointmentForm
         appointment={selectedAppointment}

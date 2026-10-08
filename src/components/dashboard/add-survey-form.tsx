@@ -110,6 +110,7 @@ export function AddSurveyForm({ children, onAppointmentAdded, clients, operators
         address: values.address || null,
         date: finalDate,
         companyId: currentCompany.id,
+        status: 'Pianificato',
     });
     
     onAppointmentAdded(newAppointment);
@@ -206,12 +207,12 @@ export function AddSurveyForm({ children, onAppointmentAdded, clients, operators
         setAddressSuggestions([]);
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="sm:max-w-2xl flex flex-col p-0 max-h-[calc(100dvh-1.5rem)] md:max-h-[90vh] h-[calc(100dvh-1.5rem)] md:h-auto w-[calc(100%-1rem)] sm:w-full rounded-2xl md:rounded-lg overflow-hidden">
+        <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-0 shrink-0 pr-12">
           <DialogTitle>Crea nuovo appuntamento</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="h-full">
-            <div className="p-6">
+        <ScrollArea className="flex-1 min-h-0 h-auto overflow-y-auto">
+            <div className="p-4 sm:p-6">
                 <Form {...form}>
                 <form id="add-appointment-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
@@ -467,7 +468,7 @@ export function AddSurveyForm({ children, onAppointmentAdded, clients, operators
                 </Form>
             </div>
         </ScrollArea>
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-4 sm:p-6 gap-2 border-t shrink-0 bg-background">
             <DialogClose asChild>
                 <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>

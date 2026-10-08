@@ -91,30 +91,46 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     
     const handleLoginAsClient = async (client: User) => {
         setIsLoggingInAs(client.id);
-        const result = await createClientAutologinUrl(client.id);
-        if (result.success && result.url) {
-            window.open(result.url, '_blank');
-        } else {
+        const newWindow = typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null;
+        try {
+            const result = await createClientAutologinUrl(client.id);
+            if (result.success && result.url) {
+                if (newWindow) {
+                    newWindow.location.href = result.url;
+                } else {
+                    window.location.href = result.url;
+                }
+            } else {
+                if (newWindow) newWindow.close();
+                toast({
+                    variant: 'destructive',
+                    title: 'Accesso Fallito',
+                    description: result.error || 'Impossibile generare il link di accesso per il cliente.',
+                });
+            }
+        } catch (error) {
+            if (newWindow) newWindow.close();
             toast({
                 variant: 'destructive',
                 title: 'Accesso Fallito',
-                description: result.error || 'Impossibile generare il link di accesso per il cliente.',
+                description: 'Si è verificato un errore durante la generazione del link di accesso.',
             });
+        } finally {
+            setIsLoggingInAs(null);
         }
-        setIsLoggingInAs(null);
     };
 
 
     const confirmDelete = async () => {
         if (!clientToDelete) return;
-        const success = await deleteUser(clientToDelete.id);
-        if (success) {
+        try {
+            await deleteUser(clientToDelete.id);
             onDataChange();
             toast({
                 title: 'Cliente eliminato',
                 description: `Il cliente ${clientToDelete.name} è stato eliminato con successo.`,
             });
-        } else {
+        } catch {
              toast({
                 variant: 'destructive',
                 title: 'Errore',

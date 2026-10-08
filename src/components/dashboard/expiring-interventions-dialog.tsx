@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
-import { generateExpiringInterventionsSummary, sendExpiringInterventionsSummaryEmail } from '@/app/actions';
+import { sendExpiringInterventionsSummaryEmail } from '@/app/actions';
 import { Loader, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
@@ -23,15 +23,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 
 interface ExpiringInterventionsDialogProps {
   isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
+  setIsOpen: (isOpen: boolean) => void;
 }
 
 export function ExpiringInterventionsDialog({ isOpen, setIsOpen }: ExpiringInterventionsDialogProps) {
     const { currentCompany } = useUser();
     const { toast } = useToast();
-    const [isLoading, setIsLoading] = useState(false);
-    const [isSending, setIsSending] = useState(false);
-    const [emailContent, setEmailContent] = useState<{ subject: string; body: string; recipients: string[] } | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isSending, setIsSending] = useState<boolean>(false);
+    const [emailContent, setEmailContent] = useState<{ subject: string; body: string; recipients?: string[] } | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -62,10 +62,10 @@ export function ExpiringInterventionsDialog({ isOpen, setIsOpen }: ExpiringInter
     }, [isOpen, currentCompany, emailContent]);
 
     const handleSendEmail = async () => {
-        if (!currentCompany || !emailContent || (emailContent.recipients && emailContent.recipients.length === 0)) return;
+        if (!currentCompany) return;
         
         setIsSending(true);
-        const result = await sendExpiringInterventionsSummaryEmail(currentCompany.id, emailContent.subject, emailContent.body);
+        const result = await sendExpiringInterventionsSummaryEmail(currentCompany.id);
         if (result.success) {
             toast({
                 title: 'Email Inviata!',
@@ -84,15 +84,15 @@ export function ExpiringInterventionsDialog({ isOpen, setIsOpen }: ExpiringInter
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-3xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
-        <DialogHeader className="p-6 pb-4">
+      <DialogContent className="sm:max-w-3xl flex flex-col p-0 max-h-[calc(100dvh-1.5rem)] md:max-h-[90vh] h-[calc(100dvh-1.5rem)] md:h-auto w-[calc(100%-1rem)] sm:w-full rounded-2xl md:rounded-lg overflow-hidden">
+        <DialogHeader className="p-4 sm:p-6 pb-4 shrink-0 pr-12">
           <DialogTitle>Anteprima Riepilogo Interventi in Scadenza</DialogTitle>
           <DialogDescription>
             Questa è un'anteprima dell'email che verrà inviata a tutti gli operatori.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-full border-y">
-            <div className="p-6">
+        <ScrollArea className="flex-1 min-h-0 h-auto overflow-y-auto border-y">
+            <div className="p-4 sm:p-6">
                 {isLoading && (
                     <div className="flex justify-center items-center h-48">
                         <Loader className="animate-spin" />
@@ -126,7 +126,7 @@ export function ExpiringInterventionsDialog({ isOpen, setIsOpen }: ExpiringInter
                 )}
             </div>
         </ScrollArea>
-        <DialogFooter className="p-6 pt-4">
+        <DialogFooter className="p-4 sm:p-6 gap-2 border-t shrink-0 bg-background">
             <DialogClose asChild>
                 <Button variant="outline" disabled={isSending}>Annulla</Button>
             </DialogClose>

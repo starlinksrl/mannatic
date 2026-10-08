@@ -18,7 +18,7 @@ import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention, updateIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader, TrendingUp, MailPlus } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader, TrendingUp, MailPlus, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -44,11 +44,12 @@ import {
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { cn, createWhatsAppLink } from '@/lib/utils';
 import { WhatsAppIcon } from '../icons/whatsapp-icon';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
 import { triggerInterventionReminderEmail, createClientAutologinUrl, sendFilteredInterventionsSummaryEmail } from '@/app/actions';
 import { ScrollArea } from '../ui/scroll-area';
+import { useTheme } from '@/contexts/theme-context';
 
 
 interface InterventionsTableProps {
@@ -95,6 +96,7 @@ export function InterventionsTable({
   const { openModal, closeModal } = useInterventionModal();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   
   const [interventions, setInterventions] = useState(initialInterventions);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
@@ -104,7 +106,14 @@ export function InterventionsTable({
   const [clientFilter, setClientFilter] = useState(initialClientFilter);
   const [operatorFilter, setOperatorFilter] = useState(initialOperatorFilter);
   const [assignedFilter, setAssignedFilter] = useState(initialAssignedFilter);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>(initialViewMode);
+  const { viewMode: globalViewMode, setViewMode: setGlobalViewMode } = useTheme();
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>(initialViewMode || globalViewMode);
+
+  useEffect(() => {
+    if (!searchParams.get('view')) {
+      setViewMode(globalViewMode);
+    }
+  }, [globalViewMode, searchParams]);
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Intervention | 'client' | 'operator'; direction: 'ascending' | 'descending' } | null>({ key: 'createdAt', direction: 'descending' });
   
@@ -136,19 +145,24 @@ export function InterventionsTable({
   
   useEffect(() => {
     if (pathname === '/dashboard/interventions' || pathname === '/dashboard/new-installations') {
-        const params = new URLSearchParams();
-        if (statusFilter !== 'active') params.set('status', statusFilter);
-        if (priorityFilter !== 'all') params.set('priority', priorityFilter);
-        if (operatorFilter !== 'all') params.set('operator', operatorFilter);
-        if (clientFilter !== 'all') params.set('client', clientFilter);
-        if (searchTerm !== '') params.set('search', searchTerm);
-        if (assignedFilter) params.set('assigned', 'true');
-        if (viewMode !== 'grid') params.set('view', viewMode);
+        const params = new URLSearchParams(searchParams.toString());
+        if (statusFilter !== 'active') params.set('status', statusFilter); else params.delete('status');
+        if (priorityFilter !== 'all') params.set('priority', priorityFilter); else params.delete('priority');
+        if (operatorFilter !== 'all') params.set('operator', operatorFilter); else params.delete('operator');
+        if (clientFilter !== 'all') params.set('client', clientFilter); else params.delete('client');
+        if (searchTerm !== '') params.set('search', searchTerm); else params.delete('search');
+        if (assignedFilter) params.set('assigned', 'true'); else params.delete('assigned');
+        if (viewMode !== globalViewMode) params.set('view', viewMode); else params.delete('view');
         
         const queryString = params.toString();
         router.replace(queryString ? `${pathname}?${queryString}` : pathname);
     }
-  }, [statusFilter, priorityFilter, operatorFilter, clientFilter, searchTerm, assignedFilter, viewMode, router, pathname]);
+  }, [statusFilter, priorityFilter, operatorFilter, clientFilter, searchTerm, assignedFilter, viewMode, router, pathname, globalViewMode, searchParams]);
+
+  const handleViewModeChange = (newMode: 'table' | 'grid') => {
+    setViewMode(newMode);
+    setGlobalViewMode(newMode);
+  };
 
   const handleEditClick = (intervention: Intervention) => {
     openModal(intervention);
@@ -181,7 +195,7 @@ export function InterventionsTable({
 
   const handleFeatureToggle = async (intervention: Intervention) => {
     const newFeaturedState = !intervention.isFeatured;
-    const updatedIntervention = await updateIntervention(intervention.id, { isFeatured: newFeaturedState }, currentUser);
+    const updatedIntervention = await updateIntervention(intervention.id, { isFeatured: newFeaturedState });
     if (updatedIntervention) {
         onInterventionChange();
         toast({
@@ -196,7 +210,7 @@ export function InterventionsTable({
   const handleArchiveClick = async (intervention: Intervention) => {
     if (currentUser.role === 'Admin' || currentUser.role === 'Creator') {
         try {
-            const updated = await updateIntervention(intervention.id, { status: 'Archiviato' }, currentUser);
+            const updated = await updateIntervention(intervention.id, { status: 'Archiviato' });
             if (updated) {
                 onInterventionChange();
                 closeModal(); 
@@ -443,70 +457,70 @@ export function InterventionsTable({
   };
 
   const tableHeaders = [
-    { key: 'isFeatured', label: '★', visible: currentUser.role === 'Admin' || currentUser.role === 'Creator', className: 'w-12'},
-    { key: 'client', label: 'Cliente / Titolo', visible: currentUser.role !== 'Client', className: 'w-[30%]' },
-    { key: 'title', label: 'Titolo', visible: currentUser.role === 'Client' },
-    { key: 'contact', label: 'Contatti Cliente', visible: currentUser.role === 'Admin', className: 'hidden lg:table-cell' },
-    { key: 'address', label: 'Indirizzo', visible: currentUser.role === 'Admin', className: 'hidden xl:table-cell' },
-    { key: 'status', label: 'Stato', visible: true },
-    { key: 'priority', label: 'Priorità', visible: true, className: 'hidden sm:table-cell' },
-    { key: 'createdAt', label: 'Creazione', visible: true, className: 'hidden md:table-cell' },
-    { key: 'dueDate', label: 'Scadenza', visible: true, className: 'hidden md:table-cell' },
-    { key: 'operator', label: 'Operatore', visible: currentUser.role !== 'Operator', className: 'hidden lg:table-cell' },
-    { key: 'actions', label: 'Azioni', visible: true, className: 'w-12' },
+    { key: 'isFeatured', label: '★', visible: currentUser.role === 'Admin' || currentUser.role === 'Creator', className: 'w-10'},
+    { key: 'client', label: 'Cliente / Titolo', visible: currentUser.role !== 'Client', className: 'min-w-[160px]' },
+    { key: 'title', label: 'Titolo', visible: currentUser.role === 'Client', className: 'min-w-[160px]' },
+    { key: 'contact', label: 'Contatti', visible: currentUser.role === 'Admin', className: 'hidden xl:table-cell min-w-[130px]' },
+    { key: 'address', label: 'Indirizzo', visible: currentUser.role === 'Admin', className: 'hidden 2xl:table-cell min-w-[130px]' },
+    { key: 'status', label: 'Stato', visible: true, className: 'w-[110px]' },
+    { key: 'priority', label: 'Priorità', visible: true, className: 'hidden sm:table-cell w-[90px]' },
+    { key: 'createdAt', label: 'Creazione', visible: true, className: 'hidden xl:table-cell w-[100px]' },
+    { key: 'dueDate', label: 'Scadenza', visible: true, className: 'hidden md:table-cell w-[100px]' },
+    { key: 'operator', label: 'Operatore', visible: currentUser.role !== 'Operator', className: 'hidden lg:table-cell min-w-[120px]' },
+    { key: 'actions', label: 'Azioni', visible: true, className: 'w-14 text-right sticky right-0 bg-card z-20 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]' },
   ];
   
-  const canDeleteIntervention = ['Admin', 'Client', 'Creator'].includes(currentUser.role);
+  const canDeleteIntervention = ['Admin', 'Creator'].includes(currentUser.role);
   const canArchiveIntervention = currentUser.role === 'Admin' || currentUser.role === 'Creator';
   const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
   
   const canSeeFinancialSummary = ['Admin', 'Creator', 'Client'].includes(currentUser.role);
 
   return (
-    <div className="space-y-4">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-grow">
+    <div className="space-y-4 w-full min-w-0">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 w-full">
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
                 <Input
-                placeholder="Cerca per titolo, ID o cliente..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="sm:col-span-2"
+                  placeholder="Cerca per titolo, ID o cliente..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full sm:w-64"
                 />
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="active">Attivi</SelectItem>
-                    <SelectItem value="all">Tutti</SelectItem>
-                    <SelectItem value="Nuovo">Nuovo</SelectItem>
-                    <SelectItem value="In corso">In corso</SelectItem>
-                    <SelectItem value="Archiviato">Archiviato</SelectItem>
-                    <SelectItem value="Completato">Completato</SelectItem>
-                    <SelectItem value="Da Fatturare">Da Fatturare</SelectItem>
-                    <SelectItem value="Fatturato">Fatturato</SelectItem>
-                    <SelectItem value="Annullato">Annullato</SelectItem>
-                </SelectContent>
+                  <SelectTrigger className="w-full sm:w-[135px]"><SelectValue placeholder="Filtra per stato" /></SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="active">Attivi</SelectItem>
+                      <SelectItem value="all">Tutti</SelectItem>
+                      <SelectItem value="Nuovo">Nuovo</SelectItem>
+                      <SelectItem value="In corso">In corso</SelectItem>
+                      <SelectItem value="Archiviato">Archiviato</SelectItem>
+                      <SelectItem value="Completato">Completato</SelectItem>
+                      <SelectItem value="Da Fatturare">Da Fatturare</SelectItem>
+                      <SelectItem value="Fatturato">Fatturato</SelectItem>
+                      <SelectItem value="Annullato">Annullato</SelectItem>
+                  </SelectContent>
                 </Select>
                 <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger><SelectValue placeholder="Filtra per priorità" /></SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Tutte le priorità</SelectItem>
-                    <SelectItem value="Bassa">Bassa</SelectItem>
-                    <SelectItem value="Media">Media</SelectItem>
-                    <SelectItem value="Alta">Alta</SelectItem>
-                    <SelectItem value="Critica">Critica</SelectItem>
-                </SelectContent>
+                  <SelectTrigger className="w-full sm:w-[135px]"><SelectValue placeholder="Filtra per priorità" /></SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">Tutte le priorità</SelectItem>
+                      <SelectItem value="Bassa">Bassa</SelectItem>
+                      <SelectItem value="Media">Media</SelectItem>
+                      <SelectItem value="Alta">Alta</SelectItem>
+                      <SelectItem value="Critica">Critica</SelectItem>
+                  </SelectContent>
                 </Select>
                 {currentUser.role === 'Admin' && (
                     <Select value={clientFilter} onValueChange={setClientFilter}>
-                    <SelectTrigger><SelectValue placeholder="Filtra per cliente" /></SelectTrigger>
-                    <SelectContent>
-                    <SelectItem value="all">Tutti i clienti</SelectItem>
-                    {Array.from(clientsMap.values()).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
+                      <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Filtra per cliente" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti i clienti</SelectItem>
+                        {Array.from(clientsMap.values()).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                 )}
             </div>
-            <div className="flex items-center gap-2 border rounded-md p-1 bg-muted/50 self-start md:self-center">
+            <div className="flex items-center gap-2 border rounded-md p-1 bg-muted/50 shrink-0 self-start xl:self-center">
                 {isAdmin && (
                     <Button 
                         variant="outline" 
@@ -521,7 +535,7 @@ export function InterventionsTable({
                 <Button 
                     variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
                     size="sm" 
-                    onClick={() => setViewMode('table')}
+                    onClick={() => handleViewModeChange('table')}
                     className="h-8 px-2"
                 >
                     <List className="h-4 w-4 mr-1" /> Tabella
@@ -529,7 +543,7 @@ export function InterventionsTable({
                 <Button 
                     variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
                     size="sm" 
-                    onClick={() => setViewMode('grid')}
+                    onClick={() => handleViewModeChange('grid')}
                     className="h-8 px-2"
                 >
                     <LayoutGrid className="h-4 w-4 mr-1" /> Post-it
@@ -579,7 +593,8 @@ export function InterventionsTable({
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(intervention as Intervention); }}>
-                                            <Pencil className="mr-2" /> Modifica
+                                            {currentUser.role === 'Client' ? <Eye className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
+                                            {currentUser.role === 'Client' ? 'Dettagli' : 'Modifica'}
                                         </DropdownMenuItem>
                                         {currentUser.role === 'Admin' && (
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendReminder(intervention as Intervention); }} disabled={isSendingReminder === intervention.id}>
@@ -608,8 +623,7 @@ export function InterventionsTable({
                           </CardHeader>
                           <CardContent className="p-4 pt-0 flex-1 flex flex-col justify-between">
                               <div className="space-y-2 mt-2">
-                                  <div className="flex items-center justify-between gap-2">
-                                      <span className="text-[10px] text-muted-foreground font-mono">ID: {intervention.id}</span>
+                                  <div className="flex items-center justify-end gap-2">
                                       {renderStatus(intervention as Intervention)}
                                   </div>
                                   <div className="text-[11px] text-muted-foreground">
@@ -679,7 +693,8 @@ export function InterventionsTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(intervention as Intervention); }}>
-                                    <Pencil className="mr-2" /> Modifica
+                                    {currentUser.role === 'Client' ? <Eye className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
+                                    {currentUser.role === 'Client' ? 'Dettagli' : 'Modifica'}
                                 </DropdownMenuItem>
                                 {currentUser.role === 'Admin' && (
                                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendReminder(intervention as Intervention); }} disabled={isSendingReminder === intervention.id}>
@@ -709,139 +724,140 @@ export function InterventionsTable({
                     })}
                 </CardContent>
             </Card>
-            <Card className="hidden lg:block">
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    {tableHeaders.filter(h => h.visible).map(header => (
-                        <TableHead key={header.key} className={header.className}>
-                            {header.key === 'actions' ? (
-                                <span className="sr-only">{header.label}</span>
-                            ) : header.key === 'isFeatured' ? (
-                                <Button variant="ghost" size="icon" onClick={() => requestSort('isFeatured')}>
-                                    <Star className="h-4 w-4" />
-                                    {getSortIcon('isFeatured')}
-                                </Button>
-                            ) : (
-                                <Button variant="ghost" onClick={() => requestSort(header.key as any)}>
-                                    {header.label}
-                                    {getSortIcon(header.key as any)}
-                                </Button>
-                            )}
-                        </TableHead>
-                    ))}
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {sortedInterventions.map((intervention) => {
-                    const client = clientsMap.get(intervention.clientId);
-                    const operatorNames = (intervention.assignedOperatorIds || []).map(id => operatorsMap.get(id)).filter(Boolean).join(', ');
-                    const urgent = isDueSoon(intervention.dueDate);
-                    return (
-                        <TableRow key={intervention.id} className={cn(urgent && "bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/60")}>
-                        {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
-                            <TableCell>
-                                <Checkbox
-                                    checked={intervention.isFeatured}
-                                    onCheckedChange={() => handleFeatureToggle(intervention)}
-                                    aria-label="Evidenziato"
-                                />
-                            </TableCell>
-                        )}
-                        {currentUser.role !== 'Client' ? (
-                            <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                                <div className="flex flex-col break-words">
-                                    <span className="break-words font-semibold uppercase">{client ? client.name : '-'}</span>
-                                    <span className="text-xs text-muted-foreground uppercase">{intervention.title}</span>
-                                    <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
-                                </div>
-                            </TableCell>
-                        ) : (
-                            <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                                <div className="flex flex-col break-words">
-                                    <span className="break-words uppercase">{intervention.title}</span>
-                                    <span className="text-xs text-muted-foreground">ID: {intervention.id}</span>
-                                </div>
-                            </TableCell>
-                        )}
-                        {currentUser.role === 'Admin' && (
-                            <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                            {client && (
-                                <div className="flex flex-col gap-1 text-xs">
-                                    {client.email && (
-                                        <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                            <Mail className="h-4 w-4 text-muted-foreground" />
-                                            <span>{client.email}</span>
-                                        </a>
-                                    )}
-                                    {client.phone && (
-                                        <div className="flex items-center gap-2">
-                                            <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                                <Phone className="h-4 w-4 text-muted-foreground" />
-                                                <span>{client.phone}</span>
-                                            </a>
-                                            <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500">
-                                                <WhatsAppIcon className="h-4 w-4" />
-                                            </a>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            </TableCell>
-                        )}
-                        {currentUser.role === 'Admin' && (
-                            <TableCell className="hidden xl:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
-                            {client && client.address && (
-                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs hover:underline">
-                                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                                    <span>{client.address}</span>
-                                </a>
-                            )}
-                            </TableCell>
-                        )}
-                        <TableCell className="cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{renderStatus(intervention as Intervention)}</TableCell>
-                        <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{getPriorityBadge(intervention.priority)}</TableCell>
-                        <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.createdAt ? format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
-                        <TableCell className={cn("hidden md:table-cell cursor-pointer", urgent && "font-bold")} onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
-                        {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>{operatorNames || 'Non assegnato'}</TableCell>}
-                        <TableCell className="text-right">
-                            <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}><MoreHorizontal /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(intervention as Intervention); }}>
-                                    <Pencil className="mr-2" /> Modifica
-                                </DropdownMenuItem>
-                                {currentUser.role === 'Admin' && (
-                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendReminder(intervention as Intervention); }} disabled={isSendingReminder === intervention.id}>
-                                        {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                        Sollecita
-                                    </DropdownMenuItem>
+            <Card className="hidden lg:block w-full overflow-hidden border shadow-sm">
+                <div className="overflow-x-auto w-full">
+                    <Table className="w-full min-w-[900px]">
+                    <TableHeader>
+                        <TableRow>
+                        {tableHeaders.filter(h => h.visible).map(header => (
+                            <TableHead key={header.key} className={header.className}>
+                                {header.key === 'actions' ? (
+                                    <span className="sr-only">{header.label}</span>
+                                ) : header.key === 'isFeatured' ? (
+                                    <Button variant="ghost" size="icon" onClick={() => requestSort('isFeatured')}>
+                                        <Star className="h-4 w-4" />
+                                        {getSortIcon('isFeatured')}
+                                    </Button>
+                                ) : (
+                                    <Button variant="ghost" onClick={() => requestSort(header.key as any)}>
+                                        {header.label}
+                                        {getSortIcon(header.key as any)}
+                                    </Button>
                                 )}
-                                {canArchiveIntervention && (
-                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchiveClick(intervention as Intervention); }}>
-                                        <Archive className="mr-2" /> Archivia
-                                    </DropdownMenuItem>
-                                )}
-                                {canDeleteIntervention && (
-                                    <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem 
-                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                            onClick={(e) => { e.stopPropagation(); handleDeleteClick(intervention as Intervention); }}>
-                                            <Trash2 className="mr-2" /> Elimina
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableCell>
+                            </TableHead>
+                        ))}
                         </TableRow>
-                    );
-                    })}
-                </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {sortedInterventions.map((intervention) => {
+                        const client = clientsMap.get(intervention.clientId);
+                        const operatorNames = (intervention.assignedOperatorIds || []).map(id => operatorsMap.get(id)).filter(Boolean).join(', ');
+                        const urgent = isDueSoon(intervention.dueDate);
+                        return (
+                            <TableRow key={intervention.id} className={cn(urgent && "bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/60")}>
+                            {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
+                                <TableCell>
+                                    <Checkbox
+                                        checked={intervention.isFeatured}
+                                        onCheckedChange={() => handleFeatureToggle(intervention)}
+                                        aria-label="Evidenziato"
+                                    />
+                                </TableCell>
+                            )}
+                            {currentUser.role !== 'Client' ? (
+                                <TableCell className="font-medium cursor-pointer max-w-[250px]" onClick={() => handleEditClick(intervention as Intervention)}>
+                                    <div className="flex flex-col break-words">
+                                        <span className="break-words font-semibold uppercase">{client ? client.name : '-'}</span>
+                                        <span className="text-xs text-muted-foreground uppercase">{intervention.title}</span>
+                                    </div>
+                                </TableCell>
+                            ) : (
+                                <TableCell className="font-medium cursor-pointer max-w-[250px]" onClick={() => handleEditClick(intervention as Intervention)}>
+                                    <div className="flex flex-col break-words">
+                                        <span className="break-words uppercase">{intervention.title}</span>
+                                    </div>
+                                </TableCell>
+                            )}
+                            {currentUser.role === 'Admin' && (
+                                <TableCell className="hidden xl:table-cell cursor-pointer max-w-[180px]" onClick={() => handleEditClick(intervention as Intervention)}>
+                                {client && (
+                                    <div className="flex flex-col gap-1 text-xs break-all">
+                                        {client.email && (
+                                            <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline truncate">
+                                                <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <span className="truncate">{client.email}</span>
+                                            </a>
+                                        )}
+                                        {client.phone && (
+                                            <div className="flex items-center gap-2">
+                                                <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                    <span>{client.phone}</span>
+                                                </a>
+                                                <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500 shrink-0">
+                                                    <WhatsAppIcon className="h-4 w-4" />
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                </TableCell>
+                            )}
+                            {currentUser.role === 'Admin' && (
+                                <TableCell className="hidden 2xl:table-cell cursor-pointer max-w-[180px]" onClick={() => handleEditClick(intervention as Intervention)}>
+                                {client && client.address && (
+                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs hover:underline truncate">
+                                        <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        <span className="truncate">{client.address}</span>
+                                    </a>
+                                )}
+                                </TableCell>
+                            )}
+                            <TableCell className="cursor-pointer whitespace-nowrap" onClick={() => handleEditClick(intervention as Intervention)}>{renderStatus(intervention as Intervention)}</TableCell>
+                            <TableCell className="hidden sm:table-cell cursor-pointer whitespace-nowrap" onClick={() => handleEditClick(intervention as Intervention)}>{getPriorityBadge(intervention.priority)}</TableCell>
+                            <TableCell className="hidden xl:table-cell cursor-pointer text-xs whitespace-nowrap" onClick={() => handleEditClick(intervention as Intervention)}>{intervention.createdAt ? format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
+                            <TableCell className={cn("hidden md:table-cell cursor-pointer text-xs whitespace-nowrap", urgent && "font-bold")} onClick={() => handleEditClick(intervention as Intervention)}>{intervention.dueDate ? format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it }) : 'N/D'}</TableCell>
+                            {currentUser.role !== 'Operator' && <TableCell className="hidden lg:table-cell cursor-pointer text-xs max-w-[140px] truncate" onClick={() => handleEditClick(intervention as Intervention)}>{operatorNames || 'Non assegnato'}</TableCell>}
+                            <TableCell className="text-right sticky right-0 bg-card group-hover:bg-muted/50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]">
+                                <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}><MoreHorizontal className="h-4 w-4" /></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(intervention as Intervention); }}>
+                                        {currentUser.role === 'Client' ? <Eye className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
+                                        {currentUser.role === 'Client' ? 'Dettagli' : 'Modifica'}
+                                    </DropdownMenuItem>
+                                    {currentUser.role === 'Admin' && (
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendReminder(intervention as Intervention); }} disabled={isSendingReminder === intervention.id}>
+                                            {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                            Sollecita
+                                        </DropdownMenuItem>
+                                    )}
+                                    {canArchiveIntervention && (
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchiveClick(intervention as Intervention); }}>
+                                            <Archive className="mr-2" /> Archivia
+                                        </DropdownMenuItem>
+                                    )}
+                                    {canDeleteIntervention && (
+                                        <>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem 
+                                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteClick(intervention as Intervention); }}>
+                                                <Trash2 className="mr-2" /> Elimina
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                            </TableRow>
+                        );
+                        })}
+                    </TableBody>
+                    </Table>
+                </div>
             </Card>
         </>
       )}

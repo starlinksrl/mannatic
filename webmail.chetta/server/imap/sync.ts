@@ -196,11 +196,15 @@ export async function syncFolderMessages(
 export async function fetchFullMessage(
   accountId: string,
   folderPath: string,
-  uid: number
+  uid: number,
+  forceRefresh = false
 ): Promise<Message | null> {
   const cached = messageRepo.getByUid(accountId, folderPath, uid);
-  if (cached && cached.body_html) {
-    return cached;
+  // Return cached only if not forced and does not contain stale un-replaced cid: references
+  if (!forceRefresh && cached && cached.body_html) {
+    if (!/src\s*=\s*["']?cid:/i.test(cached.body_html) && !/url\(\s*["']?cid:/i.test(cached.body_html)) {
+      return cached;
+    }
   }
 
   const client = await getConnectedImapClient(accountId);

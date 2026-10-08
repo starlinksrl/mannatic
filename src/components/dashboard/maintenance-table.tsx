@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, formatDistanceToNow, isBefore, addDays, startOfToday, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { getClient, getOperator, deleteScheduledMaintenance } from '@/lib/data';
+import { deleteScheduledMaintenance } from '@/lib/data';
 import { Button } from '../ui/button';
 import { MoreHorizontal, PlusCircle, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -165,19 +165,28 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                 aValue = clientsMap.get(a.clientId) || '';
                 bValue = clientsMap.get(b.clientId) || '';
                 break;
-             case 'operator':
-                aValue = a.assignedOperatorId ? operatorsMap.get(a.assignedOperatorId) || '' : '';
-                bValue = b.assignedOperatorId ? operatorsMap.get(b.assignedOperatorId) || '' : '';
+             case 'operator': {
+                const opIdA = a.assignedOperatorIds?.[0];
+                const opIdB = b.assignedOperatorIds?.[0];
+                aValue = opIdA ? operatorsMap.get(opIdA) || '' : '';
+                bValue = opIdB ? operatorsMap.get(opIdB) || '' : '';
                 break;
+             }
             default:
                 aValue = a[sortConfig.key as keyof ScheduledMaintenance];
                 bValue = b[sortConfig.key as keyof ScheduledMaintenance];
         }
 
-        if (aValue < bValue) {
+        if (aValue != null && bValue != null) {
+          if (aValue < bValue) {
+            return sortConfig.direction === 'ascending' ? -1 : 1;
+          }
+          if (aValue > bValue) {
+            return sortConfig.direction === 'ascending' ? 1 : -1;
+          }
+        } else if (aValue != null) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
-        }
-        if (aValue > bValue) {
+        } else if (bValue != null) {
           return sortConfig.direction === 'ascending' ? 1 : -1;
         }
         return 0;
@@ -213,17 +222,9 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
   };
 
   const getPeriodicityText = (task: ScheduledMaintenance) => {
-    if (task.periodicity === 'monthly' && task.recurrenceMonths > 0) {
-        return `Ogni ${task.recurrenceMonths} mes${task.recurrenceMonths > 1 ? 'i' : 'e'}`;
-    }
-    const map = {
-        daily: 'Giornaliera',
-        weekly: 'Settimanale',
-        monthly: 'Mensile',
-        yearly: 'Annuale'
-    };
-    return map[task.periodicity];
-  }
+    const months = task.recurrenceMonths || 1;
+    return `Ogni ${months} mes${months > 1 ? 'i' : 'e'}`;
+  };
 
 
   return (
@@ -334,14 +335,12 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
           <TableBody>
             {sortedTasks.map((task) => {
               const clientName = clientsMap.get(task.clientId);
-              const operatorName = task.assignedOperatorId ? operatorsMap.get(task.assignedOperatorId) : null;
+              const opId = task.assignedOperatorIds?.[0];
+              const operatorName = opId ? operatorsMap.get(opId) : null;
               return (
                 <TableRow key={task.id}>
                     <TableCell className="font-medium cursor-pointer" onClick={() => handleEditClick(task)}>
-                        <div className="flex flex-col">
-                            <span className="uppercase">{task.title}</span>
-                            <span className="text-xs text-muted-foreground">ID: {task.id}</span>
-                        </div>
+                        <span className="uppercase">{task.title}</span>
                     </TableCell>
                     <TableCell className="cursor-pointer uppercase" onClick={() => handleEditClick(task)}>{clientName}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{getStatusBadge(task)}</TableCell>

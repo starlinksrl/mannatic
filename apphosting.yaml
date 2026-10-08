@@ -20,3 +20,16 @@ runConfig:
 
 # The command that starts the web server.
 entryPoint: next start
+
+env:
+  - variable: NEXT_PUBLIC_SUPABASE_URL
+    value: "https://wlnsgxjlpipisnzupbrd.supabase.co"
+  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndsbnNneGpscGlwaXNuenVwYnJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2ODk1NDAsImV4cCI6MjEwMTI2NTU0MH0.MQ_Sf-6JTs8zj3o2zQmQ5EH05QjyDIyprGNkGe2UEQk"
+  - variable: SUPABASE_SERVICE_ROLE_KEY
+    value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndsbnNneGpscGlwaXNuenVwYnJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTY4OTU0MCwiZXhwIjoyMTAxMjY1NTQwfQ.q3_9V0lD5nZLiro1aGUjkwe858GkgH9RylFI_P1X_Ww"
+  - variable: SUPABASE_STORAGE_S3_ENDPOINT
+    value: "https://wlnsgxjlpipisnzupbrd.storage.supabase.co/storage/v1/s3"
+  - variable: SUPABASE_STORAGE_KEY
+    value: "efa3db55420aabaf6ff010d5b63df2b3"
+

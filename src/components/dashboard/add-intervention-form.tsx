@@ -34,7 +34,7 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, User, InterventionPriority, InterventionType, Attachment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addIntervention } from '@/lib/data';
+import { addIntervention, addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ScrollArea } from '../ui/scroll-area';
@@ -42,6 +42,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
+import { compressAttachment } from '@/lib/image-compression';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -62,18 +63,26 @@ const formSchema = z.object({
 interface AddInterventionFormProps {
   children: React.ReactNode;
   onInterventionAdded: (intervention: Intervention) => void;
+  onClientCreated?: (client: User) => void;
   clients: User[];
   operators: User[];
   currentUser: User;
   defaultType?: InterventionType;
 }
 
-export function AddInterventionForm({ children, onInterventionAdded, clients, operators, currentUser, defaultType = 'standard' }: AddInterventionFormProps) {
+export function AddInterventionForm({ children, onInterventionAdded, onClientCreated, clients, operators, currentUser, defaultType = 'standard' }: AddInterventionFormProps) {
+  // Clients are strictly prevented from opening interventions directly
+  if (currentUser.role === 'Client') {
+    return null;
+  }
+
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
+  const [clientSearchValue, setClientSearchValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   
@@ -87,7 +96,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
       type: defaultType,
       assignedOperatorIds: [],
       priority: 'Bassa',
-      clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
+      clientId: undefined,
       dueTime: '',
       attachments: [],
       notifyClient: false,
@@ -96,6 +105,29 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   });
   
   const attachments = form.watch('attachments');
+  const selectedClientId = form.watch('clientId');
+
+  const [openInterventionsCount, setOpenInterventionsCount] = useState(0);
+
+  useEffect(() => {
+    if (!isOpen || !selectedClientId || !currentCompany) return;
+
+    async function checkOpenInterventions() {
+      try {
+        const { getInterventions } = await import('@/lib/data');
+        const allInterventions = await getInterventions(currentCompany!.id);
+        const count = allInterventions.filter(i => 
+          i.clientId === selectedClientId && 
+          (i.status === 'Nuovo' || i.status === 'In Corso' || i.status === 'In Attesa Ricambi')
+        ).length;
+        setOpenInterventionsCount(count);
+      } catch (e) {
+        console.error("Error checking open interventions:", e);
+      }
+    }
+    
+    checkOpenInterventions();
+  }, [isOpen, selectedClientId, currentCompany]);
   
   useEffect(() => {
     if (isOpen) {
@@ -105,60 +137,109 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
             type: defaultType,
             assignedOperatorIds: [],
             priority: 'Bassa',
-            clientId: currentUser.role === 'Client' ? currentUser.id : undefined,
+            clientId: undefined,
             dueTime: '',
             attachments: [],
             notifyClient: false,
             cost: null,
         });
+        setClientSearchValue('');
+        setOpenInterventionsCount(0);
     }
   }, [isOpen, defaultType, currentUser, form]);
 
   useEffect(() => {
     setClientList(clients);
-  }, [clients])
+  }, [clients]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentCompany || !currentUser) return;
-    
-    setIsSubmitting(true);
-    let finalDueDate: string | null = null;
-    if (values.dueDate) {
-      let date = values.dueDate;
-      if (values.dueTime) {
-        const [hours, minutes] = values.dueTime.split(':').map(Number);
-        date = setHours(date, hours);
-        date = setMinutes(date, minutes);
-      }
-      finalDueDate = date.toISOString();
+    if (currentUser.role === 'Client') {
+      toast({
+        variant: 'destructive',
+        title: 'Non autorizzato',
+        description: 'Gli utenti finali possono aprire esclusivamente ticket di supporto.',
+      });
+      return;
     }
     
-    const clientIdentifier = values.clientId;
+    setIsSubmitting(true);
+    try {
+      let finalDueDate: string | null = null;
+      if (values.dueDate) {
+        let date = values.dueDate;
+        if (values.dueTime) {
+          const [hours, minutes] = values.dueTime.split(':').map(Number);
+          date = setHours(date, hours);
+          date = setMinutes(date, minutes);
+        }
+        finalDueDate = date.toISOString();
+      }
+      
+      let clientIdentifier = values.clientId;
+      let existingClient = clientList.find(c => c.id === values.clientId || c.name.toLowerCase() === values.clientId.toLowerCase());
 
+      if (!existingClient && values.clientId && values.clientId.trim() !== '') {
+        const clientName = values.clientId.trim();
+        const cleanSlug = clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'cliente';
+        const placeholderEmail = `cliente_${cleanSlug}_${Date.now()}@placeholder.local`;
+        
+        try {
+          const newClientUser = await addUser({
+            name: clientName,
+            email: placeholderEmail,
+            role: 'Client',
+            companyId: currentCompany.id,
+          });
 
-    const newIntervention = await addIntervention({
-        ...values,
-        type: values.type as InterventionType,
-        clientId: clientIdentifier,
-        description: values.description || values.title,
-        priority: values.priority as InterventionPriority,
-        dueDate: finalDueDate,
-        companyId: currentCompany.id,
-        creatorName: currentUser.name,
-        attachments: values.attachments,
-        notifyClient: values.notifyClient || false,
-        cost: isAdmin ? values.cost : null,
-    });
-    
-    onInterventionAdded(newIntervention);
-    
-    toast({
-      title: 'Intervento creato',
-      description: `L'intervento "${values.title}" è stato creato con successo.`,
-    });
-    setIsSubmitting(false);
-    setIsOpen(false);
-    form.reset();
+          if (newClientUser && newClientUser.id) {
+            clientIdentifier = newClientUser.id;
+            setClientList(prev => {
+              if (prev.some(c => c.id === newClientUser.id)) return prev;
+              return [...prev, newClientUser];
+            });
+            if (onClientCreated) onClientCreated(newClientUser);
+          }
+        } catch (clientErr: any) {
+          console.error("Error creating inline client user:", clientErr);
+        }
+      } else if (existingClient) {
+        clientIdentifier = existingClient.id;
+      }
+
+      const newIntervention = await addIntervention({
+          title: values.title,
+          type: values.type as InterventionType,
+          clientId: clientIdentifier,
+          description: values.description || values.title,
+          priority: values.priority as InterventionPriority,
+          dueDate: finalDueDate,
+          status: 'Nuovo',
+          sla: (values as any).sla || '24h',
+          companyId: currentCompany.id,
+          assignedOperatorIds: values.assignedOperatorIds || [],
+          attachments: values.attachments || [],
+          cost: isAdmin ? (values.cost ?? null) : null,
+      });
+      
+      onInterventionAdded(newIntervention);
+      
+      toast({
+        title: 'Intervento creato',
+        description: `L'intervento "${values.title}" è stato creato con successo.`,
+      });
+      setIsOpen(false);
+      form.reset();
+    } catch (err: any) {
+      console.error("Error in create intervention onSubmit:", err);
+      toast({
+        variant: 'destructive',
+        title: 'Errore',
+        description: err?.message || "Impossibile creare l'intervento.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
   
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,31 +261,35 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
             continue;
         }
 
-        const reader = new FileReader();
-        const promise = new Promise<Attachment>((resolve, reject) => {
-            reader.onloadend = () => {
-                resolve({
-                    id: uuidv4(),
-                    name: file.name,
-                    url: reader.result as string, // This will be a temporary data URI
-                    type: file.type,
-                    uploadedAt: new Date().toISOString(),
-                    uploadedBy: currentUser.name,
-                });
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-
         try {
-            const newAttachment = await promise;
-            newAttachments.push(newAttachment);
+            const dataUri = await compressAttachment(file);
+            try {
+              const { uploadFileToSupabase } = await import('@/lib/supabase-storage');
+              const uploadRes = await uploadFileToSupabase(dataUri, file.name, 'interventions');
+              newAttachments.push({
+                  id: uuidv4(),
+                  name: file.name,
+                  url: uploadRes.url || dataUri,
+                  type: file.type,
+                  uploadedAt: new Date().toISOString(),
+                  uploadedBy: currentUser.name,
+              });
+            } catch(e) {
+              newAttachments.push({
+                  id: uuidv4(),
+                  name: file.name,
+                  url: dataUri,
+                  type: file.type,
+                  uploadedAt: new Date().toISOString(),
+                  uploadedBy: currentUser.name,
+              });
+            }
         } catch (error) {
-            console.error("File read failed", error);
+            console.error("File read/compression failed", error);
             toast({
                 variant: 'destructive',
                 title: 'Lettura file fallita',
-                description: `Impossibile leggere il file "${file.name}".`,
+                description: `Impossibile leggere o comprimere il file "${file.name}".`,
             });
             hadError = true;
         }
@@ -246,12 +331,21 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-screen md:max-h-[90vh] md:h-auto h-screen w-screen max-w-full md:w-full rounded-none md:rounded-lg">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="sm:max-w-2xl flex flex-col p-0 max-h-[calc(100dvh-1.5rem)] md:max-h-[90vh] h-[calc(100dvh-1.5rem)] md:h-auto w-[calc(100%-1rem)] sm:w-full rounded-2xl md:rounded-lg overflow-hidden">
+        <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-0 shrink-0 pr-12">
           <DialogTitle>Crea nuovo intervento</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="h-full">
-            <div className="p-6">
+        <ScrollArea className="flex-1 min-h-0 h-auto overflow-y-auto">
+            <div className="p-4 sm:p-6">
+                {openInterventionsCount > 0 && (
+                    <Alert variant="destructive" className="mb-4 bg-yellow-50 text-yellow-800 border-yellow-200">
+                        <AlertCircle className="h-4 w-4 text-yellow-800" />
+                        <AlertTitle>Attenzione</AlertTitle>
+                        <AlertDescription>
+                            Questo cliente ha già <strong>{openInterventionsCount}</strong> {openInterventionsCount === 1 ? 'intervento aperto o in corso' : 'interventi aperti o in corso'}. Verifica se è necessario crearne uno nuovo.
+                        </AlertDescription>
+                    </Alert>
+                )}
                 <Form {...form}>
                 <form id="add-intervention-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
@@ -260,14 +354,14 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Cliente</FormLabel>
-                                <Popover>
+                                <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
                                                 variant="outline"
                                                 role="combobox"
                                                 className={cn(
-                                                    "justify-between",
+                                                    "justify-between font-normal",
                                                     !field.value && "text-muted-foreground"
                                                 )}
                                                 disabled={currentUser.role === 'Client'}
@@ -281,49 +375,58 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                             </Button>
                                         </FormControl>
                                     </PopoverTrigger>
-                                    <PopoverContent className="p-0">
+                                    <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px]">
                                         <Command>
-                                            <CommandInput placeholder="Cerca o crea cliente..." />
-                                            <CommandEmpty>
-                                                 <Button variant="ghost" className="w-full justify-start"
-                                                    onClick={() => {
-                                                        const inputValue = (document.querySelector('[cmdk-input]') as HTMLInputElement)?.value;
-                                                        form.setValue("clientId", inputValue)
-                                                        const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
-                                                        popoverTrigger?.click();
-                                                    }}
-                                                  >
-                                                    Crea "{ (document.querySelector('[cmdk-input]') as HTMLInputElement)?.value }"
-                                                  </Button>
-                                            </CommandEmpty>
-                                            <CommandGroup>
-                                                {clientList.map((client) => (
-                                                    <CommandItem
-                                                        value={client.name}
-                                                        key={client.id}
-                                                        onSelect={() => {
-                                                            form.setValue("clientId", client.id)
-                                                            const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
-                                                            popoverTrigger?.click();
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                client.id === field.value ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {client.name}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
+                                            <CommandInput 
+                                                placeholder="Cerca o crea cliente..." 
+                                                value={clientSearchValue}
+                                                onValueChange={setClientSearchValue}
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    {clientSearchValue.trim() && (
+                                                        <Button 
+                                                            type="button"
+                                                            variant="ghost" 
+                                                            className="w-full justify-start text-primary font-medium"
+                                                            onClick={() => {
+                                                                form.setValue("clientId", clientSearchValue.trim());
+                                                                setClientPopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            + Crea &quot;{clientSearchValue.trim()}&quot;
+                                                        </Button>
+                                                    )}
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {clientList.map((client) => (
+                                                        <CommandItem
+                                                            value={client.name}
+                                                            key={client.id}
+                                                            onSelect={() => {
+                                                                form.setValue("clientId", client.id);
+                                                                setClientSearchValue('');
+                                                                setClientPopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    client.id === field.value ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {client.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
                                 <FormMessage />
                             </FormItem>
                         )}
-                        />
+                    />
                     <FormField
                     control={form.control}
                     name="title"
@@ -586,8 +689,7 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                         />
                     )}
 
-                    {currentUser.role !== 'Client' && (
-                         <FormField
+                     <FormField
                             control={form.control}
                             name="notifyClient"
                             render={({ field }) => (
@@ -607,12 +709,11 @@ export function AddInterventionForm({ children, onInterventionAdded, clients, op
                                 </FormItem>
                             )}
                         />
-                    )}
                 </form>
                 </Form>
             </div>
         </ScrollArea>
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-4 sm:p-6 gap-2 border-t shrink-0 bg-background">
             <DialogClose asChild>
                 <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>

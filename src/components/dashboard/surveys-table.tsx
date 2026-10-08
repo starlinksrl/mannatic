@@ -87,15 +87,15 @@ export function SurveysTable({ surveys: initialSurveys, currentUser, clients, op
 
   const confirmDelete = async () => {
       if (!surveyToDelete) return;
-      const success = await deleteAppointment(surveyToDelete.id);
-      if (success) {
+      try {
+          await deleteAppointment(surveyToDelete.id);
           onSurveyChange();
           toast({
               title: 'Appuntamento eliminato',
               description: `L'appuntamento "${surveyToDelete.title}" è stato eliminato.`,
           });
-      } else {
-           toast({
+      } catch {
+          toast({
               variant: 'destructive',
               title: 'Errore',
               description: "Impossibile eliminare l'appuntamento.",

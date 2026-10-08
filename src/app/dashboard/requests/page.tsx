@@ -49,7 +49,8 @@ export default function ClientRequestsPage() {
         
         // Filtra solo i ticket aperti o in lavorazione per la dashboard
         const activeTickets = allTickets.filter(t => t.status === 'Aperto' || t.status === 'In Lavorazione');
-        setSupportTickets(activeTickets);
+        const sortedActiveTickets = [...activeTickets].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        setSupportTickets(sortedActiveTickets);
         
         setLoading(false);
     }

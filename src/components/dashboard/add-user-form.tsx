@@ -45,7 +45,7 @@ const allowedSectors: { id: AllowedSector; label: string }[] = [
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
-  role: z.enum(['Admin', 'Operator', 'Client', 'Creator'], { required_error: 'Il ruolo è obbligatorio.' }),
+  role: z.enum(['Admin', 'Operator', 'Client', 'Creator', 'Distributor', 'DistributorAdmin', 'DistributorUser'], { required_error: 'Il ruolo è obbligatorio.' }),
   password: z.string().min(8, { message: 'La password deve contenere almeno 8 caratteri.'}).optional().or(z.literal('')),
   address: z.string().optional(),
   phone: z.string().optional(),
@@ -58,6 +58,7 @@ const formSchema = z.object({
   taxCode: z.string().optional(),
   uniqueCode: z.string().optional(),
   logoUrl: z.string().optional(),
+  simplifiedDashboard: z.boolean().optional(),
 });
 
 interface AddUserFormProps {
@@ -92,6 +93,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       role: defaultRole,
       allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'], // Default to all for new operators
       clientNotes: '',
+      simplifiedDashboard: false,
     },
   });
   
@@ -107,6 +109,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
           role: defaultRole,
           allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'],
           clientNotes: '',
+          simplifiedDashboard: false,
         });
         setShowPassword(false);
         setAddressInput('');
@@ -142,6 +145,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             website: values.website,
             password: values.password || 'starlink74',
             allowedSectors: values.role === 'Operator' ? (values.allowedSectors as AllowedSector[]) : undefined,
+            simplifiedDashboard: values.role === 'Operator' ? values.simplifiedDashboard : undefined,
             latitude: values.latitude,
             longitude: values.longitude,
             clientNotes: values.role === 'Client' ? values.clientNotes : undefined,
@@ -399,6 +403,31 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                         </FormItem>
                     )}
                     />
+            )}
+
+            {role === 'Operator' && (
+              <FormField
+                control={form.control}
+                name="simplifiedDashboard"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Dashboard Semplificata
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Mostra solo l'elenco degli interventi aperti e dei nuovi impianti aperti.
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
             )}
             
             {role !== 'Creator' && <>

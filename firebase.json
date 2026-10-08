@@ -1,0 +1,24 @@
+{
+  "apphosting": {
+    "backendId": "studio",
+    "rootDir": "/",
+    "ignore": [
+      "node_modules",
+      ".next",
+      ".npm_cache",
+      ".git",
+      ".agents",
+      ".idx",
+      ".vscode",
+      "out",
+      "dist",
+      ".cache",
+      "coverage",
+      ".turbo",
+      "tsconfig.tsbuildinfo",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "functions"
+    ]
+  }
+}

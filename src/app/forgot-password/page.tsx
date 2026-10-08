@@ -18,7 +18,8 @@ export default function ForgotPasswordPage() {
 
   const handleSendResetLink = async () => {
     setLoading(true);
-    const result = await handlePasswordResetRequest(email);
+    const cleanEmail = email.trim().toLowerCase();
+    const result = await handlePasswordResetRequest(cleanEmail);
 
     if (result.success) {
         toast({

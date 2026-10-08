@@ -95,12 +95,10 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
     setTicketToDelete(null);
   }
 
-  const sortedTickets = [...tickets].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.createdAt).getTime());
-
   if (isDashboardView) {
       return (
         <div className="space-y-2">
-          {sortedTickets.length > 0 ? sortedTickets.map((ticket) => (
+          {tickets.length > 0 ? tickets.map((ticket) => (
             <div key={ticket.id} className="p-3 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => onTicketSelect(ticket)}>
                <div className="flex-1">
                   <div className="flex justify-between items-start">
@@ -123,7 +121,7 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
     <>
       <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
-          {sortedTickets.map((ticket) => (
+          {tickets.map((ticket) => (
             <div key={ticket.id} className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start">
                <div className="flex-1 cursor-pointer" onClick={() => onTicketSelect(ticket)}>
                   <div className="flex justify-between items-start">
@@ -131,7 +129,7 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
                     {getStatusBadge(ticket.status)}
                   </div>
                   <div className="text-sm text-muted-foreground mt-2">
-                    {currentUser.role === 'Admin' && <p className="uppercase">Cliente: {ticket.clientName}</p>}
+                    {(currentUser.role === 'Admin' || currentUser.role === 'Distributor') && <p className="uppercase">Cliente: {ticket.clientName}</p>}
                     <p>Creato: {format(new Date(ticket.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>
                     <p>Ultimo aggiorn.: {format(new Date(ticket.updatedAt), 'dd/MM/yy HH:mm', { locale: it })}</p>
                   </div>
@@ -171,7 +169,7 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
           <TableHeader>
             <TableRow>
               <TableHead>Oggetto</TableHead>
-              {currentUser.role === 'Admin' && <TableHead>Cliente</TableHead>}
+              {(currentUser.role === 'Admin' || currentUser.role === 'Distributor') && <TableHead>Cliente</TableHead>}
               <TableHead>Stato</TableHead>
               <TableHead>Data Creazione</TableHead>
               <TableHead>Ultimo Aggiornamento</TableHead>
@@ -179,10 +177,10 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTickets.map((ticket) => (
+            {tickets.map((ticket) => (
               <TableRow key={ticket.id} onClick={() => onTicketSelect(ticket)} className="cursor-pointer">
                 <TableCell className="font-medium uppercase">{ticket.subject}</TableCell>
-                {currentUser.role === 'Admin' && <TableCell className="uppercase">{ticket.clientName}</TableCell>}
+                {(currentUser.role === 'Admin' || currentUser.role === 'Distributor') && <TableCell className="uppercase">{ticket.clientName}</TableCell>}
                 <TableCell>{getStatusBadge(ticket.status)}</TableCell>
                 <TableCell>{format(new Date(ticket.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>
                 <TableCell>{format(new Date(ticket.updatedAt), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>

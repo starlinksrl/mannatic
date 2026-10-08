@@ -14,14 +14,14 @@ import { sendInterventionReminderEmail } from '@/ai/flows/send-intervention-remi
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById, getAppConfiguration, getInterventions, getUsers, addIntervention, getSupportTicketById, addSupportMessage, updateSupportTicketStatus } from '@/lib/data';
 import { Company, User, Intervention, ScheduledMaintenance } from '@/lib/types';
 import { Resend } from 'resend';
+import { sendEmail } from '@/lib/mailer';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/lib/types';
 import type { SendPasswordResetEmailInput, SendPasswordResetEmailOutput } from '@/ai/flows/send-password-reset-email';
 import type { SendCredentialsEmailInput, SendCredentialsEmailOutput } from '@/ai/flows/send-credentials-email';
 import type { SendSupportTicketNotificationInput, SendSupportTicketNotificationOutput, SendAssignedInterventionNotificationInput, SendAssignedInterventionNotificationOutput, SendInterventionReminderEmailInput, SendInterventionReminderEmailOutput } from '@/lib/types';
 import type { SendTestEmailInput, SendTestEmailOutput, TestGcsConnectionInput, TestGcsConnectionOutput, FetchFileFromGcsInput, FetchFileFromGcsOutput } from '@/lib/types';
 import webpush from 'web-push';
-import { generateShortId } from '@/lib/utils';
-import { addDays, isAfter, isBefore, startOfToday, format, subDays } from 'date-fns';
+import { addDays, isAfter, isBefore, startOfToday, format, subDays, differenceInHours, differenceInDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { headers } from 'next/headers';
 
@@ -179,21 +179,18 @@ export async function sendClientUpdateEmail(input: SendClientUpdateEmailInput): 
   `;
 
   try {
-    if (!company.resendApiKey || !company.senderEmail) {
-      throw new Error('La configurazione di Resend per questa azienda è incompleta.');
-    }
-    
-    const resend = new Resend(company.resendApiKey);
-
-    const { data, error } = await resend.emails.send({
+    const result = await sendEmail({
+      to: recipientEmail,
+      subject: emailSubject,
+      html: emailBody,
+      resendConfig: company?.resendApiKey && company?.senderEmail ? {
+        apiKey: company.resendApiKey,
         from: company.senderEmail,
-        to: recipientEmail,
-        subject: emailSubject,
-        html: emailBody,
+      } : undefined,
     });
 
-    if (error) {
-        throw error;
+    if (!result.success) {
+      throw new Error(result.error || 'Invio email fallito.');
     }
 
     return { success: true };
@@ -257,16 +254,14 @@ export async function triggerSupportTicketNotification(input: SendSupportTicketN
 }
 
 export async function handlePasswordResetRequest(email: string): Promise<{ success: boolean, message: string }> {
-    const user = await getUserByEmail(email);
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await getUserByEmail(cleanEmail);
     if (!user || user.email.endsWith('@mannatic.it')) {
         // Don't reveal if user exists or is a system user, for security.
         return { success: true, message: "Se un account valido con questa email esiste, un link di reset verrà inviato." };
     }
     
     const company = await getCompanyByUserId(user.id);
-    if (!company || !company.resendApiKey || !company.senderEmail) {
-        return { success: false, message: "Impossibile inviare email. La configurazione di Resend per l'azienda non è completa." };
-    }
 
     try {
         const token = await createPasswordResetToken(user.id);
@@ -279,10 +274,13 @@ export async function handlePasswordResetRequest(email: string): Promise<{ succe
             recipientEmail: user.email,
             userName: user.name,
             resetLink,
-            companyId: company.id,
-            resendConfig: {
+            companyId: company?.id || 'none',
+            resendConfig: company?.resendApiKey && company?.senderEmail ? {
                 apiKey: company.resendApiKey,
                 from: company.senderEmail,
+            } : {
+                apiKey: '',
+                from: '',
             }
         };
 
@@ -312,13 +310,10 @@ export async function handlePasswordReset(token: string, newPassword: string):Pr
 export async function sendCredentialsEmailAction(userId: string): Promise<SendCredentialsEmailOutput> {
     const user = await getUserById(userId);
     if (!user) {
-        return { success: false, error: 'User not found.' };
+        return { success: false, error: 'Utente non trovato.' };
     }
     
     const company = await getCompanyByUserId(userId);
-    if (!company || !company.resendApiKey || !company.senderEmail) {
-        return { success: false, error: 'La configurazione di Resend per questa azienda è incompleta.' };
-    }
     
     if (!user.password) {
          return { success: false, error: 'Nessuna password impostata per questo utente. Modificare il profilo utente per impostarne una.' };
@@ -335,10 +330,13 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
             userEmail: user.email,
             userPassword: user.password,
             loginLink: baseUrl,
-            companyId: company.id,
-            resendConfig: {
+            companyId: company?.id || 'none',
+            resendConfig: company?.resendApiKey && company?.senderEmail ? {
                 apiKey: company.resendApiKey,
                 from: company.senderEmail,
+            } : {
+                apiKey: '',
+                from: '',
             }
         };
 
@@ -356,16 +354,18 @@ export async function createClientAutologinUrl(clientId: string): Promise<{ succ
         return { success: false, error: 'Utente non trovato.' };
     }
 
-    const company = await getCompanyByUserId(clientId);
-    if (!company && client.role !== 'Creator') {
-        return { success: false, error: 'Impossibile trovare l\'azienda associata.' };
+    let company = await getCompanyByUserId(clientId);
+    if (!company && client.companyId) {
+        company = await getCompanyById(client.companyId);
     }
+    const companyId = company?.id || client.companyId || 'none';
 
     try {
-        const token = await createAutologinToken(clientId);
-        const host = (await headers()).get('host');
-        const protocol = host?.includes('localhost') || host?.includes('.workstations.google.com') ? 'http' : 'https';
-        const baseUrl = `${protocol}://${host}`;
+        const token = await createAutologinToken(clientId, companyId);
+        const headersList = await headers();
+        const host = headersList.get('x-forwarded-host') || headersList.get('host');
+        const proto = headersList.get('x-forwarded-proto') || (host?.includes('localhost') || host?.includes('127.0.0.1') || host?.includes('.workstations.google.com') ? 'http' : 'https');
+        const baseUrl = host ? `${proto}://${host}` : (company?.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it');
         const url = `${baseUrl}/login?autologin_token=${token}`;
         return { success: true, url };
     } catch (error: any) {
@@ -421,11 +421,11 @@ export async function handleRegistration(values: { companyName: string, name: st
     }
 }
 
-// Expiring Interventions Summary Email Action
+// Expiring Interventions Summary Email 
 export async function sendExpiringInterventionsSummaryEmail(companyId: string): Promise<{ success: boolean; error?: string }> {
     const company = await getCompanyById(companyId);
-    if (!company || !company.resendApiKey || !company.senderEmail) {
-        return { success: false, error: `Configurazione Resend per l'azienda ${company?.name || companyId} non trovata.` };
+    if (!company) {
+        return { success: false, error: `Installatore ${companyId} non trovato.` };
     }
 
     const twoDaysFromNow = addDays(startOfToday(), 2);
@@ -439,7 +439,7 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
     );
     
     if (interventions.length === 0) {
-        console.log(`Nessun intervento in scadenza per l'azienda ${company.name}. Salto invio riepilogo.`);
+        console.log(`Nessun intervento in scadenza per l'installatore ${company.name}. Salto invio riepilogo.`);
         return { success: true };
     }
 
@@ -447,53 +447,46 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
     let operators: User[];
 
     if (company.cronJobRecipients && company.cronJobRecipients.length > 0) {
-        operators = allUsers.filter(u => company.cronJobRecipients!.includes(u.id) && u.role === 'Operator' && u.email);
-    } else {
-        operators = allUsers.filter(u => u.role === 'Operator' && u.email);
-    }
-
-    if (operators.length === 0) {
-        console.log(`Nessun operatore destinatario trovato per l'azienda ${company.name}. Salto invio riepilogo.`);
-        return { success: true }; // No one to send to, but not an error.
-    }
-
-    const clients = allUsers.filter(u => u.role === 'Client');
-    const interventionDetails = interventions.map(i => {
-        const client = clients.find(c => c.id === i.clientId);
-        const opIds = i.assignedOperatorIds || [];
-        const operatorNames = opIds.map(id => allUsers.find(o => o.id === id)?.name).filter(Boolean).join(', ');
+        const recipientUsers = (await Promise.all(
+            company.cronJobRecipients.map(id => getUserById(id))
+        )).filter((u): u is User => u !== null && !!u.email);
         
-        return {
-            id: i.id,
-            title: i.title,
-            clientName: client?.name || 'N/D',
-            dueDate: format(new Date(i.dueDate!), 'dd/MM/yyyy HH:mm', { locale: it }),
-            priority: i.priority,
-            operatorNames: operatorNames || 'Non Assegnato',
-        }
-    });
-
-    const subject = `Riepilogo Interventi in Scadenza - MannaTic per ${company.name}`;
+        operators = recipientUsers.length > 0 
+            ? recipientUsers 
+            : allUsers.filter(u => u.role === 'Admin');
+    } else {
+        operators = allUsers.filter(u => u.role === 'Admin');
+    }
     
-    const tableRows = interventionDetails.map(i => `
-        <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;">${i.id}</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${i.title} <br><small>${i.clientName}</small></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${i.dueDate}</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${i.priority}</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${i.operatorNames}</td>
-        </tr>
-    `).join('');
+    if (operators.length === 0) {
+        console.log(`Nessun destinatario per il riepilogo interventi in scadenza per l'installatore ${company.name}.`);
+        return { success: true };
+    }
+
+    const subject = `Riepilogo Interventi in Scadenza - ${company.name}`;
+    const tableRows = interventions.map(i => {
+        const assignedOpNames = i.assignedOperatorIds && i.assignedOperatorIds.length > 0
+            ? allUsers.filter(u => i.assignedOperatorIds.includes(u.id)).map(u => u.name).join(', ')
+            : 'Non assegnato';
+            
+        return `
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">${i.title}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${i.dueDate ? format(new Date(i.dueDate), 'dd/MM/yyyy HH:mm', { locale: it }) : 'N/D'}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${i.priority}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${assignedOpNames}</td>
+            </tr>
+        `;
+    }).join('');
 
     const body = `
         <div style="font-family: Arial, sans-serif; line-height: 1.6;">
             <h2>Riepilogo Interventi in Scadenza</h2>
-            <p>Ciao team, ecco un riepilogo degli interventi che richiedono attenzione nei prossimi giorni.</p>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <p>I seguenti interventi per l'installatore <strong>${company.name}</strong> sono in scadenza nei prossimi 2 giorni:</p>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                 <thead>
                     <tr style="background-color: #f2f2f2;">
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">ID</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Titolo e Cliente</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Titolo</th>
                         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Scadenza</th>
                         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Priorità</th>
                         <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Operatori</th>
@@ -508,14 +501,16 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
     `;
 
     try {
-        const resend = new Resend(company.resendApiKey);
-        await resend.emails.send({
-            from: company.senderEmail,
-            to: operators.map(o => o.email!),
-            subject: subject!,
-            html: body!,
+        const result = await sendEmail({
+            to: operators.map(o => o.email!).filter(Boolean),
+            subject,
+            html: body,
+            resendConfig: company.resendApiKey && company.senderEmail ? {
+                apiKey: company.resendApiKey,
+                from: company.senderEmail,
+            } : undefined,
         });
-        return { success: true };
+        return { success: result.success, error: result.error };
     } catch (e: any) {
         console.error(`Error sending summary email for company ${companyId}:`, e);
         return { success: false, error: e.message || "Impossibile inviare l'email di riepilogo." };
@@ -524,8 +519,8 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
 
 export async function sendOverdueInterventionsSummaryEmail(companyId: string): Promise<{ success: boolean; error?: string }> {
     const company = await getCompanyById(companyId);
-    if (!company || !company.resendApiKey || !company.senderEmail) {
-        return { success: false, error: `Configurazione Resend per l'azienda ${company?.name || companyId} non trovata.` };
+    if (!company) {
+        return { success: false, error: `Installatore ${companyId} non trovato.` };
     }
 
     const sevenDaysAgo = subDays(startOfToday(), 7);
@@ -536,7 +531,7 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
     );
     
     if (interventions.length === 0) {
-        console.log(`Nessun intervento aperto da più di 7 giorni per l'azienda ${company.name}. Salto invio riepilogo settimanale.`);
+        console.log(`Nessun intervento aperto da più di 7 giorni per l'installatore ${company.name}. Salto invio riepilogo settimanale.`);
         return { success: true };
     }
     
@@ -561,7 +556,7 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
     const operators = allUsers.filter(u => u.role === 'Operator');
 
     if (admins.length === 0) {
-        console.log(`Nessun admin con email trovato per l'azienda ${company.name}. Salto invio riepilogo settimanale.`);
+        console.log(`Nessun admin con email trovato per l'installatore ${company.name}. Salto invio riepilogo settimanale.`);
         return { success: true };
     }
 
@@ -618,14 +613,16 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
     `;
 
     try {
-        const resend = new Resend(company.resendApiKey);
-        await resend.emails.send({
-            from: company.senderEmail,
-            to: admins.map(a => a.email!),
+        const result = await sendEmail({
+            to: admins.map(a => a.email!).filter(Boolean),
             subject: subject!,
             html: body!,
+            resendConfig: company.resendApiKey && company.senderEmail ? {
+                apiKey: company.resendApiKey,
+                from: company.senderEmail,
+            } : undefined,
         });
-        return { success: true };
+        return { success: result.success, error: result.error };
     } catch (e: any) {
         console.error(`Error sending weekly summary email for company ${companyId}:`, e);
         return { success: false, error: e.message || "Impossibile inviare l'email di riepilogo settimanale." };
@@ -646,6 +643,15 @@ export async function testWeeklySummaryAction(companyId: string): Promise<{ succ
         return await sendOverdueInterventionsSummaryEmail(companyId);
     } catch (error: any) {
         console.error("Error manually triggering weekly summary:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+export async function testOverdueAlertsAction(companyId: string): Promise<{ success: boolean; ticketsAlerted?: number; interventionsAlerted?: number; error?: string }> {
+    try {
+        return await sendOverdueTicketsAndInterventionsAlerts(companyId);
+    } catch (error: any) {
+        console.error("Error manually triggering overdue alerts:", error);
         return { success: false, error: error.message || "An unknown error occurred." };
     }
 }
@@ -695,7 +701,7 @@ export async function sendFilteredInterventionsSummaryEmail(
 ): Promise<{ success: boolean; error?: string }> {
     const company = await getCompanyById(companyId);
     if (!company || !company.resendApiKey || !company.senderEmail) {
-        return { success: false, error: "Configurazione email aziendale incompleta." };
+        return { success: false, error: "Configurazione email installatore incompleta." };
     }
 
     if (recipientEmails.length === 0) {
@@ -750,16 +756,253 @@ export async function sendFilteredInterventionsSummaryEmail(
     `;
 
     try {
-        const resend = new Resend(company.resendApiKey);
-        await resend.emails.send({
-            from: company.senderEmail,
+        const result = await sendEmail({
             to: recipientEmails,
             subject: subject,
             html: body,
+            resendConfig: company.resendApiKey && company.senderEmail ? {
+                apiKey: company.resendApiKey,
+                from: company.senderEmail,
+            } : undefined,
         });
-        return { success: true };
+        return { success: result.success, error: result.error };
     } catch (e: any) {
         console.error("Error sending filtered summary email:", e);
         return { success: false, error: e.message || "Impossibile inviare l'email." };
+    }
+}
+
+export async function uploadAttachmentAction(base64Data: string, fileName: string, folder: string = 'attachments'): Promise<{ success: boolean; url: string; error?: string }> {
+    const { uploadFileToSupabase } = await import('@/lib/supabase-storage');
+    const res = await uploadFileToSupabase(base64Data, fileName, folder);
+    if (res.error) {
+        return { success: false, url: '', error: res.error };
+    }
+    return { success: true, url: res.url };
+}
+
+export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string): Promise<{
+    success: boolean;
+    ticketsAlerted: number;
+    interventionsAlerted: number;
+    error?: string;
+}> {
+    try {
+        const company = await getCompanyById(companyId);
+        if (!company) {
+            return { success: false, ticketsAlerted: 0, interventionsAlerted: 0, error: 'Azienda non trovata' };
+        }
+
+        const { getSupportTickets, getInterventions, getUsers, addNotification } = await import('@/lib/data');
+        const { supabase } = await import('@/lib/supabase');
+
+        const allUsers = await getUsers(companyId);
+        const admins = allUsers.filter(u => (u.role === 'Admin' || u.role === 'Creator') && u.email);
+        if (admins.length === 0) {
+            return { success: true, ticketsAlerted: 0, interventionsAlerted: 0 };
+        }
+        const adminEmails = admins.map(a => a.email!).filter(Boolean);
+
+        const now = new Date();
+        const fortyEightHoursAgo = new Date(now.getTime() - 48 * 3600 * 1000);
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 3600 * 1000).toISOString();
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://mannatec.it' : 'http://localhost:9002');
+
+        // 1. SOLLECITO: Ticket di supporto non chiusi entro 48 ore
+        const allTickets = await getSupportTickets(companyId);
+        const overdueTickets = allTickets.filter(t => 
+            t.status !== 'Chiuso' && 
+            new Date(t.createdAt).getTime() <= fortyEightHoursAgo.getTime()
+        );
+
+        let ticketsAlerted = 0;
+
+        for (const ticket of overdueTickets) {
+            // Verifica se è già stato inviato un sollecito nelle ultime 24 ore per questo ticket
+            const { data: recentNotifs } = await supabase
+                .from('notifications')
+                .select('id')
+                .eq('related_intervention_id', ticket.id)
+                .eq('type', 'alert')
+                .gte('created_at', twentyFourHoursAgo);
+
+            if (recentNotifs && recentNotifs.length > 0) {
+                continue; // Già inviato oggi, evita spam
+            }
+
+            const hoursOpen = Math.round((now.getTime() - new Date(ticket.createdAt).getTime()) / (3600 * 1000));
+            const ticketUrl = `${baseUrl}/dashboard/support?ticketId=${ticket.id}`;
+
+            // Invia notifica in-app agli admin
+            for (const admin of admins) {
+                await addNotification({
+                    userId: admin.id,
+                    companyId,
+                    message: `⚠️ SOLLECITO: Il ticket "${ticket.subject}" (${ticket.clientName}) è aperto da oltre 48 ore (${hoursOpen}h) ed è ancora in stato ${ticket.status}!`,
+                    type: 'alert',
+                    relatedInterventionId: ticket.id,
+                }).catch(e => console.error("Error adding in-app alert for ticket:", e));
+            }
+
+            // Invia email di sollecito agli admin
+            const lastMsg = ticket.messages && ticket.messages.length > 0 ? ticket.messages[ticket.messages.length - 1].text : '';
+            const emailHtml = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6; color: #1e293b;">
+                    <div style="background-color: #d97706; color: white; padding: 18px 24px; border-radius: 8px 8px 0 0;">
+                        <h2 style="margin: 0; font-size: 18px;">⚠️ SOLLECITO: Ticket di supporto aperto da oltre 48 ore</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Azienda: ${company.name}</p>
+                    </div>
+                    <div style="padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
+                        <p>Gentile Amministratore,</p>
+                        <p>Il seguente ticket di supporto è stato aperto da più di 48 ore e non è ancora stato chiuso:</p>
+                        
+                        <div style="background-color: #fef3c7; border-left: 4px solid #d97706; padding: 14px 18px; margin: 16px 0; border-radius: 4px;">
+                            <p style="margin: 4px 0;"><strong>Oggetto:</strong> ${ticket.subject}</p>
+                            <p style="margin: 4px 0;"><strong>Cliente:</strong> ${ticket.clientName}</p>
+                            <p style="margin: 4px 0;"><strong>Data Apertura:</strong> ${format(new Date(ticket.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}</p>
+                            <p style="margin: 4px 0;"><strong>Tempo trascorso:</strong> <b>${hoursOpen} ore</b></p>
+                            <p style="margin: 4px 0;"><strong>Stato attuale:</strong> <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #fde68a; font-weight: bold; color: #92400e;">${ticket.status}</span></p>
+                        </div>
+
+                        ${lastMsg ? `
+                        <p><strong>Ultimo messaggio inviato:</strong></p>
+                        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 4px; font-style: italic; font-size: 13px; color: #475569;">
+                            "${lastMsg}"
+                        </div>
+                        ` : ''}
+
+                        <div style="margin-top: 24px; text-align: center;">
+                            <a href="${ticketUrl}" style="background-color: #d97706; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                                Gestisci Ticket nel Gestionale
+                            </a>
+                        </div>
+                        <p style="font-size: 12px; color: #94a3b8; margin-top: 24px; text-align: center;">
+                            Questo promemoria automatico viene inviato per i ticket non chiusi entro 48 ore.
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            await sendEmail({
+                to: adminEmails,
+                subject: `⚠️ SOLLECITO Ticket: "${ticket.subject}" aperto da oltre 48 ore - ${ticket.clientName}`,
+                html: emailHtml,
+                resendConfig: company.resendApiKey && company.senderEmail ? {
+                    apiKey: company.resendApiKey,
+                    from: company.senderEmail,
+                } : undefined,
+            }).catch(e => console.error("Error sending overdue ticket alert email:", e));
+
+            ticketsAlerted++;
+        }
+
+        // 2. SOLLECITO: Interventi aperti da oltre 1 settimana (7 giorni)
+        const allInterventions = await getInterventions(companyId);
+        const overdueInterventions = allInterventions.filter(i => 
+            !i.isMaintenance && 
+            ['Nuovo', 'In corso', 'In Attesa Ricambi'].includes(i.status) &&
+            new Date(i.createdAt).getTime() <= sevenDaysAgo.getTime()
+        );
+
+        let interventionsAlerted = 0;
+
+        for (const intervention of overdueInterventions) {
+            // Verifica se è già stato inviato un sollecito nelle ultime 24 ore per questo intervento
+            const { data: recentNotifs } = await supabase
+                .from('notifications')
+                .select('id')
+                .eq('related_intervention_id', intervention.id)
+                .eq('type', 'alert')
+                .gte('created_at', twentyFourHoursAgo);
+
+            if (recentNotifs && recentNotifs.length > 0) {
+                continue; // Già inviato oggi, evita spam
+            }
+
+            const daysOpen = Math.round((now.getTime() - new Date(intervention.createdAt).getTime()) / (24 * 3600 * 1000));
+            const interventionUrl = `${baseUrl}/dashboard/interventions?search=${encodeURIComponent(intervention.id)}`;
+            const client = allUsers.find(u => u.id === intervention.clientId);
+            const opNames = (intervention.assignedOperatorIds || [])
+                .map(id => allUsers.find(u => u.id === id)?.name)
+                .filter(Boolean)
+                .join(', ') || 'Non assegnato';
+
+            // Invia notifica in-app agli admin
+            for (const admin of admins) {
+                await addNotification({
+                    userId: admin.id,
+                    companyId,
+                    message: `⚠️ SOLLECITO: L'intervento #${intervention.id} "${intervention.title}" è aperto da oltre una settimana (${daysOpen} giorni)!`,
+                    type: 'alert',
+                    relatedInterventionId: intervention.id,
+                }).catch(e => console.error("Error adding in-app alert for intervention:", e));
+            }
+
+            // Invia email di sollecito agli admin
+            const emailHtml = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6; color: #1e293b;">
+                    <div style="background-color: #dc2626; color: white; padding: 18px 24px; border-radius: 8px 8px 0 0;">
+                        <h2 style="margin: 0; font-size: 18px;">⚠️ SOLLECITO: Intervento aperto da oltre 1 settimana</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Azienda: ${company.name}</p>
+                    </div>
+                    <div style="padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
+                        <p>Gentile Amministratore,</p>
+                        <p>L'intervento <strong>#${intervention.id}</strong> è aperto da <strong>${daysOpen} giorni</strong> ed è ancora in lavorazione / non completato:</p>
+                        
+                        <div style="background-color: #fee2e2; border-left: 4px solid #dc2626; padding: 14px 18px; margin: 16px 0; border-radius: 4px;">
+                            <p style="margin: 4px 0;"><strong>Titolo Intervento:</strong> ${intervention.title}</p>
+                            <p style="margin: 4px 0;"><strong>Cliente:</strong> ${client?.name || 'N/D'}</p>
+                            <p style="margin: 4px 0;"><strong>Data Creazione:</strong> ${format(new Date(intervention.createdAt), 'dd/MM/yyyy', { locale: it })}</p>
+                            <p style="margin: 4px 0;"><strong>Priorità:</strong> ${intervention.priority}</p>
+                            <p style="margin: 4px 0;"><strong>Tecnici Assegnati:</strong> ${opNames}</p>
+                            <p style="margin: 4px 0;"><strong>Stato Attuale:</strong> <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #fecaca; font-weight: bold; color: #991b1b;">${intervention.status}</span></p>
+                        </div>
+
+                        ${intervention.description ? `
+                        <p><strong>Descrizione del problema:</strong></p>
+                        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 4px; font-size: 13px; color: #475569;">
+                            ${intervention.description}
+                        </div>
+                        ` : ''}
+
+                        <div style="margin-top: 24px; text-align: center;">
+                            <a href="${interventionUrl}" style="background-color: #dc2626; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                                Visualizza e Gestisci Intervento
+                            </a>
+                        </div>
+                        <p style="font-size: 12px; color: #94a3b8; margin-top: 24px; text-align: center;">
+                            Questo sollecito automatico viene generato per tutti gli interventi aperti da oltre 7 giorni.
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            await sendEmail({
+                to: adminEmails,
+                subject: `⚠️ SOLLECITO Intervento: #${intervention.id} "${intervention.title}" aperto da oltre 1 settimana`,
+                html: emailHtml,
+                resendConfig: company.resendApiKey && company.senderEmail ? {
+                    apiKey: company.resendApiKey,
+                    from: company.senderEmail,
+                } : undefined,
+            }).catch(e => console.error("Error sending overdue intervention alert email:", e));
+
+            interventionsAlerted++;
+        }
+
+        return {
+            success: true,
+            ticketsAlerted,
+            interventionsAlerted,
+        };
+    } catch (err: any) {
+        console.error("Error in sendOverdueTicketsAndInterventionsAlerts:", err);
+        return {
+            success: false,
+            ticketsAlerted: 0,
+            interventionsAlerted: 0,
+            error: err.message || 'Errore imprevisto',
+        };
     }
 }

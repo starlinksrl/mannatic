@@ -1,0 +1,29 @@
+services:
+  webmail:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mannaweb
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    environment:
+      - NODE_ENV=production
+      - PORT=8004
+      - HOST=0.0.0.0
+      - DATA_DIR=/app/data
+      - SECRET_KEY=super-secure-generated-key-replace-in-production!
+    volumes:
+      - ./data:/app/data
+    networks:
+      - web-network
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "node", "-e", "const req = require('http').get('http://127.0.0.1:8004/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  web-network:
+    external: true

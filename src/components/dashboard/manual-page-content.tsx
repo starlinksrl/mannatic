@@ -15,7 +15,7 @@ const adminGuide = [
             { title: "Riepilogo Attività", description: "Monitora in tempo reale il carico di lavoro con i contatori degli interventi (Urgenti, Nuovi, In Corso, Assegnati) e dei nuovi impianti aperti. Ogni riquadro è cliccabile per accedere direttamente alla vista filtrata." },
             { title: "Interventi in Evidenza", icon: Star, description: "Una sezione speciale in cima alla dashboard che mostra gli interventi che hai marcato come importanti. Un intervento viene rimosso automaticamente da questa sezione quando viene completato." },
             { title: "Programmazione Settimanale", description: "Visualizza tutte le attività (interventi, appuntamenti, manutenzioni) pianificate nei prossimi 7 giorni, raggruppate per data, per una pianificazione efficiente." },
-            { title: "Promemoria Personale e Aziendale", description: "Usa il blocco note personale per i tuoi appunti e quello aziendale per comunicazioni visibili a tutto il team. Le note vengono salvate automaticamente." },
+            { title: "Promemoria Personale e del Team", description: "Usa il blocco note personale per i tuoi appunti e quello del team per comunicazioni visibili a tutto il team. Le note vengono salvate automaticamente." },
         ]
     },
     {
@@ -49,8 +49,8 @@ const adminGuide = [
         icon: Settings,
         items: [
             { title: "Mappa e Calendario", description: "Ottieni una visione geografica di tutte le attività con la Mappa Operativa o una visione temporale con il Calendario. Filtra per trovare rapidamente ciò che cerchi." },
-            { title: "Impostazioni", description: "Personalizza l'applicazione: definisci il profilo della tua azienda, configura l'invio di email, scegli il tema di colori e il font per un'esperienza su misura." },
-            { title: "Data Explorer", description: "Uno strumento avanzato per visualizzare e modificare direttamente i dati grezzi della tua azienda. Utile per correzioni rapide o analisi approfondite." },
+            { title: "Impostazioni", description: "Personalizza l'applicazione: definisci il profilo delil tuo installatore, configura l'invio di email, scegli il tema di colori e il font per un'esperienza su misura." },
+            { title: "Data Explorer", description: "Uno strumento avanzato per visualizzare e modificare direttamente i dati grezzi delil tuo installatore. Utile per correzioni rapide o analisi approfondite." },
             { title: "Manuale e Changelog", description: "Consulta questa guida in qualsiasi momento e tieni traccia di tutte le nuove funzionalità e miglioramenti rilasciati nell'applicazione." },
         ]
     }
@@ -61,7 +61,7 @@ const operatorGuide = [
         category: "Dashboard Personale",
         icon: LayoutDashboard,
         items: [
-            { title: "Riepilogo Attività", description: "Visualizza un riepilogo del carico di lavoro totale dell'azienda (Urgenti, Nuovi, In Corso) e un contatore dedicato ai soli interventi assegnati a te." },
+            { title: "Riepilogo Attività", description: "Visualizza un riepilogo del carico di lavoro totale dell'installatore (Urgenti, Nuovi, In Corso) e un contatore dedicato ai soli interventi assegnati a te." },
              { title: "Interventi in Evidenza", icon: Star, description: "Visualizza rapidamente gli interventi più importanti che sono stati evidenziati dall'amministratore." },
             { title: "Programmazione Settimanale", description: "Consulta le tue attività pianificate per i prossimi 7 giorni. Vengono mostrate solo le attività relative ai settori per cui sei abilitato (es. solo manutenzioni)." },
         ]
@@ -72,14 +72,14 @@ const operatorGuide = [
         items: [
             { title: "Registrazione Lavoro", description: "Usa i pulsanti 'Avvia Lavoro' e 'Termina Lavoro' all'interno di un intervento per tracciare automaticamente le ore di lavoro e la tua posizione (con il consenso del browser)." },
             { title: "Aggiornamento Intervento", description: "Apri un intervento per aggiungere commenti, registrare i materiali utilizzati, le ore impiegate e allegare foto o documenti direttamente dal campo." },
-            { title: "Visione Globale", description: "Navigando dal menu laterale (es. Interventi, Appuntamenti), puoi visualizzare tutte le attività dell'azienda, anche quelle non assegnate a te, per avere un quadro completo." },
+            { title: "Visione Globale", description: "Navigando dal menu laterale (es. Interventi, Appuntamenti), puoi visualizzare tutte le attività dell'installatore, anche quelle non assegnate a te, per avere un quadro completo." },
         ]
     },
     {
         category: "Strumenti",
         icon: Calendar,
         items: [
-            { title: "Calendario e Mappa", description: "Usa il calendario per vedere le scadenze e la mappa per pianificare i tuoi spostamenti. Puoi visualizzare tutte le attività aziendali per una migliore coordinazione." },
+            { title: "Calendario e Mappa", description: "Usa il calendario per vedere le scadenze e la mappa per pianificare i tuoi spostamenti. Puoi visualizzare tutte le attività del team per una migliore coordinazione." },
             { title: "Profilo", description: "Aggiorna le tue informazioni personali, come nome, avatar e password, accedendo al tuo profilo dal menu utente in alto a destra." },
         ]
     }
@@ -90,7 +90,7 @@ const clientGuide = [
         category: "La Tua Area Riservata",
         icon: LayoutDashboard,
         items: [
-            { title: "Creazione Richieste", description: "Usa il pulsante 'Crea Intervento' per inviare una nuova richiesta di assistenza. Puoi descrivere il problema, allegare file (es. foto del guasto) e inviare tutto con un click." },
+            { title: "Creazione Richieste", description: "Usa il pulsante 'Apri Ticket' o la sezione Supporto per inviare una nuova richiesta di assistenza. Puoi descrivere il problema, allegare foto o documenti e inviare tutto all'ufficio, che valuterà e pianificherà l'intervento necessario." },
             { title: "Elenco Interventi", description: "Visualizza l'elenco completo di tutte le tue richieste, sia quelle in corso che quelle storiche. Puoi vedere lo stato, la data di creazione e i dettagli principali." },
         ]
     },

@@ -14,7 +14,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { Loader, Settings, Upload, Save, AlertCircle, Send, TestTubeDiagonal } from 'lucide-react';
+import { Loader, Settings, Upload, Save, AlertCircle, Send, TestTubeDiagonal, Mail, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { getAppConfiguration, updateAppConfiguration } from '@/lib/data';
 import { AppConfiguration } from '@/lib/types';
 import Image from 'next/image';
@@ -138,14 +138,21 @@ export default function CreatorSettingsPage() {
     setIsSaving(false);
   };
   
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        form.setValue('appLogoUrl', reader.result as string, { shouldDirty: true });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const { compressLogo } = await import('@/lib/image-compression');
+        const compressed = await compressLogo(file);
+        form.setValue('appLogoUrl', compressed, { shouldDirty: true });
+      } catch (err) {
+        console.warn('Logo compression fallback:', err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          form.setValue('appLogoUrl', reader.result as string, { shouldDirty: true });
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -153,17 +160,17 @@ export default function CreatorSettingsPage() {
     const values = form.getValues();
     const apiKey = values.resendApiKey === '••••••••' ? originalResendKey.current : values.resendApiKey;
 
-    if (!values.testRecipientEmail || !apiKey || !values.defaultSenderEmail) {
-        toast({ variant: 'destructive', title: 'Campi Mancanti', description: 'Per inviare un test, inserisci API Key, Email Mittente e Email Destinatario Test.' });
+    if (!values.testRecipientEmail) {
+        toast({ variant: 'destructive', title: 'Destinatario mancante', description: 'Inserisci l\'indirizzo email a cui inviare la prova.' });
         return;
     }
     setIsTestingSmtp(true);
     const result = await sendTestEmailAction({
         recipientEmail: values.testRecipientEmail,
-        resendConfig: {
+        resendConfig: (apiKey && values.defaultSenderEmail) ? {
             apiKey: apiKey,
             from: values.defaultSenderEmail,
-        }
+        } : undefined
     });
     if (result.success) {
         toast({ title: 'Email di prova inviata!', description: `Controlla la casella di posta di ${values.testRecipientEmail}.`});
@@ -174,30 +181,21 @@ export default function CreatorSettingsPage() {
   }
   
   const handleBucketTest = async () => {
-    const values = form.getValues();
-     if (!values.gcsProjectId || !values.gcsClientEmail || (!form.getValues('gcsPrivateKey') && !originalPrivateKey.current) || !values.gcsBucketName) {
-        toast({ variant: 'destructive', title: 'Campi Mancanti', description: 'Per testare il bucket, tutti i campi di Google Cloud Storage sono obbligatori.' });
-        return;
-    }
     setIsTestingGcs(true);
-    
-    const privateKey = values.gcsPrivateKey === '••••••••' ? originalPrivateKey.current : values.gcsPrivateKey;
-
-    const result = await testGcsConnectionAction({
-        projectId: values.gcsProjectId,
-        clientEmail: values.gcsClientEmail,
-        privateKey: privateKey!,
-        bucketName: values.gcsBucketName,
-    });
-    
-    if (result.success) {
-        toast({ title: 'Connessione al Bucket riuscita!', description: `Un file di test è stato scritto con successo nel bucket ${values.gcsBucketName}.`});
-    } else {
-        toast({ variant: 'destructive', title: 'Connessione al Bucket fallita', description: result.error || 'Si è verificato un errore sconosciuto.'});
+    try {
+      const { uploadFileToSupabase } = await import('@/lib/supabase-storage');
+      const testRes = await uploadFileToSupabase('data:text/plain;base64,VGVzdA==', 'test-bucket.txt', 'health_check');
+      if (!testRes.error && testRes.url) {
+        toast({ title: 'Connessione a Supabase Storage riuscita!', description: 'Un file di test è stato scritto ed il bucket privato è perfettamente funzionante.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Connessione al Bucket fallita', description: testRes.error || 'Impossibile accedere al bucket Supabase.' });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Errore Test Storage', description: e.message || 'Si è verificato un errore.' });
+    } finally {
+      setIsTestingGcs(false);
     }
-
-    setIsTestingGcs(false);
-  }
+  };
 
   if (isLoading || !user) {
     return (
@@ -260,58 +258,102 @@ export default function CreatorSettingsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Invio Email (Resend)</CardTitle>
-                <CardDescription>
-                  Queste impostazioni verranno usate come predefinite per ogni nuova azienda creata.
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-primary" />
+                      Sistema Email (Dominio mannatec.it)
+                    </CardTitle>
+                    <CardDescription>
+                      Tutte le email (invito utenti, reset password, notifiche ticket e riepiloghi) vengono inviate tramite il server di posta del dominio.
+                    </CardDescription>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Dominio Attivo
+                  </span>
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                 <FormField
-                    control={form.control}
-                    name="resendApiKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Resend API Key</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="re_..." {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-lg bg-muted/40 border text-sm">
+                  <div>
+                    <span className="text-muted-foreground text-xs block">Server SMTP</span>
+                    <strong className="font-mono text-xs">mail.mannatec.it</strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs block">Porta &amp; Sicurezza</span>
+                    <strong className="font-mono text-xs">465 (SSL / TLS)</strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs block">Account Mittente</span>
+                    <strong className="font-mono text-xs text-primary">noreply@mannatec.it</strong>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="font-medium text-sm flex items-center gap-1.5 text-foreground">
+                    <Send className="h-4 w-4 text-primary" />
+                    Testa Invio Immediato
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <FormField
                       control={form.control}
-                      name="defaultSenderEmail"
+                      name="testRecipientEmail"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email Mittente di Default</FormLabel>
+                          <FormLabel>Email Destinatario per il Test</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="noreply@example.com" {...field} value={field.value ?? ''} />
+                            <Input type="email" placeholder="latuaemail@esempio.com" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                <Separator />
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                     <FormField
-                        control={form.control}
-                        name="testRecipientEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email Destinatario Test</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="test@example.com" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    <Button type="button" variant="outline" onClick={handleResendTest} disabled={isTestingSmtp}>
-                        {isTestingSmtp ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                        Invia Email di Prova
+                    <Button type="button" variant="default" onClick={handleResendTest} disabled={isTestingSmtp} className="w-full md:w-auto">
+                      {isTestingSmtp ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                      Invia Email di Prova
                     </Button>
-                 </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-semibold">Configurazione Resend Alternativa (Opzionale)</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Se desideri inoltrare tramite un tuo account Resend dedicato invece del server di dominio mannatec.it, compila i campi sottostanti. Se lasciati vuoti, verrà usato sempre il server mannatec.it.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="resendApiKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Resend API Key (Opzionale)</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="re_..." {...field} value={field.value ?? ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="defaultSenderEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Mittente Resend (Opzionale)</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="noreply@tuodominio.it" {...field} value={field.value ?? ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -328,10 +370,10 @@ export default function CreatorSettingsPage() {
                     <AlertTitle>Come connettere un Bucket</AlertTitle>
                     <AlertDescription>
                         <ol className="list-decimal list-inside space-y-1">
-                            <li>Vai in Google Cloud su "IAM & Admin" > "Service Accounts".</li>
+                            <li>Vai in Google Cloud su "IAM & Admin" &gt; "Service Accounts".</li>
                             <li>Seleziona un Service Account o creane uno nuovo.</li>
                             <li>Assicurati che abbia il ruolo <b>"Storage Object Admin"</b>.</li>
-                            <li>Vai nella tab "Keys", clicca "Add Key" > "Create new key", scegli <b>JSON</b> e crea.</li>
+                            <li>Vai nella tab "Keys", clicca "Add Key" &gt; "Create new key", scegli <b>JSON</b> e crea.</li>
                             <li>Un file JSON verrà scaricato. Aprilo e copia i valori `project_id`, `client_email` e `private_key` nei campi sottostanti.</li>
                         </ol>
                     </AlertDescription>

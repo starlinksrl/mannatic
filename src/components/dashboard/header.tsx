@@ -4,7 +4,7 @@
 
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Building, Menu } from 'lucide-react';
+import { ArrowLeft, Building, Menu, Smartphone } from 'lucide-react';
 import { SidebarNav } from './sidebar-nav';
 import { UserSwitcher } from './user-switcher';
 import { NotificationsDropdown } from './notifications-dropdown';
@@ -42,7 +42,7 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
         </SheetContent>
       </Sheet>
       <div className="flex items-center gap-4 flex-1">
-         {currentCompany && user?.role !== 'Creator' && (
+         {currentCompany && user?.role !== 'Creator' && user?.role !== 'Distributor' && (
           <div className="flex items-center gap-2">
             {currentCompany.logoUrl ? (
                 <Image src={currentCompany.logoUrl} alt={currentCompany.name} width={28} height={28} className="rounded-md object-contain" />
@@ -52,9 +52,20 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
              <span className="font-medium hidden md:inline">{currentCompany.name}</span>
           </div>
         )}
-        <h1 className="font-headline text-xl font-semibold">{title}</h1>
+        <h1 className="font-headline text-lg sm:text-xl font-semibold truncate">{title}</h1>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border-dashed px-2 sm:px-3 h-8 sm:h-9"
+        >
+          <a href="/mannatic.apk" download="mannatic.apk" title="Scarica Applicazione Android">
+            <Smartphone className="h-4 w-4 text-emerald-500 shrink-0" />
+            <span className="hidden min-[420px]:inline">App Android</span>
+          </a>
+        </Button>
         <UserSwitcher />
         <NotificationsDropdown />
       </div>

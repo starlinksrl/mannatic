@@ -12,9 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
-import { getUserByEmail, consumeAutologinToken, addUser } from '@/lib/data';
+import { getUserByEmail, consumeAutologinToken, addUser, getUserById } from '@/lib/data';
 import { User } from '@/lib/types';
-import { Loader } from 'lucide-react';
+import { Loader, Smartphone } from 'lucide-react';
 
 function LoginFormComponent() {
   const [email, setEmail] = useState('');
@@ -33,18 +33,20 @@ function LoginFormComponent() {
         autologinProcessed.current = true;
         setIsLoading(true);
         try {
-          const user = await consumeAutologinToken(token);
-          if (user) {
-            await login(user);
-            toast({
-              title: 'Accesso effettuato',
-              description: `Accesso automatico in corso come ${user.name}...`,
-            });
-            // Redirect based on role
-            if (user.role === 'Client') {
-                router.replace('/dashboard/requests');
-            } else {
-                router.replace('/dashboard');
+          const tokenData = await consumeAutologinToken(token);
+          if (tokenData) {
+            const user = await getUserById(tokenData.userId);
+            if (user) {
+              await login(user);
+              toast({
+                title: 'Accesso effettuato',
+                description: `Accesso automatico in corso come ${user.name}...`,
+              });
+              if (user.role === 'Client') {
+                  router.replace('/dashboard/requests');
+              } else {
+                  router.replace('/dashboard');
+              }
             }
           } else {
             toast({
@@ -74,11 +76,18 @@ function LoginFormComponent() {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanPassword = password.trim();
+
+        if (!cleanEmail || !cleanPassword) {
+            throw new Error("Inserisci sia l'email che la password.");
+        }
+
         let userToLogin: User | null = null;
         
         // Special logic for the first creator login to seed the database
-        if (email.toLowerCase() === 'creator@mannatic.com' && password === 'Acidosbi74!') {
-            userToLogin = await getUserByEmail(email);
+        if (cleanEmail === 'creator@mannatic.com' && cleanPassword === 'Acidosbi74!') {
+            userToLogin = await getUserByEmail(cleanEmail);
             if (!userToLogin) {
                 // If the main creator doesn't exist in the DB, create it now.
                 console.log("Seeding main creator user into database...");
@@ -92,16 +101,23 @@ function LoginFormComponent() {
                 });
             }
         } else {
-            userToLogin = await getUserByEmail(email);
+            userToLogin = await getUserByEmail(cleanEmail);
         }
 
-        if (userToLogin && userToLogin.password === password) {
+        if (userToLogin && userToLogin.password?.trim() === cleanPassword) {
             await login(userToLogin);
             toast({
                 title: 'Accesso effettuato',
                 description: `Bentornato, ${userToLogin.name}!`,
             });
-            router.push('/dashboard');
+            const isDistributorOp = userToLogin.role === 'DistributorAdmin' || userToLogin.role === 'DistributorUser';
+            const isDistributor = userToLogin.role === 'Distributor';
+            const target = isDistributor
+              ? '/dashboard/distributor-dashboard'
+              : isDistributorOp
+              ? '/dashboard/operator-dashboard'
+              : '/dashboard';
+            router.push(target);
         } else {
             throw new Error("Credenziali non valide.");
         }
@@ -186,8 +202,21 @@ function LoginFormComponent() {
                <div className="mt-4 text-center text-sm">
                 Non hai un account?{' '}
                 <Link href="/register" className="underline">
-                  Registra una nuova azienda
+                  Registra una nuovo installatore
                 </Link>
+              </div>
+              <div className="w-full pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="w-full gap-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs"
+                >
+                  <a href="/mannatic.apk" download="mannatic.apk">
+                    <Smartphone className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <span>Scarica l'App Android (.APK)</span>
+                  </a>
+                </Button>
               </div>
             </>
            )}

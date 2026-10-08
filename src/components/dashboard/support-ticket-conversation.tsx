@@ -1,12 +1,10 @@
-
-
 'use client';
 
-import { useState } from 'react';
-import { SupportTicket, User, SupportTicketStatus } from '@/lib/types';
+import { useState, useRef, useEffect } from 'react';
+import { SupportTicket, User, SupportTicketStatus, Attachment } from '@/lib/types';
 import { Header } from './header';
 import { Button } from '../ui/button';
-import { ArrowLeft, Loader, Send, Trash2, Wrench } from 'lucide-react';
+import { ArrowLeft, Loader, Send, Trash2, Wrench, UploadCloud, File as FileIcon, Image as ImageIcon, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Textarea } from '../ui/textarea';
 import { useUser } from '@/contexts/user-context';
@@ -28,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { convertSupportTicketToIntervention } from '@/app/actions';
+import { v4 as uuidv4 } from 'uuid';
 
 interface SupportTicketConversationProps {
   ticket: SupportTicket;
@@ -39,21 +38,109 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
   const { user } = useUser();
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState('');
+  const [replyAttachments, setReplyAttachments] = useState<Attachment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to the bottom of the conversation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [ticket.messages]);
 
   if (!user) return null;
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    let newAttachments: Attachment[] = [];
+    let hadError = false;
+
+    for (const file of Array.from(files)) {
+        if (file.size > 10 * 1024 * 1024) { // 10MB
+            toast({
+                variant: 'destructive',
+                title: 'File troppo grande',
+                description: `Il file "${file.name}" supera il limite di 10MB.`,
+            });
+            hadError = true;
+            continue;
+        }
+
+        const reader = new FileReader();
+        const promise = new Promise<Attachment>(async (resolve, reject) => {
+            try {
+                const { compressAttachment } = await import('@/lib/image-compression');
+                const dataUri = await compressAttachment(file);
+                const { uploadFileToSupabase } = await import('@/lib/supabase-storage');
+                const uploadRes = await uploadFileToSupabase(dataUri, file.name, 'tickets');
+                resolve({
+                    id: uuidv4(),
+                    name: file.name,
+                    url: uploadRes.url || dataUri,
+                    type: file.type,
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: user.name,
+                });
+            } catch (e) {
+                console.warn("Upload/compression failed, using fallback reader", e);
+                reader.onloadend = () => {
+                    resolve({
+                        id: uuidv4(),
+                        name: file.name,
+                        url: reader.result as string,
+                        type: file.type,
+                        uploadedAt: new Date().toISOString(),
+                        uploadedBy: user.name,
+                    });
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            }
+        });
+
+        try {
+            const newAttachment = await promise;
+            newAttachments.push(newAttachment);
+        } catch (error) {
+            console.error("File read failed", error);
+            toast({
+                variant: 'destructive',
+                title: 'Lettura file fallita',
+                description: `Impossibile leggere il file "${file.name}".`,
+            });
+            hadError = true;
+        }
+    }
+
+    if (newAttachments.length > 0) {
+        setReplyAttachments(prev => [...prev, ...newAttachments]);
+    }
+    setIsUploading(false);
+  };
+
+  const handleRemoveReplyAttachment = (attachmentId: string) => {
+    setReplyAttachments(prev => prev.filter(att => att.id !== attachmentId));
+  };
+
   const handleSendMessage = async () => {
-    if (newMessage.trim() === '') return;
+    if (newMessage.trim() === '' && replyAttachments.length === 0) return;
 
     setIsSubmitting(true);
     try {
-      await addSupportMessage(ticket.id, user, newMessage);
+      await addSupportMessage(ticket.id, user, newMessage, replyAttachments);
       setNewMessage('');
+      setReplyAttachments([]);
       onTicketUpdated();
       toast({ title: 'Messaggio inviato con successo.' });
     } catch (error) {
@@ -66,7 +153,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
   const handleStatusChange = async (newStatus: SupportTicketStatus) => {
     setIsSubmitting(true);
      try {
-      await updateSupportTicketStatus(ticket.id, newStatus);
+      await updateSupportTicketStatus(ticket.id, newStatus, user);
       onTicketUpdated();
       toast({ title: 'Stato del ticket aggiornato.' });
     } catch (error) {
@@ -74,7 +161,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
   
   const handleConvertToIntervention = async () => {
     setIsConverting(true);
@@ -93,7 +180,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
       });
     }
     setIsConverting(false);
-  }
+  };
 
   const confirmDelete = async () => {
     setIsDeleting(true);
@@ -107,7 +194,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
     }
     setIsDeleting(false);
     setIsDeleteDialogOpen(false);
-  }
+  };
 
   return (
     <>
@@ -169,24 +256,89 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
                   >
                     <div
                       className={cn(
-                        'p-3 rounded-lg max-w-md',
+                        'p-3 rounded-lg max-w-md border',
                         message.senderId === user.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-muted border-border'
                       )}
                     >
                       <p className="font-semibold">{message.senderName}</p>
                       <p className="whitespace-pre-wrap">{message.text}</p>
+                      
+                      {/* Attachments Section */}
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="mt-3 space-y-2 border-t pt-2 border-current/10">
+                          {message.attachments.map((att) => (
+                            <div key={att.id} className="mt-1">
+                              {att.type.startsWith('image/') ? (
+                                <div className="relative rounded overflow-hidden max-w-xs border bg-background">
+                                  <a href={att.url} target="_blank" rel="noopener noreferrer">
+                                    <img src={att.url} alt={att.name} className="object-cover max-h-40 w-full hover:opacity-90 transition-opacity" />
+                                  </a>
+                                </div>
+                              ) : att.type.startsWith('video/') ? (
+                                <div className="rounded overflow-hidden max-w-xs border bg-background">
+                                  <video src={att.url} controls className="max-h-40 w-full" />
+                                </div>
+                              ) : (
+                                <a
+                                  href={att.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5 text-xs underline truncate"
+                                >
+                                  {att.type === 'application/pdf' ? (
+                                    <FileText className="h-4 w-4 shrink-0 text-red-500" />
+                                  ) : (
+                                    <FileIcon className="h-4 w-4 shrink-0" />
+                                  )}
+                                  <span className="truncate">{att.name}</span>
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
                       <p className="text-xs opacity-70 mt-2 text-right">
                         {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: it })}
                       </p>
                     </div>
                   </div>
                 ))}
+                {/* Dummy element used for automatic scrolling */}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 
             <div className="mt-6 space-y-4">
+              {/* Previews of uploaded files in reply */}
+              {replyAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-muted/50">
+                  {replyAttachments.map((att) => (
+                    <div key={att.id} className="flex items-center gap-2 p-1.5 border rounded-md bg-background text-sm max-w-xs">
+                      {att.type.startsWith('image/') ? (
+                        <ImageIcon className="h-4 w-4 text-green-500 shrink-0" />
+                      ) : att.type.startsWith('video/') ? (
+                        <FileIcon className="h-4 w-4 text-blue-500 shrink-0" />
+                      ) : (
+                        <FileIcon className="h-4 w-4 shrink-0" />
+                      )}
+                      <span className="truncate text-xs">{att.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 shrink-0"
+                        onClick={() => handleRemoveReplyAttachment(att.id)}
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <Textarea
                 placeholder={ticket.status === 'Chiuso' ? "Questo ticket è chiuso. Riaprilo per inviare un messaggio." : "Scrivi la tua risposta..."}
                 rows={4}
@@ -194,8 +346,32 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
                 onChange={(e) => setNewMessage(e.target.value)}
                 disabled={isSubmitting || ticket.status === 'Chiuso'}
               />
-              <div className="flex justify-end">
-                <Button onClick={handleSendMessage} disabled={isSubmitting || newMessage.trim() === '' || ticket.status === 'Chiuso'}>
+              <div className="flex justify-between items-center gap-2">
+                <div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    disabled={isSubmitting || isUploading || ticket.status === 'Chiuso'}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isSubmitting || isUploading || ticket.status === 'Chiuso'}
+                  >
+                    <UploadCloud className="mr-2 h-4 w-4" />
+                    {isUploading ? 'Caricamento...' : 'Allega Immagini / Video'}
+                  </Button>
+                </div>
+                <Button 
+                  onClick={handleSendMessage} 
+                  disabled={isSubmitting || isUploading || (newMessage.trim() === '' && replyAttachments.length === 0) || ticket.status === 'Chiuso'}
+                >
                   {isSubmitting && !isDeleting && !isConverting ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
                   Invia
                 </Button>

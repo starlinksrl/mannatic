@@ -6,9 +6,11 @@ import { Header } from '@/components/dashboard/header';
 import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Company, addCompany, getCompanies, deleteCompanyAndSubcollections, updateCompany } from '@/lib/data';
-import { Loader, PlusCircle, Building, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Company, getCompanies, addCompany, deleteCompanyAndSubcollections, updateCompany, getUsers } from '@/lib/data';
+import { User } from '@/lib/types';
+import { Loader, PlusCircle, Building, MoreHorizontal, Pencil, Trash2, UserCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,10 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { changelog } from '@/lib/changelog';
-import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
 
-const isMainCreator = (user: Company | null) => user?.email === 'creator@mannatic.com';
+const isMainCreator = (user: any | null) => user?.email === 'creator@mannatic.com';
 
 export default function CompaniesPage() {
   const { user, companies, setCompanies } = useUser();
@@ -40,6 +40,7 @@ export default function CompaniesPage() {
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
+  const [distributorMap, setDistributorMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (user && user.role !== 'Creator') {
@@ -51,9 +52,26 @@ export default function CompaniesPage() {
     async function fetchCompanies() {
         if (!user) return;
         setIsLoading(true);
-        const creatorId = isMainCreator(user) ? undefined : user.id;
-        const companiesFromDb = await getCompanies(creatorId);
-        setCompanies(companiesFromDb);
+
+        if (isMainCreator(user)) {
+            // Main creator: carica TUTTI gli installatori e i distributori
+            const [allCompanies, allUsers] = await Promise.all([
+                getCompanies(undefined, true),
+                getUsers(),
+            ]);
+            setCompanies(allCompanies);
+
+            // Costruisce mappa distributoreId → nome
+            const map: Record<string, string> = {};
+            allUsers
+                .filter((u: User) => u.role === 'Distributor')
+                .forEach((u: User) => { map[u.id] = u.name; });
+            setDistributorMap(map);
+        } else {
+            const companiesFromDb = await getCompanies(user.id);
+            setCompanies(companiesFromDb);
+        }
+
         setIsLoading(false);
     }
     
@@ -99,7 +117,7 @@ export default function CompaniesPage() {
         const updated = await updateCompany(editingCompany.id, values);
         if (updated) {
           setCompanies(companies.map(c => c.id === updated.id ? updated : c));
-          toast({ title: 'Azienda aggiornata', description: 'I dati sono stati salvati.' });
+          toast({ title: 'Installatore aggiornato', description: 'I dati sono stati salvati.' });
         }
       } else {
         const creatorId = isMainCreator(user) ? undefined : user.id;
@@ -107,7 +125,7 @@ export default function CompaniesPage() {
         if (creatorId) {
             newCompanyData.creatorId = creatorId;
         }
-        const newCompany = await addCompany(newCompanyData);
+        const newCompany = await addCompany(newCompanyData as any);
         setCompanies([...companies, newCompany.company]);
         toast({ title: 'Azienda creata', description: `L'azienda ${newCompany.company.name} è stata creata.` });
       }
@@ -125,7 +143,7 @@ export default function CompaniesPage() {
   if (isLoading || !user) {
     return (
       <>
-        <Header title="Gestione Aziende" />
+        <Header title="Gestione Installatori" />
         <div className="flex items-center justify-center flex-1">
           <Loader className="h-8 w-8 animate-spin" />
         </div>
@@ -143,54 +161,79 @@ export default function CompaniesPage() {
 
   return (
     <>
-      <Header title="Gestione Aziende" />
+      <Header title="Gestione Installatori" />
       <ScrollArea className="flex-1">
         <main className="p-4 md:p-6 lg:p-8 space-y-8">
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <Card className="flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all" onClick={handleAddCompany}>
-              <CardContent className="p-6 text-center">
-                <PlusCircle className="h-12 w-12 text-muted-foreground mx-auto" />
-                <p className="mt-4 font-medium">Crea Nuova Azienda</p>
-              </CardContent>
-            </Card>
-            {companies.map(company => (
-              <Card key={company.id} className="flex flex-col">
-                <CardHeader>
-                  <CardTitle className="flex justify-between items-start">
-                     <div className="flex items-center gap-3 cursor-pointer break-words" onClick={() => handleEditCompany(company)}>
-                        {company.logoUrl ? (
-                            <img src={company.logoUrl} alt={company.name} className="h-10 w-10 rounded-md object-contain border p-1" />
-                        ) : (
-                            <Building className="h-8 w-8 text-muted-foreground shrink-0" />
-                        )}
-                        <span>{company.name}</span>
+          <div className="grid gap-6">
+             <Card className="col-span-full">
+                 <CardHeader className="flex flex-row items-center justify-between">
+                     <div>
+                        <CardTitle>Elenco Installatori</CardTitle>
+                        <CardDescription>Gestisci gli installatori presenti a sistema.</CardDescription>
                      </div>
-                      <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                              <DropdownMenuItem onSelect={() => handleEditCompany(company)}><Pencil className="mr-2"/> Modifica</DropdownMenuItem>
-                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onSelect={() => handleDeleteCompany(company)} className="text-destructive focus:text-destructive"><Trash2 className="mr-2"/> Elimina</DropdownMenuItem>
-                          </DropdownMenuContent>
-                      </DropdownMenu>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow cursor-pointer" onClick={() => handleEditCompany(company)}>
-                  <p className="text-sm text-muted-foreground">{company.address || 'Nessun indirizzo'}</p>
-                </CardContent>
-                <CardFooter className="text-xs text-muted-foreground">
-                    ID: {company.id}
-                </CardFooter>
-              </Card>
-            ))}
+                     <Button onClick={handleAddCompany}><PlusCircle className="mr-2 h-4 w-4"/> Crea Installatore</Button>
+                 </CardHeader>
+                 <CardContent>
+                     <Table>
+                         <TableHeader>
+                             <TableRow>
+                                 <TableHead>ID</TableHead>
+                                 <TableHead>Data Creazione</TableHead>
+                                 <TableHead>Installatore</TableHead>
+                                 <TableHead>Città</TableHead>
+                                 <TableHead>Distributore Collegato</TableHead>
+                                 <TableHead className="text-right">Azioni</TableHead>
+                             </TableRow>
+                         </TableHeader>
+                         <TableBody>
+                             {companies.map(company => (
+                                 <TableRow key={company.id}>
+                                     <TableCell className="font-mono text-xs">{company.id}</TableCell>
+                                     <TableCell>
+                                        {company.createdAt 
+                                            ? (typeof company.createdAt === 'object' && 'toDate' in company.createdAt ? company.createdAt.toDate().toLocaleDateString() : new Date(company.createdAt).toLocaleDateString())
+                                            : '-'}
+                                     </TableCell>
+                                     <TableCell className="font-medium">
+                                         <div className="flex items-center gap-3">
+                                             {company.logoUrl ? (
+                                                 <img src={company.logoUrl} alt={company.name} className="h-8 w-8 rounded-md object-contain border p-1" />
+                                             ) : (
+                                                 <Building className="h-6 w-6 text-muted-foreground shrink-0" />
+                                             )}
+                                             <span>{company.name}</span>
+                                         </div>
+                                     </TableCell>
+                                     <TableCell>{company.city || '-'}</TableCell>
+                                     <TableCell>
+                                        {isMainCreator(user) ? (
+                                            company.distributorId ? distributorMap[company.distributorId] || company.distributorId : '-'
+                                        ) : (
+                                            '-'
+                                        )}
+                                     </TableCell>
+                                     <TableCell className="text-right">
+                                         <DropdownMenu>
+                                             <DropdownMenuTrigger asChild>
+                                                 <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                             </DropdownMenuTrigger>
+                                             <DropdownMenuContent align="end">
+                                                 <DropdownMenuItem onSelect={() => handleEditCompany(company)}><Pencil className="mr-2 h-4 w-4"/> Modifica</DropdownMenuItem>
+                                                 <DropdownMenuSeparator />
+                                                 <DropdownMenuItem onSelect={() => handleDeleteCompany(company)} className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4"/> Elimina</DropdownMenuItem>
+                                             </DropdownMenuContent>
+                                         </DropdownMenu>
+                                     </TableCell>
+                                 </TableRow>
+                             ))}
+                         </TableBody>
+                     </Table>
+                 </CardContent>
+             </Card>
           </div>
           
-          <Separator />
-          
-          <ChangelogDisplay />
+
           
         </main>
       </ScrollArea>

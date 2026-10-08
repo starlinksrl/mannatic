@@ -18,7 +18,7 @@ export const quotes = [
     { quote: "La libertà è essere padroni di se stessi.", author: "Friedrich Nietzsche" },
     { quote: "Penso, dunque sono.", author: "Cartesio" },
     { quote: "Dubitare di tutto o credere a tutto sono due soluzioni ugualmente comode che ci dispensano, l'una come l'altra, dal riflettere.", author: "Henri Poincaré" },
-    { quote_content: "La conoscenza parla, ma la saggezza ascolta.", author: "Jimi Hendrix" },
+    { quote: "La conoscenza parla, ma la saggezza ascolta.", author: "Jimi Hendrix" },
     { quote: "L'immaginazione è più importante della conoscenza.", author: "Albert Einstein" },
     { quote: "Non si può risolvere un problema con lo stesso tipo di pensiero che l'ha creato.", author: "Albert Einstein" },
     { quote: "La realtà è una semplice illusione, sebbene molto persistente.", author: "Albert Einstein" },

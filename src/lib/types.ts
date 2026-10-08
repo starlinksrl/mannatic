@@ -2,7 +2,8 @@
 import { z } from 'zod';
 import webpush from 'web-push';
 
-export type UserRole = 'Creator' |'Admin' | 'Operator' | 'Client';
+export type UserRole = 'Creator' | 'Distributor' | 'Admin' | 'Operator' | 'Client' | 'DistributorAdmin' | 'DistributorUser';
+
 export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'matrix';
 export type Font = 'default' | 'lato' | 'roboto' | 'playfair' | 'sourcecode';
 
@@ -20,12 +21,19 @@ export interface AppConfiguration {
 }
 
 
+export type ViewMode = 'grid' | 'table';
+
 export interface Company {
   id: string;
   name: string;
-  creatorId?: string; // ID of the Creator who created this company
+  creatorId?: string;       // ID of the Creator who created this company
+  distributorId?: string;   // ID of the Distributor who manages this company (optional, backward compat)
   logoUrl?: string;
   address?: string;
+  city?: string;
+  referentName?: string;
+  referentPhone?: string;
+  createdAt?: string | any;
   vatNumber?: string;
   taxCode?: string;
   phone?: string;
@@ -34,11 +42,17 @@ export interface Company {
   platformUrl?: string;
   theme?: Theme;
   font?: Font;
+  viewMode?: ViewMode;
   // Resend settings
   resendApiKey?: string;
   senderEmail?: string;
   companyScratchpad?: string;
   cronJobRecipients?: string[];
+  // WhatsApp settings
+  whatsappAccessToken?: string;
+  whatsappPhoneNumberId?: string;
+  whatsappTemplateName?: string;
+  whatsappAdminPhone?: string;
 }
 
 export type AllowedSector = 'interventions' | 'new_installations' | 'appointments' | 'maintenance';
@@ -55,6 +69,7 @@ export interface User {
   website?: string;
   password?: string;
   allowedSectors?: AllowedSector[];
+  simplifiedDashboard?: boolean;
   latitude?: number | null;
   longitude?: number | null;
   clientNotes?: string;
@@ -65,7 +80,14 @@ export interface User {
   vatNumber?: string;
   taxCode?: string;
   uniqueCode?: string;
+  distributorId?: string; // For DistributorAdmin/DistributorUser — links them to their parent distributor
+  // WhatsApp settings (for Distributor role)
+  whatsappAccessToken?: string;
+  whatsappPhoneNumberId?: string;
+  whatsappTemplateName?: string;
+  whatsappAdminPhone?: string;
 }
+
 
 export interface PasswordResetToken {
     id: string;
@@ -159,11 +181,12 @@ export interface Intervention {
   companyId: string;
   isMaintenance?: boolean;
   isFeatured?: boolean;
+  featuredOrder?: number;
 }
 
 export type ScheduledMaintenanceStatus = 'Pianificato' | 'In corso' | 'Completato' | 'Annullato';
 
-export interface ScheduledMaintenance extends Intervention {
+export interface ScheduledMaintenance extends Omit<Intervention, 'status'> {
   isMaintenance: true;
   status: ScheduledMaintenanceStatus;
   recurrenceMonths: number; // New field for recurrence in months
@@ -189,7 +212,7 @@ export interface Appointment {
 }
 
 
-export type NotificationType = 'assignment' | 'status_change' | 'expiry' | 'alert' | 'generic';
+export type NotificationType = 'assignment' | 'status_change' | 'expiry' | 'alert' | 'generic' | 'support_ticket';
 
 export interface Notification {
   id: string;
@@ -210,7 +233,10 @@ export interface SupportMessage {
   senderName: string;
   text: string;
   createdAt: string;
+  attachments?: Attachment[];
 }
+
+export type SupportTicketType = 'client_support' | 'distributor_support';
 
 export interface SupportTicket {
   id: string;
@@ -222,7 +248,23 @@ export interface SupportTicket {
   updatedAt: string;
   status: SupportTicketStatus;
   messages: SupportMessage[];
+  ticketType?: SupportTicketType; // 'client_support' (default) | 'distributor_support'
 }
+
+export interface DistributorQuote {
+  id: string;
+  distributorId: string;
+  distributorName: string;
+  companyId: string;       // Target installer company
+  fileName: string;
+  gcsPath: string;         // Private GCS object path (e.g. quotes/abc-file.pdf)
+  riferimento?: string;    // Reference number / quote title
+  scadenza?: string;       // Expiry date (ISO date string YYYY-MM-DD)
+  description?: string;
+  textContent?: string;    // Extracted PDF text for full-text search
+  uploadedAt: string;
+}
+
     
 export const ResendConfigSchema = z.object({
   apiKey: z.string().describe('Resend API Key.'),
@@ -231,7 +273,7 @@ export const ResendConfigSchema = z.object({
 
 export const SendTestEmailInputSchema = z.object({
   recipientEmail: z.string().email().describe('The email address of the recipient.'),
-  resendConfig: ResendConfigSchema.describe('Resend API configuration for sending the email.'),
+  resendConfig: ResendConfigSchema.optional().describe('Optional custom Resend configuration; if omitted, domain SMTP is used.'),
 });
 export type SendTestEmailInput = z.infer<typeof SendTestEmailInputSchema>;
 
@@ -280,6 +322,7 @@ export const SendSupportTicketNotificationInputSchema = z.object({
   recipientName: z.string(),
   ticket: z.custom<SupportTicket>(),
   isNewTicket: z.boolean(),
+  ticketLink: z.string().optional(),
   resendConfig: z.custom<any>(),
 });
 export type SendSupportTicketNotificationInput = z.infer<typeof SendSupportTicketNotificationInputSchema>;

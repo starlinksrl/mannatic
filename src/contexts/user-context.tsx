@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, getUserByEmail, getUserById, getCompanies, Company, getUsers, getCompanyById } from '@/lib/data';
+import { User, getUserByEmail, getUserById, getCompanies, getCompaniesByDistributorId, Company, getUsers, getCompanyById } from '@/lib/data';
 import { CREATOR_USER_ID } from '@/lib/constants';
 
 const isMainCreator = (user: User | null) => user?.email === 'creator@mannatic.com';
@@ -61,25 +61,74 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
     
     setUser(freshUser);
-    localStorage.setItem('user', JSON.stringify(freshUser));
+
+    try {
+      const userToStore = { ...freshUser };
+      // Strip out huge inline base64 images if any, so localStorage never exceeds quota
+      if (userToStore.avatarUrl && userToStore.avatarUrl.length > 2048) {
+        userToStore.avatarUrl = '';
+      }
+      if (userToStore.logoUrl && userToStore.logoUrl.length > 2048) {
+        userToStore.logoUrl = '';
+      }
+      localStorage.setItem('user', JSON.stringify(userToStore));
+    } catch (storageError) {
+      console.warn("Could not save full user to localStorage, saving minimal session:", storageError);
+      try {
+        localStorage.setItem('user', JSON.stringify({
+          id: freshUser.id,
+          name: freshUser.name,
+          email: freshUser.email,
+          role: freshUser.role,
+          companyId: freshUser.companyId,
+          distributorId: freshUser.distributorId,
+        }));
+      } catch (e) {
+        console.error("Critical: Failed to store session to localStorage:", e);
+      }
+    }
 
     if (freshUser.role === 'Creator') {
         const allCompanies = await getCompanies(freshUser.id);
         setCompanies(allCompanies);
         setCurrentCompany(null);
         localStorage.removeItem('companyId');
-    } else {
-        const companyToSet = await getCompanyById(freshUser.companyId);
-        if (!companyToSet) {
-            logout();
-            setIsLoading(false);
-            return;
+    } else if (freshUser.role === 'Distributor') {
+        const allCompanies = await getCompaniesByDistributorId(freshUser.id);
+        setCompanies(allCompanies);
+        const savedCompanyId = localStorage.getItem('companyId');
+        const savedCompany = savedCompanyId ? allCompanies.find(c => c.id === savedCompanyId) || null : null;
+        setCurrentCompany(savedCompany);
+    } else if (freshUser.role === 'DistributorAdmin' || freshUser.role === 'DistributorUser') {
+        // Operator accounts: load companies via their parent distributorId
+        const parentDistributorId = freshUser.distributorId;
+        if (parentDistributorId) {
+            const allCompanies = await getCompaniesByDistributorId(parentDistributorId);
+            setCompanies(allCompanies);
+            const savedCompanyId = localStorage.getItem('companyId');
+            const savedCompany = savedCompanyId ? allCompanies.find(c => c.id === savedCompanyId) || null : null;
+            setCurrentCompany(savedCompany);
         }
-        setCurrentCompany(companyToSet);
-        localStorage.setItem('companyId', companyToSet.id);
+    } else {
+        const companyToSet = freshUser.companyId ? await getCompanyById(freshUser.companyId) : null;
+        if (!companyToSet) {
+            if (freshUser.role === 'Client') {
+                setCurrentCompany(null);
+            } else {
+                logout();
+                setIsLoading(false);
+                return;
+            }
+        } else {
+            setCurrentCompany(companyToSet);
+            try {
+                localStorage.setItem('companyId', companyToSet.id);
+            } catch (e) {}
+        }
     }
-    
+
     setIsLoading(false);
+
   };
 
   const logout = () => {

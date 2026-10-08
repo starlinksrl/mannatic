@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Header } from '@/components/dashboard/header';
@@ -26,81 +25,78 @@ export default function UsersPage() {
   const fetchData = async () => {
     if (!user) return;
     setIsLoading(true);
-    
-    let usersFromDb: User[] = [];
+
     if (isMainCreatorView) {
-      usersFromDb = await getUsers();
-      setUserList(usersFromDb.filter(u => u.role === 'Creator'));
-    } else if (currentCompany) {
-      usersFromDb = await getUsers(currentCompany.id);
-       setUserList(usersFromDb.filter(u => u.role !== 'Client'));
+      // Main creator sees all Creators and Distributors
+      const all = await getUsers();
+      setUserList(all.filter(u => u.role === 'Creator' || u.role === 'Distributor'));
+    } else if (user.role === 'Admin' && currentCompany) {
+      // Installer admin sees team members of their company (no clients)
+      const all = await getUsers(currentCompany.id);
+      setUserList(all.filter(u => u.role !== 'Client'));
     } else {
-        setUserList([]);
+      setUserList([]);
     }
-    
+
     setIsLoading(false);
   };
 
   useEffect(() => {
-    // Redirect non-admins or regular creators if they try to access this page
-    // This page is now for Admins (in a company) or the Main Creator (global)
-    if (user && user.role !== 'Admin' && !isMainCreator(user)) {
+    // Only Creator (main) and Installer Admin can access this page
+    if (!user) return;
+    if (user.role !== 'Admin' && !isMainCreator(user)) {
       router.push('/dashboard');
       return;
     }
-    
-    if (user) {
-        fetchData();
+    // Installer Admin without a selected company → redirect
+    if (user.role === 'Admin' && !currentCompany) {
+      router.push('/dashboard');
+      return;
     }
+    fetchData();
   }, [user, router, currentCompany]);
-  
-  if(!user) return null;
-  if(user.role === 'Admin' && !currentCompany) return null;
 
+  if (!user) return null;
+  if (user.role !== 'Admin' && !isMainCreatorView) return null;
+  if (user.role === 'Admin' && !currentCompany) return null;
 
-  if (user.role !== 'Admin' && !isMainCreator(user)) {
-    return null; 
-  }
-  
-  const getButtonLabel = () => {
-    if (isMainCreatorView) {
-        return "Crea Creator";
-    }
-    return "Crea Utente";
-  }
-  
   const getTitle = () => {
-     if (isMainCreatorView) {
-        return "Creators";
-    }
-    return "Utenti";
-  }
+    if (isMainCreatorView) return 'Creators & Distributori';
+    return 'Utenti';
+  };
+
+  const getButtonLabel = () => {
+    if (isMainCreatorView) return 'Crea Creator / Distributore';
+    return 'Crea Utente';
+  };
 
   const canCreateUser = isMainCreatorView || (user.role === 'Admin' && currentCompany);
+  const defaultCreateRole = isMainCreatorView ? 'Creator' : 'Operator';
 
   return (
     <>
       <Header title={getTitle()} />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
         {canCreateUser && (
-            <div className="flex justify-end mb-4">
-                <AddUserForm 
-                    onUserAdded={fetchData} 
-                    defaultRole={isMainCreatorView ? 'Creator' : 'Operator'}
-                >
-                <Button>
-                    <PlusCircle className="mr-2" />
-                    {getButtonLabel()}
-                </Button>
-                </AddUserForm>
-            </div>
+          <div className="flex justify-end mb-4">
+            <AddUserForm
+              onUserAdded={fetchData}
+              defaultRole={defaultCreateRole}
+              companyId={isMainCreatorView ? undefined : currentCompany?.id}
+            >
+              <Button>
+                <PlusCircle className="mr-2" />
+                {getButtonLabel()}
+              </Button>
+            </AddUserForm>
+          </div>
         )}
         {isLoading ? (
-            <div className="flex items-center justify-center pt-20">
-                <Loader className="h-8 w-8 animate-spin" />
-            </div>
+          <div className="flex items-center justify-center pt-20">
+            <Loader className="h-8 w-8 animate-spin" />
+          </div>
         ) : (
-            <UsersTable users={userList} onDataChange={fetchData} />
+          <UsersTable users={userList} onDataChange={fetchData} />
         )}
       </main>
     </>

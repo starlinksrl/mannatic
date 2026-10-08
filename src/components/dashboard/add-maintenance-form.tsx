@@ -30,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Check, ChevronsUpDown, Loader } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ScheduledMaintenance, User, InterventionPriority } from '@/lib/types';
@@ -46,7 +46,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(['Bassa', 'Media', 'Alta', 'Critica'], { required_error: 'La priorità è obbligatoria.' }),
   dueDate: z.date({ required_error: 'La data di prima esecuzione è obbligatoria.' }),
-  assignedOperatorId: z.string().nullable(),
+  assignedOperatorId: z.string().nullable().optional(),
   recurrenceMonths: z.coerce.number().min(1, 'La ricorrenza deve essere di almeno 1 mese.'),
 });
 
@@ -83,13 +83,19 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
     if (!currentCompany) return;
     
     setIsSubmitting(true);
+    const normalizedDate = setHours(setMinutes(values.dueDate, 0), 12).toISOString();
     const newMaintenance = await addScheduledMaintenance({
         ...values,
         priority: values.priority as InterventionPriority,
-        dueDate: values.dueDate.toISOString(),
+        dueDate: normalizedDate,
         description: values.description || '',
         checklist: [],
-        periodicity: 'monthly',
+        recurrenceMonths: (values as any).recurrenceMonths || 1,
+        nextDueDate: normalizedDate,
+        type: 'standard',
+        status: 'Pianificato',
+        sla: '24h',
+        assignedOperatorIds: values.assignedOperatorId ? [values.assignedOperatorId] : [],
         companyId: currentCompany.id,
     });
     
@@ -121,12 +127,12 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
         }
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="sm:max-w-2xl flex flex-col p-0 max-h-[calc(100dvh-1.5rem)] md:max-h-[90vh] h-[calc(100dvh-1.5rem)] md:h-auto w-[calc(100%-1rem)] sm:w-full rounded-2xl md:rounded-lg overflow-hidden">
+        <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-0 shrink-0 pr-12">
           <DialogTitle>Crea nuova manutenzione programmata</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="h-full">
-            <div className="p-6">
+        <ScrollArea className="flex-1 min-h-0 h-auto overflow-y-auto">
+            <div className="p-4 sm:p-6">
                 <Form {...form}>
                 <form id="add-maintenance-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
@@ -310,14 +316,14 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
                         name="assignedOperatorId"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Assegna a Operatore</FormLabel>
+                            <FormLabel>Assegna a Operatore (Opzionale)</FormLabel>
                             <Select 
                                 onValueChange={(value) => field.onChange(value === 'null' ? null : value)} 
                                 value={field.value || 'null'}
                             >
                                 <FormControl>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Assegna a un operatore (opzionale)" />
+                                    <SelectValue placeholder="Non assegnato" />
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -336,7 +342,7 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
                 </Form>
             </div>
         </ScrollArea>
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-4 sm:p-6 gap-2 border-t shrink-0 bg-background">
             <DialogClose asChild>
                 <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>

@@ -62,10 +62,12 @@ const uploadFileToGcsFlow = ai.defineFlow(
       
       await file.save(fileBuffer, {
         contentType: mimeType,
-        public: true, // Make the file publicly readable
+        // Note: with Uniform Bucket-Level Access, per-object ACLs are not supported.
+        // Public access is controlled via IAM at the bucket level.
       });
       
-      const publicUrl = `https://storage.cloud.google.com/${input.config.bucketName}/${input.fileName}`;
+      // Standard public URL format for GCS (works with both uniform and fine-grained access)
+      const publicUrl = `https://storage.googleapis.com/${input.config.bucketName}/${input.fileName}`;
 
       return { success: true, fileUrl: publicUrl };
     } catch (error: any) {

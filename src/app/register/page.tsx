@@ -19,7 +19,7 @@ import { Loader } from 'lucide-react';
 import { useUser } from '@/contexts/user-context';
 
 const formSchema = z.object({
-  companyName: z.string().min(2, { message: "Il nome dell'azienda deve contenere almeno 2 caratteri." }),
+  companyName: z.string().min(2, { message: "Il nome dell'installatore deve contenere almeno 2 caratteri." }),
   name: z.string().min(2, { message: 'Il tuo nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
 });
@@ -68,9 +68,9 @@ export default function RegisterPage() {
           <div className="flex justify-center mb-4">
             <Logo />
           </div>
-          <CardTitle className="text-2xl">Crea una nuova Azienda</CardTitle>
+          <CardTitle className="text-2xl">Crea un nuovo Installatore</CardTitle>
           <CardDescription>
-            Registra la tua azienda e inizia a gestire i tuoi interventi. La password verrà generata e inviata alla tua email.
+            Registra il tuo installatore e inizia a gestire i tuoi interventi. La password verrà generata e inviata alla tua email.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,9 +81,9 @@ export default function RegisterPage() {
                 name="companyName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome Azienda</FormLabel>
+                    <FormLabel>Nome Installatore</FormLabel>
                     <FormControl>
-                      <Input placeholder="La Mia Azienda SRL" {...field} />
+                      <Input placeholder="La Mia Installatore SRL" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

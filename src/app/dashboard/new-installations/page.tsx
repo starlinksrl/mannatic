@@ -6,10 +6,11 @@ import { getInterventions, getUsers, getClients } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { User, Intervention } from '@/lib/types';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, PlusCircle } from 'lucide-react';
+import { Loader, PlusCircle, LifeBuoy } from 'lucide-react';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { AddInterventionForm } from '@/components/dashboard/add-intervention-form';
+import { AddSupportTicketForm } from '@/components/dashboard/add-support-ticket-form';
 import { Button } from '@/components/ui/button';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -26,7 +27,7 @@ export default function NewInstallationsPage() {
 
     const initialStatusFilter = useMemo(() => searchParams.get('status') || 'active', [searchParams]);
     const initialPriorityFilter = useMemo(() => searchParams.get('priority') || 'all', [searchParams]);
-    const initialViewMode = useMemo(() => (searchParams.get('view') as 'table' | 'grid') || 'grid', [searchParams]);
+    const initialViewMode = useMemo(() => (searchParams.get('view') as 'table' | 'grid') || undefined, [searchParams]);
     const initialSearchTerm = useMemo(() => searchParams.get('search') || '', [searchParams]);
     const initialClientFilter = useMemo(() => searchParams.get('client') || 'all', [searchParams]);
 
@@ -79,11 +80,12 @@ export default function NewInstallationsPage() {
       <Header title="Nuovi Impianti" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
         <div className="flex justify-end mb-4">
-             {user && (user.role === 'Admin' || user.role === 'Operator' || user.role === 'Client') && (
+             {user && (user.role === 'Admin' || user.role === 'Operator') && (
                 <AddInterventionForm
                     clients={clients}
                     operators={operators}
                     onInterventionAdded={handleInterventionChange}
+                    onClientCreated={(newClient) => setClients(prev => [...prev, newClient])}
                     currentUser={user}
                     defaultType="new_installation"
                 >
@@ -92,6 +94,14 @@ export default function NewInstallationsPage() {
                         Crea Intervento
                     </Button>
                 </AddInterventionForm>
+            )}
+            {user && user.role === 'Client' && (
+                <AddSupportTicketForm onTicketAdded={handleInterventionChange}>
+                    <Button>
+                        <LifeBuoy className="mr-2 h-4 w-4" />
+                        Apri Ticket di Supporto
+                    </Button>
+                </AddSupportTicketForm>
             )}
         </div>
         <InterventionsTable 

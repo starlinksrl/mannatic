@@ -78,14 +78,14 @@ export function UsersTable({ users, onDataChange }: UsersTableProps) {
 
     const confirmDelete = async () => {
         if (!userToDelete) return;
-        const success = await deleteUser(userToDelete.id);
-        if (success) {
+        try {
+            await deleteUser(userToDelete.id);
             onDataChange();
             toast({
                 title: 'Utente eliminato',
                 description: `L'utente ${userToDelete.name} è stato eliminato con successo.`,
             });
-        } else {
+        } catch {
              toast({
                 variant: 'destructive',
                 title: 'Errore',

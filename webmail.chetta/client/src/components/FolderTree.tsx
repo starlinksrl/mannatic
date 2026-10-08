@@ -13,7 +13,8 @@ import {
   Star,
   Check,
   X,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { useWebmailStore } from '../store/useWebmailStore.js';
 import { Folder } from '../types/index.js';
@@ -26,7 +27,9 @@ export const FolderTree: React.FC = () => {
     activeAccount,
     refreshFolders,
     createFolder,
-    deleteFolder
+    deleteFolder,
+    mobileView,
+    setMobileView
   } = useWebmailStore();
 
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(true);
@@ -131,11 +134,31 @@ export const FolderTree: React.FC = () => {
     }
   };
 
+  const selectFolder = (path: string) => {
+    setActiveFolder(path);
+    if (mobileView === 'folders') {
+      setMobileView('mail_list');
+    }
+  };
+
   const inboxFolder = folders.find(f => f.path.toUpperCase() === 'INBOX');
   const sentFolder = folders.find(f => f.special_use === 'sent' || /sent|inviati/i.test(f.name));
 
   return (
-    <div className="w-60 bg-white dark:bg-[#201f1e] border-r border-gray-200 dark:border-[#323130] flex flex-col h-full select-none shrink-0 overflow-y-auto">
+    <div className="w-full md:w-60 bg-white dark:bg-[#201f1e] border-r border-gray-200 dark:border-[#323130] flex flex-col h-full select-none shrink-0 overflow-y-auto">
+      {/* Mobile Header in Folder Tree */}
+      {mobileView === 'folders' && (
+        <div className="md:hidden p-3 border-b border-gray-200 dark:border-[#323130] flex items-center justify-between bg-gray-50 dark:bg-[#252423]">
+          <span className="font-bold text-xs text-gray-800 dark:text-gray-100">Cartelle Email</span>
+          <button
+            onClick={() => setMobileView('mail_list')}
+            className="text-xs font-semibold text-[#0078d4] flex items-center gap-1"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Chiudi
+          </button>
+        </div>
+      )}
+
       {/* Account Header */}
       <div className="p-3 border-b border-gray-100 dark:border-[#2d2c2a]">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
@@ -164,7 +187,7 @@ export const FolderTree: React.FC = () => {
             <div className="mt-1 space-y-0.5">
               {inboxFolder && (
                 <button
-                  onClick={() => setActiveFolder(inboxFolder.path)}
+                  onClick={() => selectFolder(inboxFolder.path)}
                   className={`w-full px-4 py-1.5 flex items-center justify-between text-xs font-medium transition-colors ${
                     activeFolder === inboxFolder.path
                       ? 'bg-blue-50 dark:bg-[#323130] text-[#0078d4] font-semibold border-l-4 border-[#0078d4]'
@@ -185,7 +208,7 @@ export const FolderTree: React.FC = () => {
 
               {sentFolder && (
                 <button
-                  onClick={() => setActiveFolder(sentFolder.path)}
+                  onClick={() => selectFolder(sentFolder.path)}
                   className={`w-full px-4 py-1.5 flex items-center justify-between text-xs font-medium transition-colors ${
                     activeFolder === sentFolder.path
                       ? 'bg-blue-50 dark:bg-[#323130] text-[#0078d4] font-semibold border-l-4 border-[#0078d4]'
@@ -236,7 +259,7 @@ export const FolderTree: React.FC = () => {
                 return (
                   <div
                     key={folder.id}
-                    onClick={() => setActiveFolder(folder.path)}
+                    onClick={() => selectFolder(folder.path)}
                     className={`group w-full px-4 py-1.5 flex items-center justify-between text-xs transition-colors cursor-pointer ${
                       isActive
                         ? 'bg-blue-50 dark:bg-[#323130] text-[#0078d4] font-semibold border-l-4 border-[#0078d4]'
@@ -359,9 +382,17 @@ export const FolderTree: React.FC = () => {
 
         {/* Footer Credit */}
         <div className="p-3 border-t border-gray-100 dark:border-[#2d2c2b] text-[10px] text-gray-400 dark:text-gray-500 leading-tight">
-          <p className="font-semibold text-gray-600 dark:text-gray-300">CryptoMail</p>
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-gray-600 dark:text-gray-300">CryptoMail</span>
+            <span className="font-mono text-[9px] px-1.5 py-0.2 bg-blue-50 dark:bg-blue-950/40 text-[#0078d4] dark:text-[#2899f5] rounded font-semibold">
+              v0.5
+            </span>
+          </div>
           <p className="truncate mt-0.5" title="Realizzata da Mannarini Technology (Star Link S.r.l.) by Mannarini Francesco 2026">
             Mannarini Technology • 2026
+          </p>
+          <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5 font-mono">
+            Rilascio: 12 Settembre 2026
           </p>
         </div>
       </div>

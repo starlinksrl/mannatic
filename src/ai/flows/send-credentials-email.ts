@@ -10,14 +10,13 @@ import 'dotenv/config';
  */
 
 import { z } from 'zod';
-import { Resend } from 'resend';
-import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { sendEmail } from '@/lib/mailer';
+
 
 const ResendConfigSchema = z.object({
-  apiKey: z.string().describe('Resend API key.'),
-  from: z.string().email().describe("The sender's email address."),
-});
+  apiKey: z.string().optional().describe('Resend API key.'),
+  from: z.string().optional().describe("The sender's email address."),
+}).optional();
 
 const SendCredentialsEmailInputSchema = z.object({
   recipientEmail: z.string().email().describe('The email address of the user.'),
@@ -41,33 +40,34 @@ export async function sendCredentialsEmail(input: SendCredentialsEmailInput): Pr
 
   const emailSubject = "Le tue credenziali di accesso a MannaTic";
   const emailBody = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-        <h1 style="color: #333;">Credenziali di Accesso a MannaTic</h1>
-        <p>Ciao ${userName},</p>
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+        <h2 style="color: #0284c7; margin-top: 0;">Credenziali di Accesso a MannaTic</h2>
+        <p>Gentile <strong>${userName}</strong>,</p>
         <p>Ecco le tue credenziali per accedere alla piattaforma MannaTic:</p>
-        <ul style="list-style-type: none; padding: 0;">
-            <li style="margin-bottom: 10px;"><strong>Email:</strong> ${userEmail}</li>
-            <li style="margin-bottom: 10px;"><strong>Password:</strong> ${userPassword}</li>
-        </ul>
-        <p>Puoi accedere direttamente dal seguente link:</p>
-        <p><a href="${loginLink}" style="background-color: #64B5F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Accedi a MannaTic</a></p>
-        <br>
-        <p>Cordiali saluti,<br>Il Team di MannaTic</p>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Email:</strong> ${userEmail}</p>
+            <p style="margin: 5px 0;"><strong>Password:</strong> ${userPassword}</p>
+        </div>
+        <p style="margin: 25px 0;">
+          <a href="${loginLink}" style="background-color: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+            Accedi a MannaTic
+          </a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #888;">Il Team di MannaTic</p>
     </div>
   `;
 
   try {
-    const resend = new Resend(resendConfig.apiKey);
-
-    const { data, error } = await resend.emails.send({
-      from: resendConfig.from,
-      to: [recipientEmail],
+    const result = await sendEmail({
+      to: recipientEmail,
       subject: emailSubject,
       html: emailBody,
+      resendConfig,
     });
 
-    if (error) {
-      throw error;
+    if (!result.success) {
+      throw new Error(result.error || 'Invio email fallito.');
     }
 
     return { success: true };

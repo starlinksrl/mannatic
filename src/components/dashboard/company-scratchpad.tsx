@@ -41,7 +41,7 @@ export function CompanyScratchpad({ user, company, onUpdate, className }: Compan
           toast({
             variant: 'destructive',
             title: 'Errore nel salvataggio',
-            description: 'Impossibile salvare il promemoria aziendale.',
+            description: 'Impossibile salvare il promemoria installatore.',
           });
         }
         setIsSaving(false);
@@ -56,14 +56,14 @@ export function CompanyScratchpad({ user, company, onUpdate, className }: Compan
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-headline">
           <Building className="h-5 w-5" />
-          Promemoria Aziendale
+          Promemoria Installatore
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Scrivi qui gli appunti per tutta l'azienda..."
+          placeholder="Scrivi qui gli appunti per tutto il team..."
           className="h-40 resize-none"
           disabled={!canEdit}
         />

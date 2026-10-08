@@ -2,13 +2,13 @@
 'use client';
 
 import { Header } from '@/components/dashboard/header';
-import { getInterventions, getUsers, getClients, updateUser, getAppointments, getSupportTickets } from '@/lib/data';
+import { getInterventions, getUsers, getClients, updateUser, getAppointments, getSupportTickets, updateDocument } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointment, SupportTicket } from '@/lib/types';
 import { isAfter, addDays, startOfToday, isWithinInterval, subMonths, differenceInHours, format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUser } from '@/contexts/user-context';
-import { useEffect, useState, useMemo } from 'react';
-import { Loader, Wrench, HardHat, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2, TrendingUp } from 'lucide-react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { Loader, Wrench, HardHat, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2, TrendingUp, GripVertical } from 'lucide-react';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Scratchpad } from '@/components/dashboard/scratchpad';
 import { CompanyScratchpad } from '@/components/dashboard/company-scratchpad';
 import { EditAppointmentForm } from '@/components/dashboard/edit-appointment-form';
+import { useToast } from '@/hooks/use-toast';
 
 
 export type EnrichedUpdate = InterventionUpdate & { 
@@ -77,13 +78,100 @@ export default function DashboardPage() {
   const { intervention: interventionToEdit, isOpen, closeModal, openModal } = useInterventionModal();
   const [appointmentToEdit, setAppointmentToEdit] = useState<Appointment | null>(null);
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+  const { toast } = useToast();
+  const [isSavingFeaturedOrder, setIsSavingFeaturedOrder] = useState(false);
+
+  const handleOrderChanged = async (newList: Intervention[]) => {
+    setIsSavingFeaturedOrder(true);
+    try {
+      await Promise.all(
+        newList.map((item, idx) => 
+          updateDocument('interventions', item.id, { featuredOrder: idx })
+        )
+      );
+      
+      setKpiData(prev => prev ? {
+        ...prev,
+        featuredInterventions: newList
+      } : null);
+      
+      toast({
+        title: "Ordine salvato",
+        description: "L'ordine degli interventi in evidenza è stato aggiornato con successo.",
+      });
+    } catch (error) {
+      console.error("Errore durante il salvataggio dell'ordine:", error);
+      toast({
+        variant: "destructive",
+        title: "Errore nel salvataggio",
+        description: "Non è stato possibile salvare il nuovo ordine degli interventi.",
+      });
+      fetchKpiData();
+    } finally {
+      setIsSavingFeaturedOrder(false);
+    }
+  };
+
+  const priorityWeight = useMemo(() => ({
+    'Critica': 4,
+    'Alta': 3,
+    'Media': 2,
+    'Bassa': 1
+  }), []);
+
+  const openInterventionsList = useMemo(() => {
+    if (!kpiData) return [];
+    return kpiData.allInterventions
+      .filter(i => !i.isMaintenance && i.type === 'standard' && (i.status === 'Nuovo' || i.status === 'In corso'))
+      .sort((a, b) => {
+        const weightA = priorityWeight[a.priority as keyof typeof priorityWeight] || 0;
+        const weightB = priorityWeight[b.priority as keyof typeof priorityWeight] || 0;
+        if (weightA !== weightB) return weightB - weightA;
+        if (a.dueDate && b.dueDate) return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }) as Intervention[];
+  }, [kpiData, priorityWeight]);
+
+  const openNewInstallationsList = useMemo(() => {
+    if (!kpiData) return [];
+    return kpiData.allInterventions
+      .filter(i => !i.isMaintenance && i.type === 'new_installation' && (i.status === 'Nuovo' || i.status === 'In corso'))
+      .sort((a, b) => {
+        const weightA = priorityWeight[a.priority as keyof typeof priorityWeight] || 0;
+        const weightB = priorityWeight[b.priority as keyof typeof priorityWeight] || 0;
+        if (weightA !== weightB) return weightB - weightA;
+        if (a.dueDate && b.dueDate) return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }) as Intervention[];
+  }, [kpiData, priorityWeight]);
+
+  const getPriorityBadgeGlobal = (priority: Intervention['priority']) => {
+    switch (priority) {
+      case 'Critica': return <Badge variant="destructive">Critica</Badge>;
+      case 'Alta': return <Badge className="bg-orange-500 text-white">Alta</Badge>;
+      case 'Media': return <Badge className="bg-yellow-500 text-white font-medium">Media</Badge>;
+      case 'Bassa': return <Badge variant="secondary">Bassa</Badge>;
+    }
+  };
 
 
   useEffect(() => {
     if (user?.role === 'Client') {
       router.replace('/dashboard/requests');
     }
-  }, [user, router]);
+    // Distributor → dedicated dashboard
+    if (user?.role === 'Distributor') {
+      router.replace('/dashboard/distributor-dashboard');
+    }
+    // DistributorAdmin/User → operator dashboard
+    if (user?.role === 'DistributorAdmin' || user?.role === 'DistributorUser') {
+      router.replace('/dashboard/operator-dashboard');
+    }
+  }, [user, router, currentCompany]);
   
   const clientsMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));
@@ -104,7 +192,7 @@ export default function DashboardPage() {
       getClients(currentCompany.id),
       getAppointments(currentCompany.id),
       user.role === 'Client' ? getSupportTickets(currentCompany.id, user.id) : 
-      (user.role === 'Admin' || user.role === 'Creator') ? getSupportTickets(currentCompany.id) : Promise.resolve([]),
+      (user.role === 'Admin' || user.role === 'Creator' || user.role === 'Distributor') ? getSupportTickets(currentCompany.id) : Promise.resolve([]),
     ]);
 
     const localClientsMap = new Map(allClients.map(c => [c.id, c]));
@@ -114,11 +202,16 @@ export default function DashboardPage() {
     const activeInterventions = allInterventions.filter(i => ['Nuovo', 'In corso'].includes(i.status));
     
     // Featured interventions: explicitly marked as featured OR high/critical priority, only for ACTIVE interventions
-    const featuredInterventions = allInterventions.filter(i => 
+    const featuredInterventions = (allInterventions.filter(i => 
         (i.isFeatured || i.priority === 'Alta' || i.priority === 'Critica') && 
         !i.isMaintenance && 
         ['Nuovo', 'In corso'].includes(i.status)
-    ) as Intervention[];
+    ) as Intervention[]).sort((a, b) => {
+        const orderA = a.featuredOrder ?? 999999;
+        const orderB = b.featuredOrder ?? 999999;
+        if (orderA !== orderB) return orderA - orderB;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
     
     const toInvoiceInterventions = allInterventions.filter(i => 
         (i.status === 'Completato' || i.status === 'Da Fatturare') && 
@@ -309,8 +402,8 @@ export default function DashboardPage() {
   const NoCompanySelected = () => (
     <div className="flex flex-1 flex-col items-center justify-center text-center">
         <Building className="h-16 w-16 text-muted-foreground" />
-        <h2 className="mt-4 text-2xl font-semibold">Nessuna azienda selezionata</h2>
-        <p className="mt-2 text-muted-foreground">Seleziona un'azienda dal menu in alto a destra per visualizzare la dashboard.</p>
+        <h2 className="mt-4 text-2xl font-semibold">Nessuna installatore selezionata</h2>
+        <p className="mt-2 text-muted-foreground">Seleziona un installatore dal menu in alto a destra per visualizzare la dashboard.</p>
     </div>
   )
   
@@ -401,50 +494,7 @@ export default function DashboardPage() {
       );
     };
 
-    const FeaturedInterventionsCard = ({ interventions }: { interventions: Intervention[] }) => {
-        if (!interventions || interventions.length === 0) return null;
 
-        const getPriorityBadge = (priority: Intervention['priority']) => {
-            switch (priority) {
-            case 'Critica': return <Badge variant="destructive">Critica</Badge>;
-            case 'Alta': return <Badge className="bg-orange-500 text-white">Alta</Badge>;
-            case 'Media': return <Badge className="bg-yellow-500 text-white">Media</Badge>;
-            case 'Bassa': return <Badge variant="secondary">Bassa</Badge>;
-            }
-        };
-
-        return (
-            <Card className="lg:col-span-12 order-first">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 font-headline">
-                        <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                        Interventi in Evidenza e Urgenze
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {interventions.map(intervention => (
-                        <div 
-                            key={intervention.id} 
-                            onClick={() => openModal(intervention)} 
-                            className="p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/80 transition-colors"
-                        >
-                            <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                    <p className="font-semibold uppercase">{intervention.title}</p>
-                                    <p className="text-sm text-muted-foreground uppercase">{clientsMap.get(intervention.clientId)?.name}</p>
-                                </div>
-                                {getPriorityBadge(intervention.priority)}
-                            </div>
-                             <div className="mt-2 text-sm text-muted-foreground">
-                                <p>Stato: {intervention.status}</p>
-                                {intervention.dueDate && <p>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yyyy HH:mm')}</p>}
-                            </div>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-        )
-    }
 
     const AdminReviewCard = ({ interventions, totalValue }: { interventions: Intervention[], totalValue: number }) => {
         if (!interventions || interventions.length === 0) return null;
@@ -498,7 +548,6 @@ export default function DashboardPage() {
                                     )}
                                 </div>
                                 <div className="flex justify-between items-center text-[11px] text-muted-foreground">
-                                    <span>ID: {intervention.id}</span>
                                     <span>Ore: {intervention.timeSpent || '0'}h</span>
                                     {intervention.completedAt && (
                                         <span>Chiuso il: {format(new Date(intervention.completedAt), 'dd/MM/yy')}</span>
@@ -584,11 +633,175 @@ export default function DashboardPage() {
             <div className="flex items-center justify-center flex-1 h-full">
               <Loader className="h-8 w-8 animate-spin" />
             </div>
+          ) : user.role === 'Operator' && user.simplifiedDashboard ? (
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold font-headline tracking-tight text-foreground">
+                    Benvenuto, {user.name}
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    Gestisci i tuoi interventi standard e nuovi impianti attivi da questa dashboard semplificata.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Column 1: Interventi Aperti */}
+                <Card className="flex flex-col border-muted-foreground/15 shadow-sm">
+                  <CardHeader className="pb-3 border-b bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-5 w-5 text-blue-500" />
+                      <CardTitle className="text-lg font-headline">Interventi Aperti</CardTitle>
+                      <Badge variant="secondary" className="ml-auto">
+                        {openInterventionsList.length}
+                      </Badge>
+                    </div>
+                    <CardDescription>
+                      Lista degli interventi standard in corso o da avviare.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 flex-1">
+                    <ScrollArea className="h-[calc(100vh-290px)] pr-2">
+                      {openInterventionsList.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                          <CheckCircle2 className="h-10 w-10 text-green-500 mb-2" />
+                          <p className="text-sm font-medium">Nessun intervento standard aperto.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {openInterventionsList.map(intervention => (
+                            <div
+                              key={intervention.id}
+                              onClick={() => openModal(intervention)}
+                              className="p-4 rounded-xl border bg-card hover:bg-muted/40 hover:shadow transition-all duration-200 cursor-pointer flex flex-col gap-2 group"
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                    {clientsMap.get(intervention.clientId)?.name || 'Cliente non trovato'}
+                                  </span>
+                                  <h4 className="font-semibold text-sm group-hover:underline uppercase text-card-foreground">
+                                    {intervention.title}
+                                  </h4>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  {getPriorityBadgeGlobal(intervention.priority)}
+                                  <Badge className={
+                                    intervention.status === 'Nuovo' 
+                                      ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300"
+                                      : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300"
+                                  }>
+                                    {intervention.status}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {intervention.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                  {intervention.description}
+                                </p>
+                              )}
+                              
+                              {intervention.dueDate && (
+                                <div className="flex items-center justify-end text-[11px] text-muted-foreground pt-1 border-t border-dashed mt-1">
+                                  <span className="font-medium">
+                                    Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yyyy HH:mm')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+
+                {/* Column 2: Impianti Nuovi Aperti */}
+                <Card className="flex flex-col border-muted-foreground/15 shadow-sm">
+                  <CardHeader className="pb-3 border-b bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <HardHat className="h-5 w-5 text-orange-500" />
+                      <CardTitle className="text-lg font-headline">Nuovi Impianti Aperti</CardTitle>
+                      <Badge variant="secondary" className="ml-auto">
+                        {openNewInstallationsList.length}
+                      </Badge>
+                    </div>
+                    <CardDescription>
+                      Lista delle nuove installazioni in corso o da avviare.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 flex-1">
+                    <ScrollArea className="h-[calc(100vh-290px)] pr-2">
+                      {openNewInstallationsList.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                          <CheckCircle2 className="h-10 w-10 text-green-500 mb-2" />
+                          <p className="text-sm font-medium">Nessun nuovo impianto aperto.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {openNewInstallationsList.map(installation => (
+                            <div
+                              key={installation.id}
+                              onClick={() => openModal(installation)}
+                              className="p-4 rounded-xl border bg-card hover:bg-muted/40 hover:shadow transition-all duration-200 cursor-pointer flex flex-col gap-2 group"
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="space-y-0.5">
+                                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                    {clientsMap.get(installation.clientId)?.name || 'Cliente non trovato'}
+                                  </span>
+                                  <h4 className="font-semibold text-sm group-hover:underline uppercase text-card-foreground">
+                                    {installation.title}
+                                  </h4>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  {getPriorityBadgeGlobal(installation.priority)}
+                                  <Badge className={
+                                    installation.status === 'Nuovo' 
+                                      ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300"
+                                      : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300"
+                                  }>
+                                    {installation.status}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {installation.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                  {installation.description}
+                                </p>
+                              )}
+                              
+                              {installation.dueDate && (
+                                <div className="flex items-center justify-end text-[11px] text-muted-foreground pt-1 border-t border-dashed mt-1">
+                                  <span className="font-medium">
+                                    Scadenza: {format(new Date(installation.dueDate), 'dd/MM/yyyy HH:mm')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           ) : (
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                 {kpiData.featuredInterventions.length > 0 && (
-                    <FeaturedInterventionsCard interventions={kpiData.featuredInterventions} />
+                    <FeaturedInterventionsCard 
+                      interventions={kpiData.featuredInterventions}
+                      clientsMap={clientsMap}
+                      openModal={openModal}
+                      isAdmin={user.role === 'Admin' || user.role === 'Creator'}
+                      onOrderChanged={handleOrderChanged}
+                      isSaving={isSavingFeaturedOrder}
+                    />
                 )}
 
                 {(user.role === 'Admin' || user.role === 'Creator') && kpiData.toInvoiceInterventions.length > 0 && (
@@ -695,3 +908,135 @@ export default function DashboardPage() {
     </>
   );
 }
+
+interface FeaturedInterventionsCardProps {
+  interventions: Intervention[];
+  clientsMap: Map<string, User>;
+  openModal: (intervention: Intervention) => void;
+  isAdmin: boolean;
+  onOrderChanged: (newList: Intervention[]) => Promise<void>;
+  isSaving: boolean;
+}
+
+const FeaturedInterventionsCard = ({
+  interventions,
+  clientsMap,
+  openModal,
+  isAdmin,
+  onOrderChanged,
+  isSaving
+}: FeaturedInterventionsCardProps) => {
+  const [featuredList, setFeaturedList] = useState<Intervention[]>(interventions);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const draggedRef = useRef(false);
+
+  useEffect(() => {
+    setFeaturedList(interventions);
+  }, [interventions]);
+
+  if (!interventions || interventions.length === 0) return null;
+
+  const getPriorityBadge = (priority: Intervention['priority']) => {
+    switch (priority) {
+      case 'Critica': return <Badge variant="destructive">Critica</Badge>;
+      case 'Alta': return <Badge className="bg-orange-500 text-white">Alta</Badge>;
+      case 'Media': return <Badge className="bg-yellow-500 text-white">Media</Badge>;
+      case 'Bassa': return <Badge variant="secondary">Bassa</Badge>;
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    draggedRef.current = true;
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnter = (id: string) => {
+    if (!draggedId || draggedId === id) return;
+    
+    const draggedIdx = featuredList.findIndex(item => item.id === draggedId);
+    const targetIdx = featuredList.findIndex(item => item.id === id);
+    
+    if (draggedIdx === -1 || targetIdx === -1) return;
+    
+    const newList = [...featuredList];
+    const [draggedItem] = newList.splice(draggedIdx, 1);
+    newList.splice(targetIdx, 0, draggedItem);
+    
+    setFeaturedList(newList);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    
+    const orderChanged = featuredList.some((item, idx) => item.id !== interventions[idx]?.id);
+    if (orderChanged) {
+      onOrderChanged(featuredList);
+    }
+    
+    setTimeout(() => {
+      draggedRef.current = false;
+    }, 50);
+  };
+
+  const handleCardClick = (intervention: Intervention) => {
+    if (draggedRef.current) return;
+    openModal(intervention);
+  };
+
+  return (
+    <Card className="lg:col-span-12 order-first border-muted-foreground/15 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="flex items-center gap-2 font-headline">
+          <Star className="h-5 w-5 text-yellow-400 fill-current" />
+          Interventi in Evidenza e Urgenze
+        </CardTitle>
+        {isSaving && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium animate-pulse">
+            <Loader className="h-3.5 w-3.5 animate-spin" />
+            <span>Salvataggio ordine...</span>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {featuredList.map(intervention => (
+          <div 
+            key={intervention.id} 
+            onClick={() => handleCardClick(intervention)}
+            draggable={isAdmin}
+            onDragStart={(e) => handleDragStart(e, intervention.id)}
+            onDragEnter={() => handleDragEnter(intervention.id)}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            className={cn(
+              "p-4 rounded-lg border bg-card text-card-foreground shadow-sm transition-all duration-200 select-none",
+              isAdmin && "cursor-grab active:cursor-grabbing hover:border-primary/50 hover:shadow-md",
+              draggedId === intervention.id && "opacity-40 border-dashed border-primary bg-muted scale-95"
+            )}
+          >
+            <div className="flex justify-between items-start">
+              <div className="flex-1 flex gap-2 items-start">
+                {isAdmin && (
+                  <GripVertical className="h-4 w-4 text-muted-foreground/60 mt-1 flex-shrink-0 cursor-grab active:cursor-grabbing" />
+                )}
+                <div>
+                  <p className="font-semibold uppercase">{intervention.title}</p>
+                  <p className="text-sm text-muted-foreground uppercase">{clientsMap.get(intervention.clientId)?.name}</p>
+                </div>
+              </div>
+              {getPriorityBadge(intervention.priority)}
+            </div>
+            <div className={cn("mt-2 text-sm text-muted-foreground", isAdmin ? "pl-6" : "pl-0")}>
+              <p>Stato: {intervention.status}</p>
+              {intervention.dueDate && <p>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yyyy HH:mm')}</p>}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+};

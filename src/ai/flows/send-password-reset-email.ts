@@ -12,6 +12,7 @@ import 'dotenv/config';
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { Resend } from 'resend';
+import { sendEmail } from '@/lib/mailer';
 
 const ResendConfigSchema = z.object({
   apiKey: z.string().describe('Resend API key.'),
@@ -67,27 +68,52 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
   },
   async (input) => {
     const { resendConfig, recipientEmail, companyId, ...promptInput } = input;
-    let emailSubject = `Password Reset for ${input.userName}`;
+    let emailSubject = `Richiesta di Reset Password per MannaTic`;
+    let emailBody = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+        <h2 style="color: #0284c7; margin-top: 0;">Reimpostazione Password MannaTic</h2>
+        <p>Gentile <strong>${input.userName}</strong>,</p>
+        <p>Abbiamo ricevuto una richiesta di reimpostazione della password per il tuo account su <strong>MannaTic</strong>.</p>
+        <p>Per impostare una nuova password, clicca sul pulsante qui sotto:</p>
+        <p style="margin: 25px 0;">
+          <a href="${input.resetLink}" style="background-color: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+            Reimposta Password
+          </a>
+        </p>
+        <p style="font-size: 13px; color: #666;">
+          Se il pulsante non funziona, copia e incolla questo link nel browser:<br />
+          <a href="${input.resetLink}" style="color: #0284c7;">${input.resetLink}</a>
+        </p>
+        <p style="font-size: 13px; color: #888;">
+          Questo link è valido per 1 ora. Se non hai richiesto tu il reset, puoi ignorare questa email in sicurezza.
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #aaa;">Il Team di MannaTic</p>
+      </div>
+    `;
+
     try {
-      const { output } = await prompt(promptInput);
-
-      if (!output || !output.emailBody || !output.emailSubject) {
-          throw new Error('Failed to generate email content for password reset.');
+      if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
+        try {
+          const { output } = await prompt(promptInput);
+          if (output?.emailBody && output?.emailSubject) {
+            emailSubject = output.emailSubject;
+            emailBody = output.emailBody;
+          }
+        } catch (promptErr: any) {
+          console.warn('[sendPasswordResetEmailFlow] AI prompt skipped/failed, using standard template:', promptErr.message);
+        }
       }
-      
-      emailSubject = output.emailSubject;
 
-      const resend = new Resend(resendConfig.apiKey);
-
-      const { data, error } = await resend.emails.send({
-        from: resendConfig.from,
-        to: [recipientEmail],
-        subject: output.emailSubject,
-        html: output.emailBody,
+      const result = await sendEmail({
+        to: recipientEmail,
+        subject: emailSubject,
+        html: emailBody,
+        resendConfig,
       });
 
-      if (error) {
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Invio email fallito.');
       }
 
       return { success: true };
@@ -102,3 +128,4 @@ const sendPasswordResetEmailFlow = ai.defineFlow(
 export async function sendPasswordResetEmail(input: SendPasswordResetEmailInput): Promise<SendPasswordResetEmailOutput> {
     return sendPasswordResetEmailFlow(input);
 }
+

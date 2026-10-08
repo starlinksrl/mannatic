@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X, ChevronsUpDown, Check, Archive, CheckCircle2 } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X, ChevronsUpDown, Check, Archive, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes, differenceInMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -42,8 +42,8 @@ import { EditUserForm } from './edit-user-form';
 import { v4 as uuidv4 } from 'uuid';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Image from 'next/image';
-import { fetchAttachmentAction } from '@/app/actions';
 import { Checkbox } from '../ui/checkbox';
+import { compressAttachment } from '@/lib/image-compression';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import {
   AlertDialog,
@@ -185,6 +185,10 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (currentUser.role === 'Client') {
+      setIsOpen(false);
+      return;
+    }
     
     let newUpdates = intervention?.updates || [];
     if(values.newUpdate && values.newUpdate.trim() !== '') {
@@ -225,10 +229,10 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
         completedAt: values.status === 'Completato' && !intervention?.completedAt ? new Date().toISOString() : intervention?.completedAt || null,
         attachments: values.attachments,
         workLogs: values.workLogs,
-        cost: isAdmin ? values.cost : intervention.cost,
+        cost: isAdmin ? values.cost : intervention?.cost,
     };
     
-    const updated = await updateIntervention(intervention!.id, updatedInterventionData, currentUser);
+    const updated = await updateIntervention(intervention!.id, updatedInterventionData);
     
     if (updated) {
         onInterventionUpdated();
@@ -250,7 +254,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
     if (!intervention) return;
     setIsArchiving(true);
     try {
-        const updated = await updateIntervention(intervention.id, { status: 'Archiviato' }, currentUser);
+        const updated = await updateIntervention(intervention.id, { status: 'Archiviato' });
         if (updated) {
             onInterventionUpdated();
             toast({ title: 'Intervento archiviato', description: `L'intervento #${intervention.id} è stato archiviato.` });
@@ -306,31 +310,35 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             continue;
         }
 
-        const reader = new FileReader();
-        const promise = new Promise<Attachment>((resolve, reject) => {
-            reader.onloadend = () => {
-                resolve({
-                    id: uuidv4(),
-                    name: file.name,
-                    url: reader.result as string, // This will be a temporary data URI
-                    type: file.type,
-                    uploadedAt: new Date().toISOString(),
-                    uploadedBy: currentUser.name,
-                });
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-
         try {
-            const newAttachment = await promise;
-            newAttachments.push(newAttachment);
+            const dataUri = await compressAttachment(file);
+            try {
+              const { uploadFileToSupabase } = await import('@/lib/supabase-storage');
+              const uploadRes = await uploadFileToSupabase(dataUri, file.name, 'interventions');
+              newAttachments.push({
+                  id: uuidv4(),
+                  name: file.name,
+                  url: uploadRes.url || dataUri,
+                  type: file.type,
+                  uploadedAt: new Date().toISOString(),
+                  uploadedBy: currentUser.name,
+              });
+            } catch(e) {
+              newAttachments.push({
+                  id: uuidv4(),
+                  name: file.name,
+                  url: dataUri,
+                  type: file.type,
+                  uploadedAt: new Date().toISOString(),
+                  uploadedBy: currentUser.name,
+              });
+            }
         } catch (error) {
-            console.error("File read failed", error);
+            console.error("File read/compression failed", error);
             toast({
                 variant: 'destructive',
                 title: 'Lettura file fallita',
-                description: `Impossibile leggere il file "${file.name}".`,
+                description: `Impossibile leggere o comprimere il file "${file.name}".`,
             });
             hadError = true;
         }
@@ -360,33 +368,30 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   }
 
   const handleViewAttachment = async (attachment: Attachment) => {
-    if (!appConfig || !appConfig.gcsBucketName || !appConfig.gcsProjectId || !appConfig.gcsClientEmail || !appConfig.gcsPrivateKey) {
-        toast({ variant: 'destructive', title: 'Errore Configurazione', description: 'La configurazione GCS non è stata caricata o è incompleta.' });
-        return;
-    }
     setAttachmentToView(attachment);
     setIsFetchingAttachment(true);
     setAttachmentDataUri(null);
 
-    const filePath = `${intervention.id}/${attachment.id}-${attachment.name}`;
-    
-    const result = await fetchAttachmentAction({
-        filePath: filePath,
-        config: {
-            projectId: appConfig.gcsProjectId!,
-            clientEmail: appConfig.gcsClientEmail!,
-            privateKey: appConfig.gcsPrivateKey!,
-            bucketName: appConfig.gcsBucketName!,
-        }
-    });
-
-    if (result.success && result.dataUri) {
-        setAttachmentDataUri(result.dataUri);
-    } else {
-        toast({ variant: 'destructive', title: 'Errore Download', description: result.error || 'Impossibile scaricare l\'allegato.' });
+    try {
+      if (attachment.url && (attachment.url.startsWith('http://') || attachment.url.startsWith('https://') || attachment.url.startsWith('data:'))) {
+        setAttachmentDataUri(attachment.url);
+      } else if (attachment.url) {
+        const { getSignedFileUrl } = await import('@/lib/supabase-storage');
+        const signedUrl = await getSignedFileUrl(attachment.url);
+        setAttachmentDataUri(signedUrl);
+      } else {
+        const filePath = `${intervention.id}/${attachment.id}-${attachment.name}`;
+        const { getSignedFileUrl } = await import('@/lib/supabase-storage');
+        const signedUrl = await getSignedFileUrl(filePath);
+        setAttachmentDataUri(signedUrl);
+      }
+    } catch (e) {
+      console.error('Error opening attachment:', e);
+      toast({ variant: 'destructive', title: 'Errore Download', description: 'Impossibile scaricare l\'allegato.' });
+    } finally {
+      setIsFetchingAttachment(false);
     }
-    setIsFetchingAttachment(false);
-  }
+  };
   
   const handleWorkLogToggle = () => {
     setIsProcessingGeo(true);
@@ -452,6 +457,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const canSetInvoiceStatus = currentUser.role === 'Admin' || currentUser.role === 'Creator';
   const isOperator = currentUser.role === 'Operator';
   const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+  const isClient = currentUser.role === 'Client';
   
   const AttachmentPreview = ({ att }: { att: Attachment }) => {
     if (att.type.startsWith('image/')) {
@@ -467,18 +473,23 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl grid-rows-[auto_1fr_auto] p-0 max-h-screen md:max-h-[90vh] md:h-auto h-screen w-screen max-w-full md:w-full rounded-none md:rounded-lg">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle>Modifica intervento #{intervention.id}</DialogTitle>
+      <DialogContent className="sm:max-w-2xl flex flex-col p-0 max-h-[calc(100dvh-1.5rem)] md:max-h-[90vh] h-[calc(100dvh-1.5rem)] md:h-auto w-[calc(100%-1rem)] sm:w-full rounded-2xl md:rounded-lg overflow-hidden">
+        <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-0 shrink-0 flex flex-row items-center gap-3 pr-14 border-b sm:border-b-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="shrink-0 h-8 w-8 rounded-full border-2"
+            onClick={() => setIsOpen(false)}
+            aria-label="Torna indietro"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <DialogTitle className="flex-1 text-base sm:text-lg truncate">{isClient ? 'Dettagli Intervento' : 'Modifica Intervento'}</DialogTitle>
         </DialogHeader>
-        
-        <Button size="icon" type="submit" form="edit-intervention-form" className="md:hidden fixed top-4 right-16 z-50 shadow-lg bg-primary text-primary-foreground">
-            <Check className="h-4 w-4" />
-            <span className="sr-only">Salva</span>
-        </Button>
 
-        <ScrollArea className="h-full">
-            <div className="p-6">
+        <ScrollArea className="flex-1 min-h-0 h-auto overflow-y-auto">
+            <div className="p-4 sm:p-6">
                 <Form {...form}>
                 <form id="edit-intervention-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     
@@ -499,7 +510,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                         <FormItem>
                         <FormLabel>Titolo</FormLabel>
                         <FormControl>
-                            <Input placeholder="Es. Riparazione perdita..." {...field} />
+                            <Input placeholder="Es. Riparazione perdita..." disabled={isClient} {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -512,7 +523,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Tipo Intervento</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isClient}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleziona un tipo" />
@@ -565,7 +576,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                         <FormItem>
                         <FormLabel>Descrizione</FormLabel>
                         <FormControl>
-                            <Textarea placeholder="Descrivi il problema in dettaglio..." {...field} />
+                            <Textarea placeholder="Descrivi il problema in dettaglio..." disabled={isClient} {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -579,7 +590,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Stato</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isClient}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleziona uno stato" />
@@ -611,7 +622,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Priorità</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isClient}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleziona una priorità" />
@@ -640,6 +651,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                         <FormControl>
                                             <Button
                                             variant={"outline"}
+                                            disabled={isClient}
                                             className={cn(
                                                 "w-full justify-start text-left font-normal pl-3",
                                                 !field.value && "text-muted-foreground"
@@ -658,7 +670,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                             <div className="flex flex-col items-center">
                                                 <Calendar
                                                     mode="single"
-                                                    selected={field.value}
+                                                    selected={field.value || undefined}
                                                     onSelect={field.onChange}
                                                     initialFocus
                                                     locale={it}
@@ -688,7 +700,7 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                     <FormItem className="flex flex-col">
                                     <FormLabel>Ora</FormLabel>
                                         <FormControl>
-                                            <Input type="time" {...field} value={field.value || ''} />
+                                            <Input type="time" disabled={isClient} {...field} value={field.value || ''} />
                                         </FormControl>
                                     <FormMessage />
                                     </FormItem>
@@ -942,10 +954,10 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
             </div>
         </ScrollArea>
 
-        <DialogFooter className="hidden md:flex flex-col-reverse sm:flex-row p-6 pt-0 border-t justify-between gap-2">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row p-4 sm:p-6 gap-2 border-t shrink-0 bg-background justify-between">
             <div className="flex gap-2">
                 <DialogClose asChild>
-                    <Button variant="outline">Annulla</Button>
+                    <Button variant="outline">{isClient ? 'Chiudi' : 'Annulla'}</Button>
                 </DialogClose>
                 {isAdmin && (
                     <Button variant="secondary" onClick={handleQuickArchive} disabled={isArchiving}>
@@ -954,7 +966,9 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                     </Button>
                 )}
             </div>
-            <Button type="submit" form="edit-intervention-form">Salva modifiche</Button>
+            {!isClient && (
+                <Button type="submit" form="edit-intervention-form">Salva modifiche</Button>
+            )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

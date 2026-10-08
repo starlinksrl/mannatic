@@ -1,8 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { sendOverdueInterventionsSummaryEmail } from '@/app/actions';
 import { getCompanies } from '@/lib/data';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET || 'mannatic-secret-cron-token';
+  const url = new URL(request.url);
+  const querySecret = url.searchParams.get('secret');
+
+  if (authHeader !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const companies = await getCompanies(undefined, true);
     

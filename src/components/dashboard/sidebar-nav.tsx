@@ -22,7 +22,12 @@ import {
   HelpCircle,
   Map,
   LifeBuoy,
+  FileText,
+  UserCog,
+  BarChart3,
+  Smartphone,
 } from 'lucide-react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '../icons/logo';
@@ -34,7 +39,9 @@ import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
 
 const isMainCreator = (user: UserType | null) => user?.email === 'creator@mannatic.com';
-
+const isDistributor = (user: UserType | null) => user?.role === 'Distributor';
+const isDistributorAdmin = (user: UserType | null) => user?.role === 'DistributorAdmin';
+const isDistributorUser = (user: UserType | null) => user?.role === 'DistributorUser';
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -47,52 +54,60 @@ export function SidebarNav() {
     label: string;
     mainCreatorLabel?: string;
     icon: React.ElementType;
-    roles: ('Creator' | 'Admin' | 'Operator' | 'Client')[];
+    roles: ('Creator' | 'Distributor' | 'Admin' | 'Operator' | 'Client' | 'DistributorAdmin' | 'DistributorUser')[];
     sector?: AllowedSector;
     mainCreatorOnly?: boolean;
     regularCreatorOnly?: boolean;
   }[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Operator', 'Client'] },
+    { href: '/dashboard/distributor-dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Distributor'] },
+    { href: '/dashboard/operator-dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['DistributorAdmin', 'DistributorUser'] },
     { href: '/dashboard/interventions', label: 'Interventi', icon: Wrench, roles: ['Admin', 'Operator', 'Client'], sector: 'interventions' },
     { href: '/dashboard/new-installations', label: 'Nuovi Impianti', icon: HardHat, roles: ['Admin', 'Operator'], sector: 'new_installations' },
     { href: '/dashboard/appointments', label: 'Appuntamenti', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'appointments' },
     { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'], sector: 'maintenance' },
-    { href: '/dashboard/support', label: 'Supporto', icon: LifeBuoy, roles: ['Admin', 'Client'] },
+    { href: '/dashboard/support', label: 'Supporto', icon: LifeBuoy, roles: ['Admin', 'Client', 'Distributor', 'DistributorAdmin', 'DistributorUser'] },
+    { href: '/dashboard/quotes', label: 'Preventivi', icon: FileText, roles: ['Admin', 'Distributor', 'DistributorAdmin', 'DistributorUser'] },
     { href: '/dashboard/map', label: 'Mappa', icon: Map, roles: ['Admin', 'Operator'] },
     { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
-    { href: '/dashboard/users', label: 'Utenti', mainCreatorLabel: 'Creators', icon: Users, roles: ['Creator', 'Admin'] },
+    { href: '/dashboard/users', label: 'Utenti', mainCreatorLabel: 'Creators & Distributori', icon: Users, roles: ['Creator', 'Admin'] },
     { href: '/dashboard/clients', label: 'Clienti', icon: Contact, roles: ['Admin'] },
-    { href: '/dashboard/companies', label: 'Aziende', icon: Building, roles: ['Creator'] },
+    { href: '/dashboard/companies', label: 'Installatori', icon: Building, roles: ['Creator', 'Distributor'] },
+    { href: '/dashboard/operators', label: 'Operatori', icon: UserCog, roles: ['Distributor', 'DistributorAdmin'] },
+    { href: '/dashboard/operator-stats', label: 'Statistiche', icon: BarChart3, roles: ['Distributor', 'DistributorAdmin'] },
     { href: '/dashboard/creator-settings', label: 'App Config', icon: Settings, roles: ['Creator'], mainCreatorOnly: true },
     { href: '/dashboard/explorer', label: 'Explorer', icon: Database, roles: ['Creator'], mainCreatorOnly: true },
     { href: '/dashboard/info', label: 'Info', icon: Info, roles: ['Creator'], mainCreatorOnly: true },
     { href: '/dashboard/manual', label: 'Manuale', icon: HelpCircle, roles: ['Operator', 'Client'] },
     { href: '/dashboard/settings', label: 'Impostazioni', icon: Settings, roles: ['Admin'] },
-    { href: '/dashboard/changelog', label: 'Changelog', icon: GitMerge, roles: ['Operator', 'Client', 'Creator'] },
+    { href: '/dashboard/changelog', label: 'Changelog', icon: GitMerge, roles: ['Operator', 'Client', 'Creator', 'Distributor', 'DistributorAdmin', 'DistributorUser'] },
 ];
 
   const userCanSeeItem = (item: typeof navItems[0]) => {
+    // DistributorUser: ONLY support and quotes
+    if (user.role === 'DistributorUser') {
+      return item.roles.includes('DistributorUser');
+    }
+    // DistributorAdmin: same visibility as Distributor
+    if (user.role === 'DistributorAdmin') {
+      return item.roles.includes('DistributorAdmin');
+    }
+    // Distributor: sees only their allowed pages
+    if (user.role === 'Distributor') {
+      return item.roles.includes('Distributor');
+    }
     if (user.role !== 'Creator' && item.roles.includes(user.role)) {
        if (user.role === 'Operator' && item.sector) {
-            // An Operator MUST have the specific sector in their allowedSectors array.
-            // If allowedSectors is undefined or null, they can't see any sector-specific items.
             return user.allowedSectors?.includes(item.sector) ?? false;
         }
         return true;
     }
     if (user.role === 'Creator') {
         if (!item.roles.includes('Creator')) return false;
-        
         const isMain = isMainCreator(user);
-        
-        // Show item if it's not restricted by creator type
-        if (!item.mainCreatorOnly && !item.regularCreatorOnly) {
-            return true;
-        }
-
+        if (!item.mainCreatorOnly && !item.regularCreatorOnly) return true;
         if (item.mainCreatorOnly) return isMain;
         if (item.regularCreatorOnly) return !isMain;
-        
         return true;
     }
     return false;
@@ -125,7 +140,19 @@ export function SidebarNav() {
           ) : null
         )}
       </nav>
-      <div className="mt-auto p-4 space-y-2">
+      <div className="mt-auto p-4 space-y-3">
+        <a
+          href="/mannatic.apk"
+          download="mannatic.apk"
+          className="flex items-center gap-3 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+          title="Scarica l'app Android per smartphone"
+        >
+          <Smartphone className="h-5 w-5 shrink-0 text-emerald-500" />
+          <div className="flex flex-col text-left leading-tight">
+            <span className="text-xs font-semibold">App Android</span>
+            <span className="text-[10px] text-muted-foreground">Scarica APK per smartphone</span>
+          </div>
+        </a>
         <Separator />
         <p className="text-xs text-muted-foreground text-center">
             Created by F. Mannarini on Google Cloud

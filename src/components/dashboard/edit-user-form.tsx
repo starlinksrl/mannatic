@@ -26,6 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, UserRole, AllowedSector } from '@/lib/types';
+import { compressAvatar, compressLogo } from '@/lib/image-compression';
 import { useToast } from '@/hooks/use-toast';
 import { updateUser } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
@@ -46,7 +47,7 @@ const allowedSectors: { id: AllowedSector; label: string }[] = [
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Il nome deve contenere almeno 2 caratteri.' }),
   email: z.string().email({ message: 'Inserisci un indirizzo email valido.' }),
-  role: z.enum(['Admin', 'Operator', 'Client', 'Creator'], { required_error: 'Il ruolo è obbligatorio.' }),
+  role: z.enum(['Admin', 'Operator', 'Client', 'Creator', 'Distributor', 'DistributorAdmin', 'DistributorUser'], { required_error: 'Il ruolo è obbligatorio.' }),
   password: z.string().min(8, { message: "La nuova password deve contenere almeno 8 caratteri." }).optional().or(z.literal('')),
   avatarUrl: z.string().optional(),
   address: z.string().optional(),
@@ -60,6 +61,7 @@ const formSchema = z.object({
   vatNumber: z.string().optional(),
   taxCode: z.string().optional(),
   uniqueCode: z.string().optional(),
+  simplifiedDashboard: z.boolean().optional(),
 });
 
 interface EditUserFormProps {
@@ -108,6 +110,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             vatNumber: user.vatNumber || '',
             taxCode: user.taxCode || '',
             uniqueCode: user.uniqueCode || '',
+            simplifiedDashboard: user.simplifiedDashboard || false,
         });
         setAddressInput(user.address || '');
     }
@@ -134,6 +137,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             vatNumber: values.vatNumber,
             taxCode: values.taxCode,
             uniqueCode: values.uniqueCode,
+            simplifiedDashboard: values.role === 'Operator' ? values.simplifiedDashboard : undefined,
         };
 
         if (values.password && values.password.trim() !== '') {
@@ -165,14 +169,17 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
     fileInputRef.current?.click();
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, field: 'avatarUrl' | 'logoUrl') => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>, field: 'avatarUrl' | 'logoUrl') => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        form.setValue(field, reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = field === 'avatarUrl'
+          ? await compressAvatar(file)
+          : await compressLogo(file);
+        form.setValue(field, compressed, { shouldDirty: true, shouldValidate: true });
+      } catch (e) {
+        console.error("Error reading/compressing file:", e);
+      }
     }
   };
   
@@ -244,12 +251,12 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px] grid-rows-[auto_1fr_auto] p-0 max-h-[90vh]">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="sm:max-w-[425px] flex flex-col p-0 max-h-[calc(100dvh-1.5rem)] md:max-h-[90vh] h-[calc(100dvh-1.5rem)] md:h-auto w-[calc(100%-1rem)] sm:w-full rounded-2xl md:rounded-lg overflow-hidden">
+        <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-0 shrink-0 pr-12">
           <DialogTitle>{isEditingOwnProfile ? 'Modifica il tuo profilo' : 'Modifica utente'}</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="h-full">
-        <div className="p-6">
+        <ScrollArea className="flex-1 min-h-0 h-auto overflow-y-auto">
+        <div className="p-4 sm:p-6">
         <Form {...form}>
           <form id="edit-user-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
              <div className="flex justify-center gap-4">
@@ -399,6 +406,31 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
                     )}
                     />
             )}
+
+            {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && role === 'Operator' && (
+              <FormField
+                control={form.control}
+                name="simplifiedDashboard"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Dashboard Semplificata
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Mostra solo l'elenco degli interventi aperti e dei nuovi impianti aperti.
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
             
             <FormField
               control={form.control}
@@ -516,7 +548,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
         </Form>
         </div>
         </ScrollArea>
-        <DialogFooter className="flex-col-reverse sm:flex-row p-6 pt-0 border-t">
+        <DialogFooter className="flex-col-reverse sm:flex-row p-4 sm:p-6 gap-2 border-t shrink-0 bg-background">
             <DialogClose asChild>
                 <Button variant="outline">Annulla</Button>
             </DialogClose>

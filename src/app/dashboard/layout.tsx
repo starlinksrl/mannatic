@@ -10,6 +10,8 @@ import { MapsProvider } from '@/contexts/maps-context';
 import { ChangelogModal } from '@/components/dashboard/changelog-modal';
 import { NotificationManager } from '@/components/dashboard/notification-manager';
 
+import { SupportUpdateBanner } from '@/components/dashboard/support-update-banner';
+
 export default function DashboardLayout({
   children,
 }: {
@@ -48,11 +50,12 @@ export default function DashboardLayout({
   return (
     <MapsProvider>
       <InterventionModalProvider>
-        <div className="grid min-h-screen w-full md:grid-cols-[280px_1fr]">
+        <div className="grid min-h-screen w-full md:grid-cols-[260px_minmax(0,1fr)]">
           <div className="hidden border-r bg-card md:block">
             <SidebarNav />
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0 overflow-x-hidden">
+            <SupportUpdateBanner />
             {children}
           </div>
         </div>
