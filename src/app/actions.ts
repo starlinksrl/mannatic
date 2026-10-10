@@ -26,8 +26,8 @@ import { it } from 'date-fns/locale';
 import { headers } from 'next/headers';
 
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BAbd3o1jCl3s9l1nJqprnO6S52aP9J6kLo0up6b8P8r_28s8-IBPxIXvjAs7xJt5fXAyJEV7nh0C2MGM0z2Y24I';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'Zl2wTSSZ0Xp_pX1R_p3bT5pT-yL9a1xV6b8Z_0gY_xQ';
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
 
 
 let vapidDetailsSet = false;
