@@ -1024,8 +1024,8 @@ const FeaturedInterventionsCard = ({
                   <GripVertical className="h-4 w-4 text-muted-foreground/60 mt-1 flex-shrink-0 cursor-grab active:cursor-grabbing" />
                 )}
                 <div>
-                  <p className="font-semibold uppercase">{intervention.title}</p>
-                  <p className="text-sm text-muted-foreground uppercase">{clientsMap.get(intervention.clientId)?.name}</p>
+                  <p className="font-semibold uppercase">{clientsMap.get(intervention.clientId)?.name || 'Cliente non trovato'}</p>
+                  <p className="text-sm text-muted-foreground uppercase">{intervention.title}</p>
                 </div>
               </div>
               {getPriorityBadge(intervention.priority)}
