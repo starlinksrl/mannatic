@@ -15,8 +15,8 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { sendTestEmailAction, updateCompanySettings, testDailySummaryAction, testWeeklySummaryAction, testOverdueAlertsAction } from '@/app/actions';
-import { Loader, AlertTriangle, Pencil, Save, Send, Mail, Check, Bell, Calendar, Clock, Users, ShieldAlert, CheckCircle2, ListFilter } from 'lucide-react';
-import { Company, User, getCompanyNotificationSettings } from '@/lib/types';
+import { Loader, AlertTriangle, Pencil, Save, Send, Mail, Check, Bell, Calendar, Clock, Users, ShieldAlert, CheckCircle2, ListFilter, Search, SlidersHorizontal, CheckSquare, Square } from 'lucide-react';
+import { Company, User, getCompanyNotificationSettings, getOperatorNotificationPreferences, OperatorNotificationPreference } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -53,6 +53,12 @@ const profileFormSchema = z.object({
   platformUrl: z.string().url({ message: "L'URL non è valido" }).optional().or(z.literal('')),
 });
 
+const operatorNotificationPreferenceSchema = z.object({
+  dailySummary: z.boolean().default(false),
+  weeklySummary: z.boolean().default(false),
+  assignedAlerts: z.boolean().default(true),
+});
+
 const notificationsFormSchema = z.object({
   dailySummaryEnabled: z.boolean().default(true),
   dailySummaryToAdmins: z.boolean().default(true),
@@ -64,6 +70,7 @@ const notificationsFormSchema = z.object({
   overdueInterventionsAlertEnabled: z.boolean().default(true),
   notifyAssignedOperatorsOnOverdue: z.boolean().default(true),
   recipients: z.array(z.string()).default([]),
+  operatorPreferences: z.record(operatorNotificationPreferenceSchema).default({}),
 });
 
 
@@ -596,8 +603,15 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
   const [isTestingDaily, setIsTestingDaily] = useState(false);
   const [isTestingWeekly, setIsTestingWeekly] = useState(false);
   const [isTestingOverdue, setIsTestingOverdue] = useState(false);
+  const [searchOperator, setSearchOperator] = useState('');
 
   const currentSettings = getCompanyNotificationSettings(company);
+
+  // Inizializza le preferenze per ciascun operatore dell'azienda
+  const initialOperatorPrefs: Record<string, Required<OperatorNotificationPreference>> = {};
+  operators.forEach(op => {
+    initialOperatorPrefs[op.id] = getOperatorNotificationPreferences(currentSettings, op.id);
+  });
 
   const form = useForm<z.infer<typeof notificationsFormSchema>>({
     resolver: zodResolver(notificationsFormSchema),
@@ -612,25 +626,63 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
       overdueInterventionsAlertEnabled: currentSettings.overdueInterventionsAlertEnabled,
       notifyAssignedOperatorsOnOverdue: currentSettings.notifyAssignedOperatorsOnOverdue,
       recipients: currentSettings.recipients || [],
+      operatorPreferences: initialOperatorPrefs,
     },
   });
 
   const dailyEnabled = form.watch('dailySummaryEnabled');
   const weeklyEnabled = form.watch('weeklySummaryEnabled');
-  const selectedRecipients = form.watch('recipients') || [];
+  const operatorPrefs = form.watch('operatorPreferences') || {};
 
-  const handleSelectAllOperators = () => {
-    form.setValue('recipients', operators.map(o => o.id), { shouldDirty: true });
+  // Azioni di massa sulle preferenze degli operatori
+  const handleSetColumnValue = (key: keyof OperatorNotificationPreference, value: boolean) => {
+    const currentValues = form.getValues('operatorPreferences');
+    const updated: Record<string, Required<OperatorNotificationPreference>> = {};
+    operators.forEach(op => {
+      const current = currentValues[op.id] || { dailySummary: false, weeklySummary: false, assignedAlerts: false };
+      updated[op.id] = { ...current, [key]: value };
+    });
+    form.setValue('operatorPreferences', updated, { shouldDirty: true });
   };
 
-  const handleDeselectAllOperators = () => {
-    form.setValue('recipients', [], { shouldDirty: true });
+  const handleSetAllForOperator = (operatorId: string, value: boolean) => {
+    const currentValues = form.getValues('operatorPreferences');
+    const updated: Record<string, Required<OperatorNotificationPreference>> = { ...currentValues };
+    updated[operatorId] = {
+      dailySummary: value,
+      weeklySummary: value,
+      assignedAlerts: value,
+    };
+    form.setValue('operatorPreferences', updated, { shouldDirty: true });
   };
+
+  const handleSetAllGlobal = (value: boolean) => {
+    const updated: Record<string, Required<OperatorNotificationPreference>> = {};
+    operators.forEach(op => {
+      updated[op.id] = {
+        dailySummary: value,
+        weeklySummary: value,
+        assignedAlerts: value,
+      };
+    });
+    form.setValue('operatorPreferences', updated, { shouldDirty: true });
+  };
+
+  const filteredOperators = operators.filter(op => {
+    if (!searchOperator.trim()) return true;
+    const term = searchOperator.toLowerCase();
+    return (op.name?.toLowerCase().includes(term) || op.email?.toLowerCase().includes(term));
+  });
 
   function onSubmit(data: z.infer<typeof notificationsFormSchema>) {
+    const activeRecipients = Object.entries(data.operatorPreferences)
+      .filter(([_, pref]) => pref.dailySummary || pref.weeklySummary || pref.assignedAlerts)
+      .map(([id]) => id);
+
     onSave({
       cronJobRecipients: {
-        recipients: data.recipients,
+        recipients: activeRecipients,
+        operatorPreferences: data.operatorPreferences,
         dailySummaryEnabled: data.dailySummaryEnabled,
         dailySummaryToAdmins: data.dailySummaryToAdmins,
         dailySummaryToOperators: data.dailySummaryToOperators,
@@ -693,7 +745,7 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
               <div>
                 <h3 className="font-semibold text-base sm:text-lg">Gestione Notifiche, Riepiloghi & Automazioni</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Personalizza quali notifiche inviare, a chi inoltrarle (amministratori e/o operatori) e i solleciti automatici per ticket ed interventi aperti.
+                  Personalizza quali notifiche inviare, a chi inoltrarle (amministratori e/o singoli operatori) e i solleciti automatici per ticket ed interventi aperti.
                 </p>
               </div>
             </div>
@@ -761,8 +813,8 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                           />
                         </FormControl>
                         <div className="leading-none">
-                          <FormLabel className="font-medium cursor-pointer">Invia agli Operatori</FormLabel>
-                          <p className="text-xs text-muted-foreground mt-1">Operatori selezionati nella lista sottostante</p>
+                          <FormLabel className="font-medium cursor-pointer">Invia agli Operatori Abilitati</FormLabel>
+                          <p className="text-xs text-muted-foreground mt-1">Tecnici con riepilogo giornaliero attivo nella matrice sottostante</p>
                         </div>
                       </FormItem>
                     )}
@@ -834,8 +886,8 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                           />
                         </FormControl>
                         <div className="leading-none">
-                          <FormLabel className="font-medium cursor-pointer">Includi gli Operatori Selezionati</FormLabel>
-                          <p className="text-xs text-muted-foreground mt-1">Invia il riepilogo anche agli operatori selezionati</p>
+                          <FormLabel className="font-medium cursor-pointer">Includi gli Operatori Abilitati</FormLabel>
+                          <p className="text-xs text-muted-foreground mt-1">Tecnici con riepilogo settimanale attivo nella matrice sottostante</p>
                         </div>
                       </FormItem>
                     )}
@@ -911,14 +963,14 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                     <div className="space-y-0.5 pr-4">
                       <div className="flex items-center gap-2">
                         <FormLabel className="font-medium cursor-pointer text-amber-900 dark:text-amber-200">
-                          Invia Sollecito Intervento (&gt;7gg) anche ai Tecnici Assegnati
+                          Invia Sollecito Intervento (&gt;7gg) ai Tecnici Assegnati Abilitati
                         </FormLabel>
                         <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px]">
                           Tecnici Diretti
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Se attivo, l'alert per interventi aperti da oltre 7 giorni verrà inviato (in-app ed email) anche a ciascun operatore assegnato all'intervento.
+                        Se attivo, l'alert per interventi aperti da oltre 7 giorni verrà inviato ai singoli operatori abilitati nella matrice sottostante.
                       </p>
                     </div>
                     <FormControl>
@@ -933,85 +985,328 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
             </CardContent>
           </Card>
 
-          {/* CARD 4: Selezione Operatori Destinatari */}
+          {/* CARD 4: Configurazione Notifiche & Riepiloghi per Singolo Operatore */}
           <Card className="border-border/60 shadow-sm">
             <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-emerald-600" />
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-600 shrink-0 mt-0.5">
+                    <Users className="h-5 w-5" />
+                  </div>
                   <div>
-                    <CardTitle className="text-base sm:text-lg">Operatori Destinatari dei Riepiloghi</CardTitle>
-                    <CardDescription className="mt-0.5">
-                      Seleziona specificamente quali tecnici/operatori devono ricevere i riepiloghi email. Se non ne selezioni nessuno, verranno considerati tutti gli operatori.
+                    <CardTitle className="text-base sm:text-lg">Configurazione Riepiloghi per Singolo Operatore</CardTitle>
+                    <CardDescription className="mt-1">
+                      Scegli per ciascun tecnico quale tipologia di riepilogo o avviso automatico inviare via email.
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button type="button" variant="outline" size="sm" onClick={handleSelectAllOperators} className="text-xs h-8">
-                    Seleziona Tutti
+
+                {/* Bulk Actions */}
+                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSetAllGlobal(true)}
+                    className="text-xs h-7.5 px-2.5"
+                  >
+                    <CheckSquare className="mr-1 h-3.5 w-3.5 text-emerald-600" /> Attiva Tutto
                   </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={handleDeselectAllOperators} className="text-xs h-8">
-                    Deseleziona
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSetAllGlobal(false)}
+                    className="text-xs h-7.5 px-2.5 text-muted-foreground"
+                  >
+                    <Square className="mr-1 h-3.5 w-3.5" /> Disattiva Tutto
                   </Button>
+                </div>
+              </div>
+
+              {/* Colonna controlli massivi per tipo */}
+              <div className="mt-4 pt-3 border-t border-border/40 flex flex-wrap items-center justify-between gap-3">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cerca operatore..."
+                    value={searchOperator}
+                    onChange={(e) => setSearchOperator(e.target.value)}
+                    className="pl-8 h-9 text-xs"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-muted-foreground font-medium hidden sm:inline">Azioni colonna:</span>
+                  <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-md border border-border/50">
+                    <span className="text-[11px] font-medium text-blue-700 dark:text-blue-300 px-1">📅 Giornaliero:</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSetColumnValue('dailySummary', true)}
+                      className="h-6 text-[10px] px-1.5"
+                    >
+                      Tutti ON
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSetColumnValue('dailySummary', false)}
+                      className="h-6 text-[10px] px-1.5 text-muted-foreground"
+                    >
+                      OFF
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-md border border-border/50">
+                    <span className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300 px-1">📊 Settimanale:</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSetColumnValue('weeklySummary', true)}
+                      className="h-6 text-[10px] px-1.5"
+                    >
+                      Tutti ON
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSetColumnValue('weeklySummary', false)}
+                      className="h-6 text-[10px] px-1.5 text-muted-foreground"
+                    >
+                      OFF
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-md border border-border/50">
+                    <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 px-1">⚠️ Solleciti:</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSetColumnValue('assignedAlerts', true)}
+                      className="h-6 text-[10px] px-1.5"
+                    >
+                      Tutti ON
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSetColumnValue('assignedAlerts', false)}
+                      className="h-6 text-[10px] px-1.5 text-muted-foreground"
+                    >
+                      OFF
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-2 border-t border-border/40">
-              <div className="flex items-center justify-between pb-3 text-xs text-muted-foreground border-b border-border/30">
-                <span>Operatori disponibili: <b>{operators.length}</b></span>
-                <Badge variant={selectedRecipients.length > 0 ? "secondary" : "outline"} className="text-xs">
-                  {selectedRecipients.length === 0 ? "Tutti gli operatori (predefinito)" : `${selectedRecipients.length} selezionati`}
-                </Badge>
-              </div>
 
+            <CardContent className="pt-2 border-t border-border/40">
               {operators.length === 0 ? (
-                <div className="text-center py-6 text-sm text-muted-foreground">
+                <div className="text-center py-8 text-sm text-muted-foreground">
                   Nessun operatore configurato per questa azienda.
                 </div>
+              ) : filteredOperators.length === 0 ? (
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  Nessun operatore corrisponde alla ricerca "{searchOperator}".
+                </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
-                  {operators.map((operator) => {
-                    const isChecked = selectedRecipients.includes(operator.id);
-                    return (
-                      <div
-                        key={operator.id}
-                        onClick={() => {
-                          if (isChecked) {
-                            form.setValue('recipients', selectedRecipients.filter(id => id !== operator.id), { shouldDirty: true });
-                          } else {
-                            form.setValue('recipients', [...selectedRecipients, operator.id], { shouldDirty: true });
-                          }
-                        }}
-                        className={`flex items-center space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                          isChecked 
-                            ? 'border-primary/60 bg-primary/5 shadow-xs' 
-                            : 'border-border/60 hover:bg-muted/30'
-                        }`}
-                      >
-                        <Checkbox
-                          checked={isChecked}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              form.setValue('recipients', [...selectedRecipients, operator.id], { shouldDirty: true });
-                            } else {
-                              form.setValue('recipients', selectedRecipients.filter(id => id !== operator.id), { shouldDirty: true });
-                            }
-                          }}
-                        />
-                        <Avatar className="h-8 w-8 text-xs shrink-0">
-                          {operator.avatarUrl ? (
-                            <AvatarImage src={operator.avatarUrl} alt={operator.name} />
-                          ) : (
-                            <AvatarFallback>{operator.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div className="min-w-0 flex-1 leading-tight">
-                          <p className="text-xs sm:text-sm font-medium truncate">{operator.name}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">{operator.email}</p>
+                <div className="space-y-3">
+                  {/* Vista Desktop (Tabella) */}
+                  <div className="hidden md:block overflow-hidden rounded-lg border border-border/60">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/40 border-b border-border/60 text-muted-foreground">
+                        <tr>
+                          <th className="py-2.5 px-3 text-left font-semibold">Operatore / Tecnico</th>
+                          <th className="py-2.5 px-3 text-center font-semibold text-blue-700 dark:text-blue-300">
+                            📅 Riepilogo 48h
+                          </th>
+                          <th className="py-2.5 px-3 text-center font-semibold text-indigo-700 dark:text-indigo-300">
+                            📊 Settimanale &gt;7gg
+                          </th>
+                          <th className="py-2.5 px-3 text-center font-semibold text-amber-700 dark:text-amber-300">
+                            ⚠️ Solleciti Assegnati
+                          </th>
+                          <th className="py-2.5 px-3 text-right font-semibold">Azioni</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {filteredOperators.map((operator) => {
+                          const pref = operatorPrefs[operator.id] || { dailySummary: false, weeklySummary: false, assignedAlerts: false };
+                          const activeCount = (pref.dailySummary ? 1 : 0) + (pref.weeklySummary ? 1 : 0) + (pref.assignedAlerts ? 1 : 0);
+
+                          return (
+                            <tr key={operator.id} className="hover:bg-muted/20 transition-colors">
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2.5">
+                                  <Avatar className="h-8 w-8 text-xs shrink-0">
+                                    {operator.avatarUrl ? (
+                                      <AvatarImage src={operator.avatarUrl} alt={operator.name} />
+                                    ) : (
+                                      <AvatarFallback>{operator.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                    )}
+                                  </Avatar>
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-foreground truncate">{operator.name}</p>
+                                    <p className="text-[11px] text-muted-foreground truncate">{operator.email}</p>
+                                  </div>
+                                  <Badge 
+                                    variant={activeCount > 0 ? "secondary" : "outline"} 
+                                    className="ml-auto text-[10px] px-1.5 py-0 shrink-0 font-normal"
+                                  >
+                                    {activeCount === 3 ? "3/3 attivi" : activeCount === 0 ? "Nessuno" : `${activeCount}/3 attivi`}
+                                  </Badge>
+                                </div>
+                              </td>
+
+                              {/* Toggle 1: Giornaliero 48h */}
+                              <td className="py-3 px-3 text-center">
+                                <div className="inline-flex items-center justify-center">
+                                  <Switch
+                                    checked={pref.dailySummary ?? false}
+                                    onCheckedChange={(checked) => {
+                                      form.setValue(`operatorPreferences.${operator.id}.dailySummary`, checked, { shouldDirty: true });
+                                    }}
+                                  />
+                                </div>
+                              </td>
+
+                              {/* Toggle 2: Settimanale >7gg */}
+                              <td className="py-3 px-3 text-center">
+                                <div className="inline-flex items-center justify-center">
+                                  <Switch
+                                    checked={pref.weeklySummary ?? false}
+                                    onCheckedChange={(checked) => {
+                                      form.setValue(`operatorPreferences.${operator.id}.weeklySummary`, checked, { shouldDirty: true });
+                                    }}
+                                  />
+                                </div>
+                              </td>
+
+                              {/* Toggle 3: Solleciti Assegnati */}
+                              <td className="py-3 px-3 text-center">
+                                <div className="inline-flex items-center justify-center">
+                                  <Switch
+                                    checked={pref.assignedAlerts ?? false}
+                                    onCheckedChange={(checked) => {
+                                      form.setValue(`operatorPreferences.${operator.id}.assignedAlerts`, checked, { shouldDirty: true });
+                                    }}
+                                  />
+                                </div>
+                              </td>
+
+                              {/* Azioni riga */}
+                              <td className="py-3 px-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSetAllForOperator(operator.id, true)}
+                                    className="h-6 text-[10px] px-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                                  >
+                                    Tutti
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSetAllForOperator(operator.id, false)}
+                                    className="h-6 text-[10px] px-1.5 text-muted-foreground hover:text-foreground"
+                                  >
+                                    Azzera
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Vista Mobile (Card per operatore) */}
+                  <div className="grid grid-cols-1 gap-3 md:hidden">
+                    {filteredOperators.map((operator) => {
+                      const pref = operatorPrefs[operator.id] || { dailySummary: false, weeklySummary: false, assignedAlerts: false };
+                      const activeCount = (pref.dailySummary ? 1 : 0) + (pref.weeklySummary ? 1 : 0) + (pref.assignedAlerts ? 1 : 0);
+
+                      return (
+                        <div key={operator.id} className="border border-border/70 rounded-xl p-3.5 bg-card/60 shadow-xs space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <Avatar className="h-8 w-8 text-xs shrink-0">
+                                {operator.avatarUrl ? (
+                                  <AvatarImage src={operator.avatarUrl} alt={operator.name} />
+                                ) : (
+                                  <AvatarFallback>{operator.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                )}
+                              </Avatar>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-sm truncate">{operator.name}</p>
+                                <p className="text-[11px] text-muted-foreground truncate">{operator.email}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSetAllForOperator(operator.id, activeCount < 3)}
+                                className="h-7 text-[11px] px-2"
+                              >
+                                {activeCount === 3 ? "Azzera" : "Abilita tutti"}
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 pt-2 border-t border-border/40 text-xs">
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/30">
+                              <span className="font-medium text-blue-900 dark:text-blue-200">
+                                📅 Riepilogo 48h Scadenza
+                              </span>
+                              <Switch
+                                checked={pref.dailySummary ?? false}
+                                onCheckedChange={(checked) => {
+                                  form.setValue(`operatorPreferences.${operator.id}.dailySummary`, checked, { shouldDirty: true });
+                                }}
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/50 dark:border-indigo-900/30">
+                              <span className="font-medium text-indigo-900 dark:text-indigo-200">
+                                📊 Riepilogo Settimanale &gt;7gg
+                              </span>
+                              <Switch
+                                checked={pref.weeklySummary ?? false}
+                                onCheckedChange={(checked) => {
+                                  form.setValue(`operatorPreferences.${operator.id}.weeklySummary`, checked, { shouldDirty: true });
+                                }}
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30">
+                              <span className="font-medium text-amber-900 dark:text-amber-200">
+                                ⚠️ Solleciti Interventi Assegnati
+                              </span>
+                              <Switch
+                                checked={pref.assignedAlerts ?? false}
+                                onCheckedChange={(checked) => {
+                                  form.setValue(`operatorPreferences.${operator.id}.assignedAlerts`, checked, { shouldDirty: true });
+                                }}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </CardContent>

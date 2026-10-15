@@ -12,7 +12,7 @@ import { sendSupportTicketNotification } from '@/ai/flows/send-support-ticket-no
 import { sendAssignedInterventionNotification } from '@/ai/flows/send-assigned-intervention-notification';
 import { sendInterventionReminderEmail } from '@/ai/flows/send-intervention-reminder-email';
 import { updateCompany, getUserByEmail, createPasswordResetToken, getCompanyByUserId, resetUserPassword, getUserById, createAutologinToken, updateUser, addCompany, getCompanyById, getAppConfiguration, getInterventions, getUsers, addIntervention, getSupportTicketById, addSupportMessage, updateSupportTicketStatus } from '@/lib/data';
-import { Company, User, Intervention, ScheduledMaintenance, getCompanyNotificationSettings } from '@/lib/types';
+import { Company, User, Intervention, ScheduledMaintenance, getCompanyNotificationSettings, getOperatorNotificationPreferences } from '@/lib/types';
 import { Resend } from 'resend';
 import { sendEmail } from '@/lib/mailer';
 import type { SendNewInterventionNotificationInput, SendNewInterventionNotificationOutput } from '@/ai/flows/send-new-intervention-notification';
@@ -460,14 +460,11 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
 
     // 2. Destinatari Operatori se abilitati
     if (settings.dailySummaryToOperators) {
-        if (settings.recipients.length > 0) {
-            const selectedOperators = allUsers.filter(u => settings.recipients.includes(u.id) && !!u.email);
-            targetRecipients.push(...selectedOperators);
-        } else {
-            // Se nessun operatore specifico è selezionato, invia a tutti gli operatori con email
-            const allOperators = allUsers.filter(u => u.role === 'Operator' && !!u.email);
-            targetRecipients.push(...allOperators);
-        }
+        const eligibleOperators = allUsers.filter(u => {
+            if (u.role !== 'Operator' || !u.email) return false;
+            return getOperatorNotificationPreferences(settings, u.id).dailySummary;
+        });
+        targetRecipients.push(...eligibleOperators);
     }
 
     // De-duplicazione per email
@@ -573,13 +570,11 @@ export async function sendOverdueInterventionsSummaryEmail(companyId: string): P
 
     // 2. Destinatari Operatori se abilitati
     if (settings.weeklySummaryIncludeOperators) {
-        if (settings.recipients.length > 0) {
-            const selectedOperators = allUsers.filter(u => settings.recipients.includes(u.id) && !!u.email);
-            targetRecipients.push(...selectedOperators);
-        } else {
-            const allOperators = allUsers.filter(u => u.role === 'Operator' && !!u.email);
-            targetRecipients.push(...allOperators);
-        }
+        const eligibleOperators = allUsers.filter(u => {
+            if (u.role !== 'Operator' || !u.email) return false;
+            return getOperatorNotificationPreferences(settings, u.id).weeklySummary;
+        });
+        targetRecipients.push(...eligibleOperators);
     }
 
     // De-duplicazione per email
@@ -981,9 +976,12 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
                     }).catch(e => console.error("Error adding in-app alert for intervention:", e));
                 }
 
-                // Invia notifica in-app ed email ai tecnici assegnati se l'opzione è attiva
+                // Invia notifica in-app ed email ai tecnici assegnati se l'opzione è attiva e non disattivata per l'operatore
                 if (settings.notifyAssignedOperatorsOnOverdue && assignedOps.length > 0) {
                     for (const op of assignedOps) {
+                        const opPref = getOperatorNotificationPreferences(settings, op.id);
+                        if (!opPref.assignedAlerts) continue;
+
                         await addNotification({
                             userId: op.id,
                             companyId,
@@ -1045,12 +1043,16 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
                     }).catch(e => console.error("Error sending overdue intervention alert email to admins:", e));
                 }
 
-                // Invia email di sollecito anche agli operatori assegnati
+                // Invia email di sollecito anche agli operatori assegnati abilitati
                 if (settings.notifyAssignedOperatorsOnOverdue && assignedOps.length > 0) {
-                    const opEmails = assignedOps.map(o => o.email!).filter(Boolean);
-                    if (opEmails.length > 0) {
+                    const eligibleOpEmails = assignedOps
+                        .filter(op => getOperatorNotificationPreferences(settings, op.id).assignedAlerts)
+                        .map(o => o.email!)
+                        .filter(Boolean);
+
+                    if (eligibleOpEmails.length > 0) {
                         await sendEmail({
-                            to: opEmails,
+                            to: eligibleOpEmails,
                             subject: `⚠️ SOLLECITO: Intervento #${intervention.id} a te assegnato aperto da oltre 1 settimana`,
                             html: emailHtml,
                             resendConfig: company.resendApiKey && company.senderEmail ? {

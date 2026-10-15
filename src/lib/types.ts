@@ -55,8 +55,15 @@ export interface Company {
   whatsappAdminPhone?: string;
 }
 
+export interface OperatorNotificationPreference {
+  dailySummary?: boolean;     // Receives daily summary of 48h expiring interventions
+  weeklySummary?: boolean;    // Receives weekly summary of >7 days overdue interventions
+  assignedAlerts?: boolean;   // Receives alerts when interventions assigned to them are overdue
+}
+
 export interface CompanyNotificationSettings {
   recipients?: string[];
+  operatorPreferences?: Record<string, OperatorNotificationPreference>;
   dailySummaryEnabled?: boolean;
   dailySummaryToAdmins?: boolean;
   dailySummaryToOperators?: boolean;
@@ -68,9 +75,12 @@ export interface CompanyNotificationSettings {
   notifyAssignedOperatorsOnOverdue?: boolean;
 }
 
-export function getCompanyNotificationSettings(company: Company | null | undefined): Required<CompanyNotificationSettings> {
-  const defaults: Required<CompanyNotificationSettings> = {
-    recipients: [],
+export function getCompanyNotificationSettings(company: Company | null | undefined): Required<Omit<CompanyNotificationSettings, 'operatorPreferences'>> & {
+  operatorPreferences: Record<string, OperatorNotificationPreference>;
+} {
+  const defaults = {
+    recipients: [] as string[],
+    operatorPreferences: {} as Record<string, OperatorNotificationPreference>,
     dailySummaryEnabled: true,
     dailySummaryToAdmins: true,
     dailySummaryToOperators: true,
@@ -88,28 +98,73 @@ export function getCompanyNotificationSettings(company: Company | null | undefin
 
   const raw = company.cronJobRecipients;
   if (Array.isArray(raw)) {
+    const prefs: Record<string, OperatorNotificationPreference> = {};
+    for (const id of raw) {
+      prefs[id] = { dailySummary: true, weeklySummary: false, assignedAlerts: true };
+    }
     return {
       ...defaults,
       recipients: raw,
+      operatorPreferences: prefs,
     };
   }
 
   if (typeof raw === 'object') {
+    const rawObj = raw as any;
+    const rawPrefs = (rawObj.operatorPreferences && typeof rawObj.operatorPreferences === 'object')
+      ? rawObj.operatorPreferences
+      : (rawObj.operator_preferences && typeof rawObj.operator_preferences === 'object')
+        ? rawObj.operator_preferences
+        : {} as Record<string, OperatorNotificationPreference>;
+
     return {
-      recipients: Array.isArray(raw.recipients) ? raw.recipients : defaults.recipients,
-      dailySummaryEnabled: raw.dailySummaryEnabled ?? defaults.dailySummaryEnabled,
-      dailySummaryToAdmins: raw.dailySummaryToAdmins ?? defaults.dailySummaryToAdmins,
-      dailySummaryToOperators: raw.dailySummaryToOperators ?? defaults.dailySummaryToOperators,
-      weeklySummaryEnabled: raw.weeklySummaryEnabled ?? defaults.weeklySummaryEnabled,
-      weeklySummaryToAdmins: raw.weeklySummaryToAdmins ?? defaults.weeklySummaryToAdmins,
-      weeklySummaryIncludeOperators: raw.weeklySummaryIncludeOperators ?? defaults.weeklySummaryIncludeOperators,
-      overdueTicketsAlertEnabled: raw.overdueTicketsAlertEnabled ?? defaults.overdueTicketsAlertEnabled,
-      overdueInterventionsAlertEnabled: raw.overdueInterventionsAlertEnabled ?? defaults.overdueInterventionsAlertEnabled,
-      notifyAssignedOperatorsOnOverdue: raw.notifyAssignedOperatorsOnOverdue ?? defaults.notifyAssignedOperatorsOnOverdue,
+      recipients: Array.isArray(rawObj.recipients) ? rawObj.recipients : defaults.recipients,
+      operatorPreferences: rawPrefs,
+      dailySummaryEnabled: rawObj.dailySummaryEnabled ?? rawObj.daily_summary_enabled ?? defaults.dailySummaryEnabled,
+      dailySummaryToAdmins: rawObj.dailySummaryToAdmins ?? rawObj.daily_summary_to_admins ?? defaults.dailySummaryToAdmins,
+      dailySummaryToOperators: rawObj.dailySummaryToOperators ?? rawObj.daily_summary_to_operators ?? defaults.dailySummaryToOperators,
+      weeklySummaryEnabled: rawObj.weeklySummaryEnabled ?? rawObj.weekly_summary_enabled ?? defaults.weeklySummaryEnabled,
+      weeklySummaryToAdmins: rawObj.weeklySummaryToAdmins ?? rawObj.weekly_summary_to_admins ?? defaults.weeklySummaryToAdmins,
+      weeklySummaryIncludeOperators: rawObj.weeklySummaryIncludeOperators ?? rawObj.weekly_summary_include_operators ?? defaults.weeklySummaryIncludeOperators,
+      overdueTicketsAlertEnabled: rawObj.overdueTicketsAlertEnabled ?? rawObj.overdue_tickets_alert_enabled ?? defaults.overdueTicketsAlertEnabled,
+      overdueInterventionsAlertEnabled: rawObj.overdueInterventionsAlertEnabled ?? rawObj.overdue_interventions_alert_enabled ?? defaults.overdueInterventionsAlertEnabled,
+      notifyAssignedOperatorsOnOverdue: rawObj.notifyAssignedOperatorsOnOverdue ?? rawObj.notify_assigned_operators_on_overdue ?? defaults.notifyAssignedOperatorsOnOverdue,
     };
   }
 
   return defaults;
+}
+
+export function getOperatorNotificationPreferences(
+  settings: ReturnType<typeof getCompanyNotificationSettings>,
+  operatorId: string
+): Required<OperatorNotificationPreference> {
+  const pref = settings.operatorPreferences?.[operatorId];
+  if (pref !== undefined) {
+    return {
+      dailySummary: pref.dailySummary ?? false,
+      weeklySummary: pref.weeklySummary ?? false,
+      assignedAlerts: pref.assignedAlerts ?? settings.notifyAssignedOperatorsOnOverdue,
+    };
+  }
+
+  // Fallback se l'operatore non ha preferenze salvate:
+  // Se recipients era configurato esplicitamente:
+  if (settings.recipients && settings.recipients.length > 0) {
+    const inRecipients = settings.recipients.includes(operatorId);
+    return {
+      dailySummary: inRecipients && settings.dailySummaryToOperators,
+      weeklySummary: inRecipients && settings.weeklySummaryIncludeOperators,
+      assignedAlerts: settings.notifyAssignedOperatorsOnOverdue,
+    };
+  }
+
+  // Se nessun operatore specifico era salvato (impostazione predefinita per tutti gli operatori):
+  return {
+    dailySummary: settings.dailySummaryToOperators,
+    weeklySummary: settings.weeklySummaryIncludeOperators,
+    assignedAlerts: settings.notifyAssignedOperatorsOnOverdue,
+  };
 }
 
 export type AllowedSector = 'interventions' | 'new_installations' | 'appointments' | 'maintenance';
