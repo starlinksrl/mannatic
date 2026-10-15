@@ -47,12 +47,69 @@ export interface Company {
   resendApiKey?: string;
   senderEmail?: string;
   companyScratchpad?: string;
-  cronJobRecipients?: string[];
+  cronJobRecipients?: string[] | CompanyNotificationSettings;
   // WhatsApp settings
   whatsappAccessToken?: string;
   whatsappPhoneNumberId?: string;
   whatsappTemplateName?: string;
   whatsappAdminPhone?: string;
+}
+
+export interface CompanyNotificationSettings {
+  recipients?: string[];
+  dailySummaryEnabled?: boolean;
+  dailySummaryToAdmins?: boolean;
+  dailySummaryToOperators?: boolean;
+  weeklySummaryEnabled?: boolean;
+  weeklySummaryToAdmins?: boolean;
+  weeklySummaryIncludeOperators?: boolean;
+  overdueTicketsAlertEnabled?: boolean;
+  overdueInterventionsAlertEnabled?: boolean;
+  notifyAssignedOperatorsOnOverdue?: boolean;
+}
+
+export function getCompanyNotificationSettings(company: Company | null | undefined): Required<CompanyNotificationSettings> {
+  const defaults: Required<CompanyNotificationSettings> = {
+    recipients: [],
+    dailySummaryEnabled: true,
+    dailySummaryToAdmins: true,
+    dailySummaryToOperators: true,
+    weeklySummaryEnabled: true,
+    weeklySummaryToAdmins: true,
+    weeklySummaryIncludeOperators: false,
+    overdueTicketsAlertEnabled: true,
+    overdueInterventionsAlertEnabled: true,
+    notifyAssignedOperatorsOnOverdue: true,
+  };
+
+  if (!company || !company.cronJobRecipients) {
+    return defaults;
+  }
+
+  const raw = company.cronJobRecipients;
+  if (Array.isArray(raw)) {
+    return {
+      ...defaults,
+      recipients: raw,
+    };
+  }
+
+  if (typeof raw === 'object') {
+    return {
+      recipients: Array.isArray(raw.recipients) ? raw.recipients : defaults.recipients,
+      dailySummaryEnabled: raw.dailySummaryEnabled ?? defaults.dailySummaryEnabled,
+      dailySummaryToAdmins: raw.dailySummaryToAdmins ?? defaults.dailySummaryToAdmins,
+      dailySummaryToOperators: raw.dailySummaryToOperators ?? defaults.dailySummaryToOperators,
+      weeklySummaryEnabled: raw.weeklySummaryEnabled ?? defaults.weeklySummaryEnabled,
+      weeklySummaryToAdmins: raw.weeklySummaryToAdmins ?? defaults.weeklySummaryToAdmins,
+      weeklySummaryIncludeOperators: raw.weeklySummaryIncludeOperators ?? defaults.weeklySummaryIncludeOperators,
+      overdueTicketsAlertEnabled: raw.overdueTicketsAlertEnabled ?? defaults.overdueTicketsAlertEnabled,
+      overdueInterventionsAlertEnabled: raw.overdueInterventionsAlertEnabled ?? defaults.overdueInterventionsAlertEnabled,
+      notifyAssignedOperatorsOnOverdue: raw.notifyAssignedOperatorsOnOverdue ?? defaults.notifyAssignedOperatorsOnOverdue,
+    };
+  }
+
+  return defaults;
 }
 
 export type AllowedSector = 'interventions' | 'new_installations' | 'appointments' | 'maintenance';

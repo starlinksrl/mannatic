@@ -15,8 +15,8 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { sendTestEmailAction, updateCompanySettings, testDailySummaryAction, testWeeklySummaryAction, testOverdueAlertsAction } from '@/app/actions';
-import { Loader, AlertTriangle, Pencil, Save, Send, Mail, Check } from 'lucide-react';
-import { Company, User } from '@/lib/types';
+import { Loader, AlertTriangle, Pencil, Save, Send, Mail, Check, Bell, Calendar, Clock, Users, ShieldAlert, CheckCircle2, ListFilter } from 'lucide-react';
+import { Company, User, getCompanyNotificationSettings } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,6 +30,9 @@ import { FontSwitcher } from '@/components/dashboard/font-switcher';
 import { ViewModeSwitcher } from '@/components/dashboard/view-mode-switcher';
 import { getUsers } from '@/lib/data';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 
 const resendFormSchema = z.object({
@@ -51,7 +54,16 @@ const profileFormSchema = z.object({
 });
 
 const notificationsFormSchema = z.object({
-  cronJobRecipients: z.array(z.string()).optional(),
+  dailySummaryEnabled: z.boolean().default(true),
+  dailySummaryToAdmins: z.boolean().default(true),
+  dailySummaryToOperators: z.boolean().default(true),
+  weeklySummaryEnabled: z.boolean().default(true),
+  weeklySummaryToAdmins: z.boolean().default(true),
+  weeklySummaryIncludeOperators: z.boolean().default(false),
+  overdueTicketsAlertEnabled: z.boolean().default(true),
+  overdueInterventionsAlertEnabled: z.boolean().default(true),
+  notifyAssignedOperatorsOnOverdue: z.boolean().default(true),
+  recipients: z.array(z.string()).default([]),
 });
 
 
@@ -585,22 +597,58 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
   const [isTestingWeekly, setIsTestingWeekly] = useState(false);
   const [isTestingOverdue, setIsTestingOverdue] = useState(false);
 
+  const currentSettings = getCompanyNotificationSettings(company);
+
   const form = useForm<z.infer<typeof notificationsFormSchema>>({
     resolver: zodResolver(notificationsFormSchema),
     defaultValues: {
-      cronJobRecipients: company.cronJobRecipients || [],
+      dailySummaryEnabled: currentSettings.dailySummaryEnabled,
+      dailySummaryToAdmins: currentSettings.dailySummaryToAdmins,
+      dailySummaryToOperators: currentSettings.dailySummaryToOperators,
+      weeklySummaryEnabled: currentSettings.weeklySummaryEnabled,
+      weeklySummaryToAdmins: currentSettings.weeklySummaryToAdmins,
+      weeklySummaryIncludeOperators: currentSettings.weeklySummaryIncludeOperators,
+      overdueTicketsAlertEnabled: currentSettings.overdueTicketsAlertEnabled,
+      overdueInterventionsAlertEnabled: currentSettings.overdueInterventionsAlertEnabled,
+      notifyAssignedOperatorsOnOverdue: currentSettings.notifyAssignedOperatorsOnOverdue,
+      recipients: currentSettings.recipients || [],
     },
   });
 
+  const dailyEnabled = form.watch('dailySummaryEnabled');
+  const weeklyEnabled = form.watch('weeklySummaryEnabled');
+  const selectedRecipients = form.watch('recipients') || [];
+
+  const handleSelectAllOperators = () => {
+    form.setValue('recipients', operators.map(o => o.id), { shouldDirty: true });
+  };
+
+  const handleDeselectAllOperators = () => {
+    form.setValue('recipients', [], { shouldDirty: true });
+  };
+
   function onSubmit(data: z.infer<typeof notificationsFormSchema>) {
-    onSave({ cronJobRecipients: data.cronJobRecipients });
+    onSave({
+      cronJobRecipients: {
+        recipients: data.recipients,
+        dailySummaryEnabled: data.dailySummaryEnabled,
+        dailySummaryToAdmins: data.dailySummaryToAdmins,
+        dailySummaryToOperators: data.dailySummaryToOperators,
+        weeklySummaryEnabled: data.weeklySummaryEnabled,
+        weeklySummaryToAdmins: data.weeklySummaryToAdmins,
+        weeklySummaryIncludeOperators: data.weeklySummaryIncludeOperators,
+        overdueTicketsAlertEnabled: data.overdueTicketsAlertEnabled,
+        overdueInterventionsAlertEnabled: data.overdueInterventionsAlertEnabled,
+        notifyAssignedOperatorsOnOverdue: data.notifyAssignedOperatorsOnOverdue,
+      }
+    });
   }
 
   const handleTestDaily = async () => {
     setIsTestingDaily(true);
     const result = await testDailySummaryAction(company.id);
     if (result.success) {
-      toast({ title: 'Test Riepilogo Giornaliero Inviato', description: 'Controlla la casella di posta dei destinatari.' });
+      toast({ title: 'Test Riepilogo Giornaliero Inviato', description: 'Controlla la casella di posta dei destinatari configurati.' });
     } else {
       toast({ variant: 'destructive', title: 'Errore nel Test', description: result.error || 'Si è verificato un errore sconosciuto.' });
     }
@@ -611,7 +659,7 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
     setIsTestingWeekly(true);
     const result = await testWeeklySummaryAction(company.id);
     if (result.success) {
-      toast({ title: 'Test Riepilogo Settimanale Inviato', description: 'Controlla la casella di posta degli admin.' });
+      toast({ title: 'Test Riepilogo Settimanale Inviato', description: 'Controlla la casella di posta dei destinatari configurati.' });
     } else {
       toast({ variant: 'destructive', title: 'Errore nel Test', description: result.error || 'Si è verificato un errore sconosciuto.' });
     }
@@ -635,78 +683,368 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
   return (
     <div className="space-y-6">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Destinatari Notifiche</CardTitle>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Header descrittivo */}
+          <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent p-4 sm:p-6 rounded-xl border border-blue-500/20">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 bg-primary/10 rounded-lg text-primary shrink-0">
+                <Bell className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-base sm:text-lg">Gestione Notifiche, Riepiloghi & Automazioni</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  Personalizza quali notifiche inviare, a chi inoltrarle (amministratori e/o operatori) e i solleciti automatici per ticket ed interventi aperti.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 1: Riepilogo Giornaliero */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <CardTitle className="text-base sm:text-lg">Riepilogo Giornaliero (Interventi in Scadenza)</CardTitle>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="dailySummaryEnabled"
+                  render={({ field }) => (
+                    <div className="flex items-center gap-2">
+                      <Badge variant={field.value ? "default" : "secondary"} className="text-xs">
+                        {field.value ? "Attivo" : "Disattivato"}
+                      </Badge>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </div>
+                  )}
+                />
+              </div>
               <CardDescription>
-                Seleziona quali operatori devono ricevere i riepiloghi via email. Se nessuno è selezionato, verranno inviati a tutti gli operatori (riepilogo giornaliero) e a tutti gli admin (riepilogo settimanale).
+                Invia ogni mattina un'email con la lista degli interventi con scadenza prevista entro le successive 48 ore.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            {dailyEnabled && (
+              <CardContent className="pt-2 border-t border-border/40 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Destinatari del Riepilogo Giornaliero:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="dailySummaryToAdmins"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border p-3 bg-muted/20">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="leading-none">
+                          <FormLabel className="font-medium cursor-pointer">Invia agli Amministratori</FormLabel>
+                          <p className="text-xs text-muted-foreground mt-1">Tutti gli admin dell'azienda</p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="dailySummaryToOperators"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border p-3 bg-muted/20">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="leading-none">
+                          <FormLabel className="font-medium cursor-pointer">Invia agli Operatori</FormLabel>
+                          <p className="text-xs text-muted-foreground mt-1">Operatori selezionati nella lista sottostante</p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* CARD 2: Riepilogo Settimanale */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-indigo-600" />
+                  <CardTitle className="text-base sm:text-lg">Riepilogo Settimanale (Interventi Aperti &gt; 7 Giorni)</CardTitle>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="weeklySummaryEnabled"
+                  render={({ field }) => (
+                    <div className="flex items-center gap-2">
+                      <Badge variant={field.value ? "default" : "secondary"} className="text-xs">
+                        {field.value ? "Attivo" : "Disattivato"}
+                      </Badge>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </div>
+                  )}
+                />
+              </div>
+              <CardDescription>
+                Invia all'inizio della settimana una panoramica completa di tutti gli interventi ancora aperti da oltre una settimana.
+              </CardDescription>
+            </CardHeader>
+            {weeklyEnabled && (
+              <CardContent className="pt-2 border-t border-border/40 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Destinatari del Riepilogo Settimanale:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="weeklySummaryToAdmins"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border p-3 bg-muted/20">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="leading-none">
+                          <FormLabel className="font-medium cursor-pointer">Invia agli Amministratori</FormLabel>
+                          <p className="text-xs text-muted-foreground mt-1">Tutti gli admin dell'azienda</p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="weeklySummaryIncludeOperators"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border p-3 bg-muted/20">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="leading-none">
+                          <FormLabel className="font-medium cursor-pointer">Includi gli Operatori Selezionati</FormLabel>
+                          <p className="text-xs text-muted-foreground mt-1">Invia il riepilogo anche agli operatori selezionati</p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* CARD 3: Solleciti Automatici per Inattività e Ritardi */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <CardTitle className="text-base sm:text-lg">Solleciti Automatici Inattività & Ritardi (Cron Giornaliero)</CardTitle>
+              </div>
+              <CardDescription>
+                Controlla automaticamente ticket e interventi fermi e invia avvisi in-app (campanella) ed email ai responsabili.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-2 border-t border-border/40 space-y-4">
               <FormField
                 control={form.control}
-                name="cronJobRecipients"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Destinatari Riepiloghi Email (Operatori)</FormLabel>
-                    <div className="space-y-2">
-                      {operators.map((operator) => (
-                        <FormField
-                          key={operator.id}
-                          control={form.control}
-                          name="cronJobRecipients"
-                          render={({ field }) => {
-                            return (
-                              <FormItem key={operator.id} className="flex flex-row items-start space-x-3 space-y-0">
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(operator.id)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...(field.value || []), operator.id])
-                                        : field.onChange(field.value?.filter((value) => value !== operator.id));
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="font-normal">{operator.name} ({operator.email})</FormLabel>
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      ))}
+                name="overdueTicketsAlertEnabled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3.5 bg-muted/20">
+                    <div className="space-y-0.5 pr-4">
+                      <FormLabel className="font-medium cursor-pointer">
+                        Sollecito Ticket di supporto non chiusi entro 48 ore
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Notifica in-app ed email agli Amministratori per tutti i ticket clienti aperti da oltre 48h.
+                      </p>
                     </div>
-                    <FormMessage />
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="overdueInterventionsAlertEnabled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3.5 bg-muted/20">
+                    <div className="space-y-0.5 pr-4">
+                      <FormLabel className="font-medium cursor-pointer">
+                        Sollecito Interventi aperti da oltre 7 giorni
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Notifica in-app ed email agli Amministratori per tutti gli interventi non completati dopo 1 settimana.
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notifyAssignedOperatorsOnOverdue"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-amber-500/30 p-3.5 bg-amber-500/5">
+                    <div className="space-y-0.5 pr-4">
+                      <div className="flex items-center gap-2">
+                        <FormLabel className="font-medium cursor-pointer text-amber-900 dark:text-amber-200">
+                          Invia Sollecito Intervento (&gt;7gg) anche ai Tecnici Assegnati
+                        </FormLabel>
+                        <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px]">
+                          Tecnici Diretti
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Se attivo, l'alert per interventi aperti da oltre 7 giorni verrà inviato (in-app ed email) anche a ciascun operatore assegnato all'intervento.
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
             </CardContent>
-            <CardFooter className="flex justify-end">
-              <Button type="submit">
-                <Save className="mr-2" /> Salva Destinatari
+          </Card>
+
+          {/* CARD 4: Selezione Operatori Destinatari */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-emerald-600" />
+                  <div>
+                    <CardTitle className="text-base sm:text-lg">Operatori Destinatari dei Riepiloghi</CardTitle>
+                    <CardDescription className="mt-0.5">
+                      Seleziona specificamente quali tecnici/operatori devono ricevere i riepiloghi email. Se non ne selezioni nessuno, verranno considerati tutti gli operatori.
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button type="button" variant="outline" size="sm" onClick={handleSelectAllOperators} className="text-xs h-8">
+                    Seleziona Tutti
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={handleDeselectAllOperators} className="text-xs h-8">
+                    Deseleziona
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2 border-t border-border/40">
+              <div className="flex items-center justify-between pb-3 text-xs text-muted-foreground border-b border-border/30">
+                <span>Operatori disponibili: <b>{operators.length}</b></span>
+                <Badge variant={selectedRecipients.length > 0 ? "secondary" : "outline"} className="text-xs">
+                  {selectedRecipients.length === 0 ? "Tutti gli operatori (predefinito)" : `${selectedRecipients.length} selezionati`}
+                </Badge>
+              </div>
+
+              {operators.length === 0 ? (
+                <div className="text-center py-6 text-sm text-muted-foreground">
+                  Nessun operatore configurato per questa azienda.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+                  {operators.map((operator) => {
+                    const isChecked = selectedRecipients.includes(operator.id);
+                    return (
+                      <div
+                        key={operator.id}
+                        onClick={() => {
+                          if (isChecked) {
+                            form.setValue('recipients', selectedRecipients.filter(id => id !== operator.id), { shouldDirty: true });
+                          } else {
+                            form.setValue('recipients', [...selectedRecipients, operator.id], { shouldDirty: true });
+                          }
+                        }}
+                        className={`flex items-center space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                          isChecked 
+                            ? 'border-primary/60 bg-primary/5 shadow-xs' 
+                            : 'border-border/60 hover:bg-muted/30'
+                        }`}
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              form.setValue('recipients', [...selectedRecipients, operator.id], { shouldDirty: true });
+                            } else {
+                              form.setValue('recipients', selectedRecipients.filter(id => id !== operator.id), { shouldDirty: true });
+                            }
+                          }}
+                        />
+                        <Avatar className="h-8 w-8 text-xs shrink-0">
+                          {operator.avatarUrl ? (
+                            <AvatarImage src={operator.avatarUrl} alt={operator.name} />
+                          ) : (
+                            <AvatarFallback>{operator.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div className="min-w-0 flex-1 leading-tight">
+                          <p className="text-xs sm:text-sm font-medium truncate">{operator.name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{operator.email}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="flex justify-end pt-4 border-t border-border/40">
+              <Button type="submit" size="default" className="w-full sm:w-auto shadow-sm">
+                <Save className="mr-2 h-4 w-4" /> Salva Impostazioni Notifiche
               </Button>
             </CardFooter>
           </Card>
         </form>
       </Form>
-      <Card>
-        <CardHeader>
-          <CardTitle>Test Manuale Cron Job</CardTitle>
+
+      {/* CARD 5: Test Manuale */}
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Send className="h-4 w-4 text-primary" /> Collaudo & Invio Manuale Notifiche
+          </CardTitle>
           <CardDescription>
-            Esegui manualmente i cron job per testare l'invio delle email di riepilogo.
+            Esegui manualmente i controlli per verificare la ricezione delle email di riepilogo e degli avvisi di sollecito con le impostazioni attuali.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col sm:flex-row gap-4">
-          <Button onClick={handleTestDaily} disabled={isTestingDaily || isTestingWeekly || isTestingOverdue} className="w-full sm:w-auto">
-            {isTestingDaily ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+        <CardContent className="flex flex-col sm:flex-row gap-3">
+          <Button onClick={handleTestDaily} disabled={isTestingDaily || isTestingWeekly || isTestingOverdue} variant="outline" className="w-full sm:w-auto">
+            {isTestingDaily ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4 text-blue-600" />}
             Testa Riepilogo Giornaliero
           </Button>
-          <Button onClick={handleTestWeekly} disabled={isTestingDaily || isTestingWeekly || isTestingOverdue} className="w-full sm:w-auto">
-            {isTestingWeekly ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+          <Button onClick={handleTestWeekly} disabled={isTestingDaily || isTestingWeekly || isTestingOverdue} variant="outline" className="w-full sm:w-auto">
+            {isTestingWeekly ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4 text-indigo-600" />}
             Testa Riepilogo Settimanale
           </Button>
-          <Button onClick={handleTestOverdue} disabled={isTestingDaily || isTestingWeekly || isTestingOverdue} className="w-full sm:w-auto" variant="secondary">
-            {isTestingOverdue ? <Loader className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+          <Button onClick={handleTestOverdue} disabled={isTestingDaily || isTestingWeekly || isTestingOverdue} variant="secondary" className="w-full sm:w-auto">
+            {isTestingOverdue ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <AlertTriangle className="mr-2 h-4 w-4 text-amber-600" />}
             Testa Solleciti 48h / 7 Giorni
           </Button>
         </CardContent>

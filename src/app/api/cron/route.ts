@@ -19,10 +19,8 @@ export async function GET(request: NextRequest) {
       console.log(`Checking overdue tickets & interventions for company: ${company.name} (${company.id})`);
       await sendOverdueTicketsAndInterventionsAlerts(company.id);
 
-      if (company.resendApiKey && company.senderEmail) {
-        console.log(`Sending summary for company: ${company.name} (${company.id})`);
-        await sendExpiringInterventionsSummaryEmail(company.id);
-      }
+      console.log(`Checking summary for company: ${company.name} (${company.id})`);
+      await sendExpiringInterventionsSummaryEmail(company.id);
     }
     
     return NextResponse.json({ success: true, message: `Cron job completed for ${companies.length} companies.` });

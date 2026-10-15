@@ -16,12 +16,8 @@ export async function GET(request: NextRequest) {
     const companies = await getCompanies(undefined, true);
     
     for (const company of companies) {
-      if (company.resendApiKey && company.senderEmail) {
-        console.log(`Sending weekly summary for company: ${company.name} (${company.id})`);
-        await sendOverdueInterventionsSummaryEmail(company.id);
-      } else {
-        console.log(`Skipping weekly summary for ${company.name}: Resend not configured.`);
-      }
+      console.log(`Checking weekly summary for company: ${company.name} (${company.id})`);
+      await sendOverdueInterventionsSummaryEmail(company.id);
     }
     
     return NextResponse.json({ success: true, message: `Weekly cron job completed for ${companies.length} companies.` });
