@@ -63,11 +63,13 @@ const notificationsFormSchema = z.object({
   dailySummaryEnabled: z.boolean().default(true),
   dailySummaryToAdmins: z.boolean().default(true),
   dailySummaryToOperators: z.boolean().default(true),
+  dailySummaryIncludeUnassigned: z.boolean().default(true),
   weeklySummaryEnabled: z.boolean().default(true),
   weeklySummaryToAdmins: z.boolean().default(true),
   weeklySummaryIncludeOperators: z.boolean().default(false),
   overdueTicketsAlertEnabled: z.boolean().default(true),
   overdueInterventionsAlertEnabled: z.boolean().default(true),
+  unassignedInterventions48hAlertEnabled: z.boolean().default(true),
   notifyAssignedOperatorsOnOverdue: z.boolean().default(true),
   recipients: z.array(z.string()).default([]),
   operatorPreferences: z.record(operatorNotificationPreferenceSchema).default({}),
@@ -619,11 +621,13 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
       dailySummaryEnabled: currentSettings.dailySummaryEnabled,
       dailySummaryToAdmins: currentSettings.dailySummaryToAdmins,
       dailySummaryToOperators: currentSettings.dailySummaryToOperators,
+      dailySummaryIncludeUnassigned: currentSettings.dailySummaryIncludeUnassigned,
       weeklySummaryEnabled: currentSettings.weeklySummaryEnabled,
       weeklySummaryToAdmins: currentSettings.weeklySummaryToAdmins,
       weeklySummaryIncludeOperators: currentSettings.weeklySummaryIncludeOperators,
       overdueTicketsAlertEnabled: currentSettings.overdueTicketsAlertEnabled,
       overdueInterventionsAlertEnabled: currentSettings.overdueInterventionsAlertEnabled,
+      unassignedInterventions48hAlertEnabled: currentSettings.unassignedInterventions48hAlertEnabled,
       notifyAssignedOperatorsOnOverdue: currentSettings.notifyAssignedOperatorsOnOverdue,
       recipients: currentSettings.recipients || [],
       operatorPreferences: initialOperatorPrefs,
@@ -686,11 +690,13 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
         dailySummaryEnabled: data.dailySummaryEnabled,
         dailySummaryToAdmins: data.dailySummaryToAdmins,
         dailySummaryToOperators: data.dailySummaryToOperators,
+        dailySummaryIncludeUnassigned: data.dailySummaryIncludeUnassigned,
         weeklySummaryEnabled: data.weeklySummaryEnabled,
         weeklySummaryToAdmins: data.weeklySummaryToAdmins,
         weeklySummaryIncludeOperators: data.weeklySummaryIncludeOperators,
         overdueTicketsAlertEnabled: data.overdueTicketsAlertEnabled,
         overdueInterventionsAlertEnabled: data.overdueInterventionsAlertEnabled,
+        unassignedInterventions48hAlertEnabled: data.unassignedInterventions48hAlertEnabled,
         notifyAssignedOperatorsOnOverdue: data.notifyAssignedOperatorsOnOverdue,
       }
     });
@@ -724,7 +730,7 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
     if (result.success) {
       toast({ 
         title: 'Verifica Solleciti Completata', 
-        description: `Alert inviati: ${result.ticketsAlerted ?? 0} ticket oltre 48h, ${result.interventionsAlerted ?? 0} interventi oltre 7 giorni.` 
+        description: `Alert inviati: ${result.ticketsAlerted ?? 0} ticket oltre 48h, ${result.interventionsAlerted ?? 0} interventi oltre 7gg, ${result.unassignedAlerted ?? 0} non assegnati oltre 48h.` 
       });
     } else {
       toast({ variant: 'destructive', title: 'Errore nel Test', description: result.error || 'Si è verificato un errore sconosciuto.' });
@@ -820,6 +826,34 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="dailySummaryIncludeUnassigned"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-blue-500/30 p-3 bg-blue-500/5">
+                      <div className="space-y-0.5 pr-4">
+                        <div className="flex items-center gap-2">
+                          <FormLabel className="font-medium cursor-pointer text-blue-900 dark:text-blue-200">
+                            Includi anche Interventi NON Assegnati
+                          </FormLabel>
+                          <Badge variant="outline" className="border-blue-500/40 text-blue-700 dark:text-blue-300 text-[10px]">
+                            Ogni 48h
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Include nel riepilogo ogni 48 ore tutti gli interventi aperti non ancora assegnati ad alcun tecnico.
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             )}
           </Card>
@@ -971,6 +1005,34 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                       </div>
                       <p className="text-xs text-muted-foreground">
                         Se attivo, l'alert per interventi aperti da oltre 7 giorni verrà inviato ai singoli operatori abilitati nella matrice sottostante.
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="unassignedInterventions48hAlertEnabled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-amber-500/30 p-3.5 bg-amber-500/5">
+                    <div className="space-y-0.5 pr-4">
+                      <div className="flex items-center gap-2">
+                        <FormLabel className="font-medium cursor-pointer text-amber-900 dark:text-amber-200">
+                          Sollecito Interventi NON Assegnati da oltre 48 ore
+                        </FormLabel>
+                        <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px]">
+                          Assegnazione
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Notifica in-app ed email agli Amministratori per tutti gli interventi aperti da oltre 48h non ancora assegnati ad alcun tecnico.
                       </p>
                     </div>
                     <FormControl>

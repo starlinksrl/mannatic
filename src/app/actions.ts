@@ -435,7 +435,10 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
     }
 
     const twoDaysFromNow = addDays(startOfToday(), 2);
-    const interventions = (await getInterventions(companyId)).filter(i => 
+    const allInterventions = await getInterventions(companyId);
+
+    // 1. Interventi con scadenza prevista entro 48 ore
+    const expiringInterventions = allInterventions.filter(i => 
         !i.isMaintenance && 
         i.status !== 'Completato' && 
         i.status !== 'Annullato' && 
@@ -443,9 +446,19 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
         isBefore(new Date(i.dueDate), twoDaysFromNow) && 
         isAfter(new Date(i.dueDate), new Date())
     );
+
+    // 2. Interventi aperti NON ancora assegnati ad alcun tecnico (se l'opzione è attiva)
+    const unassignedInterventions = (settings.dailySummaryIncludeUnassigned !== false)
+        ? allInterventions.filter(i =>
+            !i.isMaintenance &&
+            i.status !== 'Completato' &&
+            i.status !== 'Annullato' &&
+            (!i.assignedOperatorIds || i.assignedOperatorIds.length === 0)
+        )
+        : [];
     
-    if (interventions.length === 0) {
-        console.log(`Nessun intervento in scadenza per l'installatore ${company.name}. Salto invio riepilogo.`);
+    if (expiringInterventions.length === 0 && unassignedInterventions.length === 0) {
+        console.log(`Nessun intervento in scadenza o non assegnato per l'installatore ${company.name}. Salto invio riepilogo.`);
         return { success: true };
     }
 
@@ -477,44 +490,119 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
     const operators = Array.from(uniqueMap.values());
     
     if (operators.length === 0) {
-        console.log(`Nessun destinatario per il riepilogo interventi in scadenza per l'installatore ${company.name}.`);
+        console.log(`Nessun destinatario per il riepilogo interventi per l'installatore ${company.name}.`);
         return { success: true };
     }
 
-    const subject = `Riepilogo Interventi in Scadenza - ${company.name}`;
-    const tableRows = interventions.map(i => {
+    const hasExpiring = expiringInterventions.length > 0;
+    const hasUnassigned = unassignedInterventions.length > 0;
+
+    let subject = `Riepilogo Interventi (48h) - ${company.name}`;
+    if (hasExpiring && hasUnassigned) {
+        subject = `Riepilogo Interventi in Scadenza 48h & Non Assegnati - ${company.name}`;
+    } else if (hasUnassigned) {
+        subject = `Riepilogo Interventi NON Assegnati (${unassignedInterventions.length}) - ${company.name}`;
+    } else {
+        subject = `Riepilogo Interventi in Scadenza 48h (${expiringInterventions.length}) - ${company.name}`;
+    }
+
+    const expiringTableRows = expiringInterventions.map(i => {
         const assignedOpNames = i.assignedOperatorIds && i.assignedOperatorIds.length > 0
             ? allUsers.filter(u => i.assignedOperatorIds.includes(u.id)).map(u => u.name).join(', ')
-            : 'Non assegnato';
+            : '<span style="color: #dc2626; font-weight: bold;">Non assegnato</span>';
             
         return `
             <tr>
-                <td style="padding: 8px; border: 1px solid #ddd;">${i.title}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${i.dueDate ? format(new Date(i.dueDate), 'dd/MM/yyyy HH:mm', { locale: it }) : 'N/D'}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${i.priority}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${assignedOpNames}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500;">#${i.id} - ${i.title}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${i.dueDate ? format(new Date(i.dueDate), 'dd/MM/yyyy HH:mm', { locale: it }) : 'N/D'}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: ${i.priority === 'Critica' ? '#fee2e2; color: #b91c1c;' : '#f1f5f9; color: #475569;'}">
+                        ${i.priority}
+                    </span>
+                </td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${assignedOpNames}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const unassignedTableRows = unassignedInterventions.map(i => {
+        const client = allUsers.find(u => u.id === i.clientId);
+        return `
+            <tr>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500;">#${i.id} - ${i.title}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${client?.name || 'N/D'}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${format(new Date(i.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: #fee2e2; color: #b91c1c;">
+                        In attesa di Tecnico
+                    </span>
+                </td>
             </tr>
         `;
     }).join('');
 
     const body = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-            <h2>Riepilogo Interventi in Scadenza</h2>
-            <p>I seguenti interventi per l'installatore <strong>${company.name}</strong> sono in scadenza nei prossimi 2 giorni:</p>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                <thead>
-                    <tr style="background-color: #f2f2f2;">
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Titolo</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Scadenza</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Priorità</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Operatori</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRows}
-                </tbody>
-            </table>
-            <p>Buon lavoro,<br>Il Team di MannaTic</p>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 680px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
+            <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 24px;">
+                <h1 style="margin: 0; font-size: 20px; font-weight: 700;">Riepilogo Interventi 48 Ore</h1>
+                <p style="margin: 6px 0 0; font-size: 14px; opacity: 0.9;">Azienda: <strong>${company.name}</strong> • Data: ${format(new Date(), 'dd/MM/yyyy', { locale: it })}</p>
+            </div>
+
+            <div style="padding: 24px;">
+                ${hasExpiring ? `
+                    <div style="margin-bottom: 28px;">
+                        <h2 style="font-size: 16px; margin: 0 0 12px; color: #1e40af; display: flex; align-items: center; gap: 8px;">
+                            📅 Interventi in Scadenza nelle prossime 48 ore (${expiringInterventions.length})
+                        </h2>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background-color: #f8fafc; color: #475569; text-align: left;">
+                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Intervento</th>
+                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Scadenza Prevista</th>
+                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Priorità</th>
+                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Tecnici Assegnati</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${expiringTableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : ''}
+
+                ${hasUnassigned ? `
+                    <div style="margin-bottom: 20px;">
+                        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 12px;">
+                            <h2 style="font-size: 15px; margin: 0; color: #92400e;">
+                                ⚠️ Interventi Aperti NON Ancora Assegnati (${unassignedInterventions.length})
+                            </h2>
+                            <p style="margin: 4px 0 0; font-size: 12px; color: #78350f;">
+                                I seguenti interventi non hanno ancora nessun tecnico assegnato e richiedono presa in carico:
+                            </p>
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background-color: #f8fafc; color: #475569; text-align: left;">
+                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Intervento</th>
+                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Cliente</th>
+                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Aperto il</th>
+                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Stato Assegnazione</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${unassignedTableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : ''}
+
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center;">
+                    <a href="https://supporto.mannatec.it/dashboard/interventions" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 6px;">
+                        Accedi alla Dashboard Interventi
+                    </a>
+                    <p style="margin: 15px 0 0; font-size: 12px; color: #94a3b8;">MannaTic Service Platform • Notifica automatica generata dal sistema</p>
+                </div>
+            </div>
         </div>
     `;
 
@@ -681,7 +769,7 @@ export async function testWeeklySummaryAction(companyId: string): Promise<{ succ
     }
 }
 
-export async function testOverdueAlertsAction(companyId: string): Promise<{ success: boolean; ticketsAlerted?: number; interventionsAlerted?: number; error?: string }> {
+export async function testOverdueAlertsAction(companyId: string): Promise<{ success: boolean; ticketsAlerted?: number; interventionsAlerted?: number; unassignedAlerted?: number; error?: string }> {
     try {
         return await sendOverdueTicketsAndInterventionsAlerts(companyId);
     } catch (error: any) {
@@ -819,12 +907,13 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
     success: boolean;
     ticketsAlerted: number;
     interventionsAlerted: number;
+    unassignedAlerted?: number;
     error?: string;
 }> {
     try {
         const company = await getCompanyById(companyId);
         if (!company) {
-            return { success: false, ticketsAlerted: 0, interventionsAlerted: 0, error: 'Azienda non trovata' };
+            return { success: false, ticketsAlerted: 0, interventionsAlerted: 0, unassignedAlerted: 0, error: 'Azienda non trovata' };
         }
 
         const settings = getCompanyNotificationSettings(company);
@@ -844,6 +933,7 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
 
         let ticketsAlerted = 0;
         let interventionsAlerted = 0;
+        let unassignedAlerted = 0;
 
         // 1. SOLLECITO: Ticket di supporto non chiusi entro 48 ore
         if (settings.overdueTicketsAlertEnabled && admins.length > 0) {
@@ -1067,10 +1157,95 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
             }
         }
 
+        // 3. SOLLECITO: Interventi NON Assegnati aperti da oltre 48 ore
+        if (settings.unassignedInterventions48hAlertEnabled && admins.length > 0) {
+            const allInterventions = await getInterventions(companyId);
+            const unassigned48h = allInterventions.filter(i => 
+                !i.isMaintenance && 
+                ['Nuovo', 'In corso', 'In Attesa Ricambi'].includes(i.status) &&
+                (!i.assignedOperatorIds || i.assignedOperatorIds.length === 0) &&
+                new Date(i.createdAt).getTime() <= fortyEightHoursAgo.getTime()
+            );
+
+            for (const intervention of unassigned48h) {
+                const { data: recentNotifs } = await supabase
+                    .from('notifications')
+                    .select('id')
+                    .eq('related_intervention_id', intervention.id)
+                    .eq('type', 'alert')
+                    .gte('created_at', twentyFourHoursAgo);
+
+                if (recentNotifs && recentNotifs.length > 0) {
+                    continue;
+                }
+
+                const hoursOpen = Math.round((now.getTime() - new Date(intervention.createdAt).getTime()) / (3600 * 1000));
+                const interventionUrl = `${baseUrl}/dashboard/interventions?search=${encodeURIComponent(intervention.id)}`;
+                const client = allUsers.find(u => u.id === intervention.clientId);
+
+                // Invia notifica in-app agli admin
+                for (const admin of admins) {
+                    await addNotification({
+                        userId: admin.id,
+                        companyId,
+                        message: `⚠️ SOLLECITO: L'intervento #${intervention.id} "${intervention.title}" non è ancora stato assegnato ad alcun tecnico da oltre 48 ore (${hoursOpen}h)!`,
+                        type: 'alert',
+                        relatedInterventionId: intervention.id,
+                    }).catch(e => console.error("Error adding in-app alert for unassigned intervention:", e));
+                }
+
+                // Invia email di sollecito agli admin
+                if (adminEmails.length > 0) {
+                    const emailHtml = `
+                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto;">
+                            <div style="background-color: #f59e0b; color: white; padding: 18px 24px; border-radius: 8px 8px 0 0;">
+                                <h2 style="margin: 0; font-size: 18px;">⚠️ SOLLECITO: Intervento NON Assegnato da oltre 48h</h2>
+                                <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95;">${company.name}</p>
+                            </div>
+                            <div style="padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
+                                <p>Gentile Amministratore,</p>
+                                <p>Il seguente intervento è stato aperto da più di 48 ore (${hoursOpen} ore) e <strong>non è ancora stato assegnato</strong> ad alcun tecnico:</p>
+                                
+                                <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 18px; margin: 16px 0; border-radius: 4px;">
+                                    <p style="margin: 4px 0;"><strong>Intervento:</strong> #${intervention.id} - ${intervention.title}</p>
+                                    <p style="margin: 4px 0;"><strong>Cliente:</strong> ${client?.name || 'Cliente'}</p>
+                                    <p style="margin: 4px 0;"><strong>Priorità:</strong> ${intervention.priority}</p>
+                                    <p style="margin: 4px 0;"><strong>Stato:</strong> ${intervention.status}</p>
+                                    <p style="margin: 4px 0;"><strong>Aperto il:</strong> ${format(new Date(intervention.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}</p>
+                                </div>
+
+                                <div style="margin-top: 24px; text-align: center;">
+                                    <a href="${interventionUrl}" style="background-color: #f59e0b; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                                        Assegna Tecnico all'Intervento
+                                    </a>
+                                </div>
+                                <p style="font-size: 12px; color: #94a3b8; margin-top: 24px; text-align: center;">
+                                    Questo avviso automatico viene inviato per gli interventi aperti da oltre 48 ore non ancora assegnati.
+                                </p>
+                            </div>
+                        </div>
+                    `;
+
+                    await sendEmail({
+                        to: adminEmails,
+                        subject: `⚠️ SOLLECITO: Intervento #${intervention.id} non assegnato da oltre 48h - ${client?.name || 'Cliente'}`,
+                        html: emailHtml,
+                        resendConfig: company.resendApiKey && company.senderEmail ? {
+                            apiKey: company.resendApiKey,
+                            from: company.senderEmail,
+                        } : undefined,
+                    }).catch(e => console.error("Error sending unassigned intervention alert email to admins:", e));
+                }
+
+                unassignedAlerted++;
+            }
+        }
+
         return {
             success: true,
             ticketsAlerted,
             interventionsAlerted,
+            unassignedAlerted,
         };
     } catch (err: any) {
         console.error("Error in sendOverdueTicketsAndInterventionsAlerts:", err);
@@ -1078,6 +1253,7 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
             success: false,
             ticketsAlerted: 0,
             interventionsAlerted: 0,
+            unassignedAlerted: 0,
             error: err.message || 'Errore imprevisto',
         };
     }

@@ -67,11 +67,13 @@ export interface CompanyNotificationSettings {
   dailySummaryEnabled?: boolean;
   dailySummaryToAdmins?: boolean;
   dailySummaryToOperators?: boolean;
+  dailySummaryIncludeUnassigned?: boolean;
   weeklySummaryEnabled?: boolean;
   weeklySummaryToAdmins?: boolean;
   weeklySummaryIncludeOperators?: boolean;
   overdueTicketsAlertEnabled?: boolean;
   overdueInterventionsAlertEnabled?: boolean;
+  unassignedInterventions48hAlertEnabled?: boolean;
   notifyAssignedOperatorsOnOverdue?: boolean;
 }
 
@@ -84,11 +86,13 @@ export function getCompanyNotificationSettings(company: Company | null | undefin
     dailySummaryEnabled: true,
     dailySummaryToAdmins: true,
     dailySummaryToOperators: true,
+    dailySummaryIncludeUnassigned: true,
     weeklySummaryEnabled: true,
     weeklySummaryToAdmins: true,
     weeklySummaryIncludeOperators: false,
     overdueTicketsAlertEnabled: true,
     overdueInterventionsAlertEnabled: true,
+    unassignedInterventions48hAlertEnabled: true,
     notifyAssignedOperatorsOnOverdue: true,
   };
 
@@ -123,11 +127,13 @@ export function getCompanyNotificationSettings(company: Company | null | undefin
       dailySummaryEnabled: rawObj.dailySummaryEnabled ?? rawObj.daily_summary_enabled ?? defaults.dailySummaryEnabled,
       dailySummaryToAdmins: rawObj.dailySummaryToAdmins ?? rawObj.daily_summary_to_admins ?? defaults.dailySummaryToAdmins,
       dailySummaryToOperators: rawObj.dailySummaryToOperators ?? rawObj.daily_summary_to_operators ?? defaults.dailySummaryToOperators,
+      dailySummaryIncludeUnassigned: rawObj.dailySummaryIncludeUnassigned ?? rawObj.daily_summary_include_unassigned ?? defaults.dailySummaryIncludeUnassigned,
       weeklySummaryEnabled: rawObj.weeklySummaryEnabled ?? rawObj.weekly_summary_enabled ?? defaults.weeklySummaryEnabled,
       weeklySummaryToAdmins: rawObj.weeklySummaryToAdmins ?? rawObj.weekly_summary_to_admins ?? defaults.weeklySummaryToAdmins,
       weeklySummaryIncludeOperators: rawObj.weeklySummaryIncludeOperators ?? rawObj.weekly_summary_include_operators ?? defaults.weeklySummaryIncludeOperators,
       overdueTicketsAlertEnabled: rawObj.overdueTicketsAlertEnabled ?? rawObj.overdue_tickets_alert_enabled ?? defaults.overdueTicketsAlertEnabled,
       overdueInterventionsAlertEnabled: rawObj.overdueInterventionsAlertEnabled ?? rawObj.overdue_interventions_alert_enabled ?? defaults.overdueInterventionsAlertEnabled,
+      unassignedInterventions48hAlertEnabled: rawObj.unassignedInterventions48hAlertEnabled ?? rawObj.unassigned_interventions_48h_alert_enabled ?? defaults.unassignedInterventions48hAlertEnabled,
       notifyAssignedOperatorsOnOverdue: rawObj.notifyAssignedOperatorsOnOverdue ?? rawObj.notify_assigned_operators_on_overdue ?? defaults.notifyAssignedOperatorsOnOverdue,
     };
   }
