@@ -473,11 +473,18 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
 
     // 2. Destinatari Operatori se abilitati
     if (settings.dailySummaryToOperators) {
-        const eligibleOperators = allUsers.filter(u => {
-            if (u.role !== 'Operator' || !u.email) return false;
-            return getOperatorNotificationPreferences(settings, u.id).dailySummary;
-        });
-        targetRecipients.push(...eligibleOperators);
+        if (settings.dailySummaryIncludeAllOperators) {
+            // Invia a TUTTI gli operatori dell'azienda (inclusi quelli non specificamente abilitati nella matrice)
+            const allOperators = allUsers.filter(u => u.role === 'Operator' && !!u.email);
+            targetRecipients.push(...allOperators);
+        } else {
+            // Invia solo agli operatori abilitati nella matrice
+            const eligibleOperators = allUsers.filter(u => {
+                if (u.role !== 'Operator' || !u.email) return false;
+                return getOperatorNotificationPreferences(settings, u.id).dailySummary;
+            });
+            targetRecipients.push(...eligibleOperators);
+        }
     }
 
     // De-duplicazione per email
@@ -1194,38 +1201,38 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
                     }).catch(e => console.error("Error adding in-app alert for unassigned intervention:", e));
                 }
 
+                const emailHtml = `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto;">
+                        <div style="background-color: #f59e0b; color: white; padding: 18px 24px; border-radius: 8px 8px 0 0;">
+                            <h2 style="margin: 0; font-size: 18px;">⚠️ SOLLECITO: Intervento NON Assegnato da oltre 48h</h2>
+                            <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95;">${company.name}</p>
+                        </div>
+                        <div style="padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
+                            <p>Gentile Responsabile / Tecnico,</p>
+                            <p>Il seguente intervento è stato aperto da più di 48 ore (${hoursOpen} ore) e <strong>non è ancora stato assegnato</strong> ad alcun tecnico:</p>
+                            
+                            <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 18px; margin: 16px 0; border-radius: 4px;">
+                                <p style="margin: 4px 0;"><strong>Intervento:</strong> #${intervention.id} - ${intervention.title}</p>
+                                <p style="margin: 4px 0;"><strong>Cliente:</strong> ${client?.name || 'Cliente'}</p>
+                                <p style="margin: 4px 0;"><strong>Priorità:</strong> ${intervention.priority}</p>
+                                <p style="margin: 4px 0;"><strong>Stato:</strong> ${intervention.status}</p>
+                                <p style="margin: 4px 0;"><strong>Aperto il:</strong> ${format(new Date(intervention.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}</p>
+                            </div>
+
+                            <div style="margin-top: 24px; text-align: center;">
+                                <a href="${interventionUrl}" style="background-color: #f59e0b; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                                    Assegna Tecnico all'Intervento
+                                </a>
+                            </div>
+                            <p style="font-size: 12px; color: #94a3b8; margin-top: 24px; text-align: center;">
+                                Questo avviso automatico viene inviato per gli interventi aperti da oltre 48 ore non ancora assegnati.
+                            </p>
+                        </div>
+                    </div>
+                `;
+
                 // Invia email di sollecito agli admin
                 if (adminEmails.length > 0) {
-                    const emailHtml = `
-                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto;">
-                            <div style="background-color: #f59e0b; color: white; padding: 18px 24px; border-radius: 8px 8px 0 0;">
-                                <h2 style="margin: 0; font-size: 18px;">⚠️ SOLLECITO: Intervento NON Assegnato da oltre 48h</h2>
-                                <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95;">${company.name}</p>
-                            </div>
-                            <div style="padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
-                                <p>Gentile Amministratore,</p>
-                                <p>Il seguente intervento è stato aperto da più di 48 ore (${hoursOpen} ore) e <strong>non è ancora stato assegnato</strong> ad alcun tecnico:</p>
-                                
-                                <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 18px; margin: 16px 0; border-radius: 4px;">
-                                    <p style="margin: 4px 0;"><strong>Intervento:</strong> #${intervention.id} - ${intervention.title}</p>
-                                    <p style="margin: 4px 0;"><strong>Cliente:</strong> ${client?.name || 'Cliente'}</p>
-                                    <p style="margin: 4px 0;"><strong>Priorità:</strong> ${intervention.priority}</p>
-                                    <p style="margin: 4px 0;"><strong>Stato:</strong> ${intervention.status}</p>
-                                    <p style="margin: 4px 0;"><strong>Aperto il:</strong> ${format(new Date(intervention.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}</p>
-                                </div>
-
-                                <div style="margin-top: 24px; text-align: center;">
-                                    <a href="${interventionUrl}" style="background-color: #f59e0b; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-                                        Assegna Tecnico all'Intervento
-                                    </a>
-                                </div>
-                                <p style="font-size: 12px; color: #94a3b8; margin-top: 24px; text-align: center;">
-                                    Questo avviso automatico viene inviato per gli interventi aperti da oltre 48 ore non ancora assegnati.
-                                </p>
-                            </div>
-                        </div>
-                    `;
-
                     await sendEmail({
                         to: adminEmails,
                         subject: `⚠️ SOLLECITO: Intervento #${intervention.id} non assegnato da oltre 48h - ${client?.name || 'Cliente'}`,
@@ -1235,6 +1242,33 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
                             from: company.senderEmail,
                         } : undefined,
                     }).catch(e => console.error("Error sending unassigned intervention alert email to admins:", e));
+                }
+
+                // Invia notifica ed email opzionalmente anche a tutti i tecnici (anche non abilitati)
+                if (settings.unassigned48hAlertToOperators) {
+                    const allOperators = allUsers.filter(u => u.role === 'Operator');
+                    for (const op of allOperators) {
+                        await addNotification({
+                            userId: op.id,
+                            companyId,
+                            message: `⚠️ DA ASSEGNARE: L'intervento #${intervention.id} "${intervention.title}" è aperto da oltre 48 ore senza tecnico!`,
+                            type: 'alert',
+                            relatedInterventionId: intervention.id,
+                        }).catch(e => console.error("Error adding in-app alert for unassigned intervention to operator:", e));
+                    }
+
+                    const opEmails = allOperators.map(o => o.email!).filter(Boolean);
+                    if (opEmails.length > 0) {
+                        await sendEmail({
+                            to: opEmails,
+                            subject: `⚠️ INTERVENTO DA ASSEGNARE: #${intervention.id} "${intervention.title}" aperto da oltre 48h`,
+                            html: emailHtml,
+                            resendConfig: company.resendApiKey && company.senderEmail ? {
+                                apiKey: company.resendApiKey,
+                                from: company.senderEmail,
+                            } : undefined,
+                        }).catch(e => console.error("Error sending unassigned intervention alert email to operators:", e));
+                    }
                 }
 
                 unassignedAlerted++;

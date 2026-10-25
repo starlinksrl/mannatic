@@ -64,12 +64,14 @@ const notificationsFormSchema = z.object({
   dailySummaryToAdmins: z.boolean().default(true),
   dailySummaryToOperators: z.boolean().default(true),
   dailySummaryIncludeUnassigned: z.boolean().default(true),
+  dailySummaryIncludeAllOperators: z.boolean().default(false),
   weeklySummaryEnabled: z.boolean().default(true),
   weeklySummaryToAdmins: z.boolean().default(true),
   weeklySummaryIncludeOperators: z.boolean().default(false),
   overdueTicketsAlertEnabled: z.boolean().default(true),
   overdueInterventionsAlertEnabled: z.boolean().default(true),
   unassignedInterventions48hAlertEnabled: z.boolean().default(true),
+  unassigned48hAlertToOperators: z.boolean().default(false),
   notifyAssignedOperatorsOnOverdue: z.boolean().default(true),
   recipients: z.array(z.string()).default([]),
   operatorPreferences: z.record(operatorNotificationPreferenceSchema).default({}),
@@ -622,12 +624,14 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
       dailySummaryToAdmins: currentSettings.dailySummaryToAdmins,
       dailySummaryToOperators: currentSettings.dailySummaryToOperators,
       dailySummaryIncludeUnassigned: currentSettings.dailySummaryIncludeUnassigned,
+      dailySummaryIncludeAllOperators: currentSettings.dailySummaryIncludeAllOperators,
       weeklySummaryEnabled: currentSettings.weeklySummaryEnabled,
       weeklySummaryToAdmins: currentSettings.weeklySummaryToAdmins,
       weeklySummaryIncludeOperators: currentSettings.weeklySummaryIncludeOperators,
       overdueTicketsAlertEnabled: currentSettings.overdueTicketsAlertEnabled,
       overdueInterventionsAlertEnabled: currentSettings.overdueInterventionsAlertEnabled,
       unassignedInterventions48hAlertEnabled: currentSettings.unassignedInterventions48hAlertEnabled,
+      unassigned48hAlertToOperators: currentSettings.unassigned48hAlertToOperators,
       notifyAssignedOperatorsOnOverdue: currentSettings.notifyAssignedOperatorsOnOverdue,
       recipients: currentSettings.recipients || [],
       operatorPreferences: initialOperatorPrefs,
@@ -691,12 +695,14 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
         dailySummaryToAdmins: data.dailySummaryToAdmins,
         dailySummaryToOperators: data.dailySummaryToOperators,
         dailySummaryIncludeUnassigned: data.dailySummaryIncludeUnassigned,
+        dailySummaryIncludeAllOperators: data.dailySummaryIncludeAllOperators,
         weeklySummaryEnabled: data.weeklySummaryEnabled,
         weeklySummaryToAdmins: data.weeklySummaryToAdmins,
         weeklySummaryIncludeOperators: data.weeklySummaryIncludeOperators,
         overdueTicketsAlertEnabled: data.overdueTicketsAlertEnabled,
         overdueInterventionsAlertEnabled: data.overdueInterventionsAlertEnabled,
         unassignedInterventions48hAlertEnabled: data.unassignedInterventions48hAlertEnabled,
+        unassigned48hAlertToOperators: data.unassigned48hAlertToOperators,
         notifyAssignedOperatorsOnOverdue: data.notifyAssignedOperatorsOnOverdue,
       }
     });
@@ -843,6 +849,34 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Include nel riepilogo ogni 48 ore tutti gli interventi aperti non ancora assegnati ad alcun tecnico.
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dailySummaryIncludeAllOperators"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-indigo-500/30 p-3 bg-indigo-500/5 mt-3">
+                      <div className="space-y-0.5 pr-4">
+                        <div className="flex items-center gap-2">
+                          <FormLabel className="font-medium cursor-pointer text-indigo-900 dark:text-indigo-200">
+                            Invia Sollecito 48h anche a Tecnici NON Abilitati
+                          </FormLabel>
+                          <Badge variant="outline" className="border-indigo-500/40 text-indigo-700 dark:text-indigo-300 text-[10px]">
+                            Tutti i Tecnici
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Invia il riepilogo/sollecito delle 48 ore a tutti i tecnici dell'azienda, anche a coloro con riepilogo disattivato nella matrice sottostante.
                         </p>
                       </div>
                       <FormControl>
@@ -1033,6 +1067,34 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                       </div>
                       <p className="text-xs text-muted-foreground">
                         Notifica in-app ed email agli Amministratori per tutti gli interventi aperti da oltre 48h non ancora assegnati ad alcun tecnico.
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="unassigned48hAlertToOperators"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-amber-500/30 p-3.5 bg-amber-500/5">
+                    <div className="space-y-0.5 pr-4">
+                      <div className="flex items-center gap-2">
+                        <FormLabel className="font-medium cursor-pointer text-amber-900 dark:text-amber-200">
+                          Inoltra Sollecito 48h NON Assegnati anche ai Tecnici NON Abilitati
+                        </FormLabel>
+                        <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px]">
+                          Tutti i Tecnici
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Se attivo, l'avviso di intervento non assegnato da oltre 48h verrà inviato a tutti i tecnici per consentire la rapida presa in carico, anche a chi non ha abilitato i solleciti personali.
                       </p>
                     </div>
                     <FormControl>
