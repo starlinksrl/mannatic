@@ -70,8 +70,6 @@ const notificationsFormSchema = z.object({
   weeklySummaryIncludeOperators: z.boolean().default(false),
   overdueTicketsAlertEnabled: z.boolean().default(true),
   overdueInterventionsAlertEnabled: z.boolean().default(true),
-  unassignedInterventions48hAlertEnabled: z.boolean().default(true),
-  unassigned48hAlertToOperators: z.boolean().default(false),
   notifyAssignedOperatorsOnOverdue: z.boolean().default(true),
   recipients: z.array(z.string()).default([]),
   operatorPreferences: z.record(operatorNotificationPreferenceSchema).default({}),
@@ -630,8 +628,6 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
       weeklySummaryIncludeOperators: currentSettings.weeklySummaryIncludeOperators,
       overdueTicketsAlertEnabled: currentSettings.overdueTicketsAlertEnabled,
       overdueInterventionsAlertEnabled: currentSettings.overdueInterventionsAlertEnabled,
-      unassignedInterventions48hAlertEnabled: currentSettings.unassignedInterventions48hAlertEnabled,
-      unassigned48hAlertToOperators: currentSettings.unassigned48hAlertToOperators,
       notifyAssignedOperatorsOnOverdue: currentSettings.notifyAssignedOperatorsOnOverdue,
       recipients: currentSettings.recipients || [],
       operatorPreferences: initialOperatorPrefs,
@@ -701,8 +697,6 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
         weeklySummaryIncludeOperators: data.weeklySummaryIncludeOperators,
         overdueTicketsAlertEnabled: data.overdueTicketsAlertEnabled,
         overdueInterventionsAlertEnabled: data.overdueInterventionsAlertEnabled,
-        unassignedInterventions48hAlertEnabled: data.unassignedInterventions48hAlertEnabled,
-        unassigned48hAlertToOperators: data.unassigned48hAlertToOperators,
         notifyAssignedOperatorsOnOverdue: data.notifyAssignedOperatorsOnOverdue,
       }
     });
@@ -1051,61 +1045,6 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="unassignedInterventions48hAlertEnabled"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-amber-500/30 p-3.5 bg-amber-500/5">
-                    <div className="space-y-0.5 pr-4">
-                      <div className="flex items-center gap-2">
-                        <FormLabel className="font-medium cursor-pointer text-amber-900 dark:text-amber-200">
-                          Sollecito Interventi NON Assegnati da oltre 48 ore
-                        </FormLabel>
-                        <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px]">
-                          Assegnazione
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Notifica in-app ed email agli Amministratori per tutti gli interventi aperti da oltre 48h non ancora assegnati ad alcun tecnico.
-                      </p>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="unassigned48hAlertToOperators"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-amber-500/30 p-3.5 bg-amber-500/5">
-                    <div className="space-y-0.5 pr-4">
-                      <div className="flex items-center gap-2">
-                        <FormLabel className="font-medium cursor-pointer text-amber-900 dark:text-amber-200">
-                          Inoltra Sollecito Interventi NON Assegnati (48h) a tutti i Tecnici
-                        </FormLabel>
-                        <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px]">
-                          Presa in Carico
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Se attivo, quando un intervento è aperto da oltre 48 ore senza tecnico, il sollecito viene inviato (in-app ed email) anche a tutti i tecnici per consentire a chiunque di prenderlo in carico, anche se non assegnati originariamente all'intervento.
-                      </p>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
 

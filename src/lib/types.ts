@@ -74,8 +74,6 @@ export interface CompanyNotificationSettings {
   weeklySummaryIncludeOperators?: boolean;
   overdueTicketsAlertEnabled?: boolean;
   overdueInterventionsAlertEnabled?: boolean;
-  unassignedInterventions48hAlertEnabled?: boolean;
-  unassigned48hAlertToOperators?: boolean;
   notifyAssignedOperatorsOnOverdue?: boolean;
 }
 
@@ -95,8 +93,6 @@ export function getCompanyNotificationSettings(company: Company | null | undefin
     weeklySummaryIncludeOperators: false,
     overdueTicketsAlertEnabled: true,
     overdueInterventionsAlertEnabled: true,
-    unassignedInterventions48hAlertEnabled: true,
-    unassigned48hAlertToOperators: false,
     notifyAssignedOperatorsOnOverdue: true,
   };
 
@@ -138,8 +134,6 @@ export function getCompanyNotificationSettings(company: Company | null | undefin
       weeklySummaryIncludeOperators: rawObj.weeklySummaryIncludeOperators ?? rawObj.weekly_summary_include_operators ?? defaults.weeklySummaryIncludeOperators,
       overdueTicketsAlertEnabled: rawObj.overdueTicketsAlertEnabled ?? rawObj.overdue_tickets_alert_enabled ?? defaults.overdueTicketsAlertEnabled,
       overdueInterventionsAlertEnabled: rawObj.overdueInterventionsAlertEnabled ?? rawObj.overdue_interventions_alert_enabled ?? defaults.overdueInterventionsAlertEnabled,
-      unassignedInterventions48hAlertEnabled: rawObj.unassignedInterventions48hAlertEnabled ?? rawObj.unassigned_interventions_48h_alert_enabled ?? defaults.unassignedInterventions48hAlertEnabled,
-      unassigned48hAlertToOperators: rawObj.unassigned48hAlertToOperators ?? rawObj.unassigned_48h_alert_to_operators ?? defaults.unassigned48hAlertToOperators,
       notifyAssignedOperatorsOnOverdue: rawObj.notifyAssignedOperatorsOnOverdue ?? rawObj.notify_assigned_operators_on_overdue ?? defaults.notifyAssignedOperatorsOnOverdue,
     };
   }
