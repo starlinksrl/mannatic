@@ -463,171 +463,189 @@ export async function sendExpiringInterventionsSummaryEmail(companyId: string): 
     }
 
     const allUsers = await getUsers(companyId);
-    const targetRecipients: User[] = [];
 
-    // 1. Destinatari Amministratori se abilitati
-    if (settings.dailySummaryToAdmins) {
-        const admins = allUsers.filter(u => (u.role === 'Admin' || u.role === 'Creator') && !!u.email);
-        targetRecipients.push(...admins);
-    }
+    const buildSummaryHtml = (
+        companyName: string,
+        expiring: Intervention[],
+        unassigned: Intervention[],
+        isOperatorView: boolean = false
+    ) => {
+        const hasExpiring = expiring.length > 0;
+        const hasUnassigned = unassigned.length > 0;
 
-    // 2. Destinatari Operatori se abilitati
-    if (settings.dailySummaryToOperators) {
-        if (settings.dailySummaryIncludeAllOperators) {
-            // Invia a TUTTI gli operatori dell'azienda (inclusi quelli non specificamente abilitati nella matrice)
-            const allOperators = allUsers.filter(u => u.role === 'Operator' && !!u.email);
-            targetRecipients.push(...allOperators);
+        let subject = `Riepilogo Interventi (48h) - ${companyName}`;
+        if (hasExpiring && hasUnassigned) {
+            subject = `Riepilogo Interventi in Scadenza 48h & Non Assegnati - ${companyName}`;
+        } else if (hasUnassigned) {
+            subject = `Riepilogo Interventi NON Assegnati (${unassigned.length}) - ${companyName}`;
         } else {
-            // Invia solo agli operatori abilitati nella matrice
-            const eligibleOperators = allUsers.filter(u => {
-                if (u.role !== 'Operator' || !u.email) return false;
-                return getOperatorNotificationPreferences(settings, u.id).dailySummary;
-            });
-            targetRecipients.push(...eligibleOperators);
+            subject = `Riepilogo Interventi in Scadenza 48h (${expiring.length}) - ${companyName}`;
         }
-    }
 
-    // De-duplicazione per email
-    const uniqueMap = new Map<string, User>();
-    for (const u of targetRecipients) {
-        if (u.email && !uniqueMap.has(u.email.toLowerCase())) {
-            uniqueMap.set(u.email.toLowerCase(), u);
-        }
-    }
-    const operators = Array.from(uniqueMap.values());
-    
-    if (operators.length === 0) {
-        console.log(`Nessun destinatario per il riepilogo interventi per l'installatore ${company.name}.`);
-        return { success: true };
-    }
+        const expiringTableRows = expiring.map(i => {
+            const assignedOpNames = i.assignedOperatorIds && i.assignedOperatorIds.length > 0
+                ? allUsers.filter(u => i.assignedOperatorIds.includes(u.id)).map(u => u.name).join(', ')
+                : '<span style="color: #dc2626; font-weight: bold;">Non assegnato</span>';
+                
+            return `
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500;">#${i.id} - ${i.title}</td>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0;">${i.dueDate ? format(new Date(i.dueDate), 'dd/MM/yyyy HH:mm', { locale: it }) : 'N/D'}</td>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                        <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: ${i.priority === 'Critica' ? '#fee2e2; color: #b91c1c;' : '#f1f5f9; color: #475569;'}">
+                            ${i.priority}
+                        </span>
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0;">${assignedOpNames}</td>
+                </tr>
+            `;
+        }).join('');
 
-    const hasExpiring = expiringInterventions.length > 0;
-    const hasUnassigned = unassignedInterventions.length > 0;
+        const unassignedTableRows = unassigned.map(i => {
+            const client = allUsers.find(u => u.id === i.clientId);
+            return `
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500;">#${i.id} - ${i.title}</td>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0;">${client?.name || 'N/D'}</td>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0;">${format(new Date(i.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}</td>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                        <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: #fee2e2; color: #b91c1c;">
+                            In attesa di Tecnico
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
-    let subject = `Riepilogo Interventi (48h) - ${company.name}`;
-    if (hasExpiring && hasUnassigned) {
-        subject = `Riepilogo Interventi in Scadenza 48h & Non Assegnati - ${company.name}`;
-    } else if (hasUnassigned) {
-        subject = `Riepilogo Interventi NON Assegnati (${unassignedInterventions.length}) - ${company.name}`;
-    } else {
-        subject = `Riepilogo Interventi in Scadenza 48h (${expiringInterventions.length}) - ${company.name}`;
-    }
+        const body = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 680px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
+                <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 24px;">
+                    <h1 style="margin: 0; font-size: 20px; font-weight: 700;">Riepilogo Interventi 48 Ore</h1>
+                    <p style="margin: 6px 0 0; font-size: 14px; opacity: 0.9;">Azienda: <strong>${companyName}</strong> • Data: ${format(new Date(), 'dd/MM/yyyy', { locale: it })}</p>
+                </div>
 
-    const expiringTableRows = expiringInterventions.map(i => {
-        const assignedOpNames = i.assignedOperatorIds && i.assignedOperatorIds.length > 0
-            ? allUsers.filter(u => i.assignedOperatorIds.includes(u.id)).map(u => u.name).join(', ')
-            : '<span style="color: #dc2626; font-weight: bold;">Non assegnato</span>';
-            
-        return `
-            <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500;">#${i.id} - ${i.title}</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${i.dueDate ? format(new Date(i.dueDate), 'dd/MM/yyyy HH:mm', { locale: it }) : 'N/D'}</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">
-                    <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: ${i.priority === 'Critica' ? '#fee2e2; color: #b91c1c;' : '#f1f5f9; color: #475569;'}">
-                        ${i.priority}
-                    </span>
-                </td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${assignedOpNames}</td>
-            </tr>
-        `;
-    }).join('');
-
-    const unassignedTableRows = unassignedInterventions.map(i => {
-        const client = allUsers.find(u => u.id === i.clientId);
-        return `
-            <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500;">#${i.id} - ${i.title}</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${client?.name || 'N/D'}</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${format(new Date(i.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">
-                    <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: #fee2e2; color: #b91c1c;">
-                        In attesa di Tecnico
-                    </span>
-                </td>
-            </tr>
-        `;
-    }).join('');
-
-    const body = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 680px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
-            <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 24px;">
-                <h1 style="margin: 0; font-size: 20px; font-weight: 700;">Riepilogo Interventi 48 Ore</h1>
-                <p style="margin: 6px 0 0; font-size: 14px; opacity: 0.9;">Azienda: <strong>${company.name}</strong> • Data: ${format(new Date(), 'dd/MM/yyyy', { locale: it })}</p>
-            </div>
-
-            <div style="padding: 24px;">
-                ${hasExpiring ? `
-                    <div style="margin-bottom: 28px;">
-                        <h2 style="font-size: 16px; margin: 0 0 12px; color: #1e40af; display: flex; align-items: center; gap: 8px;">
-                            📅 Interventi in Scadenza nelle prossime 48 ore (${expiringInterventions.length})
-                        </h2>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                            <thead>
-                                <tr style="background-color: #f8fafc; color: #475569; text-align: left;">
-                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Intervento</th>
-                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Scadenza Prevista</th>
-                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Priorità</th>
-                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Tecnici Assegnati</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${expiringTableRows}
-                            </tbody>
-                        </table>
-                    </div>
-                ` : ''}
-
-                ${hasUnassigned ? `
-                    <div style="margin-bottom: 20px;">
-                        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 12px;">
-                            <h2 style="font-size: 15px; margin: 0; color: #92400e;">
-                                ⚠️ Interventi Aperti NON Ancora Assegnati (${unassignedInterventions.length})
+                <div style="padding: 24px;">
+                    ${hasExpiring ? `
+                        <div style="margin-bottom: 28px;">
+                            <h2 style="font-size: 16px; margin: 0 0 12px; color: #1e40af; display: flex; align-items: center; gap: 8px;">
+                                📅 Interventi in Scadenza nelle prossime 48 ore (${expiring.length})
                             </h2>
-                            <p style="margin: 4px 0 0; font-size: 12px; color: #78350f;">
-                                I seguenti interventi non hanno ancora nessun tecnico assegnato e richiedono presa in carico:
-                            </p>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                <thead>
+                                    <tr style="background-color: #f8fafc; color: #475569; text-align: left;">
+                                        <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Intervento</th>
+                                        <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Scadenza Prevista</th>
+                                        <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Priorità</th>
+                                        <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Tecnici Assegnati</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${expiringTableRows}
+                                </tbody>
+                            </table>
                         </div>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                            <thead>
-                                <tr style="background-color: #f8fafc; color: #475569; text-align: left;">
-                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Intervento</th>
-                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Cliente</th>
-                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Aperto il</th>
-                                    <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Stato Assegnazione</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${unassignedTableRows}
-                            </tbody>
-                        </table>
-                    </div>
-                ` : ''}
+                    ` : ''}
 
-                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center;">
-                    <a href="https://supporto.mannatec.it/dashboard/interventions" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 6px;">
-                        Accedi alla Dashboard Interventi
-                    </a>
-                    <p style="margin: 15px 0 0; font-size: 12px; color: #94a3b8;">MannaTic Service Platform • Notifica automatica generata dal sistema</p>
+                    ${hasUnassigned ? `
+                        <div style="margin-bottom: 20px;">
+                            <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 12px;">
+                                <h2 style="font-size: 15px; margin: 0; color: #92400e;">
+                                    ⚠️ Interventi Aperti NON Ancora Assegnati (${unassigned.length})
+                                </h2>
+                                <p style="margin: 4px 0 0; font-size: 12px; color: #78350f;">
+                                    ${isOperatorView 
+                                        ? 'I seguenti interventi sono al momento privi di tecnico assegnato e richiedono presa in carico:' 
+                                        : 'I seguenti interventi non hanno ancora nessun tecnico assegnato e richiedono presa in carico:'}
+                                </p>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                <thead>
+                                    <tr style="background-color: #f8fafc; color: #475569; text-align: left;">
+                                        <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Intervento</th>
+                                        <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Cliente</th>
+                                        <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Aperto il</th>
+                                        <th style="padding: 8px 10px; border: 1px solid #e2e8f0;">Stato Assegnazione</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${unassignedTableRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : ''}
+
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center;">
+                        <a href="https://supporto.mannatec.it/dashboard/interventions" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 6px;">
+                            Accedi alla Dashboard Interventi
+                        </a>
+                        <p style="margin: 15px 0 0; font-size: 12px; color: #94a3b8;">MannaTic Service Platform • Notifica automatica generata dal sistema</p>
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
 
-    try {
-        const result = await sendEmail({
-            to: operators.map(o => o.email!).filter(Boolean),
-            subject,
-            html: body,
-            resendConfig: company.resendApiKey && company.senderEmail ? {
-                apiKey: company.resendApiKey,
-                from: company.senderEmail,
-            } : undefined,
-        });
-        return { success: result.success, error: result.error };
-    } catch (e: any) {
-        console.error(`Error sending summary email for company ${companyId}:`, e);
-        return { success: false, error: e.message || "Impossibile inviare l'email di riepilogo." };
+        return { body, subject };
+    };
+
+    const resendConfig = company.resendApiKey && company.senderEmail ? {
+        apiKey: company.resendApiKey,
+        from: company.senderEmail,
+    } : undefined;
+
+    let emailsSent = 0;
+
+    // 1. Invio agli Amministratori (quadro completo dell'azienda)
+    if (settings.dailySummaryToAdmins) {
+        const admins = allUsers.filter(u => (u.role === 'Admin' || u.role === 'Creator') && !!u.email);
+        const adminEmails = admins.map(a => a.email!).filter(Boolean);
+        if (adminEmails.length > 0) {
+            const adminSummary = buildSummaryHtml(company.name, expiringInterventions, unassignedInterventions, false);
+            await sendEmail({
+                to: adminEmails,
+                subject: adminSummary.subject,
+                html: adminSummary.body,
+                resendConfig,
+            }).catch(e => console.error("Error sending daily summary email to admins:", e));
+            emailsSent++;
+        }
     }
+
+    // 2. Invio agli Operatori (Tecnici)
+    if (settings.dailySummaryToOperators) {
+        // Seleziona operatori eleggibili: o tutti se opzione attiva, o quelli abilitati nella matrice
+        const eligibleOperators = allUsers.filter(u => {
+            if (u.role !== 'Operator' || !u.email) return false;
+            return settings.dailySummaryIncludeAllOperators || getOperatorNotificationPreferences(settings, u.id).dailySummary;
+        });
+
+        for (const op of eligibleOperators) {
+            let opExpiring = expiringInterventions;
+            let opUnassigned = unassignedInterventions;
+
+            // Se l'opzione "Invia ai tecnici anche se non assegnati all'intervento" NON è attiva,
+            // filtra solo gli interventi assegnati direttamente a questo tecnico ed escludi quelli non assegnati
+            if (!settings.dailySummaryIncludeAllOperators) {
+                opExpiring = expiringInterventions.filter(i => i.assignedOperatorIds && i.assignedOperatorIds.includes(op.id));
+                opUnassigned = []; // Non mostrare interventi non assegnati a questo tecnico
+            }
+
+            // Se per questo tecnico non ci sono interventi pertinenti, evita l'invio di email vuote
+            if (opExpiring.length === 0 && opUnassigned.length === 0) {
+                continue;
+            }
+
+            const opSummary = buildSummaryHtml(company.name, opExpiring, opUnassigned, true);
+            await sendEmail({
+                to: [op.email!],
+                subject: opSummary.subject,
+                html: opSummary.body,
+                resendConfig,
+            }).catch(e => console.error(`Error sending daily summary email to operator ${op.email}:`, e));
+            emailsSent++;
+        }
+    }
+
+    return { success: true };
 }
 
 export async function sendOverdueInterventionsSummaryEmail(companyId: string): Promise<{ success: boolean; error?: string }> {

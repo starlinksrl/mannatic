@@ -869,14 +869,14 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                       <div className="space-y-0.5 pr-4">
                         <div className="flex items-center gap-2">
                           <FormLabel className="font-medium cursor-pointer text-indigo-900 dark:text-indigo-200">
-                            Invia Sollecito 48h anche a Tecnici NON Abilitati
+                            Invia Riepilogo 48h ai Tecnici anche se l'intervento NON è assegnato a loro
                           </FormLabel>
                           <Badge variant="outline" className="border-indigo-500/40 text-indigo-700 dark:text-indigo-300 text-[10px]">
-                            Tutti i Tecnici
+                            Anche NON Assegnati
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Invia il riepilogo/sollecito delle 48 ore a tutti i tecnici dell'azienda, anche a coloro con riepilogo disattivato nella matrice sottostante.
+                          Se attivo, i tecnici riceveranno nel riepilogo 48h anche gli interventi non assegnati direttamente a loro (es. interventi ancora liberi o di altri colleghi). Se disattivato, ogni tecnico riceve nel proprio riepilogo esclusivamente gli interventi assegnati a sé.
                         </p>
                       </div>
                       <FormControl>
@@ -1087,14 +1087,14 @@ function NotificationsForm({ company, operators, onSave }: { company: Company; o
                     <div className="space-y-0.5 pr-4">
                       <div className="flex items-center gap-2">
                         <FormLabel className="font-medium cursor-pointer text-amber-900 dark:text-amber-200">
-                          Inoltra Sollecito 48h NON Assegnati anche ai Tecnici NON Abilitati
+                          Inoltra Sollecito Interventi NON Assegnati (48h) a tutti i Tecnici
                         </FormLabel>
                         <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px]">
-                          Tutti i Tecnici
+                          Presa in Carico
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Se attivo, l'avviso di intervento non assegnato da oltre 48h verrà inviato a tutti i tecnici per consentire la rapida presa in carico, anche a chi non ha abilitato i solleciti personali.
+                        Se attivo, quando un intervento è aperto da oltre 48 ore senza tecnico, il sollecito viene inviato (in-app ed email) anche a tutti i tecnici per consentire a chiunque di prenderlo in carico, anche se non assegnati originariamente all'intervento.
                       </p>
                     </div>
                     <FormControl>
