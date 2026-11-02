@@ -35,10 +35,10 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Appointment, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addAppointment } from '@/lib/data';
+import { addAppointment, addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { ScrollArea } from '../ui/scroll-area';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useMaps } from '@/contexts/maps-context';
 
 const formSchema = z.object({
@@ -66,6 +66,8 @@ export function AddSurveyForm({ children, onAppointmentAdded, clients, operators
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
+  const [clientSearchValue, setClientSearchValue] = useState('');
   const [addressInput, setAddressInput] = useState('');
   const [addressSuggestions, setAddressSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
 
@@ -104,8 +106,31 @@ export function AddSurveyForm({ children, onAppointmentAdded, clients, operators
         finalDate = values.date.toISOString();
     }
 
+    let finalClientId = values.clientId;
+    const existingClient = clientList.find(c => c.id === values.clientId || c.name.trim().toLowerCase() === values.clientId.trim().toLowerCase());
+    if (existingClient) {
+        finalClientId = existingClient.id;
+    } else if (values.clientId && values.clientId.trim() !== '') {
+        try {
+            const newClientUser = await addUser({
+                name: values.clientId.trim(),
+                role: 'Client',
+                companyId: currentCompany.id,
+                email: '',
+                address: values.address || '',
+            });
+            if (newClientUser?.id) {
+                finalClientId = newClientUser.id;
+                setClientList(prev => [...prev, newClientUser]);
+            }
+        } catch (clientErr) {
+            console.error("Error creating inline client for survey:", clientErr);
+        }
+    }
+
     const newAppointment = await addAppointment({
         ...values,
+        clientId: finalClientId,
         notes: values.notes || '',
         address: values.address || null,
         date: finalDate,
@@ -114,18 +139,6 @@ export function AddSurveyForm({ children, onAppointmentAdded, clients, operators
     });
     
     onAppointmentAdded(newAppointment);
-
-    // Check if a new client was created and update the local list
-    const isNewClient = !clients.some(c => c.id === newAppointment.clientId);
-    if (isNewClient) {
-        const client = {
-            id: newAppointment.clientId,
-            name: values.clientId,
-            companyId: currentCompany.id,
-            address: values.address
-        } as User;
-        setClientList(prev => [...prev, client]);
-    }
     
     toast({
       title: 'Appuntamento creato',
@@ -232,17 +245,23 @@ export function AddSurveyForm({ children, onAppointmentAdded, clients, operators
                      <FormField
                         control={form.control}
                         name="clientId"
-                        render={({ field }) => (
+                        render={({ field }) => {
+                            const trimmedSearch = clientSearchValue.trim();
+                            const exactClientMatch = trimmedSearch
+                                ? clientList.some(c => c.name.trim().toLowerCase() === trimmedSearch.toLowerCase())
+                                : false;
+
+                            return (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Cliente</FormLabel>
-                                <Popover>
+                                <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
                                                 variant="outline"
                                                 role="combobox"
                                                 className={cn(
-                                                    "justify-between",
+                                                    "justify-between font-normal",
                                                     !field.value && "text-muted-foreground"
                                                 )}
                                             >
@@ -255,48 +274,72 @@ export function AddSurveyForm({ children, onAppointmentAdded, clients, operators
                                             </Button>
                                         </FormControl>
                                     </PopoverTrigger>
-                                    <PopoverContent className="p-0">
+                                    <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px]">
                                         <Command>
-                                            <CommandInput placeholder="Cerca o crea cliente..." />
-                                            <CommandEmpty>
-                                                 <Button variant="ghost" className="w-full justify-start"
-                                                    onClick={() => {
-                                                        const inputValue = (document.querySelector('[cmdk-input]') as HTMLInputElement)?.value;
-                                                        form.setValue("clientId", inputValue)
-                                                        const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
-                                                        popoverTrigger?.click();
-                                                    }}
-                                                  >
-                                                    Crea "{ (document.querySelector('[cmdk-input]') as HTMLInputElement)?.value }"
-                                                  </Button>
-                                            </CommandEmpty>
-                                            <CommandGroup>
-                                                {clientList.map((client) => (
-                                                    <CommandItem
-                                                        value={client.name}
-                                                        key={client.id}
-                                                        onSelect={() => {
-                                                            form.setValue("clientId", client.id)
-                                                            const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
-                                                            popoverTrigger?.click();
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                client.id === field.value ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {client.name}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
+                                            <CommandInput
+                                                placeholder="Cerca o crea cliente..."
+                                                value={clientSearchValue}
+                                                onValueChange={setClientSearchValue}
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    {trimmedSearch ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            className="w-full justify-start text-primary font-medium"
+                                                            onClick={() => {
+                                                                form.setValue("clientId", trimmedSearch, { shouldValidate: true });
+                                                                setClientPopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            + Crea &quot;{trimmedSearch}&quot;
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">Nessun cliente trovato.</span>
+                                                    )}
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {clientList.map((client) => (
+                                                        <CommandItem
+                                                            value={client.name}
+                                                            key={client.id}
+                                                            onSelect={() => {
+                                                                form.setValue("clientId", client.id, { shouldValidate: true });
+                                                                setClientSearchValue('');
+                                                                setClientPopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    client.id === field.value ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {client.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                    {trimmedSearch && !exactClientMatch && (
+                                                        <CommandItem
+                                                            value={`__create__${trimmedSearch}`}
+                                                            onSelect={() => {
+                                                                form.setValue("clientId", trimmedSearch, { shouldValidate: true });
+                                                                setClientPopoverOpen(false);
+                                                            }}
+                                                            className="text-primary font-medium"
+                                                        >
+                                                            + Crea &quot;{trimmedSearch}&quot;
+                                                        </CommandItem>
+                                                    )}
+                                                </CommandGroup>
+                                            </CommandList>
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
                                 <FormMessage />
                             </FormItem>
-                        )}
+                            );
+                        }}
                         />
 
                     <FormField

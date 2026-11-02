@@ -35,10 +35,10 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ScheduledMaintenance, User, InterventionPriority } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addScheduledMaintenance } from '@/lib/data';
+import { addScheduledMaintenance, addUser } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Il titolo deve contenere almeno 5 caratteri.' }),
@@ -63,6 +63,8 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
   const { toast } = useToast();
   const { currentCompany } = useUser();
   const [clientList, setClientList] = useState(clients);
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
+  const [clientSearchValue, setClientSearchValue] = useState('');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -83,40 +85,76 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
     if (!currentCompany) return;
     
     setIsSubmitting(true);
-    const normalizedDate = setHours(setMinutes(values.dueDate, 0), 12).toISOString();
-    const newMaintenance = await addScheduledMaintenance({
-        ...values,
-        priority: values.priority as InterventionPriority,
-        dueDate: normalizedDate,
-        description: values.description || '',
-        checklist: [],
-        recurrenceMonths: (values as any).recurrenceMonths || 1,
-        nextDueDate: normalizedDate,
-        type: 'standard',
-        status: 'Pianificato',
-        sla: '24h',
-        assignedOperatorIds: values.assignedOperatorId ? [values.assignedOperatorId] : [],
-        companyId: currentCompany.id,
-    });
-    
-    onMaintenanceAdded(newMaintenance);
+    try {
+      let clientIdentifier = values.clientId;
+      const existingClient = clientList.find(
+        c => c.id === values.clientId || c.name.trim().toLowerCase() === values.clientId.trim().toLowerCase()
+      );
 
-    const isNewClient = !clients.some(c => c.id === newMaintenance.clientId);
-    if (isNewClient) {
-        setClientList(prev => [...prev, {
-            id: newMaintenance.clientId,
-            name: values.clientId,
+      if (!existingClient && values.clientId && values.clientId.trim() !== '') {
+        const clientName = values.clientId.trim();
+        const cleanSlug = clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'cliente';
+        const placeholderEmail = `cliente_${cleanSlug}_${Date.now()}@placeholder.local`;
+
+        try {
+          const newClientUser = await addUser({
+            name: clientName,
+            email: placeholderEmail,
+            role: 'Client',
             companyId: currentCompany.id,
-        } as User]);
-    }
+          });
 
-    toast({
-      title: 'Manutenzione creata',
-      description: `La manutenzione "${values.title}" è stata creata con successo.`,
-    });
-    setIsSubmitting(false);
-    setIsOpen(false);
-    form.reset();
+          if (newClientUser && newClientUser.id) {
+            clientIdentifier = newClientUser.id;
+            setClientList(prev => {
+              if (prev.some(c => c.id === newClientUser.id)) return prev;
+              return [...prev, newClientUser];
+            });
+          }
+        } catch (clientErr: any) {
+          console.error("Error creating inline client user for maintenance:", clientErr);
+          throw new Error(clientErr?.message || "Impossibile creare il nuovo cliente.");
+        }
+      } else if (existingClient) {
+        clientIdentifier = existingClient.id;
+      }
+
+      const normalizedDate = setHours(setMinutes(values.dueDate, 0), 12).toISOString();
+      const newMaintenance = await addScheduledMaintenance({
+          ...values,
+          clientId: clientIdentifier,
+          priority: values.priority as InterventionPriority,
+          dueDate: normalizedDate,
+          description: values.description || '',
+          checklist: [],
+          recurrenceMonths: Number(values.recurrenceMonths) || 1,
+          nextDueDate: normalizedDate,
+          type: 'standard',
+          status: 'Pianificato',
+          sla: '24h',
+          assignedOperatorIds: values.assignedOperatorId ? [values.assignedOperatorId] : [],
+          companyId: currentCompany.id,
+      });
+      
+      onMaintenanceAdded(newMaintenance);
+
+      toast({
+        title: 'Manutenzione creata',
+        description: `La manutenzione "${values.title}" è stata creata con successo.`,
+      });
+      setIsOpen(false);
+      form.reset();
+      setClientSearchValue('');
+    } catch (err: any) {
+      console.error("Error in create maintenance onSubmit:", err);
+      toast({
+        variant: 'destructive',
+        title: 'Errore',
+        description: err?.message || 'Impossibile creare la manutenzione programmata.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -124,6 +162,7 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
         setIsOpen(open);
         if (!open) {
             form.reset();
+            setClientSearchValue('');
         }
     }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -152,17 +191,23 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
                     <FormField
                         control={form.control}
                         name="clientId"
-                        render={({ field }) => (
+                        render={({ field }) => {
+                            const trimmedSearch = clientSearchValue.trim();
+                            const exactClientMatch = trimmedSearch
+                                ? clientList.some(c => c.name.trim().toLowerCase() === trimmedSearch.toLowerCase())
+                                : false;
+
+                            return (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Cliente</FormLabel>
-                                <Popover>
+                                <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
                                                 variant="outline"
                                                 role="combobox"
                                                 className={cn(
-                                                    "justify-between",
+                                                    "justify-between font-normal",
                                                     !field.value && "text-muted-foreground"
                                                 )}
                                             >
@@ -175,48 +220,72 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
                                             </Button>
                                         </FormControl>
                                     </PopoverTrigger>
-                                    <PopoverContent className="p-0">
+                                    <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px]">
                                         <Command>
-                                            <CommandInput placeholder="Cerca o crea cliente..." />
-                                            <CommandEmpty>
-                                                 <Button variant="ghost" className="w-full justify-start"
-                                                    onClick={() => {
-                                                        const inputValue = (document.querySelector('[cmdk-input]') as HTMLInputElement)?.value;
-                                                        form.setValue("clientId", inputValue)
-                                                        const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
-                                                        popoverTrigger?.click();
-                                                    }}
-                                                  >
-                                                    Crea "{ (document.querySelector('[cmdk-input]') as HTMLInputElement)?.value }"
-                                                  </Button>
-                                            </CommandEmpty>
-                                            <CommandGroup>
-                                                {clientList.map((client) => (
-                                                    <CommandItem
-                                                        value={client.name}
-                                                        key={client.id}
-                                                        onSelect={() => {
-                                                            form.setValue("clientId", client.id)
-                                                            const popoverTrigger = (document.querySelector('[role=combobox]') as HTMLElement);
-                                                            popoverTrigger?.click();
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                client.id === field.value ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {client.name}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
+                                            <CommandInput
+                                                placeholder="Cerca o crea cliente..."
+                                                value={clientSearchValue}
+                                                onValueChange={setClientSearchValue}
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    {trimmedSearch ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            className="w-full justify-start text-primary font-medium"
+                                                            onClick={() => {
+                                                                form.setValue("clientId", trimmedSearch, { shouldValidate: true });
+                                                                setClientPopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            + Crea &quot;{trimmedSearch}&quot;
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">Nessun cliente trovato.</span>
+                                                    )}
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {clientList.map((client) => (
+                                                        <CommandItem
+                                                            value={client.name}
+                                                            key={client.id}
+                                                            onSelect={() => {
+                                                                form.setValue("clientId", client.id, { shouldValidate: true });
+                                                                setClientSearchValue('');
+                                                                setClientPopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    client.id === field.value ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {client.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                    {trimmedSearch && !exactClientMatch && (
+                                                        <CommandItem
+                                                            value={`__create__${trimmedSearch}`}
+                                                            onSelect={() => {
+                                                                form.setValue("clientId", trimmedSearch, { shouldValidate: true });
+                                                                setClientPopoverOpen(false);
+                                                            }}
+                                                            className="text-primary font-medium"
+                                                        >
+                                                            + Crea &quot;{trimmedSearch}&quot;
+                                                        </CommandItem>
+                                                    )}
+                                                </CommandGroup>
+                                            </CommandList>
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
                                 <FormMessage />
                             </FormItem>
-                        )}
+                            );
+                        }}
                         />
 
                     <FormField

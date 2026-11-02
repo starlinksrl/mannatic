@@ -161,7 +161,8 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
     try {
         const appConfig = await getAppConfiguration();
         
-        const companyPayload: Omit<Company, 'id'> = {
+        const companyPayload: Company = {
+            id: (companyData as any).id || uuidv4(),
             name: companyData.name!,
             creatorId: companyData.creatorId || undefined,
             distributorId: companyData.distributorId || undefined,
@@ -434,12 +435,12 @@ function filterInterventionColumns(snakeObj: Record<string, any>): Record<string
 export async function addIntervention(interventionData: Omit<Intervention, 'id' | 'createdAt'>): Promise<Intervention> {
     try {
         const payload = {
+            id: (interventionData as any).id || uuidv4(),
             ...interventionData,
             createdAt: new Date().toISOString(),
             isMaintenance: false,
         };
         const snakeData = filterInterventionColumns(mapKeysToSnake(payload));
-        delete snakeData.id;
 
         const { data, error } = await supabase.from('interventions').insert(snakeData).select().single();
         if (error || !data) {
@@ -545,11 +546,12 @@ export async function addScheduledMaintenance(data: Omit<ScheduledMaintenance, '
         delete (cleanPayload as any).assignedOperatorId;
         delete (cleanPayload as any).periodicity;
         const payload = {
+            id: (cleanPayload as any).id || uuidv4(),
             ...cleanPayload,
             createdAt: new Date().toISOString(),
             isMaintenance: true,
         };
-        const snakeData = mapKeysToSnake(payload);
+        const snakeData = filterInterventionColumns(mapKeysToSnake(payload));
         const { data: result, error } = await supabase.from('interventions').insert(snakeData).select().single();
         if (error || !result) throw new Error(error?.message || "Failed to add scheduled maintenance.");
         return mapKeysToCamel<ScheduledMaintenance>(result);
@@ -609,7 +611,7 @@ export async function getSurveys(companyId?: string): Promise<any[]> {
 
 export async function addSurvey(surveyData: any): Promise<any> {
     try {
-        const snakeData = mapKeysToSnake({ ...surveyData, createdAt: new Date().toISOString() });
+        const snakeData = mapKeysToSnake({ id: surveyData.id || uuidv4(), ...surveyData, createdAt: new Date().toISOString() });
         const { data, error } = await supabase.from('surveys').insert(snakeData).select().single();
         if (error || !data) throw error;
         return mapKeysToCamel(data);
@@ -681,6 +683,7 @@ export async function getAppointments(companyId?: string): Promise<Appointment[]
 export async function addAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt'>): Promise<Appointment> {
     try {
         const payload = {
+            id: (appointmentData as any).id || uuidv4(),
             ...appointmentData,
             createdAt: new Date().toISOString(),
         };
@@ -746,6 +749,7 @@ export async function getNotifications(userId?: string, companyId?: string): Pro
 export async function addNotification(notificationData: Omit<Notification, 'id' | 'createdAt' | 'read'>): Promise<Notification> {
     try {
         const payload = {
+            id: (notificationData as any).id || uuidv4(),
             ...notificationData,
             read: false,
             createdAt: new Date().toISOString(),
@@ -981,6 +985,7 @@ export async function addSupportTicket(ticketData: {
     };
 
     const newTicketPayload = {
+        id: (ticketData as any).id || uuidv4(),
         clientId: ticketData.clientId,
         clientName: ticketData.clientName,
         companyId: ticketData.companyId,

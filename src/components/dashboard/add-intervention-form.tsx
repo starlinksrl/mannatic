@@ -351,7 +351,13 @@ export function AddInterventionForm({ children, onInterventionAdded, onClientCre
                     <FormField
                         control={form.control}
                         name="clientId"
-                        render={({ field }) => (
+                        render={({ field }) => {
+                            const trimmedSearch = clientSearchValue.trim();
+                            const exactClientMatch = trimmedSearch
+                                ? clientList.some(c => c.name.trim().toLowerCase() === trimmedSearch.toLowerCase())
+                                : false;
+
+                            return (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Cliente</FormLabel>
                                 <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
@@ -384,18 +390,20 @@ export function AddInterventionForm({ children, onInterventionAdded, onClientCre
                                             />
                                             <CommandList>
                                                 <CommandEmpty>
-                                                    {clientSearchValue.trim() && (
+                                                    {trimmedSearch ? (
                                                         <Button 
                                                             type="button"
                                                             variant="ghost" 
                                                             className="w-full justify-start text-primary font-medium"
                                                             onClick={() => {
-                                                                form.setValue("clientId", clientSearchValue.trim());
+                                                                form.setValue("clientId", trimmedSearch, { shouldValidate: true });
                                                                 setClientPopoverOpen(false);
                                                             }}
                                                         >
-                                                            + Crea &quot;{clientSearchValue.trim()}&quot;
+                                                            + Crea &quot;{trimmedSearch}&quot;
                                                         </Button>
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">Nessun cliente trovato.</span>
                                                     )}
                                                 </CommandEmpty>
                                                 <CommandGroup>
@@ -404,7 +412,7 @@ export function AddInterventionForm({ children, onInterventionAdded, onClientCre
                                                             value={client.name}
                                                             key={client.id}
                                                             onSelect={() => {
-                                                                form.setValue("clientId", client.id);
+                                                                form.setValue("clientId", client.id, { shouldValidate: true });
                                                                 setClientSearchValue('');
                                                                 setClientPopoverOpen(false);
                                                             }}
@@ -418,6 +426,18 @@ export function AddInterventionForm({ children, onInterventionAdded, onClientCre
                                                             {client.name}
                                                         </CommandItem>
                                                     ))}
+                                                    {trimmedSearch && !exactClientMatch && (
+                                                        <CommandItem
+                                                            value={`__create__${trimmedSearch}`}
+                                                            onSelect={() => {
+                                                                form.setValue("clientId", trimmedSearch, { shouldValidate: true });
+                                                                setClientPopoverOpen(false);
+                                                            }}
+                                                            className="text-primary font-medium"
+                                                        >
+                                                            + Crea &quot;{trimmedSearch}&quot;
+                                                        </CommandItem>
+                                                    )}
                                                 </CommandGroup>
                                             </CommandList>
                                         </Command>
@@ -425,7 +445,8 @@ export function AddInterventionForm({ children, onInterventionAdded, onClientCre
                                 </Popover>
                                 <FormMessage />
                             </FormItem>
-                        )}
+                            );
+                        }}
                     />
                     <FormField
                     control={form.control}
