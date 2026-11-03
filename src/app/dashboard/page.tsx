@@ -2,9 +2,9 @@
 'use client';
 
 import { Header } from '@/components/dashboard/header';
-import { getInterventions, getScheduledMaintenances, getUsers, getClients, updateUser, getAppointments, getSupportTickets, updateDocument } from '@/lib/data';
+import { getInterventions, getScheduledMaintenances, updateScheduledMaintenance, getUsers, getClients, updateUser, getAppointments, getSupportTickets, updateDocument } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointment, SupportTicket } from '@/lib/types';
-import { isAfter, addDays, startOfToday, isWithinInterval, subMonths, differenceInHours, format, formatDistanceToNow } from 'date-fns';
+import { isAfter, isBefore, addDays, addMonths, setHours, setMinutes, startOfToday, isWithinInterval, subMonths, differenceInHours, format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -85,7 +85,58 @@ export default function DashboardPage() {
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [maintenanceToEdit, setMaintenanceToEdit] = useState<ScheduledMaintenance | null>(null);
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
+  const [executingMaintenanceId, setExecutingMaintenanceId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleQuickExecuteMaintenance = async (e: React.MouseEvent, maint: ScheduledMaintenance) => {
+    e.stopPropagation();
+    if (!user || executingMaintenanceId) return;
+    setExecutingMaintenanceId(maint.id);
+    try {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const months = Number(maint.recurrenceMonths) || 1;
+      const currentDue = maint.nextDueDate ? new Date(maint.nextDueDate) : now;
+      const baseDate = !isNaN(currentDue.getTime()) && isBefore(now, currentDue) ? currentDue : now;
+      const renewedDate = setHours(setMinutes(addMonths(baseDate, months), 0), 12);
+      const renewedDateIso = renewedDate.toISOString();
+      const formattedNow = format(now, 'dd/MM/yyyy', { locale: it });
+      const formattedNext = format(renewedDate, 'dd/MM/yyyy', { locale: it });
+
+      const updated = await updateScheduledMaintenance(maint.id, {
+        ...maint,
+        status: 'Pianificato',
+        completedAt: nowIso,
+        dueDate: renewedDateIso,
+        nextDueDate: renewedDateIso,
+        updates: [
+          {
+            date: nowIso,
+            description: `Manutenzione eseguita il ${formattedNow}. Prossima scadenza rinnovata al ${formattedNext}`,
+            userName: user.name,
+          },
+          ...(maint.updates || []),
+        ],
+      });
+
+      if (updated) {
+        toast({
+          title: 'Manutenzione eseguita e rinnovata',
+          description: `"${maint.title}" rinnovata al ${formattedNext}.`,
+        });
+        fetchKpiData();
+      }
+    } catch (err) {
+      console.error('Error quick-executing maintenance:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Errore',
+        description: 'Impossibile rinnovare la manutenzione.',
+      });
+    } finally {
+      setExecutingMaintenanceId(null);
+    }
+  };
   const [isSavingFeaturedOrder, setIsSavingFeaturedOrder] = useState(false);
 
   const handleOrderChanged = async (newList: Intervention[]) => {
@@ -915,11 +966,27 @@ export default function DashboardPage() {
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1 border-t border-dashed">
-                                                    <span>Ogni {months} mes{months > 1 ? 'i' : 'e'} • {maint.status}</span>
-                                                    {nextDateStr && (
-                                                        <span>Scad.: {format(new Date(nextDateStr), 'dd/MM/yy')}</span>
-                                                    )}
+                                                <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1 border-t border-dashed gap-2">
+                                                    <div>
+                                                        <span>Ogni {months} mes{months > 1 ? 'i' : 'e'} • {maint.status}</span>
+                                                        {nextDateStr && (
+                                                            <span className="ml-2 font-medium text-foreground">Scad.: {format(new Date(nextDateStr), 'dd/MM/yy')}</span>
+                                                        )}
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={executingMaintenanceId === maint.id}
+                                                        onClick={(e) => handleQuickExecuteMaintenance(e, maint)}
+                                                        className="h-7 px-2.5 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                                                    >
+                                                        {executingMaintenanceId === maint.id ? (
+                                                            <Loader className="mr-1 h-3 w-3 animate-spin" />
+                                                        ) : (
+                                                            <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-emerald-600" />
+                                                        )}
+                                                        Eseguita
+                                                    </Button>
                                                 </div>
                                             </div>
                                         );

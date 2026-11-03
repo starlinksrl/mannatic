@@ -26,8 +26,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Loader2 } from 'lucide-react';
-import { format, formatDistanceToNow, addMonths, setHours, setMinutes } from 'date-fns';
+import { CalendarIcon, MessageSquarePlus, Loader2, CheckCircle2 } from 'lucide-react';
+import { format, formatDistanceToNow, addMonths, setHours, setMinutes, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ScheduledMaintenance, User, InterventionPriority, ScheduledMaintenanceStatus, InterventionUpdate } from '@/lib/types';
@@ -115,6 +115,82 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
 
   if (!maintenance || !currentUser) return null;
   const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+
+  async function handleExecuteAndRenew() {
+    if (!maintenance || !currentUser) return;
+    const isValid = await form.trigger();
+    if (!isValid) return;
+
+    const values = form.getValues();
+    setIsSubmitting(true);
+    try {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const months = Number(values.recurrenceMonths) || 1;
+      const currentDue = values.dueDate ? new Date(values.dueDate) : now;
+      const baseDate = !isNaN(currentDue.getTime()) && isBefore(now, currentDue) ? currentDue : now;
+      const renewedDate = setHours(setMinutes(addMonths(baseDate, months), 0), 12);
+      const renewedDateIso = renewedDate.toISOString();
+
+      const formattedNow = format(now, 'dd/MM/yyyy', { locale: it });
+      const formattedNext = format(renewedDate, 'dd/MM/yyyy', { locale: it });
+      const noteSuffix = values.newUpdate && values.newUpdate.trim() !== '' ? ` — Note: ${values.newUpdate.trim()}` : '';
+
+      const newUpdates: InterventionUpdate[] = [
+        {
+          date: nowIso,
+          description: `Manutenzione eseguita il ${formattedNow}. Prossima scadenza rinnovata al ${formattedNext}${noteSuffix}`,
+          userName: currentUser.name,
+        },
+        ...(maintenance.updates || []),
+      ];
+
+      const assignedOperatorIds = (values.assignedOperatorId && values.assignedOperatorId !== 'null')
+        ? [values.assignedOperatorId]
+        : [];
+
+      const updatedMaintenanceData: ScheduledMaintenance = {
+        ...maintenance,
+        title: values.title,
+        clientId: values.clientId,
+        description: values.description || '',
+        priority: values.priority as InterventionPriority,
+        status: 'Pianificato',
+        completedAt: nowIso,
+        dueDate: renewedDateIso,
+        nextDueDate: renewedDateIso,
+        recurrenceMonths: months,
+        cost: isAdmin ? (values.cost ?? null) : (maintenance.cost ?? null),
+        assignedOperatorIds,
+        updates: newUpdates,
+      };
+
+      const updated = await updateScheduledMaintenance(maintenance.id, updatedMaintenanceData);
+      if (updated) {
+        onMaintenanceUpdated(updated);
+        toast({
+          title: 'Manutenzione eseguita e rinnovata',
+          description: `"${values.title}" registrata come eseguita. Nuova scadenza fissata al ${formattedNext}.`,
+        });
+        setIsOpen(false);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Errore',
+          description: 'Impossibile rinnovare la manutenzione.',
+        });
+      }
+    } catch (error) {
+      console.error('Error executing and renewing scheduled maintenance:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Errore',
+        description: "Si è verificato un errore durante l'esecuzione.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -455,6 +531,17 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
             <DialogClose asChild>
                 <Button variant="outline" disabled={isSubmitting}>Annulla</Button>
             </DialogClose>
+            {currentUser.role !== 'Client' && maintenance.status !== 'Annullato' && (
+                <Button
+                    type="button"
+                    onClick={handleExecuteAndRenew}
+                    disabled={isSubmitting}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                    Eseguita e Rinnova Scadenza
+                </Button>
+            )}
             <Button type="submit" form="edit-maintenance-form" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Salva modifiche

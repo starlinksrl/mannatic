@@ -14,11 +14,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, formatDistanceToNow, isBefore, addDays, startOfToday, addMonths } from 'date-fns';
+import { format, formatDistanceToNow, isBefore, addDays, startOfToday, addMonths, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { deleteScheduledMaintenance } from '@/lib/data';
+import { deleteScheduledMaintenance, updateScheduledMaintenance } from '@/lib/data';
 import { Button } from '../ui/button';
-import { MoreHorizontal, PlusCircle, Pencil, Trash2, ChevronDown, ChevronUp, Euro, TrendingUp, ClipboardList } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Pencil, Trash2, ChevronDown, ChevronUp, Euro, TrendingUp, ClipboardList, CheckCircle2, Loader2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { AddMaintenanceForm } from './add-maintenance-form';
@@ -60,6 +61,11 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [maintenanceToDelete, setMaintenanceToDelete] = useState<ScheduledMaintenance | null>(null);
+
+  const [isExecuteDialogOpen, setIsExecuteDialogOpen] = useState(false);
+  const [maintenanceToExecute, setMaintenanceToExecute] = useState<ScheduledMaintenance | null>(null);
+  const [executionNote, setExecutionNote] = useState('');
+  const [isExecuting, setIsExecuting] = useState(false);
   
   useEffect(() => {
     setMaintenanceTasks(initialMaintenanceTasks);
@@ -84,6 +90,76 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     setMaintenanceToDelete(maintenance);
     setIsDeleteDialogOpen(true);
   }
+
+  const getNextRenewalDate = (maintenance: ScheduledMaintenance): Date => {
+    const months = Number(maintenance.recurrenceMonths) || 1;
+    const now = new Date();
+    const currentDue = maintenance.nextDueDate ? new Date(maintenance.nextDueDate) : now;
+    const baseDate = !isNaN(currentDue.getTime()) && isBefore(now, currentDue) ? currentDue : now;
+    return setHours(setMinutes(addMonths(baseDate, months), 0), 12);
+  };
+
+  const handleExecuteClick = (maintenance: ScheduledMaintenance) => {
+    setMaintenanceToExecute(maintenance);
+    setExecutionNote('');
+    setIsExecuteDialogOpen(true);
+  };
+
+  const confirmExecuteAndRenew = async () => {
+    if (!maintenanceToExecute) return;
+    setIsExecuting(true);
+    try {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const renewedDate = getNextRenewalDate(maintenanceToExecute);
+      const renewedDateIso = renewedDate.toISOString();
+      const formattedNow = format(now, 'dd/MM/yyyy', { locale: it });
+      const formattedNext = format(renewedDate, 'dd/MM/yyyy', { locale: it });
+
+      const noteSuffix = executionNote.trim() ? ` — Note: ${executionNote.trim()}` : '';
+      const newUpdateEntry = {
+        date: nowIso,
+        description: `Manutenzione eseguita il ${formattedNow}. Prossima scadenza rinnovata al ${formattedNext}${noteSuffix}`,
+        userName: currentUser.name,
+      };
+
+      const updatedPayload: ScheduledMaintenance = {
+        ...maintenanceToExecute,
+        status: 'Pianificato',
+        completedAt: nowIso,
+        dueDate: renewedDateIso,
+        nextDueDate: renewedDateIso,
+        updates: [newUpdateEntry, ...(maintenanceToExecute.updates || [])],
+      };
+
+      const updated = await updateScheduledMaintenance(maintenanceToExecute.id, updatedPayload);
+      if (updated) {
+        onMaintenanceChange();
+        toast({
+          title: 'Manutenzione eseguita e rinnovata',
+          description: `"${maintenanceToExecute.title}" registrata come eseguita. Nuova scadenza fissata al ${formattedNext}.`,
+        });
+        setIsExecuteDialogOpen(false);
+        setMaintenanceToExecute(null);
+        setExecutionNote('');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Errore',
+          description: 'Impossibile aggiornare e rinnovare la manutenzione.',
+        });
+      }
+    } catch (error) {
+      console.error('Error executing maintenance:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Errore',
+        description: "Si è verificato un errore durante il rinnovo della manutenzione.",
+      });
+    } finally {
+      setIsExecuting(false);
+    }
+  };
 
   const confirmDelete = async () => {
     if (!maintenanceToDelete) return;
@@ -340,6 +416,11 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                         <p className="font-medium uppercase">{task.title}</p>
                         {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground uppercase">{clientName}</p>}
                         <p className="text-sm text-muted-foreground">Prossima scadenza: {format(new Date(task.nextDueDate), 'dd MMM yyyy', { locale: it })}</p>
+                        {task.completedAt && (
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                Ultima esecuzione: {format(new Date(task.completedAt), 'dd MMM yyyy', { locale: it })}
+                            </p>
+                        )}
                         <div className="flex flex-wrap items-center gap-2 pt-1">
                             {getStatusBadge(task)}
                             <Badge variant="outline">{getPeriodicityText(task)}</Badge>
@@ -349,12 +430,30 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                                 </Badge>
                             )}
                         </div>
+                        {currentUser.role !== 'Client' && task.status !== 'Annullato' && (
+                            <div className="pt-2" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                                    onClick={() => handleExecuteClick(task)}
+                                >
+                                    <CheckCircle2 className="mr-1.5 h-4 w-4 text-emerald-600" />
+                                    Eseguita
+                                </Button>
+                            </div>
+                        )}
                     </div>
                      <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
+                        {currentUser.role !== 'Client' && task.status !== 'Annullato' && (
+                            <DropdownMenuItem onSelect={() => handleExecuteClick(task)} className="text-emerald-700 focus:text-emerald-700">
+                                <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> Segna come Eseguita
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onSelect={() => handleEditClick(task)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
@@ -430,29 +529,52 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                         <p className="text-xs text-muted-foreground">
                             ({formatDistanceToNow(new Date(task.nextDueDate), { locale: it, addSuffix: true })})
                         </p>
+                        {task.completedAt && (
+                            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                Ultima esec.: {format(new Date(task.completedAt), 'dd/MM/yy', { locale: it })}
+                            </p>
+                        )}
                     </TableCell>
                     <TableCell className="cursor-pointer uppercase" onClick={() => handleEditClick(task)}>{operatorName || 'Non assegnato'}</TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                         <DropdownMenuItem onSelect={() => handleEditClick(task)}>
-                             <Pencil className="mr-2" /> Modifica
-                         </DropdownMenuItem>
-                         {currentUser.role === 'Admin' && (
-                            <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                    onSelect={() => handleDeleteClick(task)}>
-                                    <Trash2 className="mr-2" /> Elimina
-                                </DropdownMenuItem>
-                            </>
+                    <div className="flex items-center justify-end gap-1">
+                        {currentUser.role !== 'Client' && task.status !== 'Annullato' && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                                onClick={() => handleExecuteClick(task)}
+                            >
+                                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
+                                Eseguita
+                            </Button>
                         )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                             {currentUser.role !== 'Client' && task.status !== 'Annullato' && (
+                                 <DropdownMenuItem onSelect={() => handleExecuteClick(task)} className="text-emerald-700 focus:text-emerald-700">
+                                     <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> Segna come Eseguita
+                                 </DropdownMenuItem>
+                             )}
+                             <DropdownMenuItem onSelect={() => handleEditClick(task)}>
+                                 <Pencil className="mr-2" /> Modifica
+                             </DropdownMenuItem>
+                             {currentUser.role === 'Admin' && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                        onSelect={() => handleDeleteClick(task)}>
+                                        <Trash2 className="mr-2" /> Elimina
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -468,6 +590,60 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
         isOpen={isEditModalOpen}
         setIsOpen={setIsEditModalOpen}
       />
+      <AlertDialog open={isExecuteDialogOpen} onOpenChange={(open) => {
+        if (!isExecuting) {
+          setIsExecuteDialogOpen(open);
+          if (!open) setMaintenanceToExecute(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              Conferma Manutenzione Eseguita
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground pt-1">
+                <p>
+                  Stai segnando come eseguita la manutenzione <b>{maintenanceToExecute?.title}</b>
+                  {maintenanceToExecute && clientsMap.get(maintenanceToExecute.clientId) ? ` per il cliente ${clientsMap.get(maintenanceToExecute.clientId)}` : ''}.
+                </p>
+                {maintenanceToExecute && (
+                  <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200">
+                    <p className="text-xs uppercase font-bold tracking-wider">Nuova Prossima Scadenza</p>
+                    <p className="text-base font-bold mt-0.5">
+                      {format(getNextRenewalDate(maintenanceToExecute), 'dd MMMM yyyy', { locale: it })}
+                      <span className="text-xs font-normal ml-1">
+                        (rinnovo automatico di {maintenanceToExecute.recurrenceMonths || 1} {(maintenanceToExecute.recurrenceMonths || 1) > 1 ? 'mesi' : 'mese'})
+                      </span>
+                    </p>
+                  </div>
+                )}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-medium text-foreground">Note sull&apos;esecuzione (opzionale)</label>
+                  <Textarea
+                    placeholder="Es. Filtro sostituito, controllo regolare..."
+                    value={executionNote}
+                    onChange={(e) => setExecutionNote(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isExecuting}>Annulla</AlertDialogCancel>
+            <Button
+              onClick={confirmExecuteAndRenew}
+              disabled={isExecuting}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isExecuting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Conferma Eseguita e Rinnova
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
