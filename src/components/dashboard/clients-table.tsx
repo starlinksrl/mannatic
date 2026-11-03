@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound, LogIn, ExternalLink, ShieldCheck, ShieldOff, Loader } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound, LogIn, ExternalLink, ShieldCheck, ShieldOff, Loader, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -55,10 +55,33 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     const [isLoggingInAs, setIsLoggingInAs] = useState<string | null>(null);
     const [togglingClientId, setTogglingClientId] = useState<string | null>(null);
     const [localClients, setLocalClients] = useState<User[]>(clients);
+    const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'isSubscribed' | 'contact' | 'address'; direction: 'ascending' | 'descending' } | null>({
+        key: 'name',
+        direction: 'ascending',
+    });
 
     useEffect(() => {
         setLocalClients(clients);
     }, [clients]);
+
+    const requestSort = (key: 'name' | 'isSubscribed' | 'contact' | 'address') => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortIcon = (key: 'name' | 'isSubscribed' | 'contact' | 'address') => {
+        if (!sortConfig || sortConfig.key !== key) {
+            return <ArrowUpDown className="ml-1.5 h-3.5 w-3.5 opacity-50" />;
+        }
+        return sortConfig.direction === 'ascending' ? (
+            <ChevronUp className="ml-1.5 h-3.5 w-3.5" />
+        ) : (
+            <ChevronDown className="ml-1.5 h-3.5 w-3.5" />
+        );
+    };
 
     const subscriptionCounts = useMemo(() => {
         const subscribed = localClients.filter(c => Boolean(c.isSubscribed)).length;
@@ -69,13 +92,41 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     }, [localClients]);
     
     const filteredClients = useMemo(() => {
-        return localClients.filter(client => {
+        const filtered = localClients.filter(client => {
             if (subscriptionFilter === 'subscribed' && !client.isSubscribed) return false;
             if (subscriptionFilter === 'unsubscribed' && client.isSubscribed) return false;
             if (!searchTerm) return true;
             return JSON.stringify(client).toLowerCase().includes(searchTerm.toLowerCase());
         });
-    }, [localClients, searchTerm, subscriptionFilter]);
+
+        if (!sortConfig) return filtered;
+
+        return [...filtered].sort((a, b) => {
+            const dir = sortConfig.direction === 'ascending' ? 1 : -1;
+            switch (sortConfig.key) {
+                case 'name':
+                    return (a.name || '').localeCompare(b.name || '', 'it', { sensitivity: 'base' }) * dir;
+                case 'isSubscribed': {
+                    const aVal = a.isSubscribed ? 1 : 0;
+                    const bVal = b.isSubscribed ? 1 : 0;
+                    if (aVal !== bVal) return (bVal - aVal) * dir;
+                    return (a.name || '').localeCompare(b.name || '', 'it', { sensitivity: 'base' });
+                }
+                case 'contact': {
+                    const aContact = (a.email || a.phone || '').toLowerCase();
+                    const bContact = (b.email || b.phone || '').toLowerCase();
+                    return aContact.localeCompare(bContact, 'it', { sensitivity: 'base' }) * dir;
+                }
+                case 'address': {
+                    const aAddr = (a.address || '').toLowerCase();
+                    const bAddr = (b.address || '').toLowerCase();
+                    return aAddr.localeCompare(bAddr, 'it', { sensitivity: 'base' }) * dir;
+                }
+                default:
+                    return 0;
+            }
+        });
+    }, [localClients, searchTerm, subscriptionFilter, sortConfig]);
 
     const handleToggleSubscription = async (client: User, e?: React.MouseEvent | Event) => {
         if (e) e.stopPropagation();
@@ -339,10 +390,30 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nome</TableHead>
-            <TableHead>Servizio Assistenza</TableHead>
-            <TableHead className="hidden sm:table-cell">Contatti</TableHead>
-            <TableHead className="hidden md:table-cell">Indirizzo</TableHead>
+            <TableHead>
+              <Button variant="ghost" className="-ml-4 h-8 px-3 font-medium" onClick={() => requestSort('name')}>
+                Nome
+                {getSortIcon('name')}
+              </Button>
+            </TableHead>
+            <TableHead>
+              <Button variant="ghost" className="-ml-4 h-8 px-3 font-medium" onClick={() => requestSort('isSubscribed')}>
+                Servizio Assistenza
+                {getSortIcon('isSubscribed')}
+              </Button>
+            </TableHead>
+            <TableHead className="hidden sm:table-cell">
+              <Button variant="ghost" className="-ml-4 h-8 px-3 font-medium" onClick={() => requestSort('contact')}>
+                Contatti
+                {getSortIcon('contact')}
+              </Button>
+            </TableHead>
+            <TableHead className="hidden md:table-cell">
+              <Button variant="ghost" className="-ml-4 h-8 px-3 font-medium" onClick={() => requestSort('address')}>
+                Indirizzo
+                {getSortIcon('address')}
+              </Button>
+            </TableHead>
             <TableHead className="text-right">Azioni</TableHead>
           </TableRow>
         </TableHeader>
