@@ -59,6 +59,7 @@ const formSchema = z.object({
   uniqueCode: z.string().optional(),
   logoUrl: z.string().optional(),
   simplifiedDashboard: z.boolean().optional(),
+  isSubscribed: z.boolean().optional(),
 });
 
 interface AddUserFormProps {
@@ -94,6 +95,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
       allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'], // Default to all for new operators
       clientNotes: '',
       simplifiedDashboard: false,
+      isSubscribed: false,
     },
   });
   
@@ -110,6 +112,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
           allowedSectors: ['interventions', 'new_installations', 'appointments', 'maintenance'],
           clientNotes: '',
           simplifiedDashboard: false,
+          isSubscribed: false,
         });
         setShowPassword(false);
         setAddressInput('');
@@ -149,6 +152,7 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
             latitude: values.latitude,
             longitude: values.longitude,
             clientNotes: values.role === 'Client' ? values.clientNotes : undefined,
+            isSubscribed: values.role === 'Client' ? Boolean(values.isSubscribed) : undefined,
             logoUrl: values.logoUrl,
             vatNumber: values.vatNumber,
             taxCode: values.taxCode,
@@ -487,6 +491,30 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                 />
                  {isClientForm && (
                    <>
+                    <FormField
+                      control={form.control}
+                      name="isSubscribed"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Servizio di Assistenza</FormLabel>
+                          <Select
+                            onValueChange={(val) => field.onChange(val === 'true')}
+                            value={field.value ? 'true' : 'false'}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona stato abbonamento" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="true">Abbonato (Servizio Assistenza Attivo)</SelectItem>
+                              <SelectItem value="false">Non Abbonato</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                         control={form.control}
                         name="website"

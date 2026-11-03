@@ -18,7 +18,7 @@ import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention, updateIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader, TrendingUp, MailPlus, Eye } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader, TrendingUp, MailPlus, Eye, ShieldCheck, ShieldOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -578,9 +578,24 @@ export function InterventionsTable({
                           <CardHeader className="p-4 pb-2 space-y-0">
                               <div className="flex justify-between items-start">
                                   <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                                          {client?.name || 'Cliente Sconosciuto'}
-                                      </p>
+                                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                              {client?.name || 'Cliente Sconosciuto'}
+                                          </p>
+                                          {client && currentUser.role !== 'Client' && (
+                                              <Badge
+                                                  variant={client.isSubscribed ? 'default' : 'secondary'}
+                                                  className={
+                                                      client.isSubscribed
+                                                          ? 'bg-emerald-600 text-white hover:bg-emerald-600 text-[9px] px-1.5 py-0 h-4 inline-flex items-center gap-0.5'
+                                                          : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[9px] px-1.5 py-0 h-4 inline-flex items-center gap-0.5'
+                                                  }
+                                              >
+                                                  {client.isSubscribed ? <ShieldCheck className="h-2.5 w-2.5" /> : <ShieldOff className="h-2.5 w-2.5" />}
+                                                  {client.isSubscribed ? 'Abbonato' : 'Non Abbonato'}
+                                              </Badge>
+                                          )}
+                                      </div>
                                       <CardTitle className="text-sm font-semibold line-clamp-2 leading-tight uppercase">
                                           {intervention.title}
                                       </CardTitle>
@@ -657,7 +672,20 @@ export function InterventionsTable({
                             <div className="flex-1 space-y-2 pr-4 break-words cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                                 {currentUser.role !== 'Client' && client && (
                                 <div className="space-y-1 text-sm">
-                                    <p className="font-medium break-words uppercase">{client.name}</p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <p className="font-medium break-words uppercase">{client.name}</p>
+                                        <Badge
+                                            variant={client.isSubscribed ? 'default' : 'secondary'}
+                                            className={
+                                                client.isSubscribed
+                                                    ? 'bg-emerald-600 text-white hover:bg-emerald-600 text-[10px] px-1.5 py-0 h-4 inline-flex items-center gap-1'
+                                                    : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px] px-1.5 py-0 h-4 inline-flex items-center gap-1'
+                                            }
+                                        >
+                                            {client.isSubscribed ? <ShieldCheck className="h-2.5 w-2.5" /> : <ShieldOff className="h-2.5 w-2.5" />}
+                                            {client.isSubscribed ? 'Abbonato' : 'Non Abbonato'}
+                                        </Badge>
+                                    </div>
                                     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                                         {client.phone && (
                                             <div className="flex items-center gap-2">
@@ -766,8 +794,23 @@ export function InterventionsTable({
                             )}
                             {currentUser.role !== 'Client' ? (
                                 <TableCell className="font-medium cursor-pointer max-w-[250px]" onClick={() => handleEditClick(intervention as Intervention)}>
-                                    <div className="flex flex-col break-words">
-                                        <span className="break-words font-semibold uppercase">{client ? client.name : '-'}</span>
+                                    <div className="flex flex-col break-words gap-0.5">
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                            <span className="break-words font-semibold uppercase">{client ? client.name : '-'}</span>
+                                            {client && (
+                                                <Badge
+                                                    variant={client.isSubscribed ? 'default' : 'secondary'}
+                                                    className={
+                                                        client.isSubscribed
+                                                            ? 'bg-emerald-600 text-white hover:bg-emerald-600 text-[9px] px-1.5 py-0 h-4 inline-flex items-center gap-0.5'
+                                                            : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[9px] px-1.5 py-0 h-4 inline-flex items-center gap-0.5'
+                                                    }
+                                                >
+                                                    {client.isSubscribed ? <ShieldCheck className="h-2.5 w-2.5" /> : <ShieldOff className="h-2.5 w-2.5" />}
+                                                    {client.isSubscribed ? 'Abbonato' : 'Non Abbonato'}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <span className="text-xs text-muted-foreground uppercase">{intervention.title}</span>
                                     </div>
                                 </TableCell>

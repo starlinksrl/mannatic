@@ -62,6 +62,7 @@ const formSchema = z.object({
   taxCode: z.string().optional(),
   uniqueCode: z.string().optional(),
   simplifiedDashboard: z.boolean().optional(),
+  isSubscribed: z.boolean().optional(),
 });
 
 interface EditUserFormProps {
@@ -111,6 +112,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             taxCode: user.taxCode || '',
             uniqueCode: user.uniqueCode || '',
             simplifiedDashboard: user.simplifiedDashboard || false,
+            isSubscribed: Boolean(user.isSubscribed),
         });
         setAddressInput(user.address || '');
     }
@@ -138,6 +140,7 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
             taxCode: values.taxCode,
             uniqueCode: values.uniqueCode,
             simplifiedDashboard: values.role === 'Operator' ? values.simplifiedDashboard : undefined,
+            isSubscribed: values.role === 'Client' ? Boolean(values.isSubscribed) : undefined,
         };
 
         if (values.password && values.password.trim() !== '') {
@@ -516,6 +519,32 @@ export function EditUserForm({ user, onUserUpdated, isOpen, setIsOpen }: EditUse
               </div>
                {role === 'Client' && (
                   <>
+                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
+                      <FormField
+                        control={form.control}
+                        name="isSubscribed"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Servizio di Assistenza</FormLabel>
+                            <Select
+                              onValueChange={(val) => field.onChange(val === 'true')}
+                              value={field.value ? 'true' : 'false'}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleziona stato abbonamento" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="true">Abbonato (Servizio Assistenza Attivo)</SelectItem>
+                                <SelectItem value="false">Non Abbonato</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <FormField
                       control={form.control}
                       name="website"

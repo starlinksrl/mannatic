@@ -4,11 +4,12 @@ import { useState, useRef, useEffect } from 'react';
 import { SupportTicket, User, SupportTicketStatus, Attachment } from '@/lib/types';
 import { Header } from './header';
 import { Button } from '../ui/button';
-import { ArrowLeft, Loader, Send, Trash2, Wrench, UploadCloud, File as FileIcon, Image as ImageIcon, FileText } from 'lucide-react';
+import { Badge } from '../ui/badge';
+import { ArrowLeft, Loader, Send, Trash2, Wrench, UploadCloud, File as FileIcon, Image as ImageIcon, FileText, ShieldCheck, ShieldOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Textarea } from '../ui/textarea';
 import { useUser } from '@/contexts/user-context';
-import { addSupportMessage, updateSupportTicketStatus, deleteSupportTicket } from '@/lib/data';
+import { addSupportMessage, updateSupportTicketStatus, deleteSupportTicket, getUserById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -44,9 +45,22 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
   const [isDeleting, setIsDeleting] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [ticketClient, setTicketClient] = useState<User | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    if (ticket.clientId) {
+      getUserById(ticket.clientId).then((client) => {
+        if (mounted) setTicketClient(client);
+      });
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [ticket.clientId]);
 
   // Auto-scroll to the bottom of the conversation
   useEffect(() => {
@@ -224,8 +238,21 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
                 <div>
                     <CardTitle>{ticket.subject}</CardTitle>
-                    <CardDescription>
-                        Aperto da {ticket.clientName} il {format(new Date(ticket.createdAt), 'dd MMM yyyy, HH:mm', { locale: it })}
+                    <CardDescription className="flex flex-wrap items-center gap-2 mt-1">
+                        <span>Aperto da <strong>{ticket.clientName}</strong> il {format(new Date(ticket.createdAt), 'dd MMM yyyy, HH:mm', { locale: it })}</span>
+                        {ticketClient && ticketClient.role === 'Client' && (
+                            <Badge
+                                variant={ticketClient.isSubscribed ? 'default' : 'secondary'}
+                                className={
+                                    ticketClient.isSubscribed
+                                        ? 'bg-emerald-600 text-white hover:bg-emerald-600 text-xs inline-flex items-center gap-1'
+                                        : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs inline-flex items-center gap-1'
+                                }
+                            >
+                                {ticketClient.isSubscribed ? <ShieldCheck className="h-3.5 w-3.5" /> : <ShieldOff className="h-3.5 w-3.5" />}
+                                {ticketClient.isSubscribed ? 'Abbonato' : 'Non Abbonato'}
+                            </Badge>
+                        )}
                     </CardDescription>
                 </div>
                  <div className="flex items-center gap-2">

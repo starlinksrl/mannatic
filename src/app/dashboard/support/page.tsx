@@ -4,8 +4,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useUser } from '@/contexts/user-context';
 import { Header } from '@/components/dashboard/header';
 import { Loader, PlusCircle, Building, Search, X } from 'lucide-react';
-import { Company, SupportTicket } from '@/lib/types';
-import { getSupportTickets, getSupportTicketsForDistributor, getCompaniesByDistributorId } from '@/lib/data';
+import { Company, SupportTicket, User } from '@/lib/types';
+import { getSupportTickets, getSupportTicketsForDistributor, getCompaniesByDistributorId, getClients } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AddSupportTicketForm } from '@/components/dashboard/add-support-ticket-form';
@@ -19,6 +19,7 @@ function SupportPageComponent() {
   const { user, currentCompany } = useUser();
   const searchParams = useSearchParams();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [clients, setClients] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [statusFilter, setStatusFilter] = useState('active');
@@ -53,10 +54,15 @@ function SupportPageComponent() {
       // Fetch tickets across all distributor's companies (operators use parent distributorId)
       fetchedTickets = await getSupportTicketsForDistributor(effectiveDistributorId);
     } else if (currentCompany) {
-      fetchedTickets = await getSupportTickets(
-        currentCompany.id,
-        user?.role === 'Client' ? user.id : undefined
-      );
+      const [ticketsRes, clientsRes] = await Promise.all([
+        getSupportTickets(
+          currentCompany.id,
+          user?.role === 'Client' ? user.id : undefined
+        ),
+        getClients(currentCompany.id),
+      ]);
+      fetchedTickets = ticketsRes;
+      setClients(clientsRes);
     }
 
     setTickets(fetchedTickets);
@@ -341,6 +347,7 @@ function SupportPageComponent() {
           onTicketSelect={setSelectedTicket}
           currentUser={user}
           onTicketDeleted={() => fetchData()}
+          clients={clients}
         />
       </main>
     </>

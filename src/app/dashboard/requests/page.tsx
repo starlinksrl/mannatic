@@ -7,9 +7,10 @@ import { getSupportTickets, getInterventions, getUsers, getClients } from '@/lib
 import { useUser } from '@/contexts/user-context';
 import { User, Intervention, SupportTicket } from '@/lib/types';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, Mail, Phone, MapPin, ReceiptEuro, TrendingUp } from 'lucide-react';
+import { Loader, Mail, Phone, MapPin, ReceiptEuro, TrendingUp, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { SupportTicketsTable } from '@/components/dashboard/support-tickets-table';
@@ -93,7 +94,20 @@ export default function ClientRequestsPage() {
             {clients.map(client => (
                 <Card key={client.id}>
                     <CardHeader>
-                        <CardTitle>Informazioni di Contatto</CardTitle>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <CardTitle>Informazioni di Contatto</CardTitle>
+                            <Badge
+                                variant={client.isSubscribed ? 'default' : 'secondary'}
+                                className={
+                                    client.isSubscribed
+                                        ? 'bg-emerald-600 text-white hover:bg-emerald-600 inline-flex items-center gap-1'
+                                        : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 inline-flex items-center gap-1'
+                                }
+                            >
+                                {client.isSubscribed ? <ShieldCheck className="h-3.5 w-3.5" /> : <ShieldOff className="h-3.5 w-3.5" />}
+                                Servizio Assistenza: {client.isSubscribed ? 'Abbonato' : 'Non Abbonato'}
+                            </Badge>
+                        </div>
                         <CardDescription>Dettagli per {client.name}</CardDescription>
                     </CardHeader>
                     <CardContent className="grid gap-4">

@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Pencil, Trash2, Wrench, Loader } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Wrench, Loader, ShieldCheck, ShieldOff } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { convertSupportTicketToIntervention } from '@/app/actions';
 
@@ -32,13 +32,34 @@ interface SupportTicketsTableProps {
   currentUser: User;
   onTicketDeleted: () => void;
   isDashboardView?: boolean;
+  clients?: User[];
 }
 
-export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTicketDeleted, isDashboardView = false }: SupportTicketsTableProps) {
+export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTicketDeleted, isDashboardView = false, clients = [] }: SupportTicketsTableProps) {
   const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState<SupportTicket | null>(null);
   const [isConverting, setIsConverting] = useState<string | null>(null);
+
+  const renderClientSubscriptionBadge = (clientId?: string) => {
+    if (!clientId || clients.length === 0) return null;
+    const client = clients.find(c => c.id === clientId);
+    if (!client || client.role !== 'Client') return null;
+    const isSub = Boolean(client.isSubscribed);
+    return (
+      <Badge
+        variant={isSub ? 'default' : 'secondary'}
+        className={
+          isSub
+            ? 'bg-emerald-600 text-white hover:bg-emerald-600 text-[10px] px-1.5 py-0 h-5 inline-flex items-center gap-1'
+            : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px] px-1.5 py-0 h-5 inline-flex items-center gap-1'
+        }
+      >
+        {isSub ? <ShieldCheck className="h-3 w-3" /> : <ShieldOff className="h-3 w-3" />}
+        {isSub ? 'Abbonato' : 'Non Abbonato'}
+      </Badge>
+    );
+  };
 
 
   const getStatusBadge = (status: 'Aperto' | 'In Lavorazione' | 'Chiuso') => {
@@ -128,8 +149,13 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
                     <p className="font-semibold break-words pr-2 uppercase">{ticket.subject}</p>
                     {getStatusBadge(ticket.status)}
                   </div>
-                  <div className="text-sm text-muted-foreground mt-2">
-                    {(currentUser.role === 'Admin' || currentUser.role === 'Distributor') && <p className="uppercase">Cliente: {ticket.clientName}</p>}
+                  <div className="text-sm text-muted-foreground mt-2 space-y-1">
+                    {(currentUser.role === 'Admin' || currentUser.role === 'Distributor') && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="uppercase">Cliente: {ticket.clientName}</span>
+                        {renderClientSubscriptionBadge(ticket.clientId)}
+                      </div>
+                    )}
                     <p>Creato: {format(new Date(ticket.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>
                     <p>Ultimo aggiorn.: {format(new Date(ticket.updatedAt), 'dd/MM/yy HH:mm', { locale: it })}</p>
                   </div>
@@ -180,7 +206,14 @@ export function SupportTicketsTable({ tickets, onTicketSelect, currentUser, onTi
             {tickets.map((ticket) => (
               <TableRow key={ticket.id} onClick={() => onTicketSelect(ticket)} className="cursor-pointer">
                 <TableCell className="font-medium uppercase">{ticket.subject}</TableCell>
-                {(currentUser.role === 'Admin' || currentUser.role === 'Distributor') && <TableCell className="uppercase">{ticket.clientName}</TableCell>}
+                {(currentUser.role === 'Admin' || currentUser.role === 'Distributor') && (
+                  <TableCell className="uppercase">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>{ticket.clientName}</span>
+                      {renderClientSubscriptionBadge(ticket.clientId)}
+                    </div>
+                  </TableCell>
+                )}
                 <TableCell>{getStatusBadge(ticket.status)}</TableCell>
                 <TableCell>{format(new Date(ticket.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>
                 <TableCell>{format(new Date(ticket.updatedAt), 'dd/MM/yy HH:mm', { locale: it })}</TableCell>

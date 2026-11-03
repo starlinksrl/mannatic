@@ -13,12 +13,14 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound, LogIn, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound, LogIn, ExternalLink, ShieldCheck, ShieldOff, Loader } from 'lucide-react';
 import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { EditUserForm } from './edit-user-form';
 import { useUser } from '@/contexts/user-context';
-import { deleteUser } from '@/lib/data';
+import { deleteUser, updateUser } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { sendCredentialsEmailAction, createClientAutologinUrl } from '@/app/actions';
 import {
@@ -49,16 +51,83 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     const [clientToDelete, setClientToDelete] = useState<User | null>(null);
     const [isSendingCredentials, setIsSendingCredentials] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'subscribed' | 'unsubscribed'>('all');
     const [isLoggingInAs, setIsLoggingInAs] = useState<string | null>(null);
+    const [togglingClientId, setTogglingClientId] = useState<string | null>(null);
+
+    const subscriptionCounts = useMemo(() => {
+        const subscribed = clients.filter(c => Boolean(c.isSubscribed)).length;
+        return {
+            subscribed,
+            unsubscribed: clients.length - subscribed,
+        };
+    }, [clients]);
     
     const filteredClients = useMemo(() => {
-        if (!searchTerm) {
-            return clients;
+        return clients.filter(client => {
+            if (subscriptionFilter === 'subscribed' && !client.isSubscribed) return false;
+            if (subscriptionFilter === 'unsubscribed' && client.isSubscribed) return false;
+            if (!searchTerm) return true;
+            return JSON.stringify(client).toLowerCase().includes(searchTerm.toLowerCase());
+        });
+    }, [clients, searchTerm, subscriptionFilter]);
+
+    const handleToggleSubscription = async (client: User, e?: React.MouseEvent | Event) => {
+        if (e) e.stopPropagation();
+        if (currentUser?.role !== 'Admin' && currentUser?.role !== 'Creator') return;
+        setTogglingClientId(client.id);
+        try {
+            const nextStatus = !Boolean(client.isSubscribed);
+            const updated = await updateUser(client.id, { isSubscribed: nextStatus });
+            if (updated) {
+                onDataChange();
+                toast({
+                    title: nextStatus ? 'Cliente Abbonato' : 'Abbonamento Rimosso',
+                    description: `${client.name} è ora impostato come "${nextStatus ? 'Abbonato' : 'Non Abbonato'}" al servizio di assistenza.`,
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Errore',
+                    description: 'Impossibile aggiornare lo stato di abbonamento del cliente.',
+                });
+            }
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: 'Errore',
+                description: 'Si è verificato un errore durante l\'aggiornamento dello stato di abbonamento.',
+            });
+        } finally {
+            setTogglingClientId(null);
         }
-        return clients.filter(client =>
-            JSON.stringify(client).toLowerCase().includes(searchTerm.toLowerCase())
+    };
+
+    const renderSubscriptionBadge = (client: User) => {
+        const isSub = Boolean(client.isSubscribed);
+        const isLoading = togglingClientId === client.id;
+        return (
+            <Badge
+                variant={isSub ? 'default' : 'secondary'}
+                onClick={(e) => handleToggleSubscription(client, e)}
+                title={currentUser?.role === 'Admin' || currentUser?.role === 'Creator' ? 'Clicca per cambiare stato abbonamento' : undefined}
+                className={
+                    isSub
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer inline-flex items-center gap-1 font-semibold'
+                        : 'bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-800 dark:text-slate-300 cursor-pointer inline-flex items-center gap-1 font-medium'
+                }
+            >
+                {isLoading ? (
+                    <Loader className="h-3 w-3 animate-spin" />
+                ) : isSub ? (
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                ) : (
+                    <ShieldOff className="h-3.5 w-3.5" />
+                )}
+                {isSub ? 'Abbonato' : 'Non Abbonato'}
+            </Badge>
         );
-    }, [clients, searchTerm]);
+    };
 
 
     const handleEditClick = (client: User) => {
@@ -143,13 +212,33 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
 
   return (
     <>
-    <div className="mb-4">
-        <Input
-            placeholder="Cerca in tutti i campi..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-        />
+    <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 flex-1">
+            <Input
+                placeholder="Cerca in tutti i campi..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+            />
+            <Select value={subscriptionFilter} onValueChange={(v) => setSubscriptionFilter(v as 'all' | 'subscribed' | 'unsubscribed')}>
+                <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Filtra per assistenza" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Tutti i clienti ({clients.length})</SelectItem>
+                    <SelectItem value="subscribed">Abbonati ({subscriptionCounts.subscribed})</SelectItem>
+                    <SelectItem value="unsubscribed">Non Abbonati ({subscriptionCounts.unsubscribed})</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+            <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Abbonati: {subscriptionCounts.subscribed}
+            </Badge>
+            <Badge variant="secondary" className="bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                <ShieldOff className="h-3.5 w-3.5 mr-1" /> Non Abbonati: {subscriptionCounts.unsubscribed}
+            </Badge>
+        </div>
     </div>
     <Card className="lg:hidden">
         <CardContent className="p-2 space-y-2">
@@ -160,8 +249,11 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                         <AvatarImage src={client.avatarUrl} alt={client.name} />
                         <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 space-y-1 min-w-0">
-                        <p className="font-medium break-words uppercase">{client.name}</p>
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium break-words uppercase">{client.name}</p>
+                            {renderSubscriptionBadge(client)}
+                        </div>
                         <div className="space-y-1 text-sm text-muted-foreground break-all">
                              {client.email && (
                                 <a href={`mailto:${client.email}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
@@ -205,6 +297,12 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
                         {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
+                            <DropdownMenuItem onSelect={(e) => handleToggleSubscription(client, e)} disabled={togglingClientId === client.id}>
+                                {client.isSubscribed ? <ShieldOff className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4 text-emerald-600" />}
+                                {client.isSubscribed ? 'Segna come Non Abbonato' : 'Segna come Abbonato'}
+                            </DropdownMenuItem>
+                        )}
+                        {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
                            <DropdownMenuItem onSelect={() => handleSendCredentials(client)} disabled={isSendingCredentials === client.id}>
                                 <KeyRound className="mr-2" />
                                 {isSendingCredentials === client.id ? 'Invio...' : 'Invia Credenziali'}
@@ -231,6 +329,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Nome</TableHead>
+            <TableHead>Servizio Assistenza</TableHead>
             <TableHead className="hidden sm:table-cell">Contatti</TableHead>
             <TableHead className="hidden md:table-cell">Indirizzo</TableHead>
             <TableHead className="text-right">Azioni</TableHead>
@@ -247,6 +346,9 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                   </Avatar>
                   <span className="font-medium uppercase">{client.name}</span>
                 </div>
+              </TableCell>
+              <TableCell>
+                {renderSubscriptionBadge(client)}
               </TableCell>
               <TableCell onClick={() => handleEditClick(client)} className="hidden sm:table-cell cursor-pointer">
                 <div className="flex flex-col gap-1 text-xs">
@@ -297,6 +399,12 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                         <DropdownMenuItem onSelect={() => handleEditClick(client)}>
                             <Pencil className="mr-2" /> Modifica
                         </DropdownMenuItem>
+                        {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
+                            <DropdownMenuItem onSelect={(e) => handleToggleSubscription(client, e)} disabled={togglingClientId === client.id}>
+                                {client.isSubscribed ? <ShieldOff className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4 text-emerald-600" />}
+                                {client.isSubscribed ? 'Segna come Non Abbonato' : 'Segna come Abbonato'}
+                            </DropdownMenuItem>
+                        )}
                         {(currentUser?.role === 'Admin' || currentUser?.role === 'Creator') && (
                            <DropdownMenuItem onSelect={() => handleSendCredentials(client)} disabled={isSendingCredentials === client.id}>
                                 <KeyRound className="mr-2" />

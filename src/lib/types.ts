@@ -198,6 +198,7 @@ export interface User {
   vatNumber?: string;
   taxCode?: string;
   uniqueCode?: string;
+  isSubscribed?: boolean; // Stato abbonamento servizio di assistenza (Abbonato / Non Abbonato)
   distributorId?: string; // For DistributorAdmin/DistributorUser — links them to their parent distributor
   // WhatsApp settings (for Distributor role)
   whatsappAccessToken?: string;
