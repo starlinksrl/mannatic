@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { User } from '@/lib/types';
 import {
   Table,
@@ -54,38 +54,48 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'subscribed' | 'unsubscribed'>('all');
     const [isLoggingInAs, setIsLoggingInAs] = useState<string | null>(null);
     const [togglingClientId, setTogglingClientId] = useState<string | null>(null);
+    const [localClients, setLocalClients] = useState<User[]>(clients);
+
+    useEffect(() => {
+        setLocalClients(clients);
+    }, [clients]);
 
     const subscriptionCounts = useMemo(() => {
-        const subscribed = clients.filter(c => Boolean(c.isSubscribed)).length;
+        const subscribed = localClients.filter(c => Boolean(c.isSubscribed)).length;
         return {
             subscribed,
-            unsubscribed: clients.length - subscribed,
+            unsubscribed: localClients.length - subscribed,
         };
-    }, [clients]);
+    }, [localClients]);
     
     const filteredClients = useMemo(() => {
-        return clients.filter(client => {
+        return localClients.filter(client => {
             if (subscriptionFilter === 'subscribed' && !client.isSubscribed) return false;
             if (subscriptionFilter === 'unsubscribed' && client.isSubscribed) return false;
             if (!searchTerm) return true;
             return JSON.stringify(client).toLowerCase().includes(searchTerm.toLowerCase());
         });
-    }, [clients, searchTerm, subscriptionFilter]);
+    }, [localClients, searchTerm, subscriptionFilter]);
 
     const handleToggleSubscription = async (client: User, e?: React.MouseEvent | Event) => {
         if (e) e.stopPropagation();
         if (currentUser?.role !== 'Admin' && currentUser?.role !== 'Creator') return;
+        const nextStatus = !Boolean(client.isSubscribed);
+        // Aggiornamento ottimistico immediato in memoria (nessun reload della pagina)
+        setLocalClients(prev => prev.map(c => c.id === client.id ? { ...c, isSubscribed: nextStatus } : c));
         setTogglingClientId(client.id);
         try {
-            const nextStatus = !Boolean(client.isSubscribed);
             const updated = await updateUser(client.id, { isSubscribed: nextStatus });
             if (updated) {
+                setLocalClients(prev => prev.map(c => c.id === client.id ? updated : c));
                 onDataChange();
                 toast({
                     title: nextStatus ? 'Cliente Abbonato' : 'Abbonamento Rimosso',
                     description: `${client.name} è ora impostato come "${nextStatus ? 'Abbonato' : 'Non Abbonato'}" al servizio di assistenza.`,
                 });
             } else {
+                // Ripristina stato precedente in caso di errore
+                setLocalClients(prev => prev.map(c => c.id === client.id ? { ...c, isSubscribed: Boolean(client.isSubscribed) } : c));
                 toast({
                     variant: 'destructive',
                     title: 'Errore',
@@ -93,6 +103,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                 });
             }
         } catch {
+            setLocalClients(prev => prev.map(c => c.id === client.id ? { ...c, isSubscribed: Boolean(client.isSubscribed) } : c));
             toast({
                 variant: 'destructive',
                 title: 'Errore',
@@ -225,7 +236,7 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                     <SelectValue placeholder="Filtra per assistenza" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">Tutti i clienti ({clients.length})</SelectItem>
+                    <SelectItem value="all">Tutti i clienti ({localClients.length})</SelectItem>
                     <SelectItem value="subscribed">Abbonati ({subscriptionCounts.subscribed})</SelectItem>
                     <SelectItem value="unsubscribed">Non Abbonati ({subscriptionCounts.unsubscribed})</SelectItem>
                 </SelectContent>
@@ -431,7 +442,10 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
     </Card>
      <EditUserForm
         user={selectedClient}
-        onUserUpdated={onDataChange}
+        onUserUpdated={(updatedUser) => {
+            setLocalClients(prev => prev.map(c => c.id === updatedUser.id ? updatedUser : c));
+            onDataChange();
+        }}
         isOpen={isEditModalOpen}
         setIsOpen={setIsEditModalOpen}
       />

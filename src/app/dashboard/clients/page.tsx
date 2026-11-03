@@ -18,12 +18,12 @@ export default function ClientsPage() {
   const [clientList, setClientList] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
     if (!currentCompany) return;
-    setIsLoading(true);
+    if (!silent) setIsLoading(true);
     const usersFromDb = await getUsers(currentCompany.id);
     setClientList(usersFromDb.filter(u => u.role === 'Client'));
-    setIsLoading(false);
+    if (!silent) setIsLoading(false);
   };
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function ClientsPage() {
       <Header title="Clienti" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
         <div className="flex justify-end mb-4">
-            <AddUserForm onUserAdded={fetchData} defaultRole="Client" isClientForm={true}>
+            <AddUserForm onUserAdded={() => fetchData(true)} defaultRole="Client" isClientForm={true}>
               <Button>
                 <PlusCircle className="mr-2" />
                 Crea Cliente
@@ -60,7 +60,7 @@ export default function ClientsPage() {
                 <Loader className="h-8 w-8 animate-spin" />
             </div>
         ) : (
-            <ClientsTable clients={clientList} onDataChange={fetchData} />
+            <ClientsTable clients={clientList} onDataChange={() => fetchData(true)} />
         )}
       </main>
     </>
