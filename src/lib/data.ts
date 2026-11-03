@@ -567,8 +567,9 @@ export async function updateScheduledMaintenance(id: string, data: Partial<Sched
         delete (cleanPayload as any).dueTime;
         delete (cleanPayload as any).assignedOperatorId;
         delete (cleanPayload as any).periodicity;
-        const snakeData = mapKeysToSnake(cleanPayload);
+        const snakeData = filterInterventionColumns(mapKeysToSnake(cleanPayload));
         delete snakeData.id;
+        delete snakeData.created_at;
         const { data: result, error } = await supabase.from('interventions').update(snakeData).eq('id', id).select().single();
         if (error || !result) return null;
         return mapKeysToCamel<ScheduledMaintenance>(result);

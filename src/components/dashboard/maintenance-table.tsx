@@ -18,7 +18,7 @@ import { format, formatDistanceToNow, isBefore, addDays, startOfToday, addMonths
 import { it } from 'date-fns/locale';
 import { deleteScheduledMaintenance } from '@/lib/data';
 import { Button } from '../ui/button';
-import { MoreHorizontal, PlusCircle, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Pencil, Trash2, ChevronDown, ChevronUp, Euro, TrendingUp, ClipboardList } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { AddMaintenanceForm } from './add-maintenance-form';
@@ -226,9 +226,72 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
     return `Ogni ${months} mes${months > 1 ? 'i' : 'e'}`;
   };
 
+  const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
+
+  const maintenanceFinancialSummary = useMemo(() => {
+    const activeTasks = maintenanceTasks.filter(t => t.status !== 'Annullato');
+    const totalMonthlyFee = activeTasks.reduce((sum, t) => sum + (Number(t.cost) || 0), 0);
+    const totalAnnualValue = totalMonthlyFee * 12;
+    const tasksWithFee = activeTasks.filter(t => Number(t.cost) > 0).length;
+    return {
+      activeCount: activeTasks.length,
+      tasksWithFee,
+      totalMonthlyFee,
+      totalAnnualValue,
+    };
+  }, [maintenanceTasks]);
+
 
   return (
     <div className="space-y-4">
+        {isAdmin && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20">
+                    <CardContent className="p-4 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+                            <Euro className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Canone Mensile Totale</p>
+                            <p className="text-2xl font-bold text-emerald-800 dark:text-emerald-200">
+                                € {maintenanceFinancialSummary.totalMonthlyFee.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                <span className="text-xs font-normal text-muted-foreground"> / mese</span>
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20">
+                    <CardContent className="p-4 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                            <TrendingUp className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Valore Annuale Manutenzioni</p>
+                            <p className="text-2xl font-bold text-blue-800 dark:text-blue-200">
+                                € {maintenanceFinancialSummary.totalAnnualValue.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                <span className="text-xs font-normal text-muted-foreground"> / anno</span>
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20">
+                    <CardContent className="p-4 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
+                            <ClipboardList className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">Manutenzioni Attive</p>
+                            <p className="text-2xl font-bold text-purple-800 dark:text-purple-200">
+                                {maintenanceFinancialSummary.activeCount}
+                                <span className="text-xs font-normal text-muted-foreground"> ({maintenanceFinancialSummary.tasksWithFee} con canone)</span>
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        )}
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
                  <Input
@@ -277,9 +340,14 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                         <p className="font-medium uppercase">{task.title}</p>
                         {currentUser.role !== 'Client' && <p className="text-sm text-muted-foreground uppercase">{clientName}</p>}
                         <p className="text-sm text-muted-foreground">Prossima scadenza: {format(new Date(task.nextDueDate), 'dd MMM yyyy', { locale: it })}</p>
-                        <div className="flex items-center gap-2 pt-1">
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
                             {getStatusBadge(task)}
                             <Badge variant="outline">{getPeriodicityText(task)}</Badge>
+                            {isAdmin && task.cost !== null && task.cost !== undefined && Number(task.cost) > 0 && (
+                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                                    € {Number(task.cost).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mese
+                                </Badge>
+                            )}
                         </div>
                     </div>
                      <DropdownMenu>
@@ -323,6 +391,11 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                 <TableHead>
                     <Button variant="ghost" onClick={() => requestSort('recurrenceMonths')}>Periodicità {getSortIcon('recurrenceMonths')}</Button>
                 </TableHead>
+                {isAdmin && (
+                    <TableHead>
+                        <Button variant="ghost" onClick={() => requestSort('cost')}>Canone Mensile {getSortIcon('cost')}</Button>
+                    </TableHead>
+                )}
                 <TableHead>
                     <Button variant="ghost" onClick={() => requestSort('nextDueDate')}>Prossima Scadenza {getSortIcon('nextDueDate')}</Button>
                 </TableHead>
@@ -345,6 +418,13 @@ export function MaintenanceTable({ maintenanceTasks: initialMaintenanceTasks, cu
                     <TableCell className="cursor-pointer uppercase" onClick={() => handleEditClick(task)}>{clientName}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{getStatusBadge(task)}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>{getPeriodicityText(task)}</TableCell>
+                    {isAdmin && (
+                        <TableCell className="cursor-pointer font-semibold text-emerald-700 dark:text-emerald-400" onClick={() => handleEditClick(task)}>
+                            {task.cost !== null && task.cost !== undefined && Number(task.cost) > 0
+                                ? `€ ${Number(task.cost).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                : <span className="text-muted-foreground font-normal">-</span>}
+                        </TableCell>
+                    )}
                     <TableCell className="cursor-pointer" onClick={() => handleEditClick(task)}>
                         {format(new Date(task.nextDueDate), 'dd MMM yyyy', { locale: it })}
                         <p className="text-xs text-muted-foreground">

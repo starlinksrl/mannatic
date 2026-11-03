@@ -48,6 +48,10 @@ const formSchema = z.object({
   dueDate: z.date({ required_error: 'La data di prima esecuzione è obbligatoria.' }),
   assignedOperatorId: z.string().nullable().optional(),
   recurrenceMonths: z.coerce.number().min(1, 'La ricorrenza deve essere di almeno 1 mese.'),
+  cost: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : Number(val)),
+    z.number({ invalid_type_error: 'Inserisci un importo valido.' }).min(0, 'Il canone non può essere negativo.').nullable().optional()
+  ),
 });
 
 interface AddMaintenanceFormProps {
@@ -73,7 +77,8 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
       description: '',
       assignedOperatorId: null,
       recurrenceMonths: 1,
-      priority: 'Media'
+      priority: 'Media',
+      cost: null,
     },
   });
   
@@ -128,6 +133,7 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
           description: values.description || '',
           checklist: [],
           recurrenceMonths: Number(values.recurrenceMonths) || 1,
+          cost: values.cost ?? null,
           nextDueDate: normalizedDate,
           type: 'standard',
           status: 'Pianificato',
@@ -380,32 +386,55 @@ export function AddMaintenanceForm({ children, onMaintenanceAdded, clients, oper
                             />
                     </div>
 
-                    <FormField
-                        control={form.control}
-                        name="assignedOperatorId"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Assegna a Operatore (Opzionale)</FormLabel>
-                            <Select 
-                                onValueChange={(value) => field.onChange(value === 'null' ? null : value)} 
-                                value={field.value || 'null'}
-                            >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="cost"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Canone Mensile (€)</FormLabel>
                                 <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Non assegnato" />
-                                </SelectTrigger>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="0.00"
+                                        {...field}
+                                        value={field.value ?? ''}
+                                    />
                                 </FormControl>
-                                <SelectContent>
-                                <SelectItem value="null">Non assegnato</SelectItem>
-                                {operators.map(operator => (
-                                    <SelectItem key={operator.id} value={operator.id}>{operator.name}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="assignedOperatorId"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Assegna a Operatore (Opzionale)</FormLabel>
+                                <Select 
+                                    onValueChange={(value) => field.onChange(value === 'null' ? null : value)} 
+                                    value={field.value || 'null'}
+                                >
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Non assegnato" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    <SelectItem value="null">Non assegnato</SelectItem>
+                                    {operators.map(operator => (
+                                        <SelectItem key={operator.id} value={operator.id}>{operator.name}</SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
 
                 </form>
                 </Form>

@@ -46,6 +46,10 @@ const formSchema = z.object({
   dueDate: z.date({ required_error: 'La data di esecuzione è obbligatoria.' }),
   assignedOperatorId: z.string().nullable().optional(),
   recurrenceMonths: z.coerce.number().min(1, 'La ricorrenza deve essere di almeno 1 mese.'),
+  cost: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : Number(val)),
+    z.number({ invalid_type_error: 'Inserisci un importo valido.' }).min(0, 'Il canone non può essere negativo.').nullable().optional()
+  ),
   newUpdate: z.string().optional(),
 });
 
@@ -74,6 +78,7 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
       dueDate: new Date(),
       assignedOperatorId: null,
       recurrenceMonths: 1,
+      cost: null,
       newUpdate: '',
     },
   });
@@ -102,12 +107,14 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
         status: maintenance.status || 'Pianificato',
         assignedOperatorId: currentOpId,
         recurrenceMonths: maintenance.recurrenceMonths || 1,
+        cost: maintenance.cost ?? null,
         newUpdate: '',
       });
     }
   }, [maintenance, isOpen, form]);
 
   if (!maintenance || !currentUser) return null;
+  const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Creator';
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -152,6 +159,7 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
           dueDate: dueDateIso,
           nextDueDate: nextDueDateIso,
           recurrenceMonths: values.recurrenceMonths,
+          cost: isAdmin ? (values.cost ?? null) : (maintenance.cost ?? null),
           assignedOperatorIds: assignedOperatorIds,
           updates: newUpdates
       };
@@ -323,7 +331,7 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
                             />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={cn("grid grid-cols-1 gap-4", isAdmin ? "md:grid-cols-3" : "md:grid-cols-2")}>
                         <FormField
                         control={form.control}
                         name="priority"
@@ -347,6 +355,29 @@ export function EditMaintenanceForm({ maintenance, onMaintenanceUpdated, clients
                             </FormItem>
                         )}
                         />
+
+                        {isAdmin && (
+                            <FormField
+                                control={form.control}
+                                name="cost"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Canone Mensile (€)</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="0.00"
+                                            {...field}
+                                            value={field.value ?? ''}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
 
                         <FormField
                             control={form.control}
