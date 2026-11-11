@@ -28,13 +28,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Check, ChevronsUpDown, UploadCloud, File as FileIcon, Trash2, Image as ImageIcon, FileText, Loader } from 'lucide-react';
+import { CalendarIcon, Check, ChevronsUpDown, UploadCloud, File as FileIcon, Trash2, Image as ImageIcon, FileText, Loader, MapPin, Navigation, ExternalLink } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, User, InterventionPriority, InterventionType, Attachment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addIntervention, addUser } from '@/lib/data';
+import { addIntervention, addUser, updateUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ScrollArea } from '../ui/scroll-area';
@@ -107,6 +107,66 @@ export function AddInterventionForm({ children, onInterventionAdded, onClientCre
   const attachments = form.watch('attachments');
   const selectedClientId = form.watch('clientId');
 
+  const [isLocalizingClient, setIsLocalizingClient] = useState(false);
+  const currentSelectedClient = React.useMemo(() => {
+    return clientList.find(c => c.id === selectedClientId) || null;
+  }, [clientList, selectedClientId]);
+
+  const handleLocalizeClient = async () => {
+    if (!selectedClientId) {
+      toast({ variant: 'destructive', title: 'Nessun cliente selezionato', description: 'Seleziona prima un cliente esistente per acquisirne le coordinate GPS.' });
+      return;
+    }
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      toast({ variant: 'destructive', title: 'Geolocalizzazione non supportata', description: 'Il tuo browser non supporta la geolocalizzazione GPS.' });
+      return;
+    }
+
+    setIsLocalizingClient(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = Number(position.coords.latitude.toFixed(6));
+        const lng = Number(position.coords.longitude.toFixed(6));
+        try {
+          const updated = await updateUser(selectedClientId, {
+            latitude: lat,
+            longitude: lng,
+          });
+          if (updated) {
+            setClientList(prev => prev.map(c => c.id === updated.id ? updated : c));
+            onClientCreated?.(updated);
+            toast({
+              title: 'Posizione GPS Acquisita',
+              description: `Coordinate salvate per ${updated.name}: ${lat}, ${lng}`,
+            });
+          }
+        } catch (err: any) {
+          console.error('Error saving GPS coordinates:', err);
+          toast({
+            variant: 'destructive',
+            title: 'Errore Salvataggio',
+            description: 'Impossibile salvare le coordinate GPS del cliente.',
+          });
+        } finally {
+          setIsLocalizingClient(false);
+        }
+      },
+      (error) => {
+        setIsLocalizingClient(false);
+        let desc = 'Impossibile ottenere la posizione GPS.';
+        if (error.code === 1) desc = 'Permesso di accesso alla posizione negato.';
+        else if (error.code === 2) desc = 'Segnale GPS non disponibile.';
+        else if (error.code === 3) desc = 'Richiesta di posizione scaduta.';
+        toast({
+          variant: 'destructive',
+          title: 'Errore Rilevamento GPS',
+          description: desc,
+        });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+
   const [openInterventionsCount, setOpenInterventionsCount] = useState(0);
 
   useEffect(() => {
@@ -118,7 +178,7 @@ export function AddInterventionForm({ children, onInterventionAdded, onClientCre
         const allInterventions = await getInterventions(currentCompany!.id);
         const count = allInterventions.filter(i => 
           i.clientId === selectedClientId && 
-          (i.status === 'Nuovo' || i.status === 'In Corso' || i.status === 'In Attesa Ricambi')
+          (i.status === 'Nuovo' || i.status === 'In corso')
         ).length;
         setOpenInterventionsCount(count);
       } catch (e) {
@@ -443,6 +503,82 @@ export function AddInterventionForm({ children, onInterventionAdded, onClientCre
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
+
+                                {currentSelectedClient && (
+                                    <div className="mt-2 p-3 rounded-lg border bg-muted/40 space-y-2 text-xs">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div className="flex items-center gap-1.5 font-medium text-foreground min-w-0">
+                                                <MapPin className="h-4 w-4 text-primary shrink-0" />
+                                                <span className="truncate">{currentSelectedClient.address || 'Nessun indirizzo registrato per il cliente'}</span>
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={handleLocalizeClient}
+                                                disabled={isLocalizingClient}
+                                                className="h-7 px-2.5 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10"
+                                            >
+                                                {isLocalizingClient ? (
+                                                    <>
+                                                        <Loader className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                                        Rilevamento...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <MapPin className="mr-1.5 h-3.5 w-3.5" />
+                                                        Localizza
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+
+                                        {currentSelectedClient.latitude && currentSelectedClient.longitude ? (
+                                            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
+                                                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-medium">
+                                                    GPS: {currentSelectedClient.latitude.toFixed(6)}, {currentSelectedClient.longitude.toFixed(6)}
+                                                </span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Button asChild size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground">
+                                                        <a
+                                                            href={`https://www.google.com/maps?q=${currentSelectedClient.latitude},${currentSelectedClient.longitude}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            <ExternalLink className="mr-1 h-3 w-3" />
+                                                            Apri Maps
+                                                        </a>
+                                                    </Button>
+                                                    <Button asChild size="sm" className="h-6 px-2 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
+                                                        <a
+                                                            href={`https://www.google.com/maps/dir/?api=1&destination=${currentSelectedClient.latitude},${currentSelectedClient.longitude}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            <Navigation className="mr-1 h-3 w-3" />
+                                                            Naviga
+                                                        </a>
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ) : currentSelectedClient.address ? (
+                                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60 text-muted-foreground">
+                                                <span className="italic">Coordinate GPS non registrate</span>
+                                                <Button asChild size="sm" variant="ghost" className="h-6 px-2 text-[11px]">
+                                                    <a
+                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(currentSelectedClient.address)}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        <ExternalLink className="mr-1 h-3 w-3" />
+                                                        Cerca su Maps
+                                                    </a>
+                                                </Button>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                )}
+
                                 <FormMessage />
                             </FormItem>
                             );

@@ -18,7 +18,7 @@ import { format, isBefore, addDays, startOfToday } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { deleteIntervention, updateIntervention } from '@/lib/data';
 import { Button } from '../ui/button';
-import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader, TrendingUp, MailPlus, Eye, ShieldCheck, ShieldOff } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreHorizontal, PlusCircle, Pencil, Trash2, Mail, Phone, MapPin, Send, Star, Archive, List, LayoutGrid, Loader, TrendingUp, MailPlus, Eye, ShieldCheck, ShieldOff, Navigation, ExternalLink, Compass } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -699,10 +699,32 @@ export function InterventionsTable({
                                             </div>
                                         )}
                                         {client.address && (
-                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                                <span>{client.address}</span>
+                                            <a href={client.latitude && client.longitude ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
+                                                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <span className="truncate">{client.address}</span>
                                             </a>
+                                        )}
+                                        {client.latitude && client.longitude && (
+                                            <div className="flex items-center gap-2 pt-0.5" onClick={e => e.stopPropagation()}>
+                                                <a
+                                                    href={`https://www.google.com/maps?q=${client.latitude},${client.longitude}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 hover:underline"
+                                                >
+                                                    <Compass className="h-3 w-3" />
+                                                    GPS: {client.latitude.toFixed(4)}, {client.longitude.toFixed(4)}
+                                                </a>
+                                                <a
+                                                    href={`https://www.google.com/maps/dir/?api=1&destination=${client.latitude},${client.longitude}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-2 py-0.5 rounded shadow-sm"
+                                                >
+                                                    <Navigation className="h-3 w-3" />
+                                                    Naviga
+                                                </a>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -724,6 +746,36 @@ export function InterventionsTable({
                                     {currentUser.role === 'Client' ? <Eye className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
                                     {currentUser.role === 'Client' ? 'Dettagli' : 'Modifica'}
                                 </DropdownMenuItem>
+                                {client && (client.latitude || client.address) && (
+                                    <>
+                                        <DropdownMenuItem asChild>
+                                            <a
+                                                href={client.latitude && client.longitude
+                                                    ? `https://www.google.com/maps/dir/?api=1&destination=${client.latitude},${client.longitude}`
+                                                    : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(client.address!)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={e => e.stopPropagation()}
+                                            >
+                                                <Navigation className="mr-2 h-4 w-4 text-emerald-600" />
+                                                Naviga al Cliente
+                                            </a>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem asChild>
+                                            <a
+                                                href={client.latitude && client.longitude
+                                                    ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}`
+                                                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address!)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={e => e.stopPropagation()}
+                                            >
+                                                <ExternalLink className="mr-2 h-4 w-4" />
+                                                Apri su Maps
+                                            </a>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
                                 {currentUser.role === 'Admin' && (
                                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendReminder(intervention as Intervention); }} disabled={isSendingReminder === intervention.id}>
                                         {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
@@ -847,12 +899,26 @@ export function InterventionsTable({
                                 </TableCell>
                             )}
                             {currentUser.role === 'Admin' && (
-                                <TableCell className="hidden 2xl:table-cell cursor-pointer max-w-[180px]" onClick={() => handleEditClick(intervention as Intervention)}>
+                                <TableCell className="hidden 2xl:table-cell cursor-pointer max-w-[200px]" onClick={() => handleEditClick(intervention as Intervention)}>
                                 {client && client.address && (
-                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 text-xs hover:underline truncate">
-                                        <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                                        <span className="truncate">{client.address}</span>
-                                    </a>
+                                    <div className="space-y-0.5">
+                                        <a href={client.latitude && client.longitude ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-xs hover:underline truncate">
+                                            <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <span className="truncate">{client.address}</span>
+                                        </a>
+                                        {client.latitude && client.longitude && (
+                                            <a
+                                                href={`https://www.google.com/maps/dir/?api=1&destination=${client.latitude},${client.longitude}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={e => e.stopPropagation()}
+                                                className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline"
+                                            >
+                                                <Navigation className="h-2.5 w-2.5" />
+                                                GPS Naviga
+                                            </a>
+                                        )}
+                                    </div>
                                 )}
                                 </TableCell>
                             )}
@@ -871,6 +937,36 @@ export function InterventionsTable({
                                         {currentUser.role === 'Client' ? <Eye className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
                                         {currentUser.role === 'Client' ? 'Dettagli' : 'Modifica'}
                                     </DropdownMenuItem>
+                                    {client && (client.latitude || client.address) && (
+                                        <>
+                                            <DropdownMenuItem asChild>
+                                                <a
+                                                    href={client.latitude && client.longitude
+                                                        ? `https://www.google.com/maps/dir/?api=1&destination=${client.latitude},${client.longitude}`
+                                                        : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(client.address!)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <Navigation className="mr-2 h-4 w-4 text-emerald-600" />
+                                                    Naviga al Cliente
+                                                </a>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <a
+                                                    href={client.latitude && client.longitude
+                                                        ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}`
+                                                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address!)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                                    Apri su Maps
+                                                </a>
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
                                     {currentUser.role === 'Admin' && (
                                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendReminder(intervention as Intervention); }} disabled={isSendingReminder === intervention.id}>
                                             {isSendingReminder === intervention.id ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}

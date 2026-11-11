@@ -28,13 +28,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X, ChevronsUpDown, Check, Archive, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { CalendarIcon, MessageSquarePlus, Pencil, UploadCloud, File as FileIcon, Trash2, AlertCircle, FileText, Image as ImageIcon, Download, Loader, Play, StopCircle, MapPin, X, ChevronsUpDown, Check, Archive, CheckCircle2, ArrowLeft, Navigation, ExternalLink } from 'lucide-react';
 import { format, formatDistanceToNow, setHours, setMinutes, differenceInMinutes } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Intervention, Client, User, InterventionPriority, InterventionStatus, InterventionType, Attachment, AppConfiguration, WorkLog, GeolocationPosition } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { updateIntervention, getUserById, getAppConfiguration } from '@/lib/data';
+import { updateIntervention, getUserById, getAppConfiguration, updateUser } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { useUser } from '@/contexts/user-context';
@@ -168,6 +168,71 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
   const statusValue = form.watch('status');
   const showNotifyClient = (newUpdateValue && newUpdateValue.trim() !== '') || (intervention && statusValue !== intervention.status);
 
+
+  const [isLocalizingClient, setIsLocalizingClient] = useState(false);
+  const watchedClientId = form.watch('clientId');
+  const currentClient = React.useMemo(() => {
+    const fromProps = clients.find(c => c.id === watchedClientId);
+    if (fromProps) return fromProps;
+    if (selectedClient && selectedClient.id === watchedClientId) return selectedClient;
+    return null;
+  }, [clients, watchedClientId, selectedClient]);
+
+  const handleLocalizeClient = async () => {
+    const targetClientId = form.getValues('clientId');
+    if (!targetClientId) {
+      toast({ variant: 'destructive', title: 'Nessun cliente', description: 'Seleziona prima un cliente da localizzare.' });
+      return;
+    }
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      toast({ variant: 'destructive', title: 'Geolocalizzazione non supportata', description: 'Il tuo browser non supporta la geolocalizzazione GPS.' });
+      return;
+    }
+
+    setIsLocalizingClient(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = Number(position.coords.latitude.toFixed(6));
+        const lng = Number(position.coords.longitude.toFixed(6));
+        try {
+          const updated = await updateUser(targetClientId, {
+            latitude: lat,
+            longitude: lng,
+          });
+          if (updated) {
+            setSelectedClient(updated);
+            onClientUpdated(updated);
+            toast({
+              title: 'Posizione GPS Aggiornata',
+              description: `Coordinate salvate per ${updated.name}: ${lat}, ${lng}`,
+            });
+          }
+        } catch (err: any) {
+          console.error('Error saving GPS coordinates:', err);
+          toast({
+            variant: 'destructive',
+            title: 'Errore Salvataggio',
+            description: 'Impossibile salvare le coordinate GPS del cliente.',
+          });
+        } finally {
+          setIsLocalizingClient(false);
+        }
+      },
+      (error) => {
+        setIsLocalizingClient(false);
+        let desc = 'Impossibile ottenere la posizione GPS.';
+        if (error.code === 1) desc = 'Permesso di accesso alla posizione negato.';
+        else if (error.code === 2) desc = 'Segnale GPS non disponibile.';
+        else if (error.code === 3) desc = 'Richiesta di posizione scaduta.';
+        toast({
+          variant: 'destructive',
+          title: 'Errore Rilevamento GPS',
+          description: desc,
+        });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
 
   const handleOpenClientEdit = async () => {
     const clientId = form.getValues('clientId');
@@ -559,11 +624,87 @@ export function EditInterventionForm({ intervention, onInterventionUpdated, onCl
                                     </SelectContent>
                                 </Select>
                                 {(currentUser.role === 'Admin' || currentUser.role === 'Creator') && (
-                                     <Button type="button" variant="outline" size="icon" onClick={handleOpenClientEdit}>
+                                     <Button type="button" variant="outline" size="icon" onClick={handleOpenClientEdit} title="Modifica dettagli cliente">
                                         <Pencil className="h-4 w-4" />
                                      </Button>
                                 )}
                             </div>
+
+                            {currentClient && (
+                                <div className="mt-2 p-3 rounded-lg border bg-muted/40 space-y-2 text-xs">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1.5 font-medium text-foreground min-w-0">
+                                            <MapPin className="h-4 w-4 text-primary shrink-0" />
+                                            <span className="truncate">{currentClient.address || 'Nessun indirizzo impostato per il cliente'}</span>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={handleLocalizeClient}
+                                            disabled={isLocalizingClient}
+                                            className="h-7 px-2.5 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10"
+                                        >
+                                            {isLocalizingClient ? (
+                                                <>
+                                                    <Loader className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                                    Rilevamento...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <MapPin className="mr-1.5 h-3.5 w-3.5" />
+                                                    Localizza
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+
+                                    {currentClient.latitude && currentClient.longitude ? (
+                                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
+                                            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-medium">
+                                                GPS: {currentClient.latitude.toFixed(6)}, {currentClient.longitude.toFixed(6)}
+                                            </span>
+                                            <div className="flex items-center gap-1.5">
+                                                <Button asChild size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground">
+                                                    <a
+                                                        href={`https://www.google.com/maps?q=${currentClient.latitude},${currentClient.longitude}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        <ExternalLink className="mr-1 h-3 w-3" />
+                                                        Apri Maps
+                                                    </a>
+                                                </Button>
+                                                <Button asChild size="sm" className="h-6 px-2 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
+                                                    <a
+                                                        href={`https://www.google.com/maps/dir/?api=1&destination=${currentClient.latitude},${currentClient.longitude}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        <Navigation className="mr-1 h-3 w-3" />
+                                                        Naviga
+                                                    </a>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : currentClient.address ? (
+                                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60 text-muted-foreground">
+                                            <span className="italic">Coordinate GPS non registrate</span>
+                                            <Button asChild size="sm" variant="ghost" className="h-6 px-2 text-[11px]">
+                                                <a
+                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(currentClient.address)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <ExternalLink className="mr-1 h-3 w-3" />
+                                                    Cerca su Maps
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            )}
+
                             <FormMessage />
                             </FormItem>
                         )}

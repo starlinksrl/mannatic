@@ -231,6 +231,10 @@ export interface Client {
   companyId: string;
   address?: string | null;
   phone?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  email?: string | null;
+  isSubscribed?: boolean;
 }
 
 export interface Equipment {
