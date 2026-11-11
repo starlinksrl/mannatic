@@ -61,7 +61,7 @@ export default function DashboardLayout({
           <div className="hidden border-r bg-card md:block">
             <SidebarNav />
           </div>
-          <div className="flex flex-col min-w-0 overflow-x-hidden">
+          <div className="flex flex-col min-w-0 overflow-x-clip">
             <SupportUpdateBanner />
             {children}
           </div>

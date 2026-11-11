@@ -41,6 +41,7 @@ import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSizeDialog } from './font-size-dialog';
+import { useIsNativeApp } from '@/hooks/use-is-native-app';
 
 const isMainCreator = (user: UserType | null) => user?.email === 'creator@mannatic.com';
 const isDistributor = (user: UserType | null) => user?.role === 'Distributor';
@@ -123,6 +124,7 @@ export function SidebarNav() {
   const latestVersion = latestEntry?.version;
   const latestDate = latestEntry?.date ? format(new Date(latestEntry.date), 'dd/MM/yyyy') : null;
   const isMain = isMainCreator(user);
+  const isNativeApp = useIsNativeApp();
 
   return (
     <div className="flex h-full flex-col">
@@ -165,18 +167,20 @@ export function SidebarNav() {
           </Badge>
         </button>
 
-        <a
-          href="/mannatic.apk"
-          download="mannatic.apk"
-          className="flex items-center gap-3 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-          title="Scarica l'app Android per smartphone"
-        >
-          <Smartphone className="h-5 w-5 shrink-0 text-emerald-500" />
-          <div className="flex flex-col text-left leading-tight">
-            <span className="text-xs font-semibold">App Android</span>
-            <span className="text-[10px] text-muted-foreground">Scarica APK per smartphone</span>
-          </div>
-        </a>
+        {!isNativeApp && (
+          <a
+            href="/mannatic.apk"
+            download="mannatic.apk"
+            className="flex items-center gap-3 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            title="Scarica l'app Android per smartphone"
+          >
+            <Smartphone className="h-5 w-5 shrink-0 text-emerald-500" />
+            <div className="flex flex-col text-left leading-tight">
+              <span className="text-xs font-semibold">App Android</span>
+              <span className="text-[10px] text-muted-foreground">Scarica APK per smartphone</span>
+            </div>
+          </a>
+        )}
         <Separator />
         <p className="text-xs text-muted-foreground text-center">
             Created by F. Mannarini on Google Cloud

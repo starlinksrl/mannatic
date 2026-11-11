@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { getUserByEmail, consumeAutologinToken, getUserById } from '@/lib/data';
 import { User } from '@/lib/types';
 import { Loader, Smartphone } from 'lucide-react';
+import { useIsNativeApp } from '@/hooks/use-is-native-app';
 
 function LoginFormComponent() {
   const [email, setEmail] = useState('');
@@ -25,6 +26,7 @@ function LoginFormComponent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const autologinProcessed = useRef(false);
+  const isNativeApp = useIsNativeApp();
 
   useEffect(() => {
     const handleAutologin = async () => {
@@ -198,19 +200,21 @@ function LoginFormComponent() {
                   Registra una nuovo installatore
                 </Link>
               </div>
-              <div className="w-full pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="w-full gap-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs"
-                >
-                  <a href="/mannatic.apk" download="mannatic.apk">
-                    <Smartphone className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <span>Scarica l'App Android (.APK)</span>
-                  </a>
-                </Button>
-              </div>
+              {!isNativeApp && (
+                <div className="w-full pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="w-full gap-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs"
+                  >
+                    <a href="/mannatic.apk" download="mannatic.apk">
+                      <Smartphone className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span>Scarica l'App Android (.APK)</span>
+                    </a>
+                  </Button>
+                </div>
+              )}
             </>
            )}
         </CardFooter>

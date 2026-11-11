@@ -12,6 +12,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { Intervention, Client, User } from '@/lib/types';
 import Image from 'next/image';
+import { useIsNativeApp } from '@/hooks/use-is-native-app';
 
 interface HeaderProps {
   title: string;
@@ -24,9 +25,10 @@ interface HeaderProps {
 export function Header({ title, onInterventionAdded, clients, operators }: HeaderProps) {
   const { user, currentCompany, switchCompany } = useUser();
   const router = useRouter();
+  const isNativeApp = useIsNativeApp();
 
   return (
-    <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 sticky top-0 z-30">
+    <header className="flex h-16 items-center gap-4 border-b bg-card/95 backdrop-blur px-4 md:px-6 sticky top-0 z-40 shrink-0 shadow-xs">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="shrink-0 md:hidden">
@@ -55,17 +57,19 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
         <h1 className="font-headline text-lg sm:text-xl font-semibold truncate">{title}</h1>
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        <Button
-          variant="outline"
-          size="sm"
-          asChild
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border-dashed px-2 sm:px-3 h-8 sm:h-9"
-        >
-          <a href="/mannatic.apk" download="mannatic.apk" title="Scarica Applicazione Android">
-            <Smartphone className="h-4 w-4 text-emerald-500 shrink-0" />
-            <span className="hidden min-[420px]:inline">App Android</span>
-          </a>
-        </Button>
+        {!isNativeApp && (
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border-dashed px-2 sm:px-3 h-8 sm:h-9"
+          >
+            <a href="/mannatic.apk" download="mannatic.apk" title="Scarica Applicazione Android">
+              <Smartphone className="h-4 w-4 text-emerald-500 shrink-0" />
+              <span className="hidden min-[420px]:inline">App Android</span>
+            </a>
+          </Button>
+        )}
         <UserSwitcher />
         <NotificationsDropdown />
       </div>

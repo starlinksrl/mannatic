@@ -20,12 +20,14 @@ import { EditUserForm } from './edit-user-form';
 import { FontSizeDialog } from './font-size-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@/lib/types';
+import { useIsNativeApp } from '@/hooks/use-is-native-app';
 
 export function UserSwitcher() {
   const { user, logout, companies, currentCompany, switchCompany } = useUser();
   const router = useRouter();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isFontSizeModalOpen, setIsFontSizeModalOpen] = useState(false);
+  const isNativeApp = useIsNativeApp();
   const { toast } = useToast();
 
   const handleLogout = () => {
@@ -80,12 +82,14 @@ export function UserSwitcher() {
                 Dimensione Testo
             </DropdownMenuItem>
 
-            <DropdownMenuItem asChild>
-              <a href="/mannatic.apk" download="mannatic.apk" className="flex items-center cursor-pointer text-emerald-600 dark:text-emerald-400">
-                <Smartphone className="mr-2 h-4 w-4 text-emerald-500" />
-                Scarica App Android
-              </a>
-            </DropdownMenuItem>
+            {!isNativeApp && (
+              <DropdownMenuItem asChild>
+                <a href="/mannatic.apk" download="mannatic.apk" className="flex items-center cursor-pointer text-emerald-600 dark:text-emerald-400">
+                  <Smartphone className="mr-2 h-4 w-4 text-emerald-500" />
+                  Scarica App Android
+                </a>
+              </DropdownMenuItem>
+            )}
 
             <DropdownMenuSeparator/>
             <DropdownMenuItem onClick={handleLogout}>
