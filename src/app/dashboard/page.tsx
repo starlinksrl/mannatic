@@ -8,7 +8,7 @@ import { isAfter, isBefore, addDays, startOfToday, isWithinInterval, subMonths, 
 import { it } from 'date-fns/locale';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { Loader, Wrench, HardHat, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2, TrendingUp, GripVertical } from 'lucide-react';
+import { Loader, Wrench, HardHat, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2, TrendingUp, GripVertical, ChevronDown, ChevronUp } from 'lucide-react';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
@@ -81,6 +81,8 @@ export default function DashboardPage() {
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const { toast } = useToast();
   const [isSavingFeaturedOrder, setIsSavingFeaturedOrder] = useState(false);
+  const [isOpenInterventionsExpanded, setIsOpenInterventionsExpanded] = useState(false);
+  const [isOpenNewInstallationsExpanded, setIsOpenNewInstallationsExpanded] = useState(false);
 
   const handleOrderChanged = async (newList: Intervention[]) => {
     setIsSavingFeaturedOrder(true);
@@ -430,6 +432,7 @@ export default function DashboardPage() {
     }
 
     const WeeklyScheduleCard = ({ schedule }: { schedule: WeeklyScheduleItem[] }) => {
+      const [isExpanded, setIsExpanded] = useState(false);
       const groupedSchedule = schedule.reduce((acc, item) => {
         const date = format(new Date(item.itemType === 'intervention' ? item.dueDate! : item.date!), 'yyyy-MM-dd');
         if (!acc[date]) {
@@ -439,6 +442,8 @@ export default function DashboardPage() {
         return acc;
       }, {} as Record<string, WeeklyScheduleItem[]>);
 
+      let runningItemIndex = 0;
+
       return (
         <Card>
           <CardHeader>
@@ -446,59 +451,90 @@ export default function DashboardPage() {
             <CardDescription>Attività pianificate per i prossimi 7 giorni.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-80">
+            <ScrollArea className="md:h-80 h-auto">
               <div className="space-y-4 pr-4">
                 {Object.keys(groupedSchedule).length > 0 ? (
-                  Object.entries(groupedSchedule).map(([date, items]) => (
-                    <div key={date}>
-                      <h4 className="font-semibold text-sm mb-2 sticky top-0 bg-background py-1">
-                        {format(new Date(date), 'eeee, dd MMMM', { locale: it })}
-                      </h4>
-                      <div className="space-y-3 pl-2 border-l-2">
-                        {items.map(item => {
-                          const clientName = clientsMap.get(item.clientId)?.name || 'N/D';
-                          const time = format(new Date(item.itemType === 'intervention' ? item.dueDate! : item.date!), 'HH:mm');
-                          const icon = item.itemType === 'intervention' 
-                            ? ((item as Intervention).type === 'new_installation' ? <HardHat className="h-5 w-5 text-blue-500" /> : <Wrench className="h-5 w-5 text-orange-500" />)
-                            : <ClipboardCheck className="h-5 w-5 text-purple-500" />;
+                  Object.entries(groupedSchedule).map(([date, items]) => {
+                    const dayStartIndex = runningItemIndex;
+                    const isEntireDayHidden = !isExpanded && dayStartIndex >= 5;
 
-                           const handleClick = () => {
-                            if (item.itemType === 'intervention') {
-                                openModal(item as Intervention);
-                            } else {
-                                setAppointmentToEdit(item as Appointment);
-                                setIsAppointmentModalOpen(true);
-                            }
-                           };
+                    return (
+                      <div key={date} className={cn(isEntireDayHidden && "hidden md:block")}>
+                        <h4 className="font-semibold text-sm mb-2 sticky top-0 bg-background py-1">
+                          {format(new Date(date), 'eeee, dd MMMM', { locale: it })}
+                        </h4>
+                        <div className="space-y-3 pl-2 border-l-2">
+                          {items.map(item => {
+                            const itemIdx = runningItemIndex++;
+                            const isItemHidden = !isExpanded && itemIdx >= 5;
+                            const clientName = clientsMap.get(item.clientId)?.name || 'N/D';
+                            const time = format(new Date(item.itemType === 'intervention' ? item.dueDate! : item.date!), 'HH:mm');
+                            const icon = item.itemType === 'intervention' 
+                              ? ((item as Intervention).type === 'new_installation' ? <HardHat className="h-5 w-5 text-blue-500" /> : <Wrench className="h-5 w-5 text-orange-500" />)
+                              : <ClipboardCheck className="h-5 w-5 text-purple-500" />;
 
-                          return (
-                            <div key={item.id} className="flex items-start gap-3 cursor-pointer group" onClick={handleClick}>
-                              <div className="flex-shrink-0 pt-1">{icon}</div>
-                              <div className="flex-1">
-                                <p className="text-sm font-medium group-hover:underline uppercase">{item.title}</p>
-                                <p className="text-xs text-muted-foreground uppercase">{clientName}</p>
+                            const handleClick = () => {
+                              if (item.itemType === 'intervention') {
+                                  openModal(item as Intervention);
+                              } else {
+                                  setAppointmentToEdit(item as Appointment);
+                                  setIsAppointmentModalOpen(true);
+                              }
+                            };
+
+                            return (
+                              <div 
+                                key={item.id} 
+                                className={cn("flex items-start gap-3 cursor-pointer group", isItemHidden && "hidden md:flex")} 
+                                onClick={handleClick}
+                              >
+                                <div className="flex-shrink-0 pt-1">{icon}</div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium group-hover:underline uppercase">{item.title}</p>
+                                  <p className="text-xs text-muted-foreground uppercase">{clientName}</p>
+                                </div>
+                                <p className="text-sm font-mono">{time}</p>
                               </div>
-                              <p className="text-sm font-mono">{time}</p>
-                            </div>
-                          )
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività programmata per i prossimi 7 giorni.</p>
                 )}
               </div>
             </ScrollArea>
+            {schedule && schedule.length > 5 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full text-xs font-medium flex items-center justify-center gap-1.5 h-9 mt-3 md:hidden"
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    Mostra meno (prime 5 attività)
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    Mostra tutte ({schedule.length} attività programmate)
+                  </>
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
       );
     };
 
-
-
     const AdminReviewCard = ({ interventions, totalValue }: { interventions: Intervention[], totalValue: number }) => {
         if (!interventions || interventions.length === 0) return null;
+        const [isExpanded, setIsExpanded] = useState(false);
 
         return (
             <Card className="lg:col-span-12">
@@ -520,13 +556,16 @@ export default function DashboardPage() {
                         </div>
                     )}
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {interventions.map(intervention => (
+                        {interventions.map((intervention, idx) => (
                             <div 
                                 key={intervention.id} 
                                 onClick={() => openModal(intervention)} 
-                                className="p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group"
+                                className={cn(
+                                    "p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group",
+                                    !isExpanded && idx >= 5 && "hidden md:block"
+                                )}
                             >
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex-1 min-w-0 mr-2">
@@ -557,10 +596,31 @@ export default function DashboardPage() {
                             </div>
                         ))}
                     </div>
+                    {interventions.length > 5 && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="w-full text-xs font-medium flex items-center justify-center gap-1.5 h-9 md:hidden"
+                        >
+                            {isExpanded ? (
+                                <>
+                                    <ChevronUp className="h-4 w-4" />
+                                    Mostra meno (primi 5)
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown className="h-4 w-4" />
+                                    Mostra tutti ({interventions.length} interventi da fatturare)
+                                </>
+                            )}
+                        </Button>
+                    )}
                 </CardContent>
             </Card>
-        )
-    }
+        );
+    };
 
     const OperatorWorkloadCard = ({ data }: { data: OperatorWorkload[] }) => {
         const totalOpen = data.reduce((acc, op) => acc + op.open, 0);
@@ -663,7 +723,7 @@ export default function DashboardPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-4 flex-1">
-                    <ScrollArea className="h-[calc(100vh-290px)] pr-2">
+                    <ScrollArea className="md:h-[calc(100vh-290px)] h-auto pr-2">
                       {openInterventionsList.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                           <CheckCircle2 className="h-10 w-10 text-green-500 mb-2" />
@@ -671,11 +731,14 @@ export default function DashboardPage() {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {openInterventionsList.map(intervention => (
+                          {openInterventionsList.map((intervention, idx) => (
                             <div
                               key={intervention.id}
                               onClick={() => openModal(intervention)}
-                              className="p-4 rounded-xl border bg-card hover:bg-muted/40 hover:shadow transition-all duration-200 cursor-pointer flex flex-col gap-2 group"
+                              className={cn(
+                                "p-4 rounded-xl border bg-card hover:bg-muted/40 hover:shadow transition-all duration-200 cursor-pointer flex flex-col gap-2 group",
+                                !isOpenInterventionsExpanded && idx >= 5 && "hidden md:flex"
+                              )}
                             >
                               <div className="flex justify-between items-start gap-2">
                                 <div className="space-y-0.5">
@@ -716,6 +779,27 @@ export default function DashboardPage() {
                         </div>
                       )}
                     </ScrollArea>
+                    {openInterventionsList.length > 5 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsOpenInterventionsExpanded(!isOpenInterventionsExpanded)}
+                        className="w-full text-xs font-medium flex items-center justify-center gap-1.5 h-9 mt-3 md:hidden"
+                      >
+                        {isOpenInterventionsExpanded ? (
+                          <>
+                            <ChevronUp className="h-4 w-4" />
+                            Mostra meno (primi 5)
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4" />
+                            Mostra tutti ({openInterventionsList.length} interventi aperti)
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -734,7 +818,7 @@ export default function DashboardPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-4 flex-1">
-                    <ScrollArea className="h-[calc(100vh-290px)] pr-2">
+                    <ScrollArea className="md:h-[calc(100vh-290px)] h-auto pr-2">
                       {openNewInstallationsList.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                           <CheckCircle2 className="h-10 w-10 text-green-500 mb-2" />
@@ -742,11 +826,14 @@ export default function DashboardPage() {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {openNewInstallationsList.map(installation => (
+                          {openNewInstallationsList.map((installation, idx) => (
                             <div
                               key={installation.id}
                               onClick={() => openModal(installation)}
-                              className="p-4 rounded-xl border bg-card hover:bg-muted/40 hover:shadow transition-all duration-200 cursor-pointer flex flex-col gap-2 group"
+                              className={cn(
+                                "p-4 rounded-xl border bg-card hover:bg-muted/40 hover:shadow transition-all duration-200 cursor-pointer flex flex-col gap-2 group",
+                                !isOpenNewInstallationsExpanded && idx >= 5 && "hidden md:flex"
+                              )}
                             >
                               <div className="flex justify-between items-start gap-2">
                                 <div className="space-y-0.5">
@@ -787,6 +874,27 @@ export default function DashboardPage() {
                         </div>
                       )}
                     </ScrollArea>
+                    {openNewInstallationsList.length > 5 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsOpenNewInstallationsExpanded(!isOpenNewInstallationsExpanded)}
+                        className="w-full text-xs font-medium flex items-center justify-center gap-1.5 h-9 mt-3 md:hidden"
+                      >
+                        {isOpenNewInstallationsExpanded ? (
+                          <>
+                            <ChevronUp className="h-4 w-4" />
+                            Mostra meno (primi 5)
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4" />
+                            Mostra tutti ({openNewInstallationsList.length} nuovi impianti)
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -928,6 +1036,7 @@ const FeaturedInterventionsCard = ({
   isSaving
 }: FeaturedInterventionsCardProps) => {
   const [featuredList, setFeaturedList] = useState<Intervention[]>(interventions);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const draggedRef = useRef(false);
 
@@ -1003,40 +1112,64 @@ const FeaturedInterventionsCard = ({
           </div>
         )}
       </CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {featuredList.map(intervention => (
-          <div 
-            key={intervention.id} 
-            onClick={() => handleCardClick(intervention)}
-            draggable={isAdmin}
-            onDragStart={(e) => handleDragStart(e, intervention.id)}
-            onDragEnter={() => handleDragEnter(intervention.id)}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-            className={cn(
-              "p-4 rounded-lg border bg-card text-card-foreground shadow-sm transition-all duration-200 select-none",
-              isAdmin && "cursor-grab active:cursor-grabbing hover:border-primary/50 hover:shadow-md",
-              draggedId === intervention.id && "opacity-40 border-dashed border-primary bg-muted scale-95"
-            )}
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex-1 flex gap-2 items-start">
-                {isAdmin && (
-                  <GripVertical className="h-4 w-4 text-muted-foreground/60 mt-1 flex-shrink-0 cursor-grab active:cursor-grabbing" />
-                )}
-                <div>
-                  <p className="font-semibold uppercase">{clientsMap.get(intervention.clientId)?.name || 'Cliente non trovato'}</p>
-                  <p className="text-sm text-muted-foreground uppercase">{intervention.title}</p>
+      <CardContent>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {featuredList.map((intervention, idx) => (
+            <div 
+              key={intervention.id} 
+              onClick={() => handleCardClick(intervention)}
+              draggable={isAdmin}
+              onDragStart={(e) => handleDragStart(e, intervention.id)}
+              onDragEnter={() => handleDragEnter(intervention.id)}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+              className={cn(
+                "p-4 rounded-lg border bg-card text-card-foreground shadow-sm transition-all duration-200 select-none",
+                isAdmin && "cursor-grab active:cursor-grabbing hover:border-primary/50 hover:shadow-md",
+                draggedId === intervention.id && "opacity-40 border-dashed border-primary bg-muted scale-95",
+                !isExpanded && idx >= 5 && "hidden md:block"
+              )}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1 flex gap-2 items-start">
+                  {isAdmin && (
+                    <GripVertical className="h-4 w-4 text-muted-foreground/60 mt-1 flex-shrink-0 cursor-grab active:cursor-grabbing" />
+                  )}
+                  <div>
+                    <p className="font-semibold uppercase">{clientsMap.get(intervention.clientId)?.name || 'Cliente non trovato'}</p>
+                    <p className="text-sm text-muted-foreground uppercase">{intervention.title}</p>
+                  </div>
                 </div>
+                {getPriorityBadge(intervention.priority)}
               </div>
-              {getPriorityBadge(intervention.priority)}
+              <div className={cn("mt-2 text-sm text-muted-foreground", isAdmin ? "pl-6" : "pl-0")}>
+                <p>Stato: {intervention.status}</p>
+                {intervention.dueDate && <p>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yyyy HH:mm')}</p>}
+              </div>
             </div>
-            <div className={cn("mt-2 text-sm text-muted-foreground", isAdmin ? "pl-6" : "pl-0")}>
-              <p>Stato: {intervention.status}</p>
-              {intervention.dueDate && <p>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yyyy HH:mm')}</p>}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        {featuredList.length > 5 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full text-xs font-medium flex items-center justify-center gap-1.5 h-9 mt-4 md:hidden"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                Mostra meno (primi 5)
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4" />
+                Mostra tutti ({featuredList.length} interventi in evidenza)
+              </>
+            )}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

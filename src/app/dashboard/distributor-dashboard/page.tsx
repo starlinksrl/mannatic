@@ -20,7 +20,7 @@ import {
   Loader, LifeBuoy, FileText, Building, TicketCheck, Clock,
   AlertTriangle, CheckCircle2, ArrowRight, CalendarClock,
   Package, Users, ShieldCheck, Shield, Award, TrendingUp,
-  BarChart3, UserCog, Import
+  BarChart3, UserCog, Import, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { ImportInstallersDialog } from '@/components/dashboard/import-installers-dialog';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
@@ -98,6 +98,9 @@ export default function DistributorDashboard() {
   const [loading, setLoading] = useState(true);
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isOpenTicketsExpanded, setIsOpenTicketsExpanded] = useState(false);
+  const [isCompaniesExpanded, setIsCompaniesExpanded] = useState(false);
+  const [isOperatorsExpanded, setIsOperatorsExpanded] = useState(false);
   const isDistributor = user?.role === 'Distributor';
 
   const loadData = async () => {
@@ -200,7 +203,7 @@ export default function DistributorDashboard() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-72">
+                <ScrollArea className="md:h-72 h-auto">
                   {sortedOpenTickets.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full py-10 text-muted-foreground">
                       <CheckCircle2 className="h-10 w-10 mb-2 text-green-400" />
@@ -208,11 +211,14 @@ export default function DistributorDashboard() {
                     </div>
                   ) : (
                     <div className="space-y-3 pr-2">
-                      {sortedOpenTickets.map(ticket => (
+                      {sortedOpenTickets.map((ticket, idx) => (
                         <div
                           key={ticket.id}
                           onClick={() => router.push(`/dashboard/support?id=${ticket.id}`)}
-                          className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors group"
+                          className={cn(
+                            "flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors group",
+                            !isOpenTicketsExpanded && idx >= 5 && "hidden md:flex"
+                          )}
                         >
                           <TicketCheck className="h-5 w-5 mt-0.5 text-muted-foreground group-hover:text-foreground flex-shrink-0" />
                           <div className="flex-1 min-w-0">
@@ -232,6 +238,24 @@ export default function DistributorDashboard() {
                     </div>
                   )}
                 </ScrollArea>
+                {sortedOpenTickets.length > 5 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsOpenTicketsExpanded(!isOpenTicketsExpanded)}
+                    className="w-full mt-2 text-xs text-muted-foreground hover:text-foreground md:hidden flex items-center justify-center gap-1.5"
+                  >
+                    {isOpenTicketsExpanded ? (
+                      <>
+                        <ChevronUp className="h-3.5 w-3.5" /> Mostra meno (primi 5)
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-3.5 w-3.5" /> Mostra tutti ({sortedOpenTickets.length})
+                      </>
+                    )}
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -293,13 +317,19 @@ export default function DistributorDashboard() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <ScrollArea className="h-36">
+                  <ScrollArea className="md:h-36 h-auto">
                     {companies.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-4">Nessun installatore associato.</p>
                     ) : (
                       <div className="space-y-2 pr-2">
-                        {companies.map(c => (
-                          <div key={c.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/40">
+                        {companies.map((c, idx) => (
+                          <div
+                            key={c.id}
+                            className={cn(
+                              "flex items-center gap-2 p-2 rounded-md bg-muted/40",
+                              !isCompaniesExpanded && idx >= 5 && "hidden md:flex"
+                            )}
+                          >
                             <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <span className="text-sm font-medium line-clamp-1">{c.name}</span>
                           </div>
@@ -307,6 +337,24 @@ export default function DistributorDashboard() {
                       </div>
                     )}
                   </ScrollArea>
+                  {companies.length > 5 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsCompaniesExpanded(!isCompaniesExpanded)}
+                      className="w-full mt-2 text-xs text-muted-foreground hover:text-foreground md:hidden flex items-center justify-center gap-1.5"
+                    >
+                      {isCompaniesExpanded ? (
+                        <>
+                          <ChevronUp className="h-3.5 w-3.5" /> Mostra meno (primi 5)
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3.5 w-3.5" /> Mostra tutti ({companies.length})
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -401,7 +449,8 @@ export default function DistributorDashboard() {
                                   key={op.operatorId}
                                   className={cn(
                                     'border-b last:border-0 hover:bg-muted/30 transition-colors',
-                                    isTop && 'bg-yellow-50/50 dark:bg-yellow-950/10'
+                                    isTop && 'bg-yellow-50/50 dark:bg-yellow-950/10',
+                                    !isOperatorsExpanded && idx >= 5 && 'hidden md:table-row'
                                   )}
                                 >
                                   <td className="px-4 py-3">
@@ -459,6 +508,24 @@ export default function DistributorDashboard() {
                         </tbody>
                       </table>
                     </div>
+                    {operatorStats.length > 5 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsOperatorsExpanded(!isOperatorsExpanded)}
+                        className="w-full text-xs text-muted-foreground hover:text-foreground md:hidden flex items-center justify-center gap-1.5 py-2 border-t"
+                      >
+                        {isOperatorsExpanded ? (
+                          <>
+                            <ChevronUp className="h-3.5 w-3.5" /> Mostra meno (primi 5)
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-3.5 w-3.5" /> Mostra tutti ({operatorStats.length})
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
 
                   {/* Legend */}
