@@ -30,7 +30,7 @@ import { User, UserRole, AllowedSector } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addUser } from '@/lib/data';
 import { useUser } from '@/contexts/user-context';
-import { Eye, EyeOff, Loader, MapPin } from 'lucide-react';
+import { Eye, EyeOff, Loader, MapPin, Navigation, ExternalLink } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
 import { useMaps } from '@/contexts/maps-context';
 import { Textarea } from '../ui/textarea';
@@ -192,12 +192,18 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
   const role = form.watch('role');
 
   const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAddressInput(e.target.value);
-    if (isLoaded && e.target.value) {
-      const service = new google.maps.places.AutocompleteService();
-      service.getPlacePredictions({ input: e.target.value, componentRestrictions: { country: 'it' } }, (predictions) => {
-        setAddressSuggestions(predictions || []);
-      });
+    const val = e.target.value;
+    setAddressInput(val);
+    form.setValue('address', val, { shouldValidate: true, shouldDirty: true });
+    if (isLoaded && val && typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
+      try {
+        const service = new google.maps.places.AutocompleteService();
+        service.getPlacePredictions({ input: val, componentRestrictions: { country: 'it' } }, (predictions) => {
+          setAddressSuggestions(predictions || []);
+        });
+      } catch (err) {
+        setAddressSuggestions([]);
+      }
     } else {
       setAddressSuggestions([]);
     }
@@ -208,25 +214,28 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     form.setValue('address', suggestion.description, { shouldValidate: true, shouldDirty: true });
     setAddressSuggestions([]);
 
-    if (isLoaded) {
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ placeId: suggestion.place_id }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
-          const location = results[0].geometry.location;
-          form.setValue('latitude', location.lat());
-          form.setValue('longitude', location.lng());
-        }
-      });
+    if (isLoaded && typeof window !== 'undefined' && window.google?.maps?.Geocoder) {
+      try {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ placeId: suggestion.place_id }, (results, status) => {
+          if (status === 'OK' && results && results[0]) {
+            const location = results[0].geometry.location;
+            form.setValue('latitude', location.lat(), { shouldDirty: true, shouldValidate: true });
+            form.setValue('longitude', location.lng(), { shouldDirty: true, shouldValidate: true });
+          }
+        });
+      } catch (err) {
+        console.warn('Geocoding suggestion error:', err);
+      }
     }
   };
 
-
   const handleGeolocate = () => {
-    if (!navigator.geolocation) {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
         toast({
             variant: 'destructive',
             title: 'Geolocalizzazione non supportata',
-            description: 'Il tuo browser non supporta questa funzionalità.',
+            description: 'Il tuo browser non supporta la geolocalizzazione GPS.',
         });
         return;
     }
@@ -234,39 +243,47 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     setIsSubmitting(true);
     navigator.geolocation.getCurrentPosition(
         (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
+            const lat = Number(position.coords.latitude.toFixed(6));
+            const lng = Number(position.coords.longitude.toFixed(6));
             form.setValue('latitude', lat, { shouldDirty: true, shouldValidate: true });
             form.setValue('longitude', lng, { shouldDirty: true, shouldValidate: true });
 
-            // Se l'API Google Maps è caricata e il campo indirizzo è vuoto o generico, fai reverse geocoding per compilare l'indirizzo
-            if (isLoaded && window.google?.maps?.Geocoder) {
-                const geocoder = new google.maps.Geocoder();
-                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                    if (status === 'OK' && results && results[0]) {
-                        const formatted = results[0].formatted_address;
-                        setAddressInput(formatted);
-                        form.setValue('address', formatted, { shouldDirty: true, shouldValidate: true });
-                    }
-                });
+            // Se l'API Google Maps è disponibile e l'indirizzo è vuoto, tenta geocoding inverso
+            if (isLoaded && typeof window !== 'undefined' && window.google?.maps?.Geocoder) {
+                try {
+                    const geocoder = new google.maps.Geocoder();
+                    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                        if (status === 'OK' && results && results[0]) {
+                            const formatted = results[0].formatted_address;
+                            setAddressInput(formatted);
+                            form.setValue('address', formatted, { shouldDirty: true, shouldValidate: true });
+                        }
+                    });
+                } catch (e) {
+                    console.warn('Reverse geocoding error:', e);
+                }
             }
 
             toast({
                 title: 'Posizione GPS acquisita',
-                description: `Coordinate: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+                description: `Coordinate salvate: ${lat}, ${lng}`,
             });
             setIsSubmitting(false);
         },
         (geoErr) => {
             console.warn("Geolocation error:", geoErr);
+            let desc = 'Impossibile ottenere la posizione GPS.';
+            if (geoErr.code === 1) desc = 'Permesso di accesso alla posizione negato nel browser.';
+            else if (geoErr.code === 2) desc = 'Segnale GPS non disponibile.';
+            else if (geoErr.code === 3) desc = 'Richiesta di posizione scaduta (timeout).';
             toast({
                 variant: 'destructive',
-                title: 'Errore di geolocalizzazione GPS',
-                description: 'Impossibile ottenere la posizione GPS. Verifica di aver concesso l\'accesso alla posizione nel browser.',
+                title: 'Errore Rilevamento GPS',
+                description: desc,
             });
             setIsSubmitting(false);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
   
@@ -481,10 +498,9 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                           <div className="relative">
                             <Input
                               {...field}
-                              placeholder="Cerca un indirizzo..."
+                              placeholder="Inserisci indirizzo (es. Via Roma 10, Milano)..."
                               value={addressInput}
                               onChange={handleAddressInputChange}
-                              disabled={!isLoaded}
                               autoComplete="off"
                             />
                             {addressSuggestions.length > 0 && (
@@ -552,22 +568,47 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                     )}
                   />
                 </div>
-                {form.watch('latitude') && form.watch('longitude') && (
-                  <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-md px-3 py-1.5">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <MapPin className="h-3.5 w-3.5" />
-                      GPS: {form.watch('latitude')?.toFixed(5)}, {form.watch('longitude')?.toFixed(5)}
+                {form.watch('latitude') && form.watch('longitude') ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-md p-2.5">
+                    <span className="flex items-center gap-1.5 font-mono font-medium">
+                      <MapPin className="h-4 w-4 shrink-0 text-emerald-600" />
+                      GPS: {form.watch('latitude')?.toFixed(6)}, {form.watch('longitude')?.toFixed(6)}
                     </span>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`https://www.google.com/maps?q=${form.watch('latitude')},${form.watch('longitude')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Apri Maps
+                      </a>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${form.watch('latitude')},${form.watch('longitude')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                      >
+                        <Navigation className="h-3 w-3" />
+                        Naviga
+                      </a>
+                    </div>
+                  </div>
+                ) : addressInput ? (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/40 p-2 rounded border">
+                    <span>Coordinate GPS non impostate</span>
                     <a
-                      href={`https://www.google.com/maps?q=${form.watch('latitude')},${form.watch('longitude')}`}
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressInput)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline hover:text-emerald-700"
+                      className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
                     >
-                      Apri mappa
+                      <ExternalLink className="h-3 w-3" />
+                      Cerca su Google Maps
                     </a>
                   </div>
-                )}
+                ) : null}
                  {isClientForm && (
                    <>
                     <FormField

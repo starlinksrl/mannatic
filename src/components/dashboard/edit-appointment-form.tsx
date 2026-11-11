@@ -137,12 +137,18 @@ export function EditAppointmentForm({ appointment, onAppointmentUpdated, clients
   }
 
   const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAddressInput(e.target.value);
-    if (isLoaded && e.target.value) {
-      const service = new google.maps.places.AutocompleteService();
-      service.getPlacePredictions({ input: e.target.value, componentRestrictions: { country: 'it' } }, (predictions) => {
-        setAddressSuggestions(predictions || []);
-      });
+    const val = e.target.value;
+    setAddressInput(val);
+    form.setValue('address', val, { shouldValidate: true, shouldDirty: true });
+    if (isLoaded && val && typeof window !== 'undefined' && window.google?.maps?.places?.AutocompleteService) {
+      try {
+        const service = new google.maps.places.AutocompleteService();
+        service.getPlacePredictions({ input: val, componentRestrictions: { country: 'it' } }, (predictions) => {
+          setAddressSuggestions(predictions || []);
+        });
+      } catch (err) {
+        setAddressSuggestions([]);
+      }
     } else {
       setAddressSuggestions([]);
     }
@@ -266,7 +272,6 @@ export function EditAppointmentForm({ appointment, onAppointmentUpdated, clients
                                     placeholder="Via, numero civico, città"
                                     value={addressInput}
                                     onChange={handleAddressInputChange}
-                                    disabled={!isLoaded}
                                     autoComplete="off"
                                   />
                                   {addressSuggestions.length > 0 && (
