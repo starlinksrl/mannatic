@@ -26,6 +26,7 @@ node_modules/
 .npm_cache/
 scratch/
 .vscode/
+deploy/local-db/
 
 # webmail subfolder artifacts & database
 webmail.chetta/node_modules/
