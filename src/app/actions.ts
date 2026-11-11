@@ -24,6 +24,7 @@ import webpush from 'web-push';
 import { addDays, isAfter, isBefore, startOfToday, format, subDays, differenceInHours, differenceInDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { headers } from 'next/headers';
+import { generateShortId, resolvePlatformBaseUrl } from '@/lib/utils';
 
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -264,10 +265,10 @@ export async function handlePasswordResetRequest(email: string): Promise<{ succe
     const company = await getCompanyByUserId(user.id);
 
     try {
-        const token = await createPasswordResetToken(user.id);
-        const host = (await headers()).get('host');
-        const protocol = host?.includes('localhost') || host?.includes('.workstations.google.com') ? 'http' : 'https';
-        const baseUrl = `${protocol}://${host}`;
+        const token = await createPasswordResetToken(user.id, company?.id || user.companyId || 'none');
+        const headersList = await headers();
+        const host = headersList.get('x-forwarded-host') || headersList.get('host');
+        const baseUrl = resolvePlatformBaseUrl(company?.platformUrl, host);
         const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
         const input: SendPasswordResetEmailInput = {
@@ -320,9 +321,9 @@ export async function sendCredentialsEmailAction(userId: string): Promise<SendCr
     }
 
     try {
-        const host = (await headers()).get('host');
-        const protocol = host?.includes('localhost') || host?.includes('.workstations.google.com') ? 'http' : 'https';
-        const baseUrl = `${protocol}://${host}`;
+        const headersList = await headers();
+        const host = headersList.get('x-forwarded-host') || headersList.get('host');
+        const baseUrl = resolvePlatformBaseUrl(company?.platformUrl, host);
         
         const input: SendCredentialsEmailInput = {
             recipientEmail: user.email,
@@ -364,8 +365,7 @@ export async function createClientAutologinUrl(clientId: string): Promise<{ succ
         const token = await createAutologinToken(clientId, companyId);
         const headersList = await headers();
         const host = headersList.get('x-forwarded-host') || headersList.get('host');
-        const proto = headersList.get('x-forwarded-proto') || (host?.includes('localhost') || host?.includes('127.0.0.1') || host?.includes('.workstations.google.com') ? 'http' : 'https');
-        const baseUrl = host ? `${proto}://${host}` : (company?.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it');
+        const baseUrl = resolvePlatformBaseUrl(company?.platformUrl, host);
         const url = `${baseUrl}/login?autologin_token=${token}`;
         return { success: true, url };
     } catch (error: any) {
@@ -396,9 +396,9 @@ export async function handleRegistration(values: { companyName: string, name: st
             return { success: true, user: adminUser };
         }
 
-        const host = (await headers()).get('host');
-        const protocol = host?.includes('localhost') || host?.includes('.workstations.google.com') ? 'http' : 'https';
-        const baseUrl = `${protocol}://${host}`;
+        const headersList = await headers();
+        const host = headersList.get('x-forwarded-host') || headersList.get('host');
+        const baseUrl = resolvePlatformBaseUrl(company.platformUrl, host);
 
         const input: SendCredentialsEmailInput = {
             recipientEmail: adminUser.email,
@@ -954,7 +954,7 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
         const fortyEightHoursAgo = new Date(now.getTime() - 48 * 3600 * 1000);
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
         const twentyFourHoursAgo = new Date(now.getTime() - 24 * 3600 * 1000).toISOString();
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://mannatec.it' : 'http://localhost:9002');
+        const baseUrl = resolvePlatformBaseUrl(company.platformUrl);
 
         let ticketsAlerted = 0;
         let interventionsAlerted = 0;
@@ -982,7 +982,7 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
                 }
 
                 const hoursOpen = Math.round((now.getTime() - new Date(ticket.createdAt).getTime()) / (3600 * 1000));
-                const ticketUrl = `${baseUrl}/dashboard/support?ticketId=${ticket.id}`;
+                const ticketUrl = `${baseUrl}/dashboard/support?ticketId=${encodeURIComponent(ticket.id)}`;
 
                 // Invia notifica in-app agli admin
                 for (const admin of admins) {
@@ -1027,6 +1027,9 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
                                     <a href="${ticketUrl}" style="background-color: #d97706; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
                                         Gestisci Ticket nel Gestionale
                                     </a>
+                                    <p style="font-size: 12px; color: #64748b; margin-top: 12px; word-break: break-all;">
+                                        Link diretto: <a href="${ticketUrl}" style="color: #d97706;">${ticketUrl}</a>
+                                    </p>
                                 </div>
                                 <p style="font-size: 12px; color: #94a3b8; margin-top: 24px; text-align: center;">
                                     Questo promemoria automatico viene inviato per i ticket non chiusi entro 48 ore.
@@ -1137,6 +1140,9 @@ export async function sendOverdueTicketsAndInterventionsAlerts(companyId: string
                                 <a href="${interventionUrl}" style="background-color: #dc2626; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
                                     Visualizza e Gestisci Intervento
                                 </a>
+                                <p style="font-size: 12px; color: #64748b; margin-top: 12px; word-break: break-all;">
+                                    Link diretto: <a href="${interventionUrl}" style="color: #dc2626;">${interventionUrl}</a>
+                                </p>
                             </div>
                             <p style="font-size: 12px; color: #94a3b8; margin-top: 24px; text-align: center;">
                                 Questo sollecito automatico viene generato per tutti gli interventi aperti da oltre 7 giorni.

@@ -53,3 +53,48 @@ export function generateGoogleCalendarLink(appointment: Appointment): string {
 
   return link;
 }
+
+export function resolvePlatformBaseUrl(companyPlatformUrl?: string | null, hostHeader?: string | null): string {
+  const prodDefault = 'https://supporto.mannatec.it';
+
+  if (hostHeader) {
+    const cleanHost = hostHeader.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    const isInternalHost =
+      cleanHost.includes('localhost') ||
+      cleanHost.includes('127.0.0.1') ||
+      cleanHost.includes(':8001') ||
+      cleanHost.includes(':3000') ||
+      cleanHost.includes('0.0.0.0') ||
+      cleanHost === 'mannatec.it' ||
+      cleanHost === 'www.mannatec.it' ||
+      cleanHost.includes('work.mannatec.it');
+
+    if (!isInternalHost && cleanHost.length > 0) {
+      const protocol = cleanHost.includes('.workstations.google.com') ? 'http' : 'https';
+      return `${protocol}://${cleanHost}`;
+    }
+  }
+
+  const candidates = [companyPlatformUrl, process.env.NEXT_PUBLIC_APP_URL];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    const cleaned = raw.trim().replace(/\/+$/, '');
+    if (
+      !cleaned ||
+      cleaned.includes('localhost') ||
+      cleaned.includes('127.0.0.1') ||
+      cleaned.includes(':8001') ||
+      cleaned.includes(':3000') ||
+      cleaned === 'https://mannatec.it' ||
+      cleaned === 'http://mannatec.it' ||
+      cleaned === 'https://www.mannatec.it' ||
+      cleaned === 'http://www.mannatec.it' ||
+      cleaned.includes('work.mannatec.it')
+    ) {
+      continue;
+    }
+    return cleaned;
+  }
+
+  return prodDefault;
+}

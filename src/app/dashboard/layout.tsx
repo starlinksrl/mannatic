@@ -34,7 +34,14 @@ export default function DashboardLayout({
     }
 
     if (!user) {
-      router.push('/login');
+      const currentTarget = typeof window !== 'undefined'
+        ? `${window.location.pathname}${window.location.search}`
+        : '';
+      if (currentTarget && currentTarget.startsWith('/dashboard') && currentTarget !== '/dashboard') {
+        router.push(`/login?redirect=${encodeURIComponent(currentTarget)}`);
+      } else {
+        router.push('/login');
+      }
       return;
     }
   }, [user, isLoading, router]);

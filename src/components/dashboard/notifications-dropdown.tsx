@@ -122,13 +122,19 @@ export function NotificationsDropdown() {
     }
 
     if (notification.type === 'support_ticket' || notification.message.toLowerCase().includes('ticket')) {
-      if (user?.role === 'Client') {
+      if (notification.relatedInterventionId) {
+        router.push(`/dashboard/support?ticketId=${encodeURIComponent(notification.relatedInterventionId)}`);
+      } else if (user?.role === 'Client') {
         router.push('/dashboard/requests');
       } else {
         router.push('/dashboard/support');
       }
     } else {
-      router.push('/dashboard/interventions');
+      if (notification.relatedInterventionId) {
+        router.push(`/dashboard/interventions?search=${encodeURIComponent(notification.relatedInterventionId)}`);
+      } else {
+        router.push('/dashboard/interventions');
+      }
     }
   };
 

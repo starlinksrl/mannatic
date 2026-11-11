@@ -9,7 +9,8 @@ import 'dotenv/config';
  * - SendAssignedInterventionNotificationOutput - The return type for the function.
  */
 
-import { Resend } from 'resend';
+import { sendEmail } from '@/lib/mailer';
+import { resolvePlatformBaseUrl } from '@/lib/utils';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import type { SendAssignedInterventionNotificationInput, SendAssignedInterventionNotificationOutput } from '@/lib/types';
@@ -21,6 +22,8 @@ export async function sendAssignedInterventionNotification(input: SendAssignedIn
     const formattedDueDate = promptInput.interventionDueDate
       ? format(new Date(promptInput.interventionDueDate), 'dd/MM/yyyy HH:mm', { locale: it })
       : 'Non specificata';
+    const baseUrl = resolvePlatformBaseUrl();
+    const interventionUrl = `${baseUrl}/dashboard/interventions?search=${encodeURIComponent(promptInput.interventionId)}`;
 
     const emailBody = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -49,22 +52,24 @@ export async function sendAssignedInterventionNotification(input: SendAssignedIn
                   <td style="padding: 8px; border: 1px solid #ddd;">${formattedDueDate}</td>
               </tr>
           </table>
-          <p style="margin-top: 20px;">Puoi visualizzare tutti i dettagli e avviare il lavoro accedendo alla dashboard di MannaTic.</p>
+          <p style="margin-top: 20px;">
+            <a href="${interventionUrl}" style="background-color: #0284c7; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+              Visualizza Intervento su MannaTic
+            </a>
+          </p>
       </div>
     `;
 
     try {
-      const resend = new Resend(resendConfig.apiKey);
-
-      const { data, error } = await resend.emails.send({
-        from: resendConfig.from,
-        to: [recipientEmail],
+      const result = await sendEmail({
+        to: recipientEmail,
         subject: emailSubject,
         html: emailBody,
+        resendConfig: resendConfig?.apiKey && resendConfig?.from ? resendConfig : undefined,
       });
 
-      if (error) {
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Invio email fallito.');
       }
 
       return { success: true };

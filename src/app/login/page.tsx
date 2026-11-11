@@ -42,7 +42,16 @@ function LoginFormComponent() {
                 title: 'Accesso effettuato',
                 description: `Accesso automatico in corso come ${user.name}...`,
               });
-              if (user.role === 'Client') {
+              const redirectParam = searchParams.get('redirect');
+              const interventionIdParam = searchParams.get('interventionId');
+              const ticketIdParam = searchParams.get('ticketId');
+              if (redirectParam && redirectParam.startsWith('/dashboard')) {
+                  router.replace(redirectParam);
+              } else if (ticketIdParam) {
+                  router.replace(`/dashboard/support?ticketId=${encodeURIComponent(ticketIdParam)}`);
+              } else if (interventionIdParam) {
+                  router.replace(`/dashboard/interventions?search=${encodeURIComponent(interventionIdParam)}`);
+              } else if (user.role === 'Client') {
                   router.replace('/dashboard/requests');
               } else {
                   router.replace('/dashboard');
@@ -93,7 +102,10 @@ function LoginFormComponent() {
             });
             const isDistributorOp = userToLogin.role === 'DistributorAdmin' || userToLogin.role === 'DistributorUser';
             const isDistributor = userToLogin.role === 'Distributor';
-            const target = isDistributor
+            const redirectParam = searchParams.get('redirect');
+            const target = (redirectParam && redirectParam.startsWith('/dashboard'))
+              ? redirectParam
+              : isDistributor
               ? '/dashboard/distributor-dashboard'
               : isDistributorOp
               ? '/dashboard/operator-dashboard'

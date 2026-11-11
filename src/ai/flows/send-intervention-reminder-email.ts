@@ -9,7 +9,7 @@ import 'dotenv/config';
  * - SendInterventionReminderEmailOutput - The return type for the function.
  */
 
-import { Resend } from 'resend';
+import { sendEmail } from '@/lib/mailer';
 import type { SendInterventionReminderEmailInput, SendInterventionReminderEmailOutput } from '@/lib/types';
 
 
@@ -42,25 +42,31 @@ export async function sendInterventionReminderEmail(input: SendInterventionRemin
             Per favore, accedi alla piattaforma per completare i dati mancanti.
           </p>
           <p>
-            <a href="${autologinUrl}" style="background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">
+            <a href="${autologinUrl}" style="background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">
                 Vai all'Intervento
             </a>
+          </p>
+          <p style="font-size: 12px; color: #64748b; word-break: break-all;">
+            Link diretto: <a href="${autologinUrl}" style="color: #007bff;">${autologinUrl}</a>
           </p>
           <p>Grazie per la collaborazione.</p>
       </div>
     `;
 
     try {
-        const resend = new Resend(resendConfig.apiKey);
-        const { data, error } = await resend.emails.send({
-            from: resendConfig.from,
-            to: [recipientEmail],
+        const validResend = resendConfig?.apiKey && resendConfig.apiKey !== 'placeholder' && resendConfig?.from && resendConfig.from !== 'placeholder'
+            ? resendConfig
+            : undefined;
+
+        const result = await sendEmail({
+            to: recipientEmail,
             subject: emailSubject,
             html: emailBody,
+            resendConfig: validResend,
         });
 
-        if (error) {
-            throw error;
+        if (!result.success) {
+            throw new Error(result.error || 'Invio email fallito.');
         }
 
         return { success: true };

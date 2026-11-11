@@ -17,7 +17,7 @@ export type {
 import { subDays, addDays, addMonths, addWeeks, isWithinInterval, startOfToday, differenceInHours, isAfter, differenceInMinutes, addHours } from 'date-fns';
 import { supabase } from './supabase';
 import { triggerNewInterventionNotification, sendClientUpdateEmail, triggerSupportTicketNotification, sendPushNotification, triggerAssignedInterventionNotification } from '@/app/actions';
-import { generateShortId } from './utils';
+import { generateShortId, resolvePlatformBaseUrl } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToSupabase } from './supabase-storage';
 import { sendWhatsAppTicketNotification } from './whatsapp';
@@ -177,7 +177,7 @@ export async function addCompany(companyData: Partial<Company> & { adminName: st
             phone: companyData.phone || '',
             uniqueCode: companyData.uniqueCode || '',
             email: companyData.email || '',
-            platformUrl: companyData.platformUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://work.mannatec.it',
+            platformUrl: resolvePlatformBaseUrl(companyData.platformUrl),
             resendApiKey: appConfig?.resendApiKey || undefined,
             senderEmail: appConfig?.defaultSenderEmail || undefined,
         };
@@ -970,6 +970,8 @@ export async function sendSupportTicketEmailNotification(companyId: string, tick
             from: company.senderEmail
         } : undefined;
 
+        const baseUrl = resolvePlatformBaseUrl(company.platformUrl);
+
         for (const recipient of recipients) {
             if (recipient.email) {
                 await triggerSupportTicketNotification({
@@ -977,7 +979,7 @@ export async function sendSupportTicketEmailNotification(companyId: string, tick
                     recipientName: recipient.name,
                     ticket: ticket,
                     isNewTicket: isNewTicket,
-                    ticketLink: `${company.platformUrl || process.env.NEXT_PUBLIC_APP_URL}/dashboard/support?ticketId=${ticket.id}`,
+                    ticketLink: `${baseUrl}/dashboard/support?ticketId=${encodeURIComponent(ticket.id)}`,
                     resendConfig
                 });
             }
