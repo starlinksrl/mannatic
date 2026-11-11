@@ -15,12 +15,11 @@ import {
   ExternalLink,
   Phone,
   Search,
-  Calendar,
   Building,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
   Compass,
+  ArrowLeft,
+  List,
+  Eye,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,10 +27,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { isBefore, addDays, startOfToday, format } from 'date-fns';
-import { it } from 'date-fns/locale';
+import { isBefore, addDays, startOfToday } from 'date-fns';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 export interface TerritorialsItem {
   id: string;
@@ -73,6 +72,7 @@ export default function MapPage() {
   const [filter, setFilter] = useState<'open_activities' | 'appointments' | 'all_clients'>('open_activities');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'list' | 'map'>('list');
 
   const clientsMap = useMemo(() => {
     const map = new Map<string, User>();
@@ -294,17 +294,17 @@ export default function MapPage() {
   return (
     <>
       <Header title="Mappa & Attività Territoriali" />
-      <main className="flex-1 flex flex-col p-4 md:p-6 gap-4 bg-muted/20">
+      <main className="flex-1 flex flex-col p-3 sm:p-5 md:p-6 gap-3 sm:gap-4 bg-muted/20 min-w-0">
         {/* Top Controls Bar */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card p-4 rounded-xl border shadow-sm">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-            <div className="relative flex-1 max-w-md">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-card p-3 sm:p-4 rounded-xl border shadow-sm">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 min-w-0">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Cerca per cliente, indirizzo, titolo..."
+                placeholder="Cerca cliente, indirizzo, titolo..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-background"
+                className="pl-9 bg-background h-9 text-sm"
               />
             </div>
             <Select
@@ -314,7 +314,7 @@ export default function MapPage() {
                 setSelectedItemId(null);
               }}
             >
-              <SelectTrigger className="w-full sm:w-[240px] bg-background">
+              <SelectTrigger className="w-full sm:w-[250px] bg-background h-9 text-sm">
                 <SelectValue placeholder="Filtra elementi..." />
               </SelectTrigger>
               <SelectContent>
@@ -325,33 +325,71 @@ export default function MapPage() {
             </Select>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-auto text-xs">
-            <Badge variant="outline" className="bg-background">
+          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto text-xs shrink-0">
+            <Badge variant="outline" className="bg-background h-7 px-2.5">
               Totale: <strong className="ml-1">{filteredItems.length}</strong>
             </Badge>
-            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">
+            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white h-7 px-2.5">
               <MapPin className="h-3 w-3 mr-1" /> GPS Attivo: {coordsCount}
             </Badge>
           </div>
         </div>
 
-        {/* Content Layout */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Responsive Mode Switcher on screens < xl (small laptops, tablets, mobile) */}
+        <div className="flex xl:hidden w-full bg-muted/60 p-1 rounded-xl border shadow-xs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('list')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg transition-all',
+              activeTab === 'list'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <List className="h-4 w-4" />
+            <span>Elenco Attività ({filteredItems.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('map')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg transition-all truncate',
+              activeTab === 'map'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Compass className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span className="truncate">
+              Mappa & Navigatore {selectedItem ? `• ${selectedItem.clientName.split(' ')[0]}` : ''}
+            </span>
+          </button>
+        </div>
+
+        {/* Content Layout: 2 Columns on >= xl, Tab-toggled on < xl */}
+        <div className="flex-1 grid grid-cols-1 xl:grid-cols-12 gap-4 min-w-0">
           {/* Left Column: Interactive Cards List */}
-          <div className="lg:col-span-5 flex flex-col gap-3">
+          <div
+            className={cn(
+              'flex-col gap-3 min-w-0',
+              'xl:col-span-5 xl:flex',
+              activeTab === 'list' ? 'flex' : 'hidden xl:flex'
+            )}
+          >
             <div className="text-xs font-medium text-muted-foreground px-1 flex items-center justify-between">
-              <span>Seleziona un elemento per dettagli e navigazione:</span>
+              <span>Seleziona un&apos;attività per vedere la posizione:</span>
               <span>{filteredItems.length} risultati</span>
             </div>
 
-            <ScrollArea className="h-[calc(100vh-16rem)] min-h-[400px] pr-2">
-              <div className="space-y-2.5">
+            <ScrollArea className="h-[calc(100vh-17rem)] min-h-[420px] pr-1.5">
+              <div className="space-y-3">
                 {filteredItems.length === 0 ? (
                   <div className="text-center py-12 px-4 border rounded-xl bg-card text-muted-foreground">
                     <MapPin className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
                     <p className="font-medium text-sm">Nessuna attività o posizione trovata.</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {searchTerm ? 'Prova a modificare la ricerca.' : 'Non ci sono elementi per il filtro selezionato.'}
+                      {searchTerm ? 'Prova a modificare i termini di ricerca.' : 'Nessun elemento per il filtro selezionato.'}
                     </p>
                   </div>
                 ) : (
@@ -360,61 +398,70 @@ export default function MapPage() {
                     const hasCoords = item.latitude && item.longitude;
                     const mapsUrl = getMapsExternalUrl(item);
                     const navUrl = getNavigationExternalUrl(item);
-                    const waPhone = cleanPhoneForWhatsApp(item.clientPhone);
 
                     return (
                       <div
                         key={item.id}
                         onClick={() => setSelectedItemId(item.id)}
-                        className={`p-3.5 rounded-xl border transition-all cursor-pointer bg-card hover:border-primary/50 hover:shadow-sm ${
+                        className={cn(
+                          'p-3.5 rounded-xl border transition-all cursor-pointer bg-card hover:border-primary/50 hover:shadow-sm min-w-0',
                           isSelected
-                            ? 'border-primary ring-2 ring-primary/20 shadow-md bg-accent/10'
+                            ? 'border-primary ring-2 ring-primary/20 shadow-md bg-accent/5'
                             : 'border-border'
-                        }`}
+                        )}
                       >
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <div className="flex items-center gap-2 min-w-0">
-                            {item.itemType === 'intervention' && (
-                              (item.rawItem as Intervention).type === 'new_installation' ? (
-                                <div className="p-1.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                                  <HardHat className="h-4 w-4" />
+                        {/* Top: Icon + Title + Status Badges */}
+                        <div className="flex items-start justify-between gap-2.5 mb-2">
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                            <div className="mt-0.5 shrink-0">
+                              {item.itemType === 'intervention' && (
+                                (item.rawItem as Intervention).type === 'new_installation' ? (
+                                  <div className="p-1.5 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                    <HardHat className="h-4 w-4" />
+                                  </div>
+                                ) : (
+                                  <div className="p-1.5 rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                    <Wrench className="h-4 w-4" />
+                                  </div>
+                                )
+                              )}
+                              {item.itemType === 'appointment' && (
+                                <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                                  <ClipboardCheck className="h-4 w-4" />
                                 </div>
-                              ) : (
-                                <div className="p-1.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                                  <Wrench className="h-4 w-4" />
+                              )}
+                              {item.itemType === 'client' && (
+                                <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                  <Building className="h-4 w-4" />
                                 </div>
-                              )
-                            )}
-                            {item.itemType === 'appointment' && (
-                              <div className="p-1.5 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                                <ClipboardCheck className="h-4 w-4" />
-                              </div>
-                            )}
-                            {item.itemType === 'client' && (
-                              <div className="p-1.5 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                                <Building className="h-4 w-4" />
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <p className="font-semibold text-sm truncate uppercase">{item.title}</p>
-                              <p className="text-xs text-muted-foreground truncate">{item.clientName}</p>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-sm leading-snug line-clamp-2 uppercase break-words">
+                                {item.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium">
+                                {item.clientName}
+                              </p>
                             </div>
                           </div>
 
-                          <div className="flex flex-col items-end shrink-0 gap-1">
+                          <div className="flex flex-col sm:flex-row xl:flex-col 2xl:flex-row items-end gap-1 shrink-0">
                             {item.status && (
-                              <Badge variant="outline" className="text-[10px] uppercase font-semibold">
+                              <Badge variant="outline" className="text-[10px] uppercase font-semibold whitespace-nowrap">
                                 {item.status}
                               </Badge>
                             )}
                             {item.priority && (
                               <Badge
                                 variant="secondary"
-                                className={`text-[10px] ${
+                                className={cn(
+                                  'text-[10px] whitespace-nowrap',
                                   item.priority === 'Urgente'
                                     ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                                     : 'bg-muted text-muted-foreground'
-                                }`}
+                                )}
                               >
                                 {item.priority}
                               </Badge>
@@ -422,36 +469,37 @@ export default function MapPage() {
                           </div>
                         </div>
 
+                        {/* Middle: Full Address */}
                         {item.address ? (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-2 line-clamp-1">
-                            <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-                            <span>{item.address}</span>
+                          <p className="text-xs text-muted-foreground flex items-start gap-1.5 mb-2.5">
+                            <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground/70" />
+                            <span className="line-clamp-2 break-words leading-relaxed">{item.address}</span>
                           </p>
                         ) : (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 italic mb-2">
+                          <p className="text-xs text-amber-600 dark:text-amber-400 italic mb-2.5">
                             Nessun indirizzo registrato
                           </p>
                         )}
 
-                        {/* Coords & Quick External Links */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t mt-2">
-                          <div>
+                        {/* Bottom: GPS Coords & Quick External Action Buttons */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t mt-1">
+                          <div className="min-w-0">
                             {hasCoords ? (
                               <span className="inline-flex items-center gap-1 font-mono text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                                <Compass className="h-3 w-3" />
-                                {item.latitude?.toFixed(4)}, {item.longitude?.toFixed(4)}
+                                <Compass className="h-3 w-3 shrink-0" />
+                                <span>{item.latitude?.toFixed(4)}, {item.longitude?.toFixed(4)}</span>
                               </span>
                             ) : (
-                              <span className="text-[11px] text-muted-foreground">Solo indirizzo testo</span>
+                              <span className="text-[11px] text-muted-foreground italic">Solo indirizzo</span>
                             )}
                           </div>
 
-                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-auto" onClick={(e) => e.stopPropagation()}>
                             <Button
                               asChild
                               size="sm"
                               variant="outline"
-                              className="h-7 px-2.5 text-xs font-medium border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                              className="h-7 px-2 text-xs font-medium border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
                             >
                               <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="h-3 w-3 mr-1" />
@@ -477,6 +525,22 @@ export default function MapPage() {
                                 </a>
                               </Button>
                             )}
+
+                            {/* View on Map Tab button for mobile/tablet */}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                setSelectedItemId(item.id);
+                                setActiveTab('map');
+                              }}
+                              className="h-7 px-2 text-xs xl:hidden font-medium"
+                              title="Visualizza sulla mappa"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              Mappa
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -488,13 +552,36 @@ export default function MapPage() {
           </div>
 
           {/* Right Column: Direct External Actions & Map Preview */}
-          <div className="lg:col-span-7 flex flex-col gap-4">
+          <div
+            className={cn(
+              'flex-col gap-4 min-w-0',
+              'xl:col-span-7 xl:flex',
+              activeTab === 'map' ? 'flex' : 'hidden xl:flex'
+            )}
+          >
+            {/* Quick return button on narrow screens */}
+            <div className="flex xl:hidden items-center justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab('list')}
+                className="text-xs text-muted-foreground hover:text-foreground -ml-1 h-8"
+              >
+                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                Torna all&apos;elenco attività
+              </Button>
+              <span className="text-xs text-muted-foreground font-medium">
+                {filteredItems.length} posizioni disponibili
+              </span>
+            </div>
+
             {selectedItem ? (
               <Card className="shadow-sm border overflow-hidden">
                 <CardHeader className="bg-card border-b p-4 sm:p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
                         <Badge
                           variant="secondary"
                           className="text-xs uppercase font-semibold bg-primary/10 text-primary"
@@ -516,44 +603,49 @@ export default function MapPage() {
                             {selectedItem.clientIsSubscribed ? 'Assistenza Attiva' : 'Non Abbonato'}
                           </Badge>
                         )}
+                        {selectedItem.status && (
+                          <Badge variant="outline" className="text-xs uppercase font-semibold">
+                            {selectedItem.status}
+                          </Badge>
+                        )}
                       </div>
-                      <CardTitle className="text-lg sm:text-xl font-bold truncate">
+                      <CardTitle className="text-base sm:text-lg lg:text-xl font-bold leading-snug break-words">
                         {selectedItem.title}
                       </CardTitle>
-                      <CardDescription className="text-sm text-foreground/80 font-medium">
-                        Cliente: {selectedItem.clientName}
+                      <CardDescription className="text-xs sm:text-sm text-foreground/80 font-medium mt-1">
+                        Cliente: <strong>{selectedItem.clientName}</strong>
                       </CardDescription>
                     </div>
 
                     {/* Direct Launch Buttons */}
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <Button
                         asChild
-                        size="default"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold"
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold h-9 px-3 text-xs sm:text-sm"
                       >
                         <a
                           href={getMapsExternalUrl(selectedItem)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          Apri su Google Maps
+                          <ExternalLink className="mr-1.5 h-4 w-4" />
+                          Apri su Maps
                         </a>
                       </Button>
 
                       <Button
                         asChild
-                        size="default"
+                        size="sm"
                         variant="outline"
-                        className="border-primary text-primary hover:bg-primary/10 font-semibold"
+                        className="border-primary text-primary hover:bg-primary/10 font-semibold h-9 px-3 text-xs sm:text-sm"
                       >
                         <a
                           href={getNavigationExternalUrl(selectedItem)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <Navigation className="mr-2 h-4 w-4" />
+                          <Navigation className="mr-1.5 h-4 w-4" />
                           Avvia Navigatore
                         </a>
                       </Button>
@@ -562,11 +654,11 @@ export default function MapPage() {
 
                   {/* Details strip */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 mt-3 border-t text-xs">
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-muted-foreground">Indirizzo:</span>{' '}
-                      <strong className="text-foreground">{selectedItem.address || 'Non specificato'}</strong>
+                      <strong className="text-foreground break-words">{selectedItem.address || 'Non specificato'}</strong>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-muted-foreground">Coordinate GPS:</span>{' '}
                       {selectedItem.latitude && selectedItem.longitude ? (
                         <strong className="font-mono text-emerald-600 dark:text-emerald-400">
@@ -579,9 +671,9 @@ export default function MapPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="p-4 sm:p-5 space-y-4">
+                <CardContent className="p-3 sm:p-5 space-y-4">
                   {/* Zero-API Interactive Google Maps iframe embed */}
-                  <div className="relative rounded-xl overflow-hidden border shadow-inner bg-muted/40 aspect-[16/10] sm:h-[420px] w-full">
+                  <div className="relative rounded-xl overflow-hidden border shadow-inner bg-muted/40 h-[320px] sm:h-[400px] lg:h-[450px] w-full">
                     {selectedItem.latitude && selectedItem.longitude ? (
                       <iframe
                         key={`${selectedItem.latitude}-${selectedItem.longitude}`}
@@ -612,18 +704,19 @@ export default function MapPage() {
                   </div>
 
                   {/* Actions & Description */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                    <div className="text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <div className="text-xs text-muted-foreground flex-1 min-w-[200px]">
                       {selectedItem.description && (
                         <p className="line-clamp-2 italic">{selectedItem.description}</p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center gap-2 shrink-0 ml-auto">
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => handleOpenDetails(selectedItem)}
+                        className="h-8 text-xs font-medium"
                       >
                         Visualizza Scheda Completa
                       </Button>
@@ -632,7 +725,7 @@ export default function MapPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full min-h-[400px] border rounded-xl bg-card text-muted-foreground p-8 text-center shadow-sm">
+              <div className="flex flex-col items-center justify-center h-full min-h-[350px] border rounded-xl bg-card text-muted-foreground p-8 text-center shadow-sm">
                 <MapPin className="h-12 w-12 text-muted-foreground/30 mb-3" />
                 <h3 className="text-base font-semibold text-foreground">Nessun elemento selezionato</h3>
                 <p className="text-xs text-muted-foreground max-w-sm mt-1">
