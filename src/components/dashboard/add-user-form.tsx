@@ -234,22 +234,39 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
     setIsSubmitting(true);
     navigator.geolocation.getCurrentPosition(
         (position) => {
-            form.setValue('latitude', position.coords.latitude, { shouldDirty: true });
-            form.setValue('longitude', position.coords.longitude, { shouldDirty: true });
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            form.setValue('latitude', lat, { shouldDirty: true, shouldValidate: true });
+            form.setValue('longitude', lng, { shouldDirty: true, shouldValidate: true });
+
+            // Se l'API Google Maps è caricata e il campo indirizzo è vuoto o generico, fai reverse geocoding per compilare l'indirizzo
+            if (isLoaded && window.google?.maps?.Geocoder) {
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                    if (status === 'OK' && results && results[0]) {
+                        const formatted = results[0].formatted_address;
+                        setAddressInput(formatted);
+                        form.setValue('address', formatted, { shouldDirty: true, shouldValidate: true });
+                    }
+                });
+            }
+
             toast({
-                title: 'Posizione acquisita',
-                description: 'Le coordinate sono state inserite.',
+                title: 'Posizione GPS acquisita',
+                description: `Coordinate: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
             });
             setIsSubmitting(false);
         },
-        () => {
+        (geoErr) => {
+            console.warn("Geolocation error:", geoErr);
             toast({
                 variant: 'destructive',
-                title: 'Errore di geolocalizzazione',
-                description: 'Impossibile ottenere la posizione. Assicurati di aver dato i permessi.',
+                title: 'Errore di geolocalizzazione GPS',
+                description: 'Impossibile ottenere la posizione GPS. Verifica di aver concesso l\'accesso alla posizione nel browser.',
             });
             setIsSubmitting(false);
-        }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
   
@@ -489,6 +506,68 @@ export function AddUserForm({ children, onUserAdded, defaultRole, isClientForm =
                     </FormItem>
                   )}
                 />
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="latitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Latitudine GPS</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="any"
+                            placeholder="Es. 40.12345"
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                              field.onChange(isNaN(val as any) ? null : val);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="longitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Longitudine GPS</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="any"
+                            placeholder="Es. 18.12345"
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                              field.onChange(isNaN(val as any) ? null : val);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                {form.watch('latitude') && form.watch('longitude') && (
+                  <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-md px-3 py-1.5">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <MapPin className="h-3.5 w-3.5" />
+                      GPS: {form.watch('latitude')?.toFixed(5)}, {form.watch('longitude')?.toFixed(5)}
+                    </span>
+                    <a
+                      href={`https://www.google.com/maps?q=${form.watch('latitude')},${form.watch('longitude')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-emerald-700"
+                    >
+                      Apri mappa
+                    </a>
+                  </div>
+                )}
                  {isClientForm && (
                    <>
                     <FormField

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound, LogIn, ExternalLink, ShieldCheck, ShieldOff, Loader, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin, KeyRound, LogIn, ExternalLink, ShieldCheck, ShieldOff, Loader, ArrowUpDown, ChevronUp, ChevronDown, Navigation } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -338,8 +338,20 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                                 </a>
                             )}
                             {client.address && (
-                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-start gap-2 hover:underline">
+                                <a href={client.latitude && client.longitude ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-start gap-2 hover:underline">
                                     <MapPin className="h-4 w-4 mt-0.5 shrink-0" /> <span className="break-words">{client.address}</span>
+                                </a>
+                            )}
+                            {client.latitude && client.longitude && (
+                                <a
+                                  href={`https://www.google.com/maps?q=${client.latitude},${client.longitude}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 hover:underline w-fit"
+                                >
+                                  <Navigation className="h-3 w-3" />
+                                  GPS: {client.latitude.toFixed(5)}, {client.longitude.toFixed(5)}
                                 </a>
                             )}
                         </div>
@@ -460,12 +472,31 @@ export function ClientsTable({ clients, onDataChange }: ClientsTableProps) {
                 </div>
               </TableCell>
               <TableCell onClick={() => handleEditClick(client)} className="hidden md:table-cell text-xs cursor-pointer">
-                 {client.address && (
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{client.address}</span>
-                    </a>
-                 )}
+                 <div className="flex flex-col gap-1">
+                   {client.address && (
+                      <a href={client.latitude && client.longitude ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 hover:underline">
+                          <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span>{client.address}</span>
+                      </a>
+                   )}
+                   {client.latitude && client.longitude ? (
+                      <a
+                        href={`https://www.google.com/maps?q=${client.latitude},${client.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline w-fit"
+                        title="Coordinate GPS cliente"
+                      >
+                        <Navigation className="h-3 w-3" />
+                        {client.latitude.toFixed(5)}, {client.longitude.toFixed(5)}
+                      </a>
+                   ) : (
+                      <span className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                        <MapPin className="h-3 w-3 opacity-40" /> Nessun GPS
+                      </span>
+                   )}
+                 </div>
               </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
