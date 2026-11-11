@@ -570,16 +570,16 @@ export function InterventionsTable({
                       <Card 
                         key={intervention.id} 
                         className={cn(
-                            "relative overflow-hidden cursor-pointer hover:shadow-md transition-all h-full min-h-[200px] flex flex-col border-t-4", 
+                            "relative overflow-hidden cursor-pointer hover:shadow-md transition-all h-full min-h-[200px] flex flex-col border-t-4 w-full min-w-0", 
                             getPostItColor(intervention.priority)
                         )}
                         onClick={() => handleEditClick(intervention as Intervention)}
                       >
                           <CardHeader className="p-4 pb-2 space-y-0">
-                              <div className="flex justify-between items-start">
+                              <div className="flex justify-between items-start gap-2">
                                   <div className="flex-1 min-w-0">
                                       <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider break-words [overflow-wrap:anywhere] whitespace-normal">
                                               {client?.name || 'Cliente Sconosciuto'}
                                           </p>
                                           {client && currentUser.role !== 'Client' && (
@@ -596,13 +596,13 @@ export function InterventionsTable({
                                               </Badge>
                                           )}
                                       </div>
-                                      <CardTitle className="text-sm font-semibold line-clamp-2 leading-tight uppercase">
+                                      <CardTitle className="text-sm font-semibold leading-tight uppercase break-words [overflow-wrap:anywhere] whitespace-normal">
                                           {intervention.title}
                                       </CardTitle>
                                   </div>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2" onClick={e => { e.stopPropagation(); }}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2 shrink-0" onClick={e => { e.stopPropagation(); }}>
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
@@ -692,18 +692,18 @@ export function InterventionsTable({
           </div>
       ) : (
         <>
-            <Card className="lg:hidden">
+            <Card className="lg:hidden w-full overflow-hidden">
                 <CardContent className="p-2 space-y-2">
                     {sortedInterventions.map((intervention) => {
                     const client = clientsMap.get(intervention.clientId);
                     const urgent = isDueSoon(intervention.dueDate);
                     return (
-                        <div key={intervention.id} className={cn("p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start", urgent && "bg-amber-100 dark:bg-amber-900/50")}>
-                            <div className="flex-1 space-y-2 pr-4 break-words cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
+                        <div key={intervention.id} className={cn("p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex justify-between items-start gap-3 w-full min-w-0 overflow-hidden", urgent && "bg-amber-100 dark:bg-amber-900/50")}>
+                            <div className="flex-1 min-w-0 space-y-2 pr-1 cursor-pointer" onClick={() => handleEditClick(intervention as Intervention)}>
                                 {currentUser.role !== 'Client' && client && (
                                 <div className="space-y-1 text-sm">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <p className="font-medium break-words uppercase">{client.name}</p>
+                                        <p className="font-medium uppercase break-words [overflow-wrap:anywhere] whitespace-normal leading-snug">{client.name}</p>
                                         <Badge
                                             variant={client.isSubscribed ? 'default' : 'secondary'}
                                             className={
@@ -720,29 +720,29 @@ export function InterventionsTable({
                                         {client.phone && (
                                             <div className="flex items-center gap-2">
                                                 <a href={`tel:${client.phone}`} onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                                    <Phone className="h-4 w-4 text-muted-foreground" />
-                                                    <span>{client.phone}</span>
+                                                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                    <span className="break-all">{client.phone}</span>
                                                 </a>
-                                                <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500">
+                                                <a href={createWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="hover:text-green-500 shrink-0">
                                                     <WhatsAppIcon className="h-4 w-4" />
                                                 </a>
                                             </div>
                                         )}
                                         {client.address && (
-                                            <a href={client.latitude && client.longitude ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-2 hover:underline">
-                                                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                <span className="truncate">{client.address}</span>
+                                            <a href={client.latitude && client.longitude ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-start gap-1.5 hover:underline">
+                                                <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                                <span className="break-words [overflow-wrap:anywhere] whitespace-normal">{client.address}</span>
                                             </a>
                                         )}
                                         {client.latitude && client.longitude && (
-                                            <div className="flex items-center gap-2 pt-0.5" onClick={e => e.stopPropagation()}>
+                                            <div className="flex items-center gap-2 pt-0.5 flex-wrap" onClick={e => e.stopPropagation()}>
                                                 <a
                                                     href={`https://www.google.com/maps?q=${client.latitude},${client.longitude}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 hover:underline"
                                                 >
-                                                    <Compass className="h-3 w-3" />
+                                                    <Compass className="h-3 w-3 shrink-0" />
                                                     GPS: {client.latitude.toFixed(4)}, {client.longitude.toFixed(4)}
                                                 </a>
                                                 <a
@@ -751,7 +751,7 @@ export function InterventionsTable({
                                                     rel="noopener noreferrer"
                                                     className="inline-flex items-center gap-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-2 py-0.5 rounded shadow-sm"
                                                 >
-                                                    <Navigation className="h-3 w-3" />
+                                                    <Navigation className="h-3 w-3 shrink-0" />
                                                     Naviga
                                                 </a>
                                             </div>
@@ -759,17 +759,17 @@ export function InterventionsTable({
                                     </div>
                                 </div>
                                 )}
-                                <p className="font-semibold break-words uppercase">{intervention.title}</p>
-                                {intervention.createdAt && <p className="text-sm text-muted-foreground break-words">Creato: {format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>}
-                                {intervention.dueDate && <p className={cn("text-sm text-muted-foreground break-words", urgent && "font-bold text-amber-700 dark:text-amber-300")}>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
-                                <div className="flex items-center gap-2 pt-1">
+                                <p className="font-semibold uppercase break-words [overflow-wrap:anywhere] whitespace-normal leading-snug">{intervention.title}</p>
+                                {intervention.createdAt && <p className="text-sm text-muted-foreground break-words [overflow-wrap:anywhere] whitespace-normal">Creato: {format(new Date(intervention.createdAt), 'dd/MM/yy HH:mm', { locale: it })}</p>}
+                                {intervention.dueDate && <p className={cn("text-sm text-muted-foreground break-words [overflow-wrap:anywhere] whitespace-normal", urgent && "font-bold text-amber-700 dark:text-amber-300")}>Scadenza: {format(new Date(intervention.dueDate), 'dd/MM/yy HH:mm', { locale: it })}</p>}
+                                <div className="flex items-center gap-2 pt-1 flex-wrap">
                                     {getPriorityBadge(intervention.priority)}
                                     {renderStatus(intervention as Intervention)}
                                 </div>
                             </div>
                             <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}><MoreHorizontal /></Button>
+                                <Button variant="ghost" size="icon" className="shrink-0 -mr-1" onClick={e => e.stopPropagation()}><MoreHorizontal className="h-5 w-5" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(intervention as Intervention); }}>
@@ -876,9 +876,9 @@ export function InterventionsTable({
                             )}
                             {currentUser.role !== 'Client' ? (
                                 <TableCell className="font-medium cursor-pointer max-w-[250px]" onClick={() => handleEditClick(intervention as Intervention)}>
-                                    <div className="flex flex-col break-words gap-0.5">
+                                    <div className="flex flex-col break-words [overflow-wrap:anywhere] gap-0.5">
                                         <div className="flex flex-wrap items-center gap-1.5">
-                                            <span className="break-words font-semibold uppercase">{client ? client.name : '-'}</span>
+                                            <span className="break-words [overflow-wrap:anywhere] whitespace-normal font-semibold uppercase">{client ? client.name : '-'}</span>
                                             {client && (
                                                 <Badge
                                                     variant={client.isSubscribed ? 'default' : 'secondary'}
@@ -893,13 +893,13 @@ export function InterventionsTable({
                                                 </Badge>
                                             )}
                                         </div>
-                                        <span className="text-xs text-muted-foreground uppercase">{intervention.title}</span>
+                                        <span className="text-xs text-muted-foreground uppercase break-words [overflow-wrap:anywhere] whitespace-normal">{intervention.title}</span>
                                     </div>
                                 </TableCell>
                             ) : (
                                 <TableCell className="font-medium cursor-pointer max-w-[250px]" onClick={() => handleEditClick(intervention as Intervention)}>
-                                    <div className="flex flex-col break-words">
-                                        <span className="break-words uppercase">{intervention.title}</span>
+                                    <div className="flex flex-col break-words [overflow-wrap:anywhere]">
+                                        <span className="break-words [overflow-wrap:anywhere] whitespace-normal uppercase">{intervention.title}</span>
                                     </div>
                                 </TableCell>
                             )}
@@ -932,9 +932,9 @@ export function InterventionsTable({
                                 <TableCell className="hidden 2xl:table-cell cursor-pointer max-w-[200px]" onClick={() => handleEditClick(intervention as Intervention)}>
                                 {client && client.address && (
                                     <div className="space-y-0.5">
-                                        <a href={client.latitude && client.longitude ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-center gap-1.5 text-xs hover:underline truncate">
-                                            <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            <span className="truncate">{client.address}</span>
+                                        <a href={client.latitude && client.longitude ? `https://www.google.com/maps?q=${client.latitude},${client.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="flex items-start gap-1.5 text-xs hover:underline">
+                                            <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                                            <span className="break-words [overflow-wrap:anywhere] whitespace-normal leading-tight">{client.address}</span>
                                         </a>
                                         {client.latitude && client.longitude && (
                                             <a
