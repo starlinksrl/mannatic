@@ -2,18 +2,17 @@
 'use client';
 
 import { Header } from '@/components/dashboard/header';
-import { getInterventions, getScheduledMaintenances, updateScheduledMaintenance, getUsers, getClients, updateUser, getAppointments, getSupportTickets, updateDocument } from '@/lib/data';
+import { getInterventions, getUsers, getClients, updateUser, getAppointments, getSupportTickets, updateDocument } from '@/lib/data';
 import { Intervention, ScheduledMaintenance, User, InterventionUpdate, Appointment, SupportTicket } from '@/lib/types';
-import { isAfter, isBefore, addDays, addMonths, setHours, setMinutes, startOfToday, isWithinInterval, subMonths, differenceInHours, format, formatDistanceToNow } from 'date-fns';
+import { isAfter, isBefore, addDays, startOfToday, isWithinInterval, subMonths, differenceInHours, format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useUser } from '@/contexts/user-context';
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { Loader, Wrench, HardHat, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2, TrendingUp, GripVertical, Euro, ArrowRight } from 'lucide-react';
+import { Loader, Wrench, HardHat, RefreshCw, ClipboardCheck, LifeBuoy, AlertTriangle, FilePlus, Hourglass, UserCheck, Star, ReceiptEuro, CheckCircle2, TrendingUp, GripVertical } from 'lucide-react';
 import { Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useInterventionModal } from '@/contexts/intervention-modal-context';
 import { EditInterventionForm } from '@/components/dashboard/edit-intervention-form';
-import { EditMaintenanceForm } from '@/components/dashboard/edit-maintenance-form';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,9 +60,6 @@ type KpiData = {
   featuredInterventions: Intervention[],
   toInvoiceInterventions: Intervention[],
   totalToInvoiceValue: number,
-  scheduledMaintenances: ScheduledMaintenance[],
-  totalMaintenanceMonthlyFee: number,
-  totalMaintenanceAnnualValue: number,
   // Operator specific
   urgentOpenCount?: number;
   newCount?: number;
@@ -83,60 +79,7 @@ export default function DashboardPage() {
   const { intervention: interventionToEdit, isOpen, closeModal, openModal } = useInterventionModal();
   const [appointmentToEdit, setAppointmentToEdit] = useState<Appointment | null>(null);
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
-  const [maintenanceToEdit, setMaintenanceToEdit] = useState<ScheduledMaintenance | null>(null);
-  const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
-  const [executingMaintenanceId, setExecutingMaintenanceId] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const handleQuickExecuteMaintenance = async (e: React.MouseEvent, maint: ScheduledMaintenance) => {
-    e.stopPropagation();
-    if (!user || executingMaintenanceId) return;
-    setExecutingMaintenanceId(maint.id);
-    try {
-      const now = new Date();
-      const nowIso = now.toISOString();
-      const months = Number(maint.recurrenceMonths) || 1;
-      const currentDue = maint.nextDueDate ? new Date(maint.nextDueDate) : now;
-      const baseDate = !isNaN(currentDue.getTime()) && isBefore(now, currentDue) ? currentDue : now;
-      const renewedDate = setHours(setMinutes(addMonths(baseDate, months), 0), 12);
-      const renewedDateIso = renewedDate.toISOString();
-      const formattedNow = format(now, 'dd/MM/yyyy', { locale: it });
-      const formattedNext = format(renewedDate, 'dd/MM/yyyy', { locale: it });
-
-      const updated = await updateScheduledMaintenance(maint.id, {
-        ...maint,
-        status: 'Pianificato',
-        completedAt: nowIso,
-        dueDate: renewedDateIso,
-        nextDueDate: renewedDateIso,
-        updates: [
-          {
-            date: nowIso,
-            description: `Manutenzione eseguita il ${formattedNow}. Prossima scadenza rinnovata al ${formattedNext}`,
-            userName: user.name,
-          },
-          ...(maint.updates || []),
-        ],
-      });
-
-      if (updated) {
-        toast({
-          title: 'Manutenzione eseguita e rinnovata',
-          description: `"${maint.title}" rinnovata al ${formattedNext}.`,
-        });
-        fetchKpiData();
-      }
-    } catch (err) {
-      console.error('Error quick-executing maintenance:', err);
-      toast({
-        variant: 'destructive',
-        title: 'Errore',
-        description: 'Impossibile rinnovare la manutenzione.',
-      });
-    } finally {
-      setExecutingMaintenanceId(null);
-    }
-  };
   const [isSavingFeaturedOrder, setIsSavingFeaturedOrder] = useState(false);
 
   const handleOrderChanged = async (newList: Intervention[]) => {
@@ -244,9 +187,8 @@ export default function DashboardPage() {
     setLoading(true);
 
     const now = new Date();
-    const [allInterventions, allMaintenances, users, allClients, allAppointments, supportTickets] = await Promise.all([
+    const [allInterventions, users, allClients, allAppointments, supportTickets] = await Promise.all([
       getInterventions(currentCompany.id),
-      getScheduledMaintenances(currentCompany.id),
       getUsers(currentCompany.id),
       getClients(currentCompany.id),
       getAppointments(currentCompany.id),
@@ -284,17 +226,6 @@ export default function DashboardPage() {
     const totalToInvoiceValue = toInvoiceInterventions
         .filter(i => i.status === 'Da Fatturare')
         .reduce((acc, i) => acc + (i.cost || 0), 0);
-
-    const activeMaintenances = (allMaintenances || [])
-        .filter(m => m.status !== 'Annullato')
-        .sort((a, b) => {
-            const costDiff = (Number(b.cost) || 0) - (Number(a.cost) || 0);
-            if (costDiff !== 0) return costDiff;
-            return new Date(a.nextDueDate || a.dueDate || a.createdAt).getTime() - new Date(b.nextDueDate || b.dueDate || b.createdAt).getTime();
-        });
-
-    const totalMaintenanceMonthlyFee = activeMaintenances.reduce((acc, m) => acc + (Number(m.cost) || 0), 0);
-    const totalMaintenanceAnnualValue = totalMaintenanceMonthlyFee * 12;
 
     const openInterventions = activeInterventions.length;
     const closedInterventions = allInterventions.filter(i => i.status === 'Completato' || i.status === 'Annullato' || i.status === 'Archiviato');
@@ -447,9 +378,6 @@ export default function DashboardPage() {
       featuredInterventions,
       toInvoiceInterventions,
       totalToInvoiceValue,
-      scheduledMaintenances: activeMaintenances,
-      totalMaintenanceMonthlyFee,
-      totalMaintenanceAnnualValue,
       urgentOpenCount,
       newCount,
       inProgressCount,
@@ -881,122 +809,6 @@ export default function DashboardPage() {
                     <AdminReviewCard interventions={kpiData.toInvoiceInterventions} totalValue={kpiData.totalToInvoiceValue} />
                 )}
 
-                {(user.role === 'Admin' || user.role === 'Creator') && (
-                    <Card className="lg:col-span-12 border-emerald-200/70 dark:border-emerald-800/60">
-                        <CardHeader className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
-                            <div>
-                                <CardTitle className="flex items-center gap-2 font-headline">
-                                    <Euro className="h-5 w-5 text-emerald-600" />
-                                    Report Valore Manutenzioni Programmate
-                                </CardTitle>
-                                <CardDescription>
-                                    Riepilogo economico dei canoni mensili e valore annuo delle manutenzioni attive ({kpiData.scheduledMaintenances.length} contratti attivi).
-                                </CardDescription>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                                    <Euro className="h-5 w-5 text-emerald-600" />
-                                    <div>
-                                        <p className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider leading-none mb-1">Canone Mensile Totale</p>
-                                        <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">
-                                            € {kpiData.totalMaintenanceMonthlyFee.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            <span className="text-xs font-normal text-muted-foreground"> / mese</span>
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-950/30 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
-                                    <TrendingUp className="h-5 w-5 text-blue-600" />
-                                    <div>
-                                        <p className="text-[10px] uppercase font-bold text-blue-600 tracking-wider leading-none mb-1">Valore Annuale (12 mesi)</p>
-                                        <p className="text-xl font-bold text-blue-700 dark:text-blue-400">
-                                            € {kpiData.totalMaintenanceAnnualValue.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            <span className="text-xs font-normal text-muted-foreground"> / anno</span>
-                                        </p>
-                                    </div>
-                                </div>
-                                <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/maintenance')}>
-                                    Gestisci Manutenzioni <ArrowRight className="ml-1.5 h-4 w-4" />
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {kpiData.scheduledMaintenances.length === 0 ? (
-                                <p className="text-sm text-muted-foreground text-center py-4">
-                                    Nessuna manutenzione programmata attiva presente.
-                                </p>
-                            ) : (
-                                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                    {kpiData.scheduledMaintenances.map(maint => {
-                                        const monthlyFee = Number(maint.cost) || 0;
-                                        const annualFee = monthlyFee * 12;
-                                        const months = maint.recurrenceMonths || 1;
-                                        const nextDateStr = maint.nextDueDate || maint.dueDate;
-                                        return (
-                                            <div
-                                                key={maint.id}
-                                                onClick={() => {
-                                                    setMaintenanceToEdit(maint);
-                                                    setIsMaintenanceModalOpen(true);
-                                                }}
-                                                className="p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group flex flex-col justify-between gap-2"
-                                            >
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider truncate">
-                                                            {clientsMap.get(maint.clientId)?.name || 'Cliente N/D'}
-                                                        </p>
-                                                        <p className="font-semibold text-sm line-clamp-1 group-hover:underline uppercase">
-                                                            {maint.title}
-                                                        </p>
-                                                    </div>
-                                                    <div className="text-right shrink-0">
-                                                        {monthlyFee > 0 ? (
-                                                            <>
-                                                                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
-                                                                    € {monthlyFee.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mese
-                                                                </p>
-                                                                <p className="text-[11px] text-muted-foreground">
-                                                                    € {annualFee.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/anno
-                                                                </p>
-                                                            </>
-                                                        ) : (
-                                                            <Badge variant="outline" className="text-[11px] text-muted-foreground">
-                                                                Canone non impostato
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1 border-t border-dashed gap-2">
-                                                    <div>
-                                                        <span>Ogni {months} mes{months > 1 ? 'i' : 'e'} • {maint.status}</span>
-                                                        {nextDateStr && (
-                                                            <span className="ml-2 font-medium text-foreground">Scad.: {format(new Date(nextDateStr), 'dd/MM/yy')}</span>
-                                                        )}
-                                                    </div>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        disabled={executingMaintenanceId === maint.id}
-                                                        onClick={(e) => handleQuickExecuteMaintenance(e, maint)}
-                                                        className="h-7 px-2.5 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
-                                                    >
-                                                        {executingMaintenanceId === maint.id ? (
-                                                            <Loader className="mr-1 h-3 w-3 animate-spin" />
-                                                        ) : (
-                                                            <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-emerald-600" />
-                                                        )}
-                                                        Eseguita
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-
                 {(user.role === 'Admin' || user.role === 'Operator') && (
                   <Card className="lg:col-span-12 order-1">
                     <CardHeader>
@@ -1091,23 +903,6 @@ export default function DashboardPage() {
             setIsAppointmentModalOpen(open);
             if (!open) {
                 setAppointmentToEdit(null);
-            }
-        }}
-      />
-      <EditMaintenanceForm
-        maintenance={maintenanceToEdit}
-        onMaintenanceUpdated={() => {
-            fetchKpiData();
-            setIsMaintenanceModalOpen(false);
-            setMaintenanceToEdit(null);
-        }}
-        clients={clients}
-        operators={operators}
-        isOpen={isMaintenanceModalOpen}
-        setIsOpen={(open) => {
-            setIsMaintenanceModalOpen(open);
-            if (!open) {
-                setMaintenanceToEdit(null);
             }
         }}
       />
