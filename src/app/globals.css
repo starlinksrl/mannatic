@@ -199,33 +199,77 @@
 }
 
 @layer base {
-  html {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-
-  html[data-font-size="xs"] {
-    font-size: 80% !important;
-  }
-
-  html[data-font-size="sm"] {
-    font-size: 90% !important;
-  }
-
-  html[data-font-size="md"] {
-    font-size: 100% !important;
-  }
-
-  html[data-font-size="lg"] {
-    font-size: 112% !important;
-  }
-
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Scalatura Font Incisiva (Accessibilità & Smartphone) */
+html, body {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html[data-font-size="xs"],
+html[data-font-size="xs"] body {
+  font-size: 68% !important;
+}
+
+html[data-font-size="sm"],
+html[data-font-size="sm"] body {
+  font-size: 80% !important;
+}
+
+html[data-font-size="md"],
+html[data-font-size="md"] body {
+  font-size: 100% !important;
+}
+
+html[data-font-size="lg"],
+html[data-font-size="lg"] body {
+  font-size: 115% !important;
+}
+
+/* Riduzione mirata dei titoli voluminosi in modalità compatta per evitare testi a capo su mobile */
+html[data-font-size="xs"] .text-3xl {
+  font-size: 1.45rem !important;
+  line-height: 1.7rem !important;
+}
+html[data-font-size="xs"] .text-2xl {
+  font-size: 1.25rem !important;
+  line-height: 1.5rem !important;
+}
+html[data-font-size="xs"] .text-xl {
+  font-size: 1.05rem !important;
+  line-height: 1.3rem !important;
+}
+html[data-font-size="xs"] .text-lg {
+  font-size: 0.95rem !important;
+  line-height: 1.25rem !important;
+}
+
+html[data-font-size="sm"] .text-3xl {
+  font-size: 1.65rem !important;
+  line-height: 1.9rem !important;
+}
+html[data-font-size="sm"] .text-2xl {
+  font-size: 1.35rem !important;
+  line-height: 1.6rem !important;
+}
+html[data-font-size="sm"] .text-xl {
+  font-size: 1.15rem !important;
+  line-height: 1.4rem !important;
+}
+
+/* Ridimensionamento proporzionale delle classi con pixel fissi text-[...px] */
+html[data-font-size="xs"] [class*="text-["] {
+  font-size: 0.68rem !important;
+}
+html[data-font-size="sm"] [class*="text-["] {
+  font-size: 0.76rem !important;
 }
 
 /* Fix for Google Maps Autocomplete z-index issue */

@@ -161,7 +161,7 @@ export function SidebarNav() {
             </div>
           </div>
           <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4">
-            {fontSize === 'xs' ? '80%' : fontSize === 'sm' ? '90%' : fontSize === 'lg' ? '112%' : '100%'}
+            {fontSize === 'xs' ? '68%' : fontSize === 'sm' ? '80%' : fontSize === 'lg' ? '115%' : '100%'}
           </Badge>
         </button>
 

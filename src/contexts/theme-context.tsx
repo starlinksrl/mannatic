@@ -32,12 +32,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('mannatic_font_size') as FontSize | null;
-      if (saved && ['xs', 'sm', 'md', 'lg'].includes(saved)) {
-        setFontSizeState(saved);
-        document.documentElement.setAttribute('data-font-size', saved);
-      } else {
-        document.documentElement.setAttribute('data-font-size', 'md');
-      }
+      const targetSize = saved && ['xs', 'sm', 'md', 'lg'].includes(saved) ? saved : 'md';
+      setFontSizeState(targetSize);
+      document.documentElement.setAttribute('data-font-size', targetSize);
+      document.body?.setAttribute('data-font-size', targetSize);
     } catch {
       // ignore in environments without localStorage
     }
@@ -51,6 +49,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       // ignore
     }
     document.documentElement.setAttribute('data-font-size', newSize);
+    document.body?.setAttribute('data-font-size', newSize);
   }, []);
 
   const setTheme = useCallback(async (newTheme: Theme) => {

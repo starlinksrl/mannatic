@@ -158,6 +158,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setLoadWithOverviewMode(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        settings.setTextZoom(100);
 
         String defaultUa = settings.getUserAgentString();
         settings.setUserAgentString(defaultUa + " MannaTicApp/1.0");
