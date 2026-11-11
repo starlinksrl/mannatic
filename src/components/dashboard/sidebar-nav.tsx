@@ -26,10 +26,12 @@ import {
   UserCog,
   BarChart3,
   Smartphone,
+  Type,
 } from 'lucide-react';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { Logo } from '../icons/logo';
 import Image from 'next/image';
 import { AllowedSector, User as UserType } from '@/lib/types';
@@ -37,6 +39,8 @@ import { Separator } from '../ui/separator';
 import { changelog } from '@/lib/changelog';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
+import { useTheme } from '@/contexts/theme-context';
+import { FontSizeDialog } from './font-size-dialog';
 
 const isMainCreator = (user: UserType | null) => user?.email === 'creator@mannatic.com';
 const isDistributor = (user: UserType | null) => user?.role === 'Distributor';
@@ -46,6 +50,8 @@ const isDistributorUser = (user: UserType | null) => user?.role === 'Distributor
 export function SidebarNav() {
   const pathname = usePathname();
   const { user } = useUser();
+  const { fontSize } = useTheme();
+  const [isFontSizeModalOpen, setIsFontSizeModalOpen] = useState(false);
 
   if (!user) return null;
   
@@ -140,7 +146,25 @@ export function SidebarNav() {
           ) : null
         )}
       </nav>
-      <div className="mt-auto p-4 space-y-3">
+      <div className="mt-auto p-4 space-y-2.5">
+        <button
+          type="button"
+          onClick={() => setIsFontSizeModalOpen(true)}
+          className="w-full flex items-center justify-between p-2.5 rounded-lg border border-border/80 bg-muted/40 hover:bg-muted text-foreground transition-colors text-left"
+          title="Regola la dimensione dei caratteri per smartphone"
+        >
+          <div className="flex items-center gap-2.5">
+            <Type className="h-4 w-4 text-primary shrink-0" />
+            <div className="flex flex-col leading-tight">
+              <span className="text-xs font-semibold">Dimensione Testo</span>
+              <span className="text-[10px] text-muted-foreground">Adatta caratteri allo schermo</span>
+            </div>
+          </div>
+          <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4">
+            {fontSize === 'xs' ? '80%' : fontSize === 'sm' ? '90%' : fontSize === 'lg' ? '112%' : '100%'}
+          </Badge>
+        </button>
+
         <a
           href="/mannatic.apk"
           download="mannatic.apk"
@@ -174,6 +198,10 @@ export function SidebarNav() {
             </div>
         )}
       </div>
+      <FontSizeDialog
+        open={isFontSizeModalOpen}
+        onOpenChange={setIsFontSizeModalOpen}
+      />
     </div>
   );
 }

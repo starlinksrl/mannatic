@@ -199,6 +199,27 @@
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  html[data-font-size="xs"] {
+    font-size: 80% !important;
+  }
+
+  html[data-font-size="sm"] {
+    font-size: 90% !important;
+  }
+
+  html[data-font-size="md"] {
+    font-size: 100% !important;
+  }
+
+  html[data-font-size="lg"] {
+    font-size: 112% !important;
+  }
+
   * {
     @apply border-border;
   }

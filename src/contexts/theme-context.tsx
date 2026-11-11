@@ -1,9 +1,9 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useUser } from './user-context';
-import { type Theme, type Font, type ViewMode } from '@/lib/types';
+import { type Theme, type Font, type ViewMode, type FontSize } from '@/lib/types';
 import { updateCompanySettings } from '@/app/actions';
 import { fonts } from '@/lib/fonts';
 
@@ -14,6 +14,8 @@ interface ThemeContextType {
   setFont: (font: Font) => void;
   viewMode: ViewMode;
   setViewMode: (viewMode: ViewMode) => void;
+  fontSize: FontSize;
+  setFontSize: (fontSize: FontSize) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -24,6 +26,32 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const theme = currentCompany?.theme || 'default';
   const font = currentCompany?.font || 'default';
   const viewMode = currentCompany?.viewMode || 'grid';
+  const [fontSize, setFontSizeState] = useState<FontSize>('md');
+
+  // Load persisted font size from device localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mannatic_font_size') as FontSize | null;
+      if (saved && ['xs', 'sm', 'md', 'lg'].includes(saved)) {
+        setFontSizeState(saved);
+        document.documentElement.setAttribute('data-font-size', saved);
+      } else {
+        document.documentElement.setAttribute('data-font-size', 'md');
+      }
+    } catch {
+      // ignore in environments without localStorage
+    }
+  }, []);
+
+  const setFontSize = useCallback((newSize: FontSize) => {
+    setFontSizeState(newSize);
+    try {
+      localStorage.setItem('mannatic_font_size', newSize);
+    } catch {
+      // ignore
+    }
+    document.documentElement.setAttribute('data-font-size', newSize);
+  }, []);
 
   const setTheme = useCallback(async (newTheme: Theme) => {
     if (currentCompany) {
@@ -64,7 +92,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, font, setFont, viewMode, setViewMode }}>
+    <ThemeContext.Provider value={{ theme, setTheme, font, setFont, viewMode, setViewMode, fontSize, setFontSize }}>
       {children}
     </ThemeContext.Provider>
   );

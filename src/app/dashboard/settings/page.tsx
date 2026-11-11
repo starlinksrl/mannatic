@@ -27,6 +27,7 @@ import { ChangelogDisplay } from '@/components/dashboard/changelog-display';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ManualPageContent from '@/components/dashboard/manual-page-content';
 import { FontSwitcher } from '@/components/dashboard/font-switcher';
+import { FontSizeSelector } from '@/components/dashboard/font-size-dialog';
 import { ViewModeSwitcher } from '@/components/dashboard/view-mode-switcher';
 import { getUsers } from '@/lib/data';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -1507,6 +1508,13 @@ export default function SettingsPage() {
                  <div>
                     <h4 className="font-medium mb-4">Caratteri</h4>
                     <FontSwitcher />
+                 </div>
+                 <div>
+                    <h4 className="font-medium mb-2">Dimensione Caratteri (Accessibilità &amp; Smartphone)</h4>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Regola la scala dei testi per questo dispositivo. Se sul tuo smartphone i caratteri di sistema sono grandi e causano testi sovrapposti o tagliati, seleziona &quot;Molto Compatto&quot; o &quot;Compatto&quot;.
+                    </p>
+                    <FontSizeSelector />
                  </div>
                  <div>
                     <h4 className="font-medium mb-4">Visualizzazione Predefinita</h4>

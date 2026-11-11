@@ -30,6 +30,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var s = localStorage.getItem('mannatic_font_size');
+                if (s && ['xs', 'sm', 'md', 'lg'].indexOf(s) !== -1) {
+                  document.documentElement.setAttribute('data-font-size', s);
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body className={cn(
         'min-h-screen bg-background font-body antialiased', 
         inter.variable, 

@@ -13,10 +13,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, ChevronsUpDown, User as UserIcon, Building, Smartphone } from 'lucide-react';
+import { LogOut, ChevronsUpDown, User as UserIcon, Building, Smartphone, Type } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { EditUserForm } from './edit-user-form';
+import { FontSizeDialog } from './font-size-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@/lib/types';
 
@@ -24,6 +25,7 @@ export function UserSwitcher() {
   const { user, logout, companies, currentCompany, switchCompany } = useUser();
   const router = useRouter();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isFontSizeModalOpen, setIsFontSizeModalOpen] = useState(false);
   const { toast } = useToast();
 
   const handleLogout = () => {
@@ -69,8 +71,13 @@ export function UserSwitcher() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setIsProfileModalOpen(true)}>
-                <UserIcon className="mr-2" />
+                <UserIcon className="mr-2 h-4 w-4" />
                 Profilo
+            </DropdownMenuItem>
+
+            <DropdownMenuItem onSelect={() => setIsFontSizeModalOpen(true)}>
+                <Type className="mr-2 h-4 w-4 text-primary" />
+                Dimensione Testo
             </DropdownMenuItem>
 
             <DropdownMenuItem asChild>
@@ -93,6 +100,10 @@ export function UserSwitcher() {
           onUserUpdated={handleProfileUpdated}
           isOpen={isProfileModalOpen}
           setIsOpen={setIsProfileModalOpen}
+      />
+      <FontSizeDialog
+          open={isFontSizeModalOpen}
+          onOpenChange={setIsFontSizeModalOpen}
       />
     </>
   );

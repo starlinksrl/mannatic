@@ -6,6 +6,7 @@ export type UserRole = 'Creator' | 'Distributor' | 'Admin' | 'Operator' | 'Clien
 
 export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'matrix';
 export type Font = 'default' | 'lato' | 'roboto' | 'playfair' | 'sourcecode';
+export type FontSize = 'xs' | 'sm' | 'md' | 'lg';
 
 
 export interface AppConfiguration {
