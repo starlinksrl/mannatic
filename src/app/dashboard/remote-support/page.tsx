@@ -140,6 +140,135 @@ Server di supporto: ${RUSTDESK_SERVER_HOST}`;
     }
   };
 
+  if (user?.role === 'Client') {
+    return (
+      <>
+        <Header title="Teleassistenza Remota" />
+        <main className="p-4 md:p-6 lg:p-8 space-y-6 max-w-4xl mx-auto">
+          {/* Hero Banner Cliente */}
+          <div className="rounded-2xl border border-blue-200 dark:border-blue-900 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 md:p-8 text-white shadow-lg">
+            <div className="max-w-2xl space-y-3">
+              <Badge className="bg-white/20 hover:bg-white/20 text-white text-xs border-0 backdrop-blur-xs">
+                Assistenza Tecnica Diretta
+              </Badge>
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                Modulo di Teleassistenza Remota
+              </h2>
+              <p className="text-sm md:text-base text-blue-100 leading-relaxed">
+                Scarica ed avvia il nostro modulo di supporto. Non richiede installazione: consentirà al nostro personale tecnico autorizzato di collegarsi al tuo computer per risolvere rapidamente qualsiasi problema.
+              </p>
+              <div className="pt-3 flex flex-wrap gap-3">
+                <Button asChild size="lg" className="bg-white text-blue-700 hover:bg-blue-50 font-bold shadow-md">
+                  <a href="/api/rustdesk/download?os=windows" download>
+                    <Download className="mr-2 h-5 w-5" />
+                    Scarica per Windows (.exe)
+                  </a>
+                </Button>
+                <Button variant="outline" asChild size="lg" className="bg-white/10 hover:bg-white/20 text-white border-white/30">
+                  <a href="/dashboard/requests">
+                    Torna alle mie richieste
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Step Card */}
+          <Card className="border shadow-xs">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-600" />
+                Come Funziona la Teleassistenza (3 Semplici Passaggi)
+              </CardTitle>
+              <CardDescription>
+                Procedura veloce e sicura con connessione cifrata end-to-end sul nostro server dedicato.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl border bg-muted/40 space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                    1
+                  </div>
+                  <h4 className="font-semibold text-sm">Scarica ed Esegui</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Clicca sul pulsante di download e avvia il file scaricato. Non è richiesta alcuna installazione sul sistema.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl border bg-muted/40 space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                    2
+                  </div>
+                  <h4 className="font-semibold text-sm">Comunica ID e Password</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    A video vedrai il tuo ID numerico e una Password temporanea monouso. Inviali al tecnico nel ticket o via WhatsApp.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl border bg-muted/40 space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                    3
+                  </div>
+                  <h4 className="font-semibold text-sm">Assistenza Immediata</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Il tecnico si collegherà e risolverà l'anomalia. Quando chiudi il programma, la connessione viene chiusa definitivamente.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Altri Sistemi Operativi */}
+          <Card className="border shadow-xs">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Laptop className="h-4 w-4 text-muted-foreground" />
+                Altri Sistemi Operativi
+              </CardTitle>
+              <CardDescription>
+                Se utilizzi un Mac, uno smartphone o un tablet, puoi scaricare il client dedicato:
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Button variant="outline" asChild className="justify-start gap-2 h-auto py-2.5">
+                  <a href="/api/rustdesk/download?os=mac" target="_blank" rel="noopener noreferrer">
+                    <Apple className="h-4 w-4 shrink-0" />
+                    <div className="text-left">
+                      <div className="text-xs font-semibold">macOS (Apple / Intel)</div>
+                      <div className="text-[10px] text-muted-foreground">Download .dmg</div>
+                    </div>
+                  </a>
+                </Button>
+
+                <Button variant="outline" asChild className="justify-start gap-2 h-auto py-2.5">
+                  <a href="/api/rustdesk/download?os=android" target="_blank" rel="noopener noreferrer">
+                    <Smartphone className="h-4 w-4 shrink-0 text-emerald-600" />
+                    <div className="text-left">
+                      <div className="text-xs font-semibold">Android</div>
+                      <div className="text-[10px] text-muted-foreground">Download .apk</div>
+                    </div>
+                  </a>
+                </Button>
+
+                <Button variant="outline" asChild className="justify-start gap-2 h-auto py-2.5">
+                  <a href="/api/rustdesk/download?os=ios" target="_blank" rel="noopener noreferrer">
+                    <Apple className="h-4 w-4 shrink-0 text-blue-500" />
+                    <div className="text-left">
+                      <div className="text-xs font-semibold">iPhone / iPad</div>
+                      <div className="text-[10px] text-muted-foreground">App Store</div>
+                    </div>
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </>
+    );
+  }
+
   return (
     <>
       <Header title="Teleassistenza Remota" />

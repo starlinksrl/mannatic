@@ -7,7 +7,7 @@ import { getSupportTickets, getInterventions, getUsers, getClients } from '@/lib
 import { useUser } from '@/contexts/user-context';
 import { User, Intervention, SupportTicket } from '@/lib/types';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader, Mail, Phone, MapPin, ReceiptEuro, TrendingUp, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Loader, Mail, Phone, MapPin, ReceiptEuro, TrendingUp, ShieldCheck, ShieldOff, ScreenShare, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -90,6 +90,39 @@ export default function ClientRequestsPage() {
     <>
       <Header title="Le mie Richieste" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
+        {/* Banner Teleassistenza Remota per Cliente */}
+        <Card className="border-blue-200/80 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-blue-50/40 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-blue-950/20 dark:border-blue-900/60 shadow-sm overflow-hidden">
+          <CardContent className="p-4 md:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 bg-blue-600 text-white rounded-xl shadow-sm shrink-0">
+                <ScreenShare className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
+                  Hai bisogno di Teleassistenza remota?
+                  <Badge variant="outline" className="border-blue-300 text-blue-700 dark:text-blue-300 bg-blue-100/60 dark:bg-blue-900/40 text-xs">Rapido & Sicuro</Badge>
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                  Scarica il nostro modulo di supporto preconfigurato per consentire al nostro tecnico di intervenire a distanza sul tuo computer.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0 flex-wrap">
+              <Button asChild className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                <a href="/api/rustdesk/download?os=windows" download>
+                  <Download className="h-4 w-4 mr-2" />
+                  Scarica Teleassistenza (.exe)
+                </a>
+              </Button>
+              <Button variant="outline" asChild className="w-full sm:w-auto text-xs">
+                <a href="/dashboard/remote-support">
+                  Tutti i sistemi
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6 md:grid-cols-2">
             {clients.map(client => (
                 <Card key={client.id}>
@@ -161,17 +194,25 @@ export default function ClientRequestsPage() {
         
         <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <CardTitle>Ticket di Supporto</CardTitle>
                         <CardDescription>Le tue richieste attive di assistenza tecnica o amministrativa.</CardDescription>
                     </div>
-                    <AddSupportTicketForm onTicketAdded={fetchData}>
-                        <Button size="sm">
-                            <PlusCircle className="mr-2" />
-                            Apri Ticket
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 dark:border-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40" asChild>
+                            <a href="/api/rustdesk/download?os=windows" download>
+                                <ScreenShare className="mr-2 h-4 w-4" />
+                                Scarica Teleassistenza
+                            </a>
                         </Button>
-                    </AddSupportTicketForm>
+                        <AddSupportTicketForm onTicketAdded={fetchData}>
+                            <Button size="sm">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Apri Ticket
+                            </Button>
+                        </AddSupportTicketForm>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>

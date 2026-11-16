@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useUser } from '@/contexts/user-context';
 import { Header } from '@/components/dashboard/header';
-import { Loader, PlusCircle, Building, Search, X } from 'lucide-react';
+import { Loader, PlusCircle, Building, Search, X, ScreenShare } from 'lucide-react';
 import { Company, SupportTicket, User } from '@/lib/types';
 import { getSupportTickets, getSupportTicketsForDistributor, getCompaniesByDistributorId, getClients } from '@/lib/data';
 import { Button } from '@/components/ui/button';
@@ -190,12 +190,20 @@ function SupportPageComponent() {
           <div className="flex items-center gap-3 self-end md:self-auto">
             {/* Client: open ticket for their company */}
             {user.role === 'Client' && (
-              <AddSupportTicketForm onTicketAdded={() => fetchData()}>
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Apri un nuovo ticket
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="outline" className="text-blue-600 border-blue-200 dark:border-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40" asChild>
+                  <a href="/api/rustdesk/download?os=windows" download>
+                    <ScreenShare className="mr-2 h-4 w-4" />
+                    Scarica Teleassistenza
+                  </a>
                 </Button>
-              </AddSupportTicketForm>
+                <AddSupportTicketForm onTicketAdded={() => fetchData()}>
+                  <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Apri un nuovo ticket
+                  </Button>
+                </AddSupportTicketForm>
+              </div>
             )}
 
             {/* Admin: open ticket for their Distributor (only if viewing that tab) */}
