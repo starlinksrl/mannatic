@@ -42,7 +42,7 @@ import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSizeDialog } from './font-size-dialog';
-import { useIsNativeApp } from '@/hooks/use-is-native-app';
+import { useShouldShowApkDownload } from '@/hooks/use-is-native-app';
 
 const isMainCreator = (user: UserType | null) => user?.email === 'creator@mannatic.com';
 const isDistributor = (user: UserType | null) => user?.role === 'Distributor';
@@ -126,7 +126,7 @@ export function SidebarNav() {
   const latestVersion = latestEntry?.version;
   const latestDate = latestEntry?.date ? format(new Date(latestEntry.date), 'dd/MM/yyyy') : null;
   const isMain = isMainCreator(user);
-  const isNativeApp = useIsNativeApp();
+  const shouldShowApkDownload = useShouldShowApkDownload();
 
   return (
     <div className="flex h-full flex-col">
@@ -169,7 +169,7 @@ export function SidebarNav() {
           </Badge>
         </button>
 
-        {!isNativeApp && (
+        {shouldShowApkDownload && (
           <a
             href="/mannatic.apk"
             download="mannatic.apk"

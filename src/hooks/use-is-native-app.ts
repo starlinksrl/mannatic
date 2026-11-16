@@ -37,3 +37,44 @@ export function useIsNativeApp(): boolean {
 
   return isNative;
 }
+
+/**
+ * Determina se mostrare il tasto/icona di download dell'APK Android.
+ * 
+ * Regole rigorose:
+ * - Se si naviga da PC / Mac / Desktop -> FALSE (eliminato, non serve su computer)
+ * - Se si è già all'interno dell'App Android nativa (APK) -> FALSE (eliminato, già installata)
+ * - Se si naviga da browser web su dispositivo Android -> TRUE
+ */
+export function useShouldShowApkDownload(): boolean {
+  const [shouldShow, setShouldShow] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
+
+    const check = () => {
+      const ua = navigator.userAgent || '';
+      const hasAndroidBridge = Boolean((window as any).AndroidApp);
+      const hasAppUserAgent = /MannaTicApp/i.test(ua);
+      const isNative = hasAndroidBridge || hasAppUserAgent;
+
+      // Se è già l'app nativa, non mostrare mai
+      if (isNative) return false;
+
+      // Mostra SOLO se il dispositivo è Android (smartphone o tablet)
+      const isAndroid = /android/i.test(ua);
+      return isAndroid;
+    };
+
+    setShouldShow(check());
+
+    // Controllo ritardato in caso di iniezione asincrona del bridge
+    const timer = setTimeout(() => {
+      setShouldShow(check());
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return shouldShow;
+}

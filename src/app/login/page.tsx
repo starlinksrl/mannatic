@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { getUserByEmail, consumeAutologinToken, getUserById } from '@/lib/data';
 import { User } from '@/lib/types';
 import { Loader, Smartphone, Headphones, Download, ScreenShare } from 'lucide-react';
-import { useIsNativeApp } from '@/hooks/use-is-native-app';
+import { useShouldShowApkDownload } from '@/hooks/use-is-native-app';
 
 function LoginFormComponent() {
   const [email, setEmail] = useState('');
@@ -26,7 +26,7 @@ function LoginFormComponent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const autologinProcessed = useRef(false);
-  const isNativeApp = useIsNativeApp();
+  const shouldShowApkDownload = useShouldShowApkDownload();
 
   useEffect(() => {
     const handleAutologin = async () => {
@@ -232,7 +232,7 @@ function LoginFormComponent() {
                 </div>
               </div>
 
-              {!isNativeApp && (
+              {shouldShowApkDownload && (
                 <div className="w-full">
                   <Button
                     variant="outline"

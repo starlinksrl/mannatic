@@ -12,7 +12,7 @@ import { useUser } from '@/contexts/user-context';
 import { useRouter } from 'next/navigation';
 import { Intervention, Client, User } from '@/lib/types';
 import Image from 'next/image';
-import { useIsNativeApp } from '@/hooks/use-is-native-app';
+import { useShouldShowApkDownload } from '@/hooks/use-is-native-app';
 
 interface HeaderProps {
   title: string;
@@ -25,7 +25,7 @@ interface HeaderProps {
 export function Header({ title, onInterventionAdded, clients, operators }: HeaderProps) {
   const { user, currentCompany, switchCompany } = useUser();
   const router = useRouter();
-  const isNativeApp = useIsNativeApp();
+  const shouldShowApkDownload = useShouldShowApkDownload();
 
   return (
     <header className="flex h-16 items-center gap-4 border-b bg-card/95 backdrop-blur px-4 md:px-6 sticky top-0 z-40 shrink-0 shadow-xs">
@@ -57,7 +57,7 @@ export function Header({ title, onInterventionAdded, clients, operators }: Heade
         <h1 className="font-headline text-lg sm:text-xl font-semibold truncate">{title}</h1>
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {!isNativeApp && (
+        {shouldShowApkDownload && (
           <Button
             variant="outline"
             size="sm"
