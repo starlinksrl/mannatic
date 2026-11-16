@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { getUserByEmail, consumeAutologinToken, getUserById } from '@/lib/data';
 import { User } from '@/lib/types';
-import { Loader, Smartphone } from 'lucide-react';
+import { Loader, Smartphone, Headphones, Download, ScreenShare } from 'lucide-react';
 import { useIsNativeApp } from '@/hooks/use-is-native-app';
 
 function LoginFormComponent() {
@@ -194,14 +194,46 @@ function LoginFormComponent() {
                  {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 Accedi
               </Button>
-               <div className="mt-4 text-center text-sm">
+               <div className="text-center text-xs text-muted-foreground">
                 Non hai un account?{' '}
-                <Link href="/register" className="underline">
-                  Registra una nuovo installatore
+                <Link href="/register" className="underline hover:text-foreground">
+                  Registra un nuovo installatore
                 </Link>
               </div>
+
+              {/* Riquadro Teleassistenza Remota Immediata per i Clienti (Senza Login) */}
+              <div className="w-full mt-1 pt-3 border-t border-border/70">
+                <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-gradient-to-br from-blue-50/90 via-sky-50/60 to-indigo-50/80 dark:from-blue-950/40 dark:via-sky-950/30 dark:to-indigo-950/30 text-left shadow-xs">
+                  <div className="flex items-start gap-2.5 mb-2.5">
+                    <div className="p-2 rounded-xl bg-blue-600 text-white shadow-xs shrink-0 mt-0.5">
+                      <Headphones className="h-4 w-4 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <span>Ti serve Teleassistenza?</span>
+                        <span className="text-sm">🧑‍🔧</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                        Non serve effettuare l'accesso. Scarica il programma ed avvialo per consentire il collegamento del tecnico.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    asChild
+                    className="w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs py-2 h-auto"
+                  >
+                    <a href="/api/rustdesk/download?os=windows" download>
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Scarica Teleassistenza Windows (.exe)</span>
+                    </a>
+                  </Button>
+                </div>
+              </div>
+
               {!isNativeApp && (
-                <div className="w-full pt-2">
+                <div className="w-full">
                   <Button
                     variant="outline"
                     size="sm"
