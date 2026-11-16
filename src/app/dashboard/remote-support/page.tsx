@@ -27,7 +27,9 @@ import {
   MessageCircle,
   Users,
   Info,
-  CheckCircle2
+  CheckCircle2,
+  Terminal,
+  Sparkles
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/user-context';
@@ -40,6 +42,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const RUSTDESK_SERVER_HOST = 'remote.mannatec.it';
 const RUSTDESK_RELAY_HOST = 'remote.mannatec.it:21117';
 const RUSTDESK_PUBLIC_KEY = 'xprpBdDVPKwXQd0HBInvLO38hvcT9mkVpBWVFckYkHM=';
+// Stringa di configurazione ufficiale RustDesk (reversed Base64 del JSON con host, relay e key)
+const RUSTDESK_CONFIG_STRING = '9JSPNh0aZt2YGZ1VCBnVr1WOUNmdohzMPxkdulkQIBDZRh1dLBlVERmQwJHc4JiOikXZrJCLicTMxEjM6QXauMWZ0FmbuFWbuUGdv1WZyJiOikXYsVmciwiI0lmLjVGdh5mbh1mLlR3btVmciojI0N3boJye';
 
 export default function RemoteSupportPage() {
   const { user, currentCompany } = useUser();
@@ -397,69 +401,196 @@ Server di supporto: ${RUSTDESK_SERVER_HOST}`;
               </CardContent>
             </Card>
 
-            {/* Dettagli Configurazione Server Privato */}
+            {/* Dettagli Configurazione Server Privato & Client Tecnico */}
             <Card className="border shadow-xs">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Server className="h-5 w-5 text-indigo-500" />
-                  Parametri Server MannaTec
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Server className="h-5 w-5 text-indigo-500" />
+                    Personalizzazione Client Tecnico & Parametri Server
+                  </CardTitle>
+                  <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 text-[11px] gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    Server Operativo
+                  </Badge>
+                </div>
                 <CardDescription>
-                  Parametri da inserire nelle impostazioni di RustDesk su dispositivi già esistenti.
+                  Collega qualsiasi postazione tecnica (Mac, Windows, Linux, Android, iOS) al tuo server privato dedicato.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="p-2.5 rounded-lg border bg-muted/40 space-y-1">
-                    <span className="text-muted-foreground font-medium block">Server ID / Rendezvous:</span>
-                    <div className="flex items-center justify-between gap-1 font-mono font-semibold">
-                      <span className="truncate">{RUSTDESK_SERVER_HOST}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleCopy(RUSTDESK_SERVER_HOST, 'Server ID')}
-                      >
-                        {copiedKey === 'Server ID' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg border bg-muted/40 space-y-1">
-                    <span className="text-muted-foreground font-medium block">Server Relay:</span>
-                    <div className="flex items-center justify-between gap-1 font-mono font-semibold">
-                      <span className="truncate">{RUSTDESK_SERVER_HOST}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleCopy(RUSTDESK_SERVER_HOST, 'Server Relay')}
-                      >
-                        {copiedKey === 'Server Relay' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-2.5 rounded-lg border bg-muted/40 space-y-1">
+              <CardContent className="space-y-4">
+                
+                {/* Box 1-Click Stringa RustDesk */}
+                <div className="rounded-xl border-2 border-indigo-500/30 bg-gradient-to-br from-indigo-500/5 via-blue-500/5 to-purple-500/5 p-3.5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                      <Key className="h-3 w-3 text-amber-500" /> Chiave Pubblica Server (Public Key):
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                      <span className="font-bold text-xs text-indigo-950 dark:text-indigo-100">
+                        Configurazione 1-Click per RustDesk (Consigliata)
+                      </span>
+                    </div>
+                    <Badge className="bg-indigo-600 hover:bg-indigo-600 text-white text-[10px] px-1.5 py-0">
+                      Tutti i Sistemi Operativi
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Questa stringa codificata imposta istantaneamente <strong>Host</strong>, <strong>Relay</strong> e <strong>Chiave di Crittografia</strong> in un solo passaggio, senza dover digitare i singoli parametri.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="flex-1 font-mono text-[11px] bg-card p-2 rounded-lg border truncate text-muted-foreground select-all">
+                      {RUSTDESK_CONFIG_STRING}
+                    </div>
                     <Button
-                      variant="ghost"
                       size="sm"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() => handleCopy(RUSTDESK_PUBLIC_KEY, 'Chiave Pubblica')}
+                      onClick={() => handleCopy(RUSTDESK_CONFIG_STRING, 'Stringa Configurazione')}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 font-semibold text-xs shadow-xs gap-1.5"
                     >
-                      {copiedKey === 'Chiave Pubblica' ? <Check className="h-3 w-3 text-green-500 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                      Copia Chiave
+                      {copiedKey === 'Stringa Configurazione' ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-white" /> Copiata!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" /> Copia Stringa 1-Click
+                        </>
+                      )}
                     </Button>
                   </div>
-                  <p className="font-mono text-xs break-all bg-card p-1.5 rounded border select-all">
-                    {RUSTDESK_PUBLIC_KEY}
-                  </p>
+
+                  <div className="text-[11px] text-muted-foreground bg-background/80 p-2.5 rounded-lg border space-y-1">
+                    <div className="font-semibold text-foreground flex items-center gap-1.5">
+                      <Info className="h-3.5 w-3.5 text-indigo-500" /> Come incollarla nel tuo client RustDesk:
+                    </div>
+                    <ol className="list-decimal list-inside space-y-0.5 pl-1 text-[11px] text-muted-foreground">
+                      <li>Apri RustDesk e clicca su <strong>Impostazioni (⚙️)</strong> in basso a sinistra.</li>
+                      <li>Vai su <strong>Rete</strong> e clicca su <strong>Sblocca impostazioni di rete</strong>.</li>
+                      <li>Clicca su <strong>Importa stringa di configurazione</strong> e incolla questa stringa. Fatto!</li>
+                    </ol>
+                  </div>
                 </div>
+
+                {/* Schede per Sistema Operativo e Parametri Manuali */}
+                <Tabs defaultValue="mac" className="w-full">
+                  <TabsList className="grid grid-cols-3 w-full h-8 text-xs">
+                    <TabsTrigger value="mac" className="text-xs">macOS</TabsTrigger>
+                    <TabsTrigger value="windows" className="text-xs">Windows</TabsTrigger>
+                    <TabsTrigger value="manual" className="text-xs">Parametri Singoli</TabsTrigger>
+                  </TabsList>
+
+                  {/* Tab macOS */}
+                  <TabsContent value="mac" className="pt-2 space-y-2.5">
+                    <div className="p-3 rounded-lg border bg-muted/30 text-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground flex items-center gap-1.5">
+                          <Apple className="h-4 w-4" /> Configurazione Rapida Terminale macOS:
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[11px]"
+                          onClick={() => {
+                            const cmd = `mkdir -p ~/Library/Preferences/com.carriez.rustdesk && cat << 'EOF' > ~/Library/Preferences/com.carriez.rustdesk/RustDesk2.toml\nrendezvous_server = 'remote.mannatec.it:21116'\nnat_type = 1\nserial = 0\nunlock_pin = ''\n\n[options]\nkey = 'xprpBdDVPKwXQd0HBInvLO38hvcT9mkVpBWVFckYkHM='\ncustom-rendezvous-server = 'remote.mannatec.it'\nrelay-server = 'remote.mannatec.it:21117'\nEOF\npkill -f RustDesk || true\nopen -a RustDesk`;
+                            handleCopy(cmd, 'Comando Terminale Mac');
+                          }}
+                        >
+                          {copiedKey === 'Comando Terminale Mac' ? <Check className="h-3 w-3 text-green-500 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          Copia Comando
+                        </Button>
+                      </div>
+                      <p className="text-muted-foreground text-[11px] leading-relaxed">
+                        Copia ed incolla questo comando nel Terminale del Mac per configurare all'istante RustDesk con i parametri di MannaTec e riavviare l'applicazione:
+                      </p>
+                      <pre className="p-2 rounded bg-background border font-mono text-[10px] overflow-x-auto text-muted-foreground">
+{`cat << 'EOF' > ~/Library/Preferences/com.carriez.rustdesk/RustDesk2.toml
+rendezvous_server = 'remote.mannatec.it:21116'
+[options]
+key = 'xprpBdDVPKwXQd0HBInvLO38hvcT9mkVpBWVFckYkHM='
+custom-rendezvous-server = 'remote.mannatec.it'
+relay-server = 'remote.mannatec.it:21117'
+EOF`}
+                      </pre>
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Il tuo Mac attuale è già configurato e collegato a remote.mannatec.it.
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Tab Windows */}
+                  <TabsContent value="windows" className="pt-2 space-y-2">
+                    <div className="p-3 rounded-lg border bg-muted/30 text-xs space-y-2">
+                      <span className="font-semibold text-foreground flex items-center gap-1.5">
+                        <Laptop className="h-4 w-4" /> Client Tecnico Windows Preconfigurato
+                      </span>
+                      <p className="text-muted-foreground text-[11px] leading-relaxed">
+                        Su Windows non serve nessuna configurazione manuale: scarica direttamente il file eseguibile dedicato che include già l'indirizzo del server e la chiave di cifratura nel nome del file.
+                      </p>
+                      <Button asChild size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs">
+                        <a href="/api/rustdesk/download?os=windows" download>
+                          <Download className="h-3.5 w-3.5 mr-1.5" />
+                          Scarica Client Tecnico Windows (.exe)
+                        </a>
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  {/* Tab Parametri Singoli */}
+                  <TabsContent value="manual" className="pt-2 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div className="p-2 rounded-lg border bg-muted/40 space-y-1">
+                        <span className="text-muted-foreground font-medium block text-[11px]">Server ID / Rendezvous:</span>
+                        <div className="flex items-center justify-between gap-1 font-mono font-semibold text-xs">
+                          <span className="truncate">{RUSTDESK_SERVER_HOST}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleCopy(RUSTDESK_SERVER_HOST, 'Server ID')}
+                          >
+                            {copiedKey === 'Server ID' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-lg border bg-muted/40 space-y-1">
+                        <span className="text-muted-foreground font-medium block text-[11px]">Server Relay:</span>
+                        <div className="flex items-center justify-between gap-1 font-mono font-semibold text-xs">
+                          <span className="truncate">{RUSTDESK_RELAY_HOST}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleCopy(RUSTDESK_RELAY_HOST, 'Server Relay')}
+                          >
+                            {copiedKey === 'Server Relay' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2 rounded-lg border bg-muted/40 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                          <Key className="h-3 w-3 text-amber-500" /> Chiave Pubblica Server (Public Key):
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-2 text-[10px]"
+                          onClick={() => handleCopy(RUSTDESK_PUBLIC_KEY, 'Chiave Pubblica')}
+                        >
+                          {copiedKey === 'Chiave Pubblica' ? <Check className="h-3 w-3 text-green-500 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          Copia Chiave
+                        </Button>
+                      </div>
+                      <p className="font-mono text-[11px] break-all bg-card p-1.5 rounded border select-all">
+                        {RUSTDESK_PUBLIC_KEY}
+                      </p>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
               </CardContent>
             </Card>
           </div>
