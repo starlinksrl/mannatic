@@ -26,9 +26,8 @@ import {
   Send,
   MessageCircle,
   Users,
-  Maximize2,
-  Minimize2,
-  Info
+  Info,
+  CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/user-context';
@@ -41,7 +40,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const RUSTDESK_SERVER_HOST = 'remote.mannatec.it';
 const RUSTDESK_RELAY_HOST = 'remote.mannatec.it:21117';
 const RUSTDESK_PUBLIC_KEY = 'xprpBdDVPKwXQd0HBInvLO38hvcT9mkVpBWVFckYkHM=';
-const WEB_CLIENT_URL = 'https://web.rustdesk.com/';
 
 export default function RemoteSupportPage() {
   const { user, currentCompany } = useUser();
@@ -52,8 +50,6 @@ export default function RemoteSupportPage() {
   const [clients, setClients] = useState<User[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [isIframeExpanded, setIsIframeExpanded] = useState(false);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   useEffect(() => {
     async function loadClients() {
@@ -377,30 +373,26 @@ Server di supporto: ${RUSTDESK_SERVER_HOST}`;
                   <Button
                     onClick={handleLaunchNativeApp}
                     disabled={!cleanId(remoteId)}
-                    className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-white font-semibold"
+                    className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 shadow-sm"
                   >
                     <Play className="h-4 w-4" />
-                    Apri nell'App RustDesk
+                    Avvia Sessione RustDesk
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      const clean = cleanId(remoteId);
-                      const targetUrl = clean 
-                        ? `${WEB_CLIENT_URL}#/?id=${clean}` 
-                        : WEB_CLIENT_URL;
-                      window.open(targetUrl, '_blank', 'noopener,noreferrer');
-                    }}
-                    className="gap-2 border-primary/30 text-primary hover:bg-primary/5"
+                    asChild
+                    className="gap-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 h-10"
                   >
-                    <ExternalLink className="h-4 w-4" />
-                    Apri Web Client
+                    <a href="/api/rustdesk/download?os=windows" download>
+                      <Download className="h-4 w-4 text-emerald-600 shrink-0" />
+                      Scarica Client Tecnico
+                    </a>
                   </Button>
                 </div>
 
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1 pt-1">
                   <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground/80" />
-                  Se hai già RustDesk installato sul tuo computer, il tasto <strong>Apri nell'App</strong> avvierà direttamente la sessione con un solo clic.
+                  Cliccando su <strong>Avvia Sessione RustDesk</strong> si aprirà direttamente il controllo remoto sul tuo computer tramite il server privato <strong>{RUSTDESK_SERVER_HOST}</strong>.
                 </p>
               </CardContent>
             </Card>
@@ -589,61 +581,65 @@ Server di supporto: ${RUSTDESK_SERVER_HOST}`;
 
         </div>
 
-        {/* Web Client RustDesk Incorporato */}
+        {/* Guida Operativa & Configurazione Tecnico */}
         <Card className="border shadow-xs">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Laptop className="h-5 w-5 text-indigo-500" />
-                Console Web Client RustDesk
-              </CardTitle>
-              <CardDescription>
-                Accedi al controllo remoto direttamente dal browser.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsIframeExpanded(!isIframeExpanded)}
-                className="gap-1 text-xs"
-              >
-                {isIframeExpanded ? (
-                  <>
-                    <Minimize2 className="h-3.5 w-3.5" /> Riduci
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className="h-3.5 w-3.5" /> Schermo Intero
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="gap-1 text-xs"
-              >
-                <a href={WEB_CLIENT_URL} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-3.5 w-3.5" /> Nuova Scheda
-                </a>
-              </Button>
-            </div>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Laptop className="h-5 w-5 text-blue-600" />
+              Come effettuare l'assistenza al cliente (Guida Tecnico)
+            </CardTitle>
+            <CardDescription>
+              La connessione desktop ad alte prestazioni (60 FPS, tastiera, clipboard, doppio monitor) avviene tramite l'applicazione RustDesk collegata al tuo server privato.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className={`relative w-full rounded-lg border bg-muted/20 overflow-hidden transition-all duration-300 ${isIframeExpanded ? 'h-[85vh]' : 'h-[540px]'}`}>
-              <iframe
-                src={WEB_CLIENT_URL}
-                title="RustDesk Web Client"
-                className="w-full h-full border-0"
-                allow="clipboard-read; clipboard-write; display-capture; fullscreen"
-                onLoad={() => setIframeLoaded(true)}
-              />
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl border bg-muted/30 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 font-bold text-xs">
+                    Passo 1
+                  </Badge>
+                  <span className="font-semibold text-sm">Avvia RustDesk sul tuo PC</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Se sei su Windows, puoi usare direttamente lo stesso file preconfigurato: scaricalo con il pulsante <strong>"Scarica Client Tecnico"</strong> ed eseguilo. Sarà già collegato al tuo server MannaTec con il pallino verde <strong>"Pronto"</strong> in basso.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-muted/30 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 font-bold text-xs">
+                    Passo 2
+                  </Badge>
+                  <span className="font-semibold text-sm">Inserisci l'ID del Cliente</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Fatti comunicare l'ID di 9 cifre dal cliente (es. <code className="bg-muted px-1 py-0.5 rounded">381 824 655</code>) e inseriscilo nel riquadro in alto <em>"Connetti a PC Cliente"</em>. Se il cliente ha fornito una password monouso, inserisci anche quella.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-muted/30 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 font-bold text-xs">
+                    Passo 3
+                  </Badge>
+                  <span className="font-semibold text-sm">Premi "Avvia Sessione"</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Clicca su <strong>"Avvia Sessione RustDesk"</strong>. Il browser invierà il comando direttamente al programma sul tuo computer e si aprirà la finestra di controllo remoto del cliente in tempo reale.
+                </p>
+              </div>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2 flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-              Nelle impostazioni (icona ingranaggio in alto nel Web Client) inserisci come <strong>ID Server</strong>: <code className="bg-muted px-1 py-0.5 rounded">{RUSTDESK_SERVER_HOST}</code> e come <strong>Key</strong>: <code className="bg-muted px-1 py-0.5 rounded">{RUSTDESK_PUBLIC_KEY}</code>.
-            </p>
+
+            <div className="p-3.5 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+              <Info className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <div>
+                <strong>Perché il controllo remoto richiede l'applicazione RustDesk e non un semplice iframe web?</strong>
+                <p className="mt-0.5 text-muted-foreground dark:text-amber-300/80 leading-relaxed">
+                  I browser web impongono stringenti restrizioni di sicurezza (blocco tasti di sistema come Ctrl+Alt+Canc, gestione limitata del mouse e blocco delle connessioni video non criptate). L'applicazione desktop RustDesk si collega via UDP/TCP a bassissima latenza direttamente al tuo server privato <strong>remote.mannatec.it</strong>, garantendo fluidità a 60 FPS e il controllo totale della macchina remota.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

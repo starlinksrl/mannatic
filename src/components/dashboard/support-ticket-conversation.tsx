@@ -515,7 +515,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
 
               <div className="flex gap-2 pt-1">
                 <Button
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
                   disabled={!remoteId.trim()}
                   onClick={() => {
                     const clean = remoteId.replace(/\s+/g, '');
@@ -526,14 +526,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
                   }}
                 >
                   <Play className="h-4 w-4 mr-1.5" />
-                  Avvia RustDesk
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => window.open('https://web.rustdesk.com', '_blank')}
-                  title="Apri RustDesk Web Client"
-                >
-                  <ExternalLink className="h-4 w-4" />
+                  Avvia Sessione RustDesk
                 </Button>
               </div>
             </div>
