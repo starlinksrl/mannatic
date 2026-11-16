@@ -5,9 +5,12 @@ import { SupportTicket, User, SupportTicketStatus, Attachment } from '@/lib/type
 import { Header } from './header';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { ArrowLeft, Loader, Send, Trash2, Wrench, UploadCloud, File as FileIcon, Image as ImageIcon, FileText, ShieldCheck, ShieldOff } from 'lucide-react';
+import { ArrowLeft, Loader, Send, Trash2, Wrench, UploadCloud, File as FileIcon, Image as ImageIcon, FileText, ShieldCheck, ShieldOff, ScreenShare, Play, ExternalLink, Copy, Laptop } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Textarea } from '../ui/textarea';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '../ui/dialog';
 import { useUser } from '@/contexts/user-context';
 import { addSupportMessage, updateSupportTicketStatus, deleteSupportTicket, getUserById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +49,9 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
   const [isConverting, setIsConverting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [ticketClient, setTicketClient] = useState<User | null>(null);
+  const [isRemoteSupportOpen, setIsRemoteSupportOpen] = useState(false);
+  const [remoteId, setRemoteId] = useState('');
+  const [remotePassword, setRemotePassword] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -219,18 +225,41 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
             <ArrowLeft className="mr-2" />
             Torna ai ticket
             </Button>
-            {user.role === 'Admin' && (
-                <div className="flex gap-2">
-                    <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting}>
-                        {isDeleting ? <Loader className="mr-2 animate-spin" /> : <Trash2 className="mr-2" />}
-                        Elimina
-                    </Button>
-                     <Button variant="secondary" onClick={handleConvertToIntervention} disabled={isConverting}>
-                        {isConverting ? <Loader className="mr-2 animate-spin" /> : <Wrench className="mr-2" />}
-                        Crea Intervento
-                    </Button>
-                </div>
-            )}
+            <div className="flex gap-2 flex-wrap items-center">
+              {user.role !== 'Client' ? (
+                <Button 
+                  variant="outline" 
+                  className="text-blue-600 border-blue-200 dark:border-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                  onClick={() => setIsRemoteSupportOpen(true)}
+                >
+                  <ScreenShare className="mr-2 h-4 w-4" />
+                  Teleassistenza
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  className="text-blue-600 border-blue-200 dark:border-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                  asChild
+                >
+                  <a href="/api/rustdesk/download?os=windows" download>
+                    <ScreenShare className="mr-2 h-4 w-4" />
+                    Scarica Supporto Remoto
+                  </a>
+                </Button>
+              )}
+              {user.role === 'Admin' && (
+                <>
+                  <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting}>
+                      {isDeleting ? <Loader className="mr-2 animate-spin" /> : <Trash2 className="mr-2" />}
+                      Elimina
+                  </Button>
+                  <Button variant="secondary" onClick={handleConvertToIntervention} disabled={isConverting}>
+                      {isConverting ? <Loader className="mr-2 animate-spin" /> : <Wrench className="mr-2" />}
+                      Crea Intervento
+                  </Button>
+                </>
+              )}
+            </div>
         </div>
 
         <Card>
@@ -424,6 +453,110 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isRemoteSupportOpen} onOpenChange={setIsRemoteSupportOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScreenShare className="h-5 w-5 text-blue-600" />
+              Teleassistenza Remota
+            </DialogTitle>
+            <DialogDescription>
+              Fornisci supporto immediato al cliente tramite il server RustDesk MannaTec.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-3 bg-muted/60 rounded-lg border text-sm space-y-2">
+              <div className="font-medium text-xs uppercase text-muted-foreground tracking-wider">Azione rapida per il cliente</div>
+              <p className="text-xs text-muted-foreground">
+                Inserisce le istruzioni con il link di download preconfigurato direttamente nella risposta del ticket.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full text-xs"
+                onClick={() => {
+                  const instruction = `Gentile ${ticket.clientName || 'Cliente'},\n\nper consentirci di effettuare la teleassistenza remota sul Suo computer, La invitiamo a scaricare ed avviare il modulo di supporto da questo link:\nhttps://supporto.mannatec.it/api/rustdesk/download?os=windows\n\nNon è richiesta alcuna installazione: una volta aperto il programma, ci indichi qui in chat il Suo ID (9 o più cifre) e la Password monouso visualizzata a video.`;
+                  setNewMessage(prev => prev ? `${prev}\n\n${instruction}` : instruction);
+                  setIsRemoteSupportOpen(false);
+                  toast({
+                    title: "Istruzioni inserite",
+                    description: "Il messaggio di teleassistenza è stato aggiunto all'area di risposta.",
+                  });
+                }}
+              >
+                Inserisci istruzioni nella chat
+              </Button>
+            </div>
+
+            <div className="space-y-3 pt-2 border-t">
+              <div className="font-medium text-xs uppercase text-muted-foreground tracking-wider">Connessione rapida</div>
+              <div className="grid gap-2">
+                <Label htmlFor="quick-remote-id" className="text-xs">ID RustDesk del Cliente</Label>
+                <Input
+                  id="quick-remote-id"
+                  placeholder="Es. 123 456 789"
+                  value={remoteId}
+                  onChange={(e) => setRemoteId(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="quick-remote-pwd" className="text-xs">Password Monouso (opzionale)</Label>
+                <Input
+                  id="quick-remote-pwd"
+                  type="password"
+                  placeholder="Password se fornita"
+                  value={remotePassword}
+                  onChange={(e) => setRemotePassword(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={!remoteId.trim()}
+                  onClick={() => {
+                    const clean = remoteId.replace(/\s+/g, '');
+                    const url = remotePassword.trim() 
+                      ? `rustdesk://${clean}?password=${encodeURIComponent(remotePassword.trim())}` 
+                      : `rustdesk://${clean}`;
+                    window.location.href = url;
+                  }}
+                >
+                  <Play className="h-4 w-4 mr-1.5" />
+                  Avvia RustDesk
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open('https://web.rustdesk.com', '_blank')}
+                  title="Apri RustDesk Web Client"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setIsRemoteSupportOpen(false);
+                window.location.href = '/dashboard/remote-support';
+              }}
+            >
+              Pannello Completo
+            </Button>
+            <DialogClose asChild>
+              <Button type="button" variant="secondary" size="sm">Chiudi</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

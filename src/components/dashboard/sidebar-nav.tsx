@@ -27,6 +27,7 @@ import {
   BarChart3,
   Smartphone,
   Type,
+  ScreenShare,
 } from 'lucide-react';
 
 import Link from 'next/link';
@@ -74,6 +75,7 @@ export function SidebarNav() {
     { href: '/dashboard/appointments', label: 'Appuntamenti', icon: ClipboardCheck, roles: ['Admin', 'Operator'], sector: 'appointments' },
     { href: '/dashboard/maintenance', label: 'Manutenzioni', icon: ShieldCheck, roles: ['Admin', 'Operator'], sector: 'maintenance' },
     { href: '/dashboard/support', label: 'Supporto', icon: LifeBuoy, roles: ['Admin', 'Client', 'Distributor', 'DistributorAdmin', 'DistributorUser'] },
+    { href: '/dashboard/remote-support', label: 'Teleassistenza', icon: ScreenShare, roles: ['Admin', 'Operator', 'Creator', 'Distributor', 'DistributorAdmin'] },
     { href: '/dashboard/quotes', label: 'Preventivi', icon: FileText, roles: ['Admin', 'Distributor', 'DistributorAdmin', 'DistributorUser'] },
     { href: '/dashboard/map', label: 'Mappa', icon: Map, roles: ['Admin', 'Operator'] },
     { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, roles: ['Admin', 'Operator'] },
