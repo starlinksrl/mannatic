@@ -29,8 +29,15 @@ import {
   Info,
   CheckCircle2,
   Terminal,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/user-context';
 import { getClients } from '@/lib/data';
@@ -382,16 +389,56 @@ Server di supporto: ${RUSTDESK_SERVER_HOST}`;
                     <Play className="h-4 w-4" />
                     Avvia Sessione RustDesk
                   </Button>
-                  <Button
-                    variant="outline"
-                    asChild
-                    className="gap-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 h-10"
-                  >
-                    <a href="/api/rustdesk/download?os=windows" download>
-                      <Download className="h-4 w-4 text-emerald-600 shrink-0" />
-                      Scarica Client Tecnico
-                    </a>
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="gap-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 h-10 font-medium"
+                      >
+                        <Download className="h-4 w-4 text-emerald-600 shrink-0" />
+                        Scarica Client Tecnico
+                        <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuItem asChild>
+                        <a href="/api/rustdesk/download?os=windows" download className="flex items-center gap-2 cursor-pointer">
+                          <Laptop className="h-4 w-4 text-emerald-600" />
+                          <div>
+                            <div className="font-semibold text-xs">Windows (.exe preconfigurato)</div>
+                            <div className="text-[10px] text-muted-foreground">Pronto all'uso senza configurazione</div>
+                          </div>
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href="/api/rustdesk/download?os=mac-arm" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                          <Apple className="h-4 w-4 text-blue-500" />
+                          <div>
+                            <div className="font-semibold text-xs">macOS Apple Silicon (M1/M2/M3/M4)</div>
+                            <div className="text-[10px] text-muted-foreground">Download .dmg per Mac recenti</div>
+                          </div>
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href="/api/rustdesk/download?os=mac" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                          <Apple className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-semibold text-xs">macOS Intel (.dmg)</div>
+                            <div className="text-[10px] text-muted-foreground">Per Mac con processore Intel</div>
+                          </div>
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href="/api/rustdesk/download?os=android" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                          <Smartphone className="h-4 w-4 text-emerald-500" />
+                          <div>
+                            <div className="font-semibold text-xs">Android (.apk)</div>
+                            <div className="text-[10px] text-muted-foreground">Supporto per smartphone/tablet</div>
+                          </div>
+                        </a>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1 pt-1">
