@@ -199,7 +199,7 @@ Server di supporto: ${RUSTDESK_SERVER_HOST}`;
                   </div>
                   <h4 className="font-semibold text-sm">Scarica ed Esegui</h4>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Clicca sul pulsante di download e avvia il file scaricato. Non è richiesta alcuna installazione sul sistema.
+                    Clicca sul pulsante e avvia il programma. Il file include già la configurazione del nostro server privato: all'avvio vedrai il pallino verde <strong>"Pronto"</strong> in basso a sinistra. Nessuna installazione richiesta.
                   </p>
                 </div>
 
@@ -668,7 +668,7 @@ EOF`}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Il file eseguibile include già l'indirizzo del tuo server <strong>{RUSTDESK_SERVER_HOST}</strong> e la chiave di cifratura. Il cliente deve solo fare doppio clic ed eseguire.
+                    Il file eseguibile include già l'indirizzo del tuo server <strong>{RUSTDESK_SERVER_HOST}</strong> e la chiave di cifratura. Il cliente deve solo fare doppio clic ed eseguire: all'avvio vedrà il pallino verde <strong>"Pronto"</strong> in basso a sinistra.
                   </p>
                   <Button
                     asChild

@@ -3,9 +3,15 @@ import fs from 'fs';
 import path from 'path';
 
 const RUSTDESK_HOST = 'remote.mannatec.it';
+const RUSTDESK_RELAY = 'remote.mannatec.it:21117';
 const RUSTDESK_KEY = 'xprpBdDVPKwXQd0HBInvLO38hvcT9mkVpBWVFckYkHM=';
 
-const PRECONFIGURED_WINDOWS_FILENAME = `MannaTec-Supporto-host=${RUSTDESK_HOST},key=${RUSTDESK_KEY}.exe`;
+// Nome file ufficiale secondo le specifiche RustDesk:
+// 1. Prefisso standard 'rustdesk-'
+// 2. Specificati sia host rendezvous che relay server
+// 3. Trailing comma prima di .exe per proteggere il padding '=' della chiave da eventuali duplicati browser come (1).exe
+const OFFICIAL_WINDOWS_FILENAME = `rustdesk-host=${RUSTDESK_HOST},relay=${RUSTDESK_RELAY},key=${RUSTDESK_KEY},.exe`;
+const LEGACY_WINDOWS_FILENAME = `MannaTec-Supporto-host=${RUSTDESK_HOST},key=${RUSTDESK_KEY}.exe`;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -28,26 +34,34 @@ export async function GET(request: NextRequest) {
   }
 
   // Windows preconfigurato
-  const candidatePaths = [
-    path.join(process.cwd(), 'public', 'downloads', PRECONFIGURED_WINDOWS_FILENAME),
-    path.join('/opt/apps/mannatic/public/downloads', PRECONFIGURED_WINDOWS_FILENAME),
+  const candidateFiles = [
+    OFFICIAL_WINDOWS_FILENAME,
+    LEGACY_WINDOWS_FILENAME,
   ];
 
-  let filePath = candidatePaths.find(p => fs.existsSync(p));
+  const searchDirs = [
+    path.join(process.cwd(), 'public', 'downloads'),
+    '/opt/apps/mannatic/public/downloads',
+  ];
 
-  if (filePath) {
-    try {
-      const fileBuffer = fs.readFileSync(filePath);
-      return new NextResponse(fileBuffer, {
-        headers: {
-          'Content-Type': 'application/vnd.microsoft.portable-executable',
-          'Content-Disposition': `attachment; filename="${PRECONFIGURED_WINDOWS_FILENAME}"`,
-          'Content-Length': fileBuffer.length.toString(),
-          'Cache-Control': 'public, max-age=3600',
-        },
-      });
-    } catch (e) {
-      console.error('Error reading RustDesk preconfigured executable:', e);
+  for (const filename of candidateFiles) {
+    for (const dir of searchDirs) {
+      const fullPath = path.join(dir, filename);
+      if (fs.existsSync(fullPath)) {
+        try {
+          const fileBuffer = fs.readFileSync(fullPath);
+          return new NextResponse(fileBuffer, {
+            headers: {
+              'Content-Type': 'application/vnd.microsoft.portable-executable',
+              'Content-Disposition': `attachment; filename="${OFFICIAL_WINDOWS_FILENAME}"`,
+              'Content-Length': fileBuffer.length.toString(),
+              'Cache-Control': 'public, max-age=3600',
+            },
+          });
+        } catch (e) {
+          console.error('Error reading RustDesk preconfigured executable:', e);
+        }
+      }
     }
   }
 
