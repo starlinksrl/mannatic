@@ -162,7 +162,7 @@ Server di supporto: ${RUSTDESK_SERVER_HOST}`;
                 Modulo di Teleassistenza Remota
               </h2>
               <p className="text-sm md:text-base text-blue-100 leading-relaxed">
-                Scarica ed avvia il nostro modulo di supporto (assistenza.exe). Si configurerà automaticamente in pochi secondi: consentirà al nostro personale tecnico autorizzato di collegarsi al tuo computer per risolvere rapidamente qualsiasi problema.
+                Scarica ed avvia il nostro modulo di supporto preconfigurato. Non richiede installazione: consentirà al nostro personale tecnico autorizzato di collegarsi al tuo computer in sicurezza.
               </p>
               <div className="pt-3 flex flex-wrap gap-3">
                 <Button asChild size="lg" className="bg-white text-blue-700 hover:bg-blue-50 font-bold shadow-md">
@@ -668,7 +668,7 @@ EOF`}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Il file eseguibile <strong>assistenza.exe</strong> configura automaticamente l'indirizzo del tuo server <strong>{RUSTDESK_SERVER_HOST}</strong>, la chiave di cifratura e la password di supporto. Il cliente deve solo fare doppio clic ed eseguire: all'avvio vedrà il pallino verde <strong>"Pronto"</strong> in basso a sinistra.
+                    Il file eseguibile include già l'indirizzo del tuo server <strong>{RUSTDESK_SERVER_HOST}</strong> e la chiave crittografica. Il cliente deve solo fare doppio clic ed eseguire: all'avvio vedrà il pallino verde <strong>"Pronto"</strong> in basso a sinistra e ti comunicherà ID e password visualizzati a video.
                   </p>
                   <Button
                     asChild
@@ -680,6 +680,16 @@ EOF`}
                       Scarica Eseguibile Windows (.exe)
                     </a>
                   </Button>
+                  <div className="text-[11px] text-center text-muted-foreground pt-1">
+                    Oppure per installazione permanente come servizio:{" "}
+                    <a
+                      href="/api/rustdesk/download?os=windows&type=installer"
+                      download
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Installer con Password fissa (.exe)
+                    </a>
+                  </div>
                 </div>
 
                 {/* Altri Sistemi Operativi */}

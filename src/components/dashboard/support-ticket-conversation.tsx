@@ -478,7 +478,7 @@ export function SupportTicketConversation({ ticket, onBack, onTicketUpdated }: S
                 size="sm"
                 className="w-full text-xs"
                 onClick={() => {
-                  const instruction = `Gentile ${ticket.clientName || 'Cliente'},\n\nper consentirci di effettuare la teleassistenza remota sul Suo computer, La invitiamo a scaricare ed avviare il modulo di supporto da questo link:\nhttps://supporto.mannatec.it/api/rustdesk/download?os=windows\n\nUna volta avviato il file (assistenza.exe), il programma si configurerà automaticamente in pochi secondi: ci indichi semplicemente qui in chat il Suo ID (9 cifre) per avviare il collegamento.`;
+                  const instruction = `Gentile ${ticket.clientName || 'Cliente'},\n\nper consentirci di effettuare la teleassistenza remota sul Suo computer, La invitiamo a scaricare ed avviare il modulo di supporto da questo link:\nhttps://supporto.mannatec.it/api/rustdesk/download?os=windows\n\nNon è richiesta alcuna configurazione: il programma è già collegato ai nostri server. Una volta aperto, ci indichi qui in chat il Suo ID (9 cifre) e la password visualizzata a video per avviare il collegamento.`;
                   setNewMessage(prev => prev ? `${prev}\n\n${instruction}` : instruction);
                   setIsRemoteSupportOpen(false);
                   toast({

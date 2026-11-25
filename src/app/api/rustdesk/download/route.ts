@@ -34,13 +34,14 @@ export async function GET(request: NextRequest) {
   }
 
   const type = searchParams.get('type');
-  const isPortable = type === 'portable';
+  const isInstaller = type === 'installer';
 
-  // Windows: di default serve l'installer autonomo assistenza.exe (con server e password fissa preconfigurati),
-  // oppure la versione portatile se esplicitamente richiesta via ?type=portable
-  const candidateFiles = isPortable
-    ? [OFFICIAL_WINDOWS_FILENAME, LEGACY_WINDOWS_FILENAME]
-    : ['assistenza.exe', OFFICIAL_WINDOWS_FILENAME, LEGACY_WINDOWS_FILENAME];
+  // Windows: di default serve il binario ufficiale con firma digitale autentica RustDesk
+  // e parametri server incorporati nel nome file (compatibile al 100% con Windows 11 Smart App Control).
+  // L'installer autonomo con password fissa resta disponibile specificando ?type=installer.
+  const candidateFiles = isInstaller
+    ? ['assistenza.exe', OFFICIAL_WINDOWS_FILENAME, LEGACY_WINDOWS_FILENAME]
+    : [OFFICIAL_WINDOWS_FILENAME, LEGACY_WINDOWS_FILENAME, 'assistenza.exe'];
 
   const searchDirs = [
     path.join(process.cwd(), 'public', 'downloads'),
