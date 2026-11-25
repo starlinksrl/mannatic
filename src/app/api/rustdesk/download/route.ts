@@ -33,11 +33,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect('https://apps.apple.com/app/rustdesk-remote-desktop/id1581125052');
   }
 
-  // Windows preconfigurato
-  const candidateFiles = [
-    OFFICIAL_WINDOWS_FILENAME,
-    LEGACY_WINDOWS_FILENAME,
-  ];
+  const type = searchParams.get('type');
+  const isPortable = type === 'portable';
+
+  // Windows: di default serve l'installer autonomo assistenza.exe (con server e password fissa preconfigurati),
+  // oppure la versione portatile se esplicitamente richiesta via ?type=portable
+  const candidateFiles = isPortable
+    ? [OFFICIAL_WINDOWS_FILENAME, LEGACY_WINDOWS_FILENAME]
+    : ['assistenza.exe', OFFICIAL_WINDOWS_FILENAME, LEGACY_WINDOWS_FILENAME];
 
   const searchDirs = [
     path.join(process.cwd(), 'public', 'downloads'),
@@ -50,16 +53,17 @@ export async function GET(request: NextRequest) {
       if (fs.existsSync(fullPath)) {
         try {
           const fileBuffer = fs.readFileSync(fullPath);
+          const servedFilename = filename === 'assistenza.exe' ? 'assistenza.exe' : OFFICIAL_WINDOWS_FILENAME;
           return new NextResponse(fileBuffer, {
             headers: {
               'Content-Type': 'application/vnd.microsoft.portable-executable',
-              'Content-Disposition': `attachment; filename="${OFFICIAL_WINDOWS_FILENAME}"`,
+              'Content-Disposition': `attachment; filename="${servedFilename}"`,
               'Content-Length': fileBuffer.length.toString(),
               'Cache-Control': 'public, max-age=3600',
             },
           });
         } catch (e) {
-          console.error('Error reading RustDesk preconfigured executable:', e);
+          console.error('Error reading RustDesk executable:', e);
         }
       }
     }
