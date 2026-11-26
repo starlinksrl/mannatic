@@ -142,15 +142,15 @@ export default function MapPage() {
         if (i.isMaintenance) {
           const m = i as ScheduledMaintenance;
           const dueDate = m.nextDueDate ? new Date(m.nextDueDate) : null;
-          if (dueDate && isBefore(dueDate, thirtyDaysAhead) && !['Completato', 'Annullato'].includes(m.status)) {
+          if (dueDate && isBefore(dueDate, thirtyDaysAhead) && ['Nuovo', 'In corso', 'Pianificato'].includes(m.status)) {
             shouldInclude = true;
           }
         } else if (i.type === 'new_installation') {
-          if (i.status !== 'Completato' && i.status !== 'Annullato') {
+          if (openStatuses.includes(i.status)) {
             shouldInclude = true;
           }
         } else {
-          if (openStatuses.includes(i.status) || (!['Completato', 'Annullato'].includes(i.status))) {
+          if (openStatuses.includes(i.status)) {
             shouldInclude = true;
           }
         }

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { useUser } from '@/contexts/user-context';
-import { sendExpiringInterventionsSummaryEmail } from '@/app/actions';
+import { sendExpiringInterventionsSummaryEmail, generateExpiringInterventionsSummary } from '@/app/actions';
 import { Loader, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
